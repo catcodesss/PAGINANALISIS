@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type {
   AnalisisFuncional,
-  AnalisisSituacional,
-  EslabonCadena,
+  CadenaOperante,
+  CadenaRespondiente,
+  ModeloTerapeutico,
   NivelConfianza,
+  Situacion,
 } from "@/lib/types";
 
 interface ReportViewProps {
@@ -20,19 +22,35 @@ interface SeccionIndice {
   titulo: string;
 }
 
-const BASE_SECCIONES: SeccionIndice[] = [
-  { id: "hipotesis-principal", titulo: "Hipótesis principal" },
-  { id: "funciones", titulo: "Resumen de funciones" },
-  { id: "resumen", titulo: "Resumen clínico" },
-  { id: "variables-moduladoras", titulo: "Variables moduladoras" },
-  { id: "analisis-funcional", titulo: "Análisis funcional detallado" },
-  { id: "cuidador", titulo: "Conducta del cuidador" },
-  { id: "reglas-procesos", titulo: "Reglas verbales y procesos ACT" },
-  { id: "habilidades", titulo: "Habilidades recomendadas" },
-  { id: "preguntas", titulo: "Preguntas para la próxima sesión" },
-  { id: "intervencion", titulo: "Líneas de intervención" },
-  { id: "datos-faltantes", titulo: "Datos faltantes" },
-];
+const ETIQUETA_MODALIDAD: Record<ModeloTerapeutico, string> = {
+  act: "ACT",
+  dbt: "DBT",
+  mc: "Conductual (MC)",
+};
+
+const TITULO_SECCION_MODALIDAD: Record<ModeloTerapeutico, string> = {
+  act: "Capa ACT",
+  dbt: "Capa DBT",
+  mc: "Capa conductual",
+};
+
+function construirSecciones(modalidad: ModeloTerapeutico): SeccionIndice[] {
+  return [
+    { id: "hipotesis-principal", titulo: "Formulación destacada" },
+    { id: "resumen", titulo: "Resumen clínico" },
+    { id: "conductas", titulo: "Conductas problema" },
+    { id: "variables-moduladoras", titulo: "Variables moduladoras" },
+    { id: "situaciones", titulo: "Análisis por situaciones" },
+    { id: "hipotesis-mantenimiento", titulo: "Hipótesis de mantenimiento" },
+    { id: "formulacion", titulo: "Formulación del caso" },
+    { id: "conductas-alternativas", titulo: "Conductas alternativas" },
+    { id: "modalidad", titulo: TITULO_SECCION_MODALIDAD[modalidad] },
+    { id: "hipotesis-alternativas", titulo: "Hipótesis alternativas" },
+    { id: "preguntas", titulo: "Preguntas para la próxima sesión" },
+    { id: "intervencion", titulo: "Líneas de intervención" },
+    { id: "datos-faltantes", titulo: "Datos faltantes" },
+  ];
+}
 
 function SinHallazgos() {
   return (
@@ -49,7 +67,7 @@ function Chip({ children }: { children: ReactNode }) {
   );
 }
 
-/** Chip de función hipotetizada o estado destacado: es una conclusión, va resaltado. */
+/** Chip destacado: función hipotetizada o estado que es una conclusión. */
 function ChipDestacado({ children }: { children: ReactNode }) {
   return (
     <span className="inline-block whitespace-nowrap rounded bg-accent px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-white">
@@ -85,11 +103,11 @@ function Confianza({ nivel }: { nivel: NivelConfianza | string }) {
   );
 }
 
-/** Cita textual de la nota original, distinguida como bloque, no como frase suelta. */
-function Cita({ children }: { children: string }) {
+/** Cita textual de la nota original, distinguida como bloque. */
+function Cita({ children }: { children: string | null | undefined }) {
   if (!children) return null;
   return (
-    <blockquote className="mt-1.5 border-l-2 border-divider pl-3">
+    <blockquote className="mt-2 border-l-2 border-divider pl-3">
       <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted/70">
         De la nota
       </p>
@@ -139,204 +157,154 @@ function SubSeccion({ titulo, children }: { titulo: string; children: ReactNode 
   );
 }
 
-/** Un paso dentro de una cadena de contingencia (antecedente, OM, conducta o consecuencia). */
-function PasoCadena({
+/** Una caja de la cadena visual (antecedente / respuesta / consecuencia / estímulo). */
+function CajaCadena({
   etiqueta,
   texto,
-  evidencia,
+  nota,
   chips,
+  punteada,
 }: {
   etiqueta: string;
   texto: string;
-  evidencia: string;
+  nota?: string | null;
   chips?: ReactNode;
+  punteada?: boolean;
 }) {
   return (
-    <div className="relative pl-5">
-      <span
-        aria-hidden="true"
-        className="absolute left-0 top-1.5 h-2 w-2 rounded-full border-2 border-accent bg-surface"
-      />
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-          {etiqueta}
+    <div
+      className={`min-w-0 flex-1 rounded p-3 ${
+        punteada
+          ? "border border-dashed border-ink-muted/40 bg-canvas/20"
+          : "border border-divider bg-canvas/40"
+      }`}
+    >
+      {nota && (
+        <p className="mb-1 text-[11px] italic leading-snug text-ink-muted">
+          {nota}
         </p>
-        {chips}
-      </div>
-      <p className="mt-0.5 text-[15px] leading-relaxed text-ink">{texto}</p>
-      <Cita>{evidencia}</Cita>
+      )}
+      <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+        {etiqueta}
+      </p>
+      <p className="mt-0.5 text-sm leading-relaxed text-ink">{texto}</p>
+      {chips && <div className="mt-1.5 flex flex-wrap gap-1.5">{chips}</div>}
     </div>
   );
 }
 
-function EslabonView({ eslabon }: { eslabon: EslabonCadena }) {
+function FlechaConector() {
   return (
-    <div className="space-y-4 border-l-2 border-divider py-1">
-      <PasoCadena
-        etiqueta="Antecedente"
-        texto={eslabon.antecedente.descripcion}
-        evidencia={eslabon.antecedente.evidencia}
-      />
-      {eslabon.operacion_motivacional && (
-        <PasoCadena
-          etiqueta={`Operación motivacional (${
-            eslabon.operacion_motivacional.tipo === "establecedora" ? "OE" : "OA"
-          })`}
-          texto={eslabon.operacion_motivacional.descripcion}
-          evidencia={eslabon.operacion_motivacional.evidencia}
+    <div
+      aria-hidden="true"
+      className="flex items-center justify-center px-1 py-0.5 text-lg text-ink-muted/50 sm:py-0"
+    >
+      <span className="hidden sm:inline">→</span>
+      <span className="sm:hidden">↓</span>
+    </div>
+  );
+}
+
+function CadenaOperanteView({ cadena }: { cadena: CadenaOperante }) {
+  return (
+    <div>
+      <p className="mb-2 font-mono text-xs uppercase tracking-wide text-ink-muted">
+        Cadena operante
+      </p>
+      <div className="flex flex-col sm:flex-row sm:items-stretch print:flex-col">
+        <CajaCadena
+          etiqueta="Antecedente"
+          texto={cadena.antecedente}
+          nota={
+            cadena.operacion_motivacional
+              ? `OM: ${cadena.operacion_motivacional}`
+              : undefined
+          }
         />
-      )}
-      <PasoCadena
-        etiqueta="Conducta"
-        texto={eslabon.conducta.descripcion}
-        evidencia={eslabon.conducta.evidencia}
-        chips={
-          <>
-            <Chip>
-              {eslabon.conducta.tipo_respuesta === "operante"
-                ? "Operante"
-                : "Respondiente"}
-            </Chip>
-            <Chip>{eslabon.conducta.tipo_manifestacion}</Chip>
-          </>
-        }
-      />
-      {eslabon.consecuencia ? (
-        <PasoCadena
+        <FlechaConector />
+        <CajaCadena etiqueta="Respuesta" texto={cadena.respuesta} />
+        <FlechaConector />
+        <CajaCadena
           etiqueta="Consecuencia"
-          texto={eslabon.consecuencia.descripcion}
-          evidencia={eslabon.consecuencia.evidencia}
+          texto={cadena.consecuencia}
           chips={
             <>
-              <Chip>{eslabon.consecuencia.tipo}</Chip>
-              <Chip>{eslabon.consecuencia.inmediatez}</Chip>
+              <Chip>{cadena.tipo_contingencia}</Chip>
+              <Chip>{cadena.inmediatez}</Chip>
             </>
           }
         />
-      ) : (
-        <p className="pl-5 text-xs text-ink-muted">
-          Sin consecuencia contingente: respuesta respondiente, elicitada
-          automáticamente por el antecedente.
-        </p>
-      )}
+      </div>
+      <Cita>{cadena.evidencia}</Cita>
     </div>
   );
 }
 
-function SituacionCard({ situacion }: { situacion: AnalisisSituacional }) {
+function CadenaRespondienteView({ cadena }: { cadena: CadenaRespondiente }) {
   return (
-    <div
-      id={`situacion-${situacion.id}`}
-      className="scroll-mt-24 rounded-md border border-divider p-5 sm:p-6"
-    >
+    <div>
+      <p className="mb-2 font-mono text-xs uppercase tracking-wide text-ink-muted">
+        Cadena respondiente
+      </p>
+      <div className="flex flex-col sm:flex-row sm:items-stretch print:flex-col">
+        <CajaCadena punteada etiqueta="Estímulo" texto={cadena.estimulo} />
+        <FlechaConector />
+        <CajaCadena
+          punteada
+          etiqueta="Respuesta condicionada"
+          texto={cadena.respuesta_condicionada}
+        />
+      </div>
+      {cadena.conexion_con_operante && (
+        <p className="mt-2 text-sm text-ink-muted">
+          <span className="font-medium text-ink">
+            Conexión con la cadena operante:
+          </span>{" "}
+          {cadena.conexion_con_operante}
+        </p>
+      )}
+      <Cita>{cadena.evidencia}</Cita>
+    </div>
+  );
+}
+
+function SituacionCard({ situacion }: { situacion: Situacion }) {
+  return (
+    <div className="rounded-md border border-divider p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-serif text-base font-semibold text-ink sm:text-lg">
-          {situacion.contexto}
+          {situacion.nombre}
         </h3>
-        <div className="flex flex-wrap items-center gap-2">
-          {situacion.patron_central && <ChipDestacado>Patrón central</ChipDestacado>}
-          <Confianza nivel={situacion.hipotesis.confianza} />
-        </div>
+        <Confianza nivel={situacion.confianza} />
       </div>
 
       <div className="space-y-5">
-        {situacion.cadena.length === 0 ? (
+        {situacion.cadena_operante && (
+          <CadenaOperanteView cadena={situacion.cadena_operante} />
+        )}
+        {situacion.cadena_respondiente && (
+          <CadenaRespondienteView cadena={situacion.cadena_respondiente} />
+        )}
+        {!situacion.cadena_operante && !situacion.cadena_respondiente && (
           <SinHallazgos />
-        ) : (
-          situacion.cadena.map((eslabon, i) => (
-            <EslabonView key={i} eslabon={eslabon} />
-          ))
         )}
       </div>
 
-      {situacion.hipotesis.enunciado && (
-        <div className="mt-5 rounded border-l-4 border-accent/60 bg-accent/[0.04] p-4">
-          <p className="text-[15px] leading-relaxed text-ink">
-            {situacion.hipotesis.enunciado}
-          </p>
-          {situacion.hipotesis.funcion && (
-            <p className="mt-2">
-              <Chip>{situacion.hipotesis.funcion}</Chip>
-            </p>
-          )}
+      {situacion.ciclo_interconductual && (
+        <div className="mt-4 flex items-start gap-2 rounded border border-accent/30 bg-accent/[0.04] p-3">
+          <span aria-hidden="true" className="text-lg leading-none text-accent">
+            ⟲
+          </span>
+          <p className="text-sm text-ink">{situacion.ciclo_interconductual}</p>
         </div>
       )}
 
-      {situacion.hipotesis_alternativas.length > 0 && (
-        <div className="mt-4">
-          <p className="mb-2 font-mono text-xs uppercase tracking-wide text-ink-muted">
-            Hipótesis alternativas
-          </p>
-          <ul className="space-y-2">
-            {situacion.hipotesis_alternativas.map((h, i) => (
-              <li key={i}>
-                <p className="text-sm text-ink">{h.enunciado}</p>
-                <p className="text-sm text-ink-muted">
-                  Cómo descartarla: {h.como_descartarla}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {situacion.funcion_hipotetizada && (
+        <p className="mt-4 text-sm text-ink-muted">
+          <span className="font-medium text-ink">Función hipotetizada:</span>{" "}
+          {situacion.funcion_hipotetizada}
+        </p>
       )}
-
-      {situacion.consecuencias_mantenimiento_largo_plazo && (
-        <div className="mt-4">
-          <p className="mb-1 font-mono text-xs uppercase tracking-wide text-ink-muted">
-            Mantenimiento a largo plazo
-          </p>
-          <p className="text-sm text-ink">
-            {situacion.consecuencias_mantenimiento_largo_plazo.descripcion}
-          </p>
-          <Cita>{situacion.consecuencias_mantenimiento_largo_plazo.evidencia}</Cita>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TablaResumenFunciones({
-  situaciones,
-}: {
-  situaciones: AnalisisSituacional[];
-}) {
-  if (situaciones.length === 0) return <SinHallazgos />;
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[480px] border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-divider text-left font-mono text-[11px] uppercase tracking-wide text-ink-muted">
-            <th className="py-2 pr-4 font-medium">Situación</th>
-            <th className="py-2 pr-4 font-medium">Conducta</th>
-            <th className="py-2 pr-4 font-medium">Función probable</th>
-            <th className="py-2 font-medium">Confianza</th>
-          </tr>
-        </thead>
-        <tbody>
-          {situaciones.map((s) => {
-            const conducta = s.cadena[0]?.conducta.descripcion ?? "—";
-            return (
-              <tr key={s.id} className="border-b border-divider last:border-b-0">
-                <td className="py-2.5 pr-4 align-top">
-                  <a
-                    href={`#situacion-${s.id}`}
-                    className="text-ink underline decoration-divider underline-offset-2 transition-colors hover:text-accent"
-                  >
-                    {s.contexto}
-                  </a>
-                </td>
-                <td className="py-2.5 pr-4 align-top text-ink">{conducta}</td>
-                <td className="py-2.5 pr-4 align-top text-ink-muted">
-                  {s.hipotesis.funcion || "—"}
-                </td>
-                <td className="py-2.5 align-top">
-                  <Confianza nivel={s.hipotesis.confianza} />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
     </div>
   );
 }
@@ -380,7 +348,7 @@ function IndiceLateral({
   return (
     <nav
       aria-label="Índice del informe"
-      className="hidden shrink-0 lg:sticky lg:top-24 lg:block lg:h-fit lg:w-[200px]"
+      className="hidden shrink-0 print:hidden lg:sticky lg:top-24 lg:block lg:h-fit lg:w-[200px]"
     >
       <ul className="space-y-1 border-l border-divider pl-3 text-sm">
         {secciones.map(({ id, titulo }) => (
@@ -429,7 +397,7 @@ function IndiceMovil({
     secciones.find((s) => s.id === activa)?.titulo ?? "Ir a…";
 
   return (
-    <div ref={contenedorRef} className="relative mb-4 lg:hidden">
+    <div ref={contenedorRef} className="relative mb-4 print:hidden lg:hidden">
       <button
         type="button"
         onClick={() => setAbierto((v) => !v)}
@@ -470,18 +438,24 @@ export default function ReportView({
   onReferenciaCasoChange,
   fecha,
 }: ReportViewProps) {
-  const hayCuidador = analisis.analisis_cuidador.length > 0;
   const secciones = useMemo(
-    () => BASE_SECCIONES.filter((s) => s.id !== "cuidador" || hayCuidador),
-    [hayCuidador]
+    () => construirSecciones(analisis.modalidad),
+    [analisis.modalidad]
   );
   const ids = useMemo(() => secciones.map((s) => s.id), [secciones]);
   const activa = useSeccionActiva(ids);
 
-  const situacionCentral =
-    analisis.analisis_situacional.find((s) => s.patron_central) ??
-    analisis.analisis_situacional[0] ??
-    null;
+  const hipotesisDestacada = useMemo(() => {
+    const conductaAlta = analisis.conductas_problema.find(
+      (c) => c.importancia === "alta"
+    );
+    const porConducta = conductaAlta
+      ? analisis.hipotesis_mantenimiento.find(
+          (h) => h.conducta === conductaAlta.descripcion
+        )
+      : undefined;
+    return porConducta ?? analisis.hipotesis_mantenimiento[0] ?? null;
+  }, [analisis.conductas_problema, analisis.hipotesis_mantenimiento]);
 
   return (
     <div className="rounded-md border border-divider bg-surface px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-12 lg:py-10 print:rounded-none print:border-none print:px-0 print:py-0 print:shadow-none">
@@ -496,6 +470,7 @@ export default function ReportView({
           <p>
             Fecha de generación: <span className="text-ink">{fecha}</span>
           </p>
+          <Chip>{ETIQUETA_MODALIDAD[analisis.modalidad]}</Chip>
           <label className="flex items-center gap-2 print:hidden">
             <span>Referencia del caso (opcional):</span>
             <input
@@ -525,24 +500,40 @@ export default function ReportView({
         </p>
       </header>
 
-      {/* Hipótesis funcional principal — el titular del informe. */}
+      {/* Formulación funcional destacada — el titular del informe. */}
       <section id="hipotesis-principal" className="scroll-mt-24 mb-8">
-        {situacionCentral && situacionCentral.hipotesis.enunciado ? (
-          <div className="rounded-md border-l-4 border-accent bg-accent/[0.06] p-6 sm:p-8">
+        {hipotesisDestacada && hipotesisDestacada.enunciado ? (
+          <div
+            className="rounded-md border-l-4 border-accent p-8"
+            style={{ backgroundColor: "#F0F4F2" }}
+          >
             <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-accent">
-              Hipótesis funcional principal · {situacionCentral.contexto}
+              Formulación funcional destacada · {hipotesisDestacada.conducta}
             </p>
-            <p className="mt-3 font-serif text-xl leading-relaxed text-ink sm:text-2xl">
-              {situacionCentral.hipotesis.enunciado}
+            <p className="mt-3 font-serif text-[21px] leading-relaxed text-ink">
+              {hipotesisDestacada.enunciado}
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              {situacionCentral.hipotesis.funcion && (
-                <ChipDestacado>{situacionCentral.hipotesis.funcion}</ChipDestacado>
+              {hipotesisDestacada.funcion && (
+                <ChipDestacado>{hipotesisDestacada.funcion}</ChipDestacado>
               )}
-              <Confianza nivel={situacionCentral.hipotesis.confianza} />
+              <Confianza nivel={hipotesisDestacada.confianza} />
             </div>
+            {analisis.hipotesis_mantenimiento.length > 1 &&
+              analisis.formulacion.priorizacion.length > 0 && (
+                <div className="mt-4 space-y-1 border-t border-accent/20 pt-3">
+                  {analisis.formulacion.priorizacion.map((p, i) => (
+                    <p key={i} className="text-sm text-ink-muted">
+                      <span className="font-medium text-ink">
+                        {i + 1}. {p.blanco}:
+                      </span>{" "}
+                      {p.justificacion}
+                    </p>
+                  ))}
+                </div>
+              )}
             <a
-              href="#funciones"
+              href="#resumen"
               className="mt-5 inline-block text-sm text-ink-muted underline decoration-divider underline-offset-4 transition-colors hover:text-accent"
             >
               Ver análisis completo ↓
@@ -559,10 +550,6 @@ export default function ReportView({
         <IndiceLateral secciones={secciones} activa={activa} />
 
         <div className="min-w-0 flex-1">
-          <Seccion id="funciones" titulo="Resumen de funciones">
-            <TablaResumenFunciones situaciones={analisis.analisis_situacional} />
-          </Seccion>
-
           <Seccion id="resumen" titulo="Resumen clínico">
             {analisis.resumen_clinico ? (
               <p className="text-[15px] leading-relaxed text-ink">
@@ -573,21 +560,45 @@ export default function ReportView({
             )}
           </Seccion>
 
+          <Seccion id="conductas" titulo="Conductas problema">
+            {analisis.conductas_problema.length === 0 ? (
+              <SinHallazgos />
+            ) : (
+              <ul className="space-y-4">
+                {analisis.conductas_problema.map((c, i) => (
+                  <li key={i}>
+                    <div className="flex flex-wrap gap-2">
+                      <Chip>{c.tipo}</Chip>
+                      <Chip>importancia {c.importancia}</Chip>
+                    </div>
+                    <p className="mt-1 text-[15px] leading-relaxed text-ink">
+                      {c.descripcion}
+                    </p>
+                    <Cita>{c.evidencia}</Cita>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Seccion>
+
           <Seccion id="variables-moduladoras" titulo="Variables moduladoras">
             {analisis.variables_moduladoras.length === 0 ? (
               <SinHallazgos />
             ) : (
               <div className="space-y-5">
-                {(["personal", "ambiental"] as const).map((categoria) => {
+                {(
+                  [
+                    ["biologica", "Biológicas"],
+                    ["historia_de_aprendizaje", "Historia de aprendizaje"],
+                    ["contextual", "Contextuales"],
+                  ] as const
+                ).map(([tipo, titulo]) => {
                   const items = analisis.variables_moduladoras.filter(
-                    (v) => v.categoria === categoria
+                    (v) => v.tipo === tipo
                   );
                   if (items.length === 0) return null;
                   return (
-                    <SubSeccion
-                      key={categoria}
-                      titulo={categoria === "personal" ? "Personales" : "Ambientales"}
-                    >
+                    <SubSeccion key={tipo} titulo={titulo}>
                       <ul className="space-y-3">
                         {items.map((v, i) => (
                           <li key={i}>
@@ -605,73 +616,85 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="analisis-funcional" titulo="Análisis funcional detallado">
-            {analisis.analisis_situacional.length === 0 ? (
+          <Seccion id="situaciones" titulo="Análisis por situaciones">
+            {analisis.situaciones.length === 0 ? (
               <SinHallazgos />
             ) : (
               <div className="space-y-6">
-                {analisis.analisis_situacional.map((s) => (
-                  <SituacionCard key={s.id} situacion={s} />
+                {analisis.situaciones.map((s, i) => (
+                  <SituacionCard key={i} situacion={s} />
                 ))}
               </div>
             )}
           </Seccion>
 
-          {hayCuidador && (
-            <Seccion id="cuidador" titulo="Conducta del cuidador">
+          <Seccion id="hipotesis-mantenimiento" titulo="Hipótesis de mantenimiento">
+            {analisis.hipotesis_mantenimiento.length === 0 ? (
+              <SinHallazgos />
+            ) : (
               <ul className="space-y-4">
-                {analisis.analisis_cuidador.map((c, i) => (
-                  <li key={i}>
-                    <Chip>{c.patron}</Chip>
-                    <p className="mt-1 text-[15px] leading-relaxed text-ink">
-                      {c.descripcion}
+                {analisis.hipotesis_mantenimiento.map((h, i) => (
+                  <li key={i} className="rounded border border-divider p-4">
+                    <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
+                      {h.conducta}
                     </p>
-                    <Cita>{c.evidencia}</Cita>
+                    <p className="mt-1 text-[15px] leading-relaxed text-ink">
+                      {h.enunciado}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      {h.funcion && <Chip>{h.funcion}</Chip>}
+                      <Confianza nivel={h.confianza} />
+                    </div>
                   </li>
                 ))}
               </ul>
-            </Seccion>
-          )}
+            )}
 
-          <Seccion id="reglas-procesos" titulo="Reglas verbales y procesos ACT">
-            <div className="space-y-6">
-              <SubSeccion titulo="Reglas verbales">
-                {analisis.reglas_verbales.length === 0 ? (
-                  <SinHallazgos />
-                ) : (
-                  <ul className="space-y-4">
-                    {analisis.reglas_verbales.map((r, i) => (
-                      <li key={i}>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Chip>{r.clase}</Chip>
-                          <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
-                            Rigidez: {r.rigidez}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-[15px] italic leading-relaxed text-ink">
-                          &quot;{r.regla}&quot;
-                        </p>
-                        <p className="mt-1 text-sm text-ink-muted">
-                          {r.analisis}
-                        </p>
+            {analisis.hipotesis_origen.length > 0 && (
+              <div className="mt-6">
+                <SubSeccion titulo="Hipótesis de origen (tentativas)">
+                  <ul className="list-disc space-y-2 pl-5">
+                    {analisis.hipotesis_origen.map((h, i) => (
+                      <li key={i} className="text-sm italic leading-relaxed text-ink-muted">
+                        {h}
                       </li>
                     ))}
                   </ul>
-                )}
-              </SubSeccion>
+                </SubSeccion>
+              </div>
+            )}
+          </Seccion>
 
-              <SubSeccion titulo="Procesos ACT identificados">
-                {analisis.procesos_act.length === 0 ? (
+          <Seccion id="formulacion" titulo="Formulación del caso">
+            <div className="space-y-5">
+              <SubSeccion titulo="Relaciones entre problemas">
+                {analisis.formulacion.relaciones_entre_problemas.length === 0 ? (
                   <SinHallazgos />
                 ) : (
-                  <ul className="space-y-4">
-                    {analisis.procesos_act.map((p, i) => (
+                  <ul className="list-disc space-y-2 pl-5">
+                    {analisis.formulacion.relaciones_entre_problemas.map(
+                      (r, i) => (
+                        <li key={i} className="text-[15px] leading-relaxed text-ink">
+                          {r}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                )}
+              </SubSeccion>
+              <SubSeccion titulo="Priorización de blancos de intervención">
+                {analisis.formulacion.priorizacion.length === 0 ? (
+                  <SinHallazgos />
+                ) : (
+                  <ul className="space-y-3">
+                    {analisis.formulacion.priorizacion.map((p, i) => (
                       <li key={i}>
-                        <Chip>{p.proceso}</Chip>
-                        <p className="mt-1 text-[15px] leading-relaxed text-ink">
-                          {p.descripcion}
+                        <p className="text-[15px] font-medium leading-relaxed text-ink">
+                          {i + 1}. {p.blanco}
                         </p>
-                        <Cita>{p.evidencia}</Cita>
+                        <p className="mt-0.5 text-sm text-ink-muted">
+                          {p.justificacion}
+                        </p>
                       </li>
                     ))}
                   </ul>
@@ -680,35 +703,235 @@ export default function ReportView({
             </div>
           </Seccion>
 
-          <Seccion
-            id="habilidades"
-            titulo="Habilidades recomendadas"
-            extra={
-              <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
-                Modelo: {analisis.modelo_terapeutico.toUpperCase()}
-              </span>
-            }
-          >
-            {analisis.habilidades_recomendadas.length === 0 ? (
+          <Seccion id="conductas-alternativas" titulo="Conductas alternativas propuestas">
+            {analisis.conductas_alternativas.length === 0 ? (
               <SinHallazgos />
             ) : (
               <ul className="space-y-4">
-                {analisis.habilidades_recomendadas.map((h, i) => (
-                  <li key={i}>
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="text-[15px] font-medium leading-relaxed text-ink">
-                        {h.habilidad}
-                      </p>
-                      <Chip>{h.modulo}</Chip>
-                    </div>
-                    <p className="mt-1 text-sm text-ink-muted">
-                      {h.justificacion}
+                {analisis.conductas_alternativas.map((c, i) => (
+                  <li key={i} className="rounded border border-divider p-4">
+                    <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
+                      {c.situacion}
+                    </p>
+                    <p className="mt-1 text-[15px] leading-relaxed text-ink">
+                      {c.conducta_propuesta}
                     </p>
                     <p className="mt-1 text-sm text-ink-muted">
                       <span className="font-medium text-ink">
-                        Cómo practicarla:
+                        Consecuencia necesaria para mantenerla:
                       </span>{" "}
-                      {h.como_practicarla}
+                      {c.consecuencia_necesaria}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Seccion>
+
+          <Seccion id="modalidad" titulo={TITULO_SECCION_MODALIDAD[analisis.modalidad]}>
+            {analisis.capa_modalidad.modalidad === "act" && (
+              <div className="space-y-6">
+                <SubSeccion titulo="Reglas verbales">
+                  {analisis.capa_modalidad.reglas_verbales.length === 0 ? (
+                    <SinHallazgos />
+                  ) : (
+                    <ul className="space-y-4">
+                      {analisis.capa_modalidad.reglas_verbales.map((r, i) => (
+                        <li key={i}>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Chip>{r.clase}</Chip>
+                            <Chip>{r.textual_o_inferida}</Chip>
+                            <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+                              Rigidez: {r.rigidez}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-[15px] italic leading-relaxed text-ink">
+                            &quot;{r.regla}&quot;
+                          </p>
+                          <p className="mt-1 text-sm text-ink-muted">
+                            {r.analisis}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </SubSeccion>
+                <SubSeccion titulo="Procesos de inflexibilidad">
+                  {analisis.capa_modalidad.procesos_act.length === 0 ? (
+                    <SinHallazgos />
+                  ) : (
+                    <ul className="space-y-4">
+                      {analisis.capa_modalidad.procesos_act.map((p, i) => (
+                        <li key={i}>
+                          <Chip>{p.proceso}</Chip>
+                          <p className="mt-1 text-[15px] leading-relaxed text-ink">
+                            {p.vinculo_con_cadena}
+                          </p>
+                          <Cita>{p.evidencia}</Cita>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </SubSeccion>
+              </div>
+            )}
+
+            {analisis.capa_modalidad.modalidad === "dbt" && (
+              <div className="space-y-6">
+                <SubSeccion titulo="Análisis en cadena">
+                  <div className="rounded border border-divider p-4">
+                    <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
+                      Conducta objetivo
+                    </p>
+                    <p className="mt-1 text-[15px] leading-relaxed text-ink">
+                      {analisis.capa_modalidad.analisis_en_cadena.conducta_objetivo ||
+                        "—"}
+                    </p>
+
+                    <ol className="mt-4 space-y-3 border-l-2 border-divider pl-4">
+                      <li>
+                        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                          Vulnerabilidades
+                        </p>
+                        {analisis.capa_modalidad.analisis_en_cadena.vulnerabilidades
+                          .length === 0 ? (
+                          <SinHallazgos />
+                        ) : (
+                          <ul className="list-disc space-y-1 pl-5">
+                            {analisis.capa_modalidad.analisis_en_cadena.vulnerabilidades.map(
+                              (v, i) => (
+                                <li key={i} className="text-sm text-ink">
+                                  {v}
+                                </li>
+                              )
+                            )}
+                          </ul>
+                        )}
+                      </li>
+                      <li>
+                        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                          Evento precipitante
+                        </p>
+                        <p className="text-sm text-ink">
+                          {analisis.capa_modalidad.analisis_en_cadena
+                            .evento_precipitante || "—"}
+                        </p>
+                      </li>
+                      {analisis.capa_modalidad.analisis_en_cadena.eslabones.map(
+                        (e, i) => (
+                          <li key={i}>
+                            <Chip>{e.tipo}</Chip>
+                            <p className="mt-1 text-sm text-ink">{e.descripcion}</p>
+                          </li>
+                        )
+                      )}
+                    </ol>
+
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                          Consecuencias corto plazo
+                        </p>
+                        <ul className="mt-1 list-disc space-y-1 pl-5">
+                          {analisis.capa_modalidad.analisis_en_cadena.consecuencias_corto_plazo.map(
+                            (c, i) => (
+                              <li key={i} className="text-sm text-ink">
+                                {c}
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                          Consecuencias largo plazo
+                        </p>
+                        <ul className="mt-1 list-disc space-y-1 pl-5">
+                          {analisis.capa_modalidad.analisis_en_cadena.consecuencias_largo_plazo.map(
+                            (c, i) => (
+                              <li key={i} className="text-sm text-ink">
+                                {c}
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </SubSeccion>
+
+                <SubSeccion titulo="Habilidades sugeridas">
+                  {analisis.capa_modalidad.habilidades_sugeridas.length === 0 ? (
+                    <SinHallazgos />
+                  ) : (
+                    <ul className="space-y-4">
+                      {analisis.capa_modalidad.habilidades_sugeridas.map(
+                        (h, i) => (
+                          <li key={i}>
+                            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                              <p className="text-[15px] font-medium leading-relaxed text-ink">
+                                {h.habilidad}
+                              </p>
+                              <Chip>{h.modulo.replace(/_/g, " ")}</Chip>
+                            </div>
+                            <p className="mt-1 text-sm text-ink-muted">
+                              <span className="font-medium text-ink">
+                                Eslabón objetivo:
+                              </span>{" "}
+                              {h.eslabon_objetivo}
+                            </p>
+                          </li>
+                        )
+                      )}
+                    </ul>
+                  )}
+                </SubSeccion>
+              </div>
+            )}
+
+            {analisis.capa_modalidad.modalidad === "mc" && (
+              <>
+                {analisis.capa_modalidad.procedimientos_sugeridos.length === 0 ? (
+                  <SinHallazgos />
+                ) : (
+                  <ul className="space-y-4">
+                    {analisis.capa_modalidad.procedimientos_sugeridos.map(
+                      (p, i) => (
+                        <li key={i} className="rounded border border-divider p-4">
+                          <p className="text-[15px] font-medium leading-relaxed text-ink">
+                            {p.procedimiento}
+                          </p>
+                          <p className="mt-1 text-sm text-ink-muted">
+                            <span className="font-medium text-ink">
+                              Contingencia objetivo:
+                            </span>{" "}
+                            {p.contingencia_objetivo}
+                          </p>
+                          <p className="mt-1 text-sm text-warn">
+                            <span className="font-medium">Precauciones:</span>{" "}
+                            {p.precauciones}
+                          </p>
+                        </li>
+                      )
+                    )}
+                  </ul>
+                )}
+              </>
+            )}
+          </Seccion>
+
+          <Seccion id="hipotesis-alternativas" titulo="Hipótesis alternativas">
+            {analisis.hipotesis_alternativas.length === 0 ? (
+              <SinHallazgos />
+            ) : (
+              <ul className="space-y-4">
+                {analisis.hipotesis_alternativas.map((h, i) => (
+                  <li key={i}>
+                    <p className="text-[15px] leading-relaxed text-ink">
+                      {h.enunciado}
+                    </p>
+                    <p className="mt-1 text-sm text-ink-muted">
+                      Cómo descartarla: {h.como_descartarla}
                     </p>
                   </li>
                 ))}

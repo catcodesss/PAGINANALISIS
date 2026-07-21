@@ -158,11 +158,12 @@ export default function Home() {
               <legend className="mb-2 text-sm font-medium text-ink">
                 Modelo terapéutico
               </legend>
-              <div className="inline-flex overflow-hidden rounded border border-divider">
+              <div className="flex w-full overflow-hidden rounded border border-divider sm:inline-flex sm:w-auto">
                 {(
                   [
                     { valor: "act" as const, etiqueta: "ACT" },
                     { valor: "dbt" as const, etiqueta: "DBT" },
+                    { valor: "mc" as const, etiqueta: "Conductual (MC)" },
                   ]
                 ).map(({ valor, etiqueta }) => (
                   <button
@@ -171,7 +172,7 @@ export default function Home() {
                     disabled={formularioDeshabilitado}
                     onClick={() => setModeloTerapeutico(valor)}
                     aria-pressed={modeloTerapeutico === valor}
-                    className={`px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    className={`flex-1 px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none ${
                       modeloTerapeutico === valor
                         ? "bg-accent text-white"
                         : "bg-surface text-ink-muted hover:bg-canvas"
@@ -182,9 +183,11 @@ export default function Home() {
                 ))}
               </div>
               <p className="mt-1.5 text-xs text-ink-muted">
-                Define el marco desde el cual se sugieren habilidades: ACT
-                (procesos del hexaflex) o DBT (mindfulness, tolerancia al
-                malestar, regulación emocional, efectividad interpersonal).
+                Define el marco de la capa de intervención: ACT (procesos del
+                hexaflex y reglas verbales), DBT (análisis en cadena y
+                habilidades por módulo) o Conductual (manejo directo de
+                contingencias, sin marcos de tercera ola). El análisis
+                funcional de base es el mismo en los tres.
               </p>
             </fieldset>
 

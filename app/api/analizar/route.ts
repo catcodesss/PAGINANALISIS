@@ -43,7 +43,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const modelo: ModeloTerapeutico = modeloCrudo === "dbt" ? "dbt" : "act";
+  const modelo: ModeloTerapeutico =
+    modeloCrudo === "dbt" ? "dbt" : modeloCrudo === "mc" ? "mc" : "act";
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
     const openai = new OpenAI({ apiKey });
     const respuesta = await openai.chat.completions.create({
       model: MODELO,
-      max_tokens: 4096,
+      max_tokens: 8000,
       temperature: 0.2,
       messages: [
         { role: "system", content: construirSystemPrompt(modelo) },

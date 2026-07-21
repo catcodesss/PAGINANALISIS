@@ -1,8 +1,14 @@
-import type { AnalisisFuncional, EslabonCadena } from "./types";
+import type { AnalisisFuncional, Situacion } from "./types";
 
 const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
 const DESCARGO =
   "Este análisis es una síntesis asistida de hipótesis funcionales generadas a partir de las notas proporcionadas. No constituye un diagnóstico ni sustituye el juicio clínico profesional. Toda hipótesis debe verificarse mediante evaluación directa.";
+
+const ETIQUETA_MODALIDAD: Record<string, string> = {
+  act: "ACT",
+  dbt: "DBT",
+  mc: "Conductual (MC)",
+};
 
 function seccion(titulo: string, cuerpo: string): string {
   return `${titulo}\n${"-".repeat(titulo.length)}\n${cuerpo || SIN_HALLAZGOS}\n`;
@@ -12,25 +18,40 @@ function listaOTexto(items: string[]): string {
   return items.length > 0 ? items.map((i) => `- ${i}`).join("\n") : SIN_HALLAZGOS;
 }
 
-function formatearEslabon(e: EslabonCadena): string {
-  const lineas: string[] = [];
-  lineas.push(`  Antecedente: ${e.antecedente.descripcion} — Evidencia: "${e.antecedente.evidencia}"`);
-  if (e.operacion_motivacional) {
-    const tipo = e.operacion_motivacional.tipo === "establecedora" ? "OE" : "OA";
+function formatearSituacion(s: Situacion): string {
+  const lineas: string[] = [`## ${s.nombre} (Confianza: ${s.confianza})`];
+
+  if (s.cadena_operante) {
+    const c = s.cadena_operante;
+    lineas.push("Cadena operante:");
+    if (c.operacion_motivacional) {
+      lineas.push(`  OM: ${c.operacion_motivacional}`);
+    }
+    lineas.push(`  Antecedente: ${c.antecedente}`);
+    lineas.push(`  Respuesta: ${c.respuesta}`);
     lineas.push(
-      `  Operación motivacional [${tipo}]: ${e.operacion_motivacional.descripcion} — Evidencia: "${e.operacion_motivacional.evidencia}"`
+      `  Consecuencia [${c.tipo_contingencia}, ${c.inmediatez}]: ${c.consecuencia}`
     );
+    lineas.push(`  Evidencia: "${c.evidencia}"`);
   }
-  lineas.push(
-    `  Conducta [${e.conducta.tipo_respuesta}, ${e.conducta.tipo_manifestacion}]: ${e.conducta.descripcion} — Evidencia: "${e.conducta.evidencia}"`
-  );
-  if (e.consecuencia) {
-    lineas.push(
-      `  Consecuencia [${e.consecuencia.tipo}, ${e.consecuencia.inmediatez}]: ${e.consecuencia.descripcion} — Evidencia: "${e.consecuencia.evidencia}"`
-    );
-  } else {
-    lineas.push("  Consecuencia: no aplica (respuesta respondiente, no mantenida por consecuencia).");
+
+  if (s.cadena_respondiente) {
+    const c = s.cadena_respondiente;
+    lineas.push("Cadena respondiente:");
+    lineas.push(`  Estímulo: ${c.estimulo}`);
+    lineas.push(`  Respuesta condicionada: ${c.respuesta_condicionada}`);
+    if (c.conexion_con_operante) {
+      lineas.push(`  Conexión con la cadena operante: ${c.conexion_con_operante}`);
+    }
+    lineas.push(`  Evidencia: "${c.evidencia}"`);
   }
+
+  if (s.ciclo_interconductual) {
+    lineas.push(`Ciclo interconductual: ${s.ciclo_interconductual}`);
+  }
+
+  lineas.push(`Función hipotetizada: ${s.funcion_hipotetizada}`);
+
   return lineas.join("\n");
 }
 
@@ -43,6 +64,7 @@ export function formatearInformeTexto(
   const partes: string[] = [];
   partes.push("AFA — ANÁLISIS FUNCIONAL ASISTIDO");
   partes.push(`Fecha de generación: ${fecha}`);
+  partes.push(`Modelo terapéutico: ${ETIQUETA_MODALIDAD[analisis.modalidad] ?? analisis.modalidad}`);
   if (referenciaCaso.trim()) {
     partes.push(`Referencia del caso: ${referenciaCaso.trim()}`);
   }
@@ -52,79 +74,147 @@ export function formatearInformeTexto(
 
   partes.push(
     seccion(
+      "CONDUCTAS PROBLEMA",
+      analisis.conductas_problema
+        .map(
+          (c) =>
+            `- [${c.tipo}, importancia ${c.importancia}] ${c.descripcion}\n  Evidencia: "${c.evidencia}"`
+        )
+        .join("\n")
+    )
+  );
+
+  partes.push(
+    seccion(
       "VARIABLES MODULADORAS",
       analisis.variables_moduladoras
-        .map((v) => `- [${v.categoria}] ${v.descripcion} — Evidencia: "${v.evidencia}"`)
-        .join("\n")
-    )
-  );
-
-  const situacional = analisis.analisis_situacional
-    .map((s) => {
-      const encabezado = `${s.contexto}${s.patron_central ? " (PATRÓN CENTRAL)" : ""}`;
-      const cadena = s.cadena.map(formatearEslabon).join("\n\n");
-      const hipotesis = `Hipótesis (Confianza: ${s.hipotesis.confianza}): ${s.hipotesis.enunciado}\nFunción: ${s.hipotesis.funcion}`;
-      const alternativas = s.hipotesis_alternativas.length
-        ? s.hipotesis_alternativas
-            .map((h) => `  - ${h.enunciado}\n    Cómo descartarla: ${h.como_descartarla}`)
-            .join("\n")
-        : "  Ninguna registrada.";
-      const cmlp = s.consecuencias_mantenimiento_largo_plazo
-        ? `Mantenimiento a largo plazo: ${s.consecuencias_mantenimiento_largo_plazo.descripcion} — Evidencia: "${s.consecuencias_mantenimiento_largo_plazo.evidencia}"`
-        : "";
-      return [
-        `## ${encabezado}`,
-        cadena,
-        hipotesis,
-        "Hipótesis alternativas:",
-        alternativas,
-        cmlp,
-      ]
-        .filter(Boolean)
-        .join("\n");
-    })
-    .join("\n\n");
-
-  partes.push(seccion("ANÁLISIS FUNCIONAL POR SITUACIÓN", situacional));
-
-  partes.push(
-    seccion(
-      "ANÁLISIS DE LA CONDUCTA DEL CUIDADOR",
-      analisis.analisis_cuidador
-        .map((c) => `- [${c.patron}] ${c.descripcion} — Evidencia: "${c.evidencia}"`)
+        .map((v) => `- [${v.tipo}] ${v.descripcion} — Evidencia: "${v.evidencia}"`)
         .join("\n")
     )
   );
 
   partes.push(
     seccion(
-      "REGLAS VERBALES",
-      analisis.reglas_verbales
-        .map(
-          (r) =>
-            `- [${r.clase}, rigidez ${r.rigidez}] "${r.regla}"\n  ${r.analisis}`
-        )
-        .join("\n")
+      "ANÁLISIS POR SITUACIONES",
+      analisis.situaciones.map(formatearSituacion).join("\n\n")
     )
   );
 
   partes.push(
     seccion(
-      "PROCESOS ACT IDENTIFICADOS",
-      analisis.procesos_act
-        .map((p) => `- ${p.proceso}: ${p.descripcion}\n  Evidencia: "${p.evidencia}"`)
-        .join("\n")
-    )
-  );
-
-  partes.push(
-    seccion(
-      `HABILIDADES RECOMENDADAS (${analisis.modelo_terapeutico.toUpperCase()})`,
-      analisis.habilidades_recomendadas
+      "HIPÓTESIS DE MANTENIMIENTO",
+      analisis.hipotesis_mantenimiento
         .map(
           (h) =>
-            `- [${h.modulo}] ${h.habilidad}\n  Justificación: ${h.justificacion}\n  Cómo practicarla: ${h.como_practicarla}`
+            `- [${h.conducta}] (Confianza: ${h.confianza}) ${h.enunciado}\n  Función: ${h.funcion}`
         )
+        .join("\n")
+    )
+  );
+
+  partes.push(
+    seccion("HIPÓTESIS DE ORIGEN (TENTATIVAS)", listaOTexto(analisis.hipotesis_origen))
+  );
+
+  partes.push(
+    seccion(
+      "FORMULACIÓN DEL CASO",
+      [
+        "Relaciones entre problemas:",
+        listaOTexto(analisis.formulacion.relaciones_entre_problemas),
+        "",
+        "Priorización de blancos de intervención:",
+        analisis.formulacion.priorizacion
+          .map((p, i) => `${i + 1}. ${p.blanco}: ${p.justificacion}`)
+          .join("\n"),
+      ].join("\n")
+    )
+  );
+
+  partes.push(
+    seccion(
+      "CONDUCTAS ALTERNATIVAS PROPUESTAS",
+      analisis.conductas_alternativas
+        .map(
+          (c) =>
+            `- [${c.situacion}] ${c.conducta_propuesta}\n  Consecuencia necesaria: ${c.consecuencia_necesaria}`
+        )
+        .join("\n")
+    )
+  );
+
+  const capa = analisis.capa_modalidad;
+  if (capa.modalidad === "act") {
+    partes.push(
+      seccion(
+        "CAPA ACT — REGLAS VERBALES",
+        capa.reglas_verbales
+          .map(
+            (r) =>
+              `- [${r.clase}, ${r.textual_o_inferida}, rigidez ${r.rigidez}] "${r.regla}"\n  ${r.analisis}`
+          )
+          .join("\n")
+      )
+    );
+    partes.push(
+      seccion(
+        "CAPA ACT — PROCESOS DE INFLEXIBILIDAD",
+        capa.procesos_act
+          .map(
+            (p) =>
+              `- ${p.proceso}: ${p.vinculo_con_cadena}\n  Evidencia: "${p.evidencia}"`
+          )
+          .join("\n")
+      )
+    );
+  } else if (capa.modalidad === "dbt") {
+    const cadena = capa.analisis_en_cadena;
+    partes.push(
+      seccion(
+        "CAPA DBT — ANÁLISIS EN CADENA",
+        [
+          `Conducta objetivo: ${cadena.conducta_objetivo}`,
+          "Vulnerabilidades:",
+          listaOTexto(cadena.vulnerabilidades),
+          `Evento precipitante: ${cadena.evento_precipitante}`,
+          "Eslabones:",
+          listaOTexto(cadena.eslabones.map((e) => `[${e.tipo}] ${e.descripcion}`)),
+          "Consecuencias corto plazo:",
+          listaOTexto(cadena.consecuencias_corto_plazo),
+          "Consecuencias largo plazo:",
+          listaOTexto(cadena.consecuencias_largo_plazo),
+        ].join("\n")
+      )
+    );
+    partes.push(
+      seccion(
+        "CAPA DBT — HABILIDADES SUGERIDAS",
+        capa.habilidades_sugeridas
+          .map(
+            (h) => `- [${h.modulo}] ${h.habilidad}\n  Eslabón objetivo: ${h.eslabon_objetivo}`
+          )
+          .join("\n")
+      )
+    );
+  } else {
+    partes.push(
+      seccion(
+        "CAPA CONDUCTUAL — PROCEDIMIENTOS SUGERIDOS",
+        capa.procedimientos_sugeridos
+          .map(
+            (p) =>
+              `- ${p.procedimiento}\n  Contingencia objetivo: ${p.contingencia_objetivo}\n  Precauciones: ${p.precauciones}`
+          )
+          .join("\n")
+      )
+    );
+  }
+
+  partes.push(
+    seccion(
+      "HIPÓTESIS ALTERNATIVAS",
+      analisis.hipotesis_alternativas
+        .map((h) => `- ${h.enunciado}\n  Cómo descartarla: ${h.como_descartarla}`)
         .join("\n")
     )
   );

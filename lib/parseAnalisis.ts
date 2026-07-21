@@ -1,31 +1,25 @@
 import type {
-  AnalisisCuidador,
   AnalisisFuncional,
-  AnalisisSituacional,
-  EslabonCadena,
+  CadenaOperante,
+  CadenaRespondiente,
+  CapaModalidad,
+  ConductaAlternativa,
+  ConductaProblema,
+  Formulacion,
+  HipotesisAlternativa,
+  HipotesisMantenimiento,
   ModeloTerapeutico,
   NivelConfianza,
+  PriorizacionBlanco,
+  Situacion,
   TipoContingencia,
+  VariableModuladora,
 } from "./types";
 
-const TIPOS_CONTINGENCIA: TipoContingencia[] = [
-  "refuerzo positivo",
-  "refuerzo negativo",
-  "castigo positivo",
-  "castigo negativo",
-  "extincion",
-];
-
-function comoTipoContingencia(valor: unknown): TipoContingencia {
-  return TIPOS_CONTINGENCIA.includes(valor as TipoContingencia)
-    ? (valor as TipoContingencia)
-    : "extincion";
-}
-
 /**
- * Claude puede envolver el JSON en texto o fences pese a la instrucción del
- * system prompt. Se localiza la primera "{" y la última "}" para aislar el
- * objeto antes de intentar el parseo.
+ * El proveedor puede envolver el JSON en texto o fences pese a la instrucción
+ * del system prompt. Se localiza la primera "{" y la última "}" para aislar
+ * el objeto antes de intentar el parseo.
  */
 export function extraerJSON(textoCrudo: string): string {
   const sinFences = textoCrudo.replace(/```json/gi, "").replace(/```/g, "");
@@ -45,8 +39,8 @@ function comoTexto(valor: unknown, porDefecto = ""): string {
   return typeof valor === "string" ? valor : porDefecto;
 }
 
-function comoBooleano(valor: unknown): boolean {
-  return valor === true;
+function comoTextoONulo(valor: unknown): string | null {
+  return typeof valor === "string" ? valor : null;
 }
 
 function comoObjeto(valor: unknown): Record<string, unknown> {
@@ -67,122 +61,260 @@ function comoConfianza(valor: unknown): NivelConfianza {
     : "baja";
 }
 
-function normalizarEslabon(valor: unknown): EslabonCadena {
-  const datos = comoObjeto(valor);
-  const antecedente = comoObjeto(datos.antecedente);
-  const conducta = comoObjeto(datos.conducta);
-  const om = comoObjetoONulo(datos.operacion_motivacional);
-  const consecuencia = comoObjetoONulo(datos.consecuencia);
+const TIPOS_CONTINGENCIA: TipoContingencia[] = [
+  "refuerzo positivo",
+  "refuerzo negativo",
+  "castigo positivo",
+  "castigo negativo",
+  "extincion",
+];
 
+function comoTipoContingencia(valor: unknown): TipoContingencia {
+  return TIPOS_CONTINGENCIA.includes(valor as TipoContingencia)
+    ? (valor as TipoContingencia)
+    : "extincion";
+}
+
+function normalizarConductaProblema(valor: unknown): ConductaProblema {
+  const d = comoObjeto(valor);
   return {
-    antecedente: {
-      descripcion: comoTexto(antecedente.descripcion),
-      evidencia: comoTexto(antecedente.evidencia),
-    },
-    operacion_motivacional: om
-      ? {
-          tipo: om.tipo === "abolidora" ? "abolidora" : "establecedora",
-          descripcion: comoTexto(om.descripcion),
-          evidencia: comoTexto(om.evidencia),
-        }
-      : null,
-    conducta: {
-      descripcion: comoTexto(conducta.descripcion),
-      tipo_manifestacion:
-        conducta.tipo_manifestacion === "encubierta"
-          ? "encubierta"
-          : "manifiesta",
-      tipo_respuesta:
-        conducta.tipo_respuesta === "respondiente"
-          ? "respondiente"
-          : "operante",
-      evidencia: comoTexto(conducta.evidencia),
-    },
-    consecuencia: consecuencia
-      ? {
-          tipo: comoTipoContingencia(consecuencia.tipo),
-          descripcion: comoTexto(consecuencia.descripcion),
-          inmediatez: consecuencia.inmediatez === "demorada" ? "demorada" : "inmediata",
-          evidencia: comoTexto(consecuencia.evidencia),
-        }
-      : null,
+    descripcion: comoTexto(d.descripcion),
+    tipo: d.tipo === "encubierta" ? "encubierta" : "manifiesta",
+    importancia: comoConfianza(d.importancia),
+    evidencia: comoTexto(d.evidencia),
   };
 }
 
-function normalizarSituacion(valor: unknown, indice: number): AnalisisSituacional {
-  const datos = comoObjeto(valor);
-  const hipotesis = comoObjeto(datos.hipotesis);
-  const cmlp = comoObjetoONulo(datos.consecuencias_mantenimiento_largo_plazo);
-
+function normalizarVariableModuladora(valor: unknown): VariableModuladora {
+  const d = comoObjeto(valor);
+  const tipo =
+    d.tipo === "biologica" || d.tipo === "contextual"
+      ? d.tipo
+      : "historia_de_aprendizaje";
   return {
-    id: comoTexto(datos.id, `situacion-${indice + 1}`),
-    contexto: comoTexto(datos.contexto, `Situación ${indice + 1}`),
-    patron_central: comoBooleano(datos.patron_central),
-    cadena: comoArreglo<unknown>(datos.cadena).map(normalizarEslabon),
-    hipotesis: {
-      enunciado: comoTexto(hipotesis.enunciado),
-      funcion: comoTexto(hipotesis.funcion),
-      confianza: comoConfianza(hipotesis.confianza),
-    },
-    hipotesis_alternativas: comoArreglo(datos.hipotesis_alternativas),
-    consecuencias_mantenimiento_largo_plazo: cmlp
-      ? {
-          descripcion: comoTexto(cmlp.descripcion),
-          evidencia: comoTexto(cmlp.evidencia),
-        }
-      : null,
+    tipo,
+    descripcion: comoTexto(d.descripcion),
+    evidencia: comoTexto(d.evidencia),
   };
 }
 
-function normalizarCuidador(valor: unknown): AnalisisCuidador {
-  const datos = comoObjeto(valor);
+function normalizarCadenaOperante(valor: unknown): CadenaOperante | null {
+  const d = comoObjetoONulo(valor);
+  if (!d) return null;
   return {
-    situacion_id:
-      typeof datos.situacion_id === "string" ? datos.situacion_id : null,
-    patron: comoTexto(datos.patron),
-    descripcion: comoTexto(datos.descripcion),
-    evidencia: comoTexto(datos.evidencia),
+    antecedente: comoTexto(d.antecedente),
+    operacion_motivacional: comoTextoONulo(d.operacion_motivacional),
+    respuesta: comoTexto(d.respuesta),
+    consecuencia: comoTexto(d.consecuencia),
+    tipo_contingencia: comoTipoContingencia(d.tipo_contingencia),
+    inmediatez: d.inmediatez === "demorada" ? "demorada" : "inmediata",
+    evidencia: comoTexto(d.evidencia),
+  };
+}
+
+function normalizarCadenaRespondiente(valor: unknown): CadenaRespondiente | null {
+  const d = comoObjetoONulo(valor);
+  if (!d) return null;
+  return {
+    estimulo: comoTexto(d.estimulo),
+    respuesta_condicionada: comoTexto(d.respuesta_condicionada),
+    conexion_con_operante: comoTextoONulo(d.conexion_con_operante),
+    evidencia: comoTexto(d.evidencia),
+  };
+}
+
+function normalizarSituacion(valor: unknown, indice: number): Situacion {
+  const d = comoObjeto(valor);
+  return {
+    nombre: comoTexto(d.nombre, `Situación ${indice + 1}`),
+    cadena_operante: normalizarCadenaOperante(d.cadena_operante),
+    cadena_respondiente: normalizarCadenaRespondiente(d.cadena_respondiente),
+    ciclo_interconductual: comoTextoONulo(d.ciclo_interconductual),
+    funcion_hipotetizada: comoTexto(d.funcion_hipotetizada),
+    confianza: comoConfianza(d.confianza),
+  };
+}
+
+function normalizarHipotesisMantenimiento(valor: unknown): HipotesisMantenimiento {
+  const d = comoObjeto(valor);
+  return {
+    conducta: comoTexto(d.conducta),
+    enunciado: comoTexto(d.enunciado),
+    funcion: comoTexto(d.funcion),
+    confianza: comoConfianza(d.confianza),
+  };
+}
+
+function normalizarPriorizacion(valor: unknown): PriorizacionBlanco {
+  const d = comoObjeto(valor);
+  return {
+    blanco: comoTexto(d.blanco),
+    justificacion: comoTexto(d.justificacion),
+  };
+}
+
+function normalizarFormulacion(valor: unknown): Formulacion {
+  const d = comoObjeto(valor);
+  return {
+    relaciones_entre_problemas: comoArreglo<string>(d.relaciones_entre_problemas),
+    priorizacion: comoArreglo<unknown>(d.priorizacion).map(normalizarPriorizacion),
+  };
+}
+
+function normalizarConductaAlternativa(valor: unknown): ConductaAlternativa {
+  const d = comoObjeto(valor);
+  return {
+    situacion: comoTexto(d.situacion),
+    conducta_propuesta: comoTexto(d.conducta_propuesta),
+    consecuencia_necesaria: comoTexto(d.consecuencia_necesaria),
+  };
+}
+
+function normalizarHipotesisAlternativa(valor: unknown): HipotesisAlternativa {
+  const d = comoObjeto(valor);
+  return {
+    enunciado: comoTexto(d.enunciado),
+    como_descartarla: comoTexto(d.como_descartarla),
+  };
+}
+
+function normalizarCapaModalidad(
+  modelo: ModeloTerapeutico,
+  valor: unknown
+): CapaModalidad {
+  const d = comoObjeto(valor);
+
+  if (modelo === "dbt") {
+    const cadena = comoObjeto(d.analisis_en_cadena);
+    return {
+      modalidad: "dbt",
+      analisis_en_cadena: {
+        conducta_objetivo: comoTexto(cadena.conducta_objetivo),
+        vulnerabilidades: comoArreglo<string>(cadena.vulnerabilidades),
+        evento_precipitante: comoTexto(cadena.evento_precipitante),
+        eslabones: comoArreglo<unknown>(cadena.eslabones).map((e) => {
+          const eo = comoObjeto(e);
+          const tiposValidos = [
+            "pensamiento",
+            "emocion",
+            "sensacion",
+            "impulso",
+            "accion",
+          ];
+          return {
+            tipo: tiposValidos.includes(eo.tipo as string)
+              ? (eo.tipo as "pensamiento")
+              : "pensamiento",
+            descripcion: comoTexto(eo.descripcion),
+          };
+        }),
+        consecuencias_corto_plazo: comoArreglo<string>(
+          cadena.consecuencias_corto_plazo
+        ),
+        consecuencias_largo_plazo: comoArreglo<string>(
+          cadena.consecuencias_largo_plazo
+        ),
+      },
+      habilidades_sugeridas: comoArreglo<unknown>(d.habilidades_sugeridas).map(
+        (h) => {
+          const ho = comoObjeto(h);
+          const modulosValidos = [
+            "mindfulness",
+            "tolerancia_al_malestar",
+            "regulacion_emocional",
+            "efectividad_interpersonal",
+          ];
+          return {
+            modulo: modulosValidos.includes(ho.modulo as string)
+              ? (ho.modulo as "mindfulness")
+              : "mindfulness",
+            habilidad: comoTexto(ho.habilidad),
+            eslabon_objetivo: comoTexto(ho.eslabon_objetivo),
+          };
+        }
+      ),
+    };
+  }
+
+  if (modelo === "mc") {
+    return {
+      modalidad: "mc",
+      procedimientos_sugeridos: comoArreglo<unknown>(
+        d.procedimientos_sugeridos
+      ).map((p) => {
+        const po = comoObjeto(p);
+        return {
+          procedimiento: comoTexto(po.procedimiento),
+          contingencia_objetivo: comoTexto(po.contingencia_objetivo),
+          precauciones: comoTexto(po.precauciones),
+        };
+      }),
+    };
+  }
+
+  return {
+    modalidad: "act",
+    reglas_verbales: comoArreglo<unknown>(d.reglas_verbales).map((r) => {
+      const ro = comoObjeto(r);
+      return {
+        regla: comoTexto(ro.regla),
+        textual_o_inferida: ro.textual_o_inferida === "inferida" ? "inferida" : "textual",
+        clase:
+          ro.clase === "tracking" || ro.clase === "augmenting"
+            ? ro.clase
+            : "pliance",
+        rigidez: comoConfianza(ro.rigidez),
+        analisis: comoTexto(ro.analisis),
+      };
+    }),
+    procesos_act: comoArreglo<unknown>(d.procesos_act).map((p) => {
+      const po = comoObjeto(p);
+      return {
+        proceso: comoTexto(po.proceso),
+        vinculo_con_cadena: comoTexto(po.vinculo_con_cadena),
+        evidencia: comoTexto(po.evidencia),
+      };
+    }),
   };
 }
 
 /**
  * Garantiza la forma completa de AnalisisFuncional aunque el modelo omita
- * claves: las listas ausentes se convierten en arreglos vacíos en lugar de
- * romper la interfaz. Si ninguna situación viene marcada como patron_central,
- * se marca la primera para que el informe siempre tenga un titular.
+ * claves: las listas ausentes se convierten en arreglos vacíos y los objetos
+ * ausentes en null, en lugar de romper la interfaz.
  */
 export function normalizarAnalisis(
   json: unknown,
   modelo: ModeloTerapeutico
 ): AnalisisFuncional {
-  const datos = comoObjeto(json);
-
-  const analisisSituacional = comoArreglo<unknown>(
-    datos.analisis_situacional
-  ).map(normalizarSituacion);
-
-  if (
-    analisisSituacional.length > 0 &&
-    !analisisSituacional.some((s) => s.patron_central)
-  ) {
-    analisisSituacional[0].patron_central = true;
-  }
+  const d = comoObjeto(json);
 
   return {
-    resumen_clinico: comoTexto(datos.resumen_clinico),
-    variables_moduladoras: comoArreglo(datos.variables_moduladoras),
-    analisis_situacional: analisisSituacional,
-    analisis_cuidador: comoArreglo<unknown>(datos.analisis_cuidador).map(
-      normalizarCuidador
+    modalidad: modelo,
+    resumen_clinico: comoTexto(d.resumen_clinico),
+    conductas_problema: comoArreglo<unknown>(d.conductas_problema).map(
+      normalizarConductaProblema
     ),
-    reglas_verbales: comoArreglo(datos.reglas_verbales),
-    procesos_act: comoArreglo(datos.procesos_act),
-    preguntas_para_sesion: comoArreglo<string>(datos.preguntas_para_sesion),
+    variables_moduladoras: comoArreglo<unknown>(d.variables_moduladoras).map(
+      normalizarVariableModuladora
+    ),
+    situaciones: comoArreglo<unknown>(d.situaciones).map(normalizarSituacion),
+    hipotesis_mantenimiento: comoArreglo<unknown>(
+      d.hipotesis_mantenimiento
+    ).map(normalizarHipotesisMantenimiento),
+    hipotesis_origen: comoArreglo<string>(d.hipotesis_origen),
+    formulacion: normalizarFormulacion(d.formulacion),
+    conductas_alternativas: comoArreglo<unknown>(d.conductas_alternativas).map(
+      normalizarConductaAlternativa
+    ),
+    capa_modalidad: normalizarCapaModalidad(modelo, d.capa_modalidad),
+    hipotesis_alternativas: comoArreglo<unknown>(d.hipotesis_alternativas).map(
+      normalizarHipotesisAlternativa
+    ),
+    preguntas_para_sesion: comoArreglo<string>(d.preguntas_para_sesion),
     lineas_de_intervencion_tentativas: comoArreglo<string>(
-      datos.lineas_de_intervencion_tentativas
+      d.lineas_de_intervencion_tentativas
     ),
-    datos_faltantes: comoArreglo<string>(datos.datos_faltantes),
-    modelo_terapeutico: modelo,
-    habilidades_recomendadas: comoArreglo(datos.habilidades_recomendadas),
+    datos_faltantes: comoArreglo<string>(d.datos_faltantes),
   };
 }

@@ -1,8 +1,8 @@
 # AFA — Análisis Funcional Asistido
 
-Herramienta profesional para psicólogos clínicos de orientación conductual-contextual (análisis de conducta aplicado y ACT). El terapeuta pega notas clínicas desordenadas y la aplicación devuelve un análisis funcional estructurado —siempre presentado como hipótesis a verificar, nunca como conclusiones cerradas.
+Herramienta profesional para psicólogos clínicos de orientación conductual. El terapeuta pega notas clínicas desordenadas, elige un modelo terapéutico (ACT, DBT o Conductual/MC) y la aplicación devuelve un análisis funcional estructurado por situaciones —siempre presentado como hipótesis a verificar, nunca como conclusiones cerradas.
 
-Prototipo para validación con clínicos reales. Next.js 14+ (App Router) + TypeScript + Tailwind CSS, sin base de datos, sin autenticación, sin librerías de componentes. Única dependencia adicional: `@anthropic-ai/sdk`.
+Next.js (App Router) + TypeScript + Tailwind CSS, sin base de datos, sin autenticación, sin librerías de componentes. Única dependencia adicional: `openai`.
 
 ## Privacidad por diseño
 
@@ -11,13 +11,14 @@ Las notas clínicas **no se guardan en ninguna parte**: no hay base de datos, `l
 ## Requisitos
 
 - Node.js 18.18 o superior
-- Una clave de API de Anthropic
+- Una clave de API de OpenAI
 
 ## Obtener la clave de API
 
-1. Crea una cuenta o inicia sesión en [console.anthropic.com](https://console.anthropic.com).
-2. Ve a la sección **API Keys** y genera una nueva clave.
+1. Crea una cuenta o inicia sesión en [platform.openai.com](https://platform.openai.com).
+2. Ve a **API keys** y genera una nueva clave.
 3. Cópiala; solo se muestra completa una vez.
+4. Asegúrate de tener crédito/método de pago activo en **Settings → Billing** — sin esto la API responde 429 (cuota excedida).
 
 ## Configuración
 
@@ -36,7 +37,7 @@ Las notas clínicas **no se guardan en ninguna parte**: no hay base de datos, `l
 3. Abre `.env.local` y pega tu clave:
 
    ```
-   ANTHROPIC_API_KEY=sk-ant-...
+   OPENAI_API_KEY=sk-proj-...
    ```
 
    Esta clave solo se usa del lado del servidor (en `app/api/analizar/route.ts`) y nunca se expone al navegador.
@@ -47,24 +48,36 @@ Las notas clínicas **no se guardan en ninguna parte**: no hay base de datos, `l
 npm run dev
 ```
 
-Abre [http://localhost:3000](http://localhost:3000). Si `ANTHROPIC_API_KEY` no está configurada, la interfaz lo indicará claramente al intentar generar un análisis.
+Abre [http://localhost:3000](http://localhost:3000). Si `OPENAI_API_KEY` no está configurada, la interfaz lo indicará claramente al intentar generar un análisis.
 
-## Producción
+## Producción (Vercel)
+
+El proyecto está pensado para desplegarse en Vercel conectado al repositorio de GitHub. La variable de entorno `OPENAI_API_KEY` debe configurarse en **Settings → Environment Variables** del proyecto en Vercel (no en un archivo local) — y **hay que redesplegar** después de crearla o cambiarla para que tome efecto.
+
+Para producción manual:
 
 ```powershell
 npm run build
 npm start
 ```
 
+## Modelo terapéutico (ACT / DBT / MC)
+
+El análisis funcional de base (situaciones, cadenas antecedente-respuesta-consecuencia, variables moduladoras, formulación del caso) es el mismo en las tres modalidades. Lo que cambia es la capa de intervención (`capa_modalidad` en la respuesta):
+
+- **ACT**: reglas verbales (pliance/tracking/augmenting) y procesos de inflexibilidad del hexaflex.
+- **DBT**: análisis en cadena (vulnerabilidades, precipitante, eslabones) y habilidades sugeridas por módulo.
+- **Conductual (MC)**: procedimientos directos de manejo de contingencias, sin vocabulario de terapias de tercera ola.
+
 ## Estructura
 
 ```
-app/page.tsx                     Única página: formulario, estados y renderizado del informe
-app/api/analizar/route.ts        Única API route: llamada a Claude, parseo robusto del JSON
-components/ReportView.tsx        Presentación del informe clínico
+app/page.tsx                     Única página: formulario, selector de modalidad, estados y renderizado del informe
+app/api/analizar/route.ts        Única API route: llamada a OpenAI, parseo robusto del JSON
+components/ReportView.tsx        Presentación del informe clínico (cadenas visuales, índice, hero)
 components/EsqueletoInforme.tsx  Estado de carga
-lib/types.ts                     Interfaz TypeScript AnalisisFuncional
-lib/systemPrompt.ts              System prompt clínico (verbatim)
+lib/types.ts                     Interfaz TypeScript AnalisisFuncional (esquema v2, por situaciones)
+lib/systemPrompt.ts              System prompt clínico: núcleo común + bloque por modalidad (verbatim)
 lib/parseAnalisis.ts             Extracción y normalización robusta del JSON de respuesta
 lib/pii.ts                       Detección y enmascarado de datos identificables (cliente)
 lib/formatearInforme.ts          Formateo de texto plano para "Copiar informe"
