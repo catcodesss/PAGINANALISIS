@@ -251,28 +251,36 @@ export default function Home() {
 
       {estado === "resultado" && analisis && (
         <div className="mt-2">
-          <div className="mb-6 flex flex-wrap gap-3 print:hidden">
-            <button
-              type="button"
-              onClick={manejarCopiarInforme}
-              className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-            >
-              {copiado ? "Copiado" : "Copiar informe"}
-            </button>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-            >
-              Imprimir / Guardar como PDF
-            </button>
-            <button
-              type="button"
-              onClick={manejarNuevoAnalisis}
-              className="rounded bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-            >
-              Nuevo análisis
-            </button>
+          <div className="sticky top-0 z-10 -mx-4 mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-divider bg-surface/95 px-4 py-3 backdrop-blur print:hidden sm:-mx-6 sm:px-6">
+            <p className="min-w-0 truncate text-sm text-ink-muted">
+              {referenciaCaso.trim() && (
+                <span className="text-ink">{referenciaCaso.trim()} · </span>
+              )}
+              {fechaGeneracion}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={manejarCopiarInforme}
+                className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              >
+                {copiado ? "Copiado" : "Copiar informe"}
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              >
+                Imprimir / Guardar como PDF
+              </button>
+              <button
+                type="button"
+                onClick={manejarNuevoAnalisis}
+                className="rounded bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              >
+                Nuevo análisis
+              </button>
+            </div>
           </div>
           <ReportView
             analisis={analisis}
