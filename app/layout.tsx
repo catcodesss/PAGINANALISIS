@@ -23,7 +23,7 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "AFA — Análisis Funcional Asistido",
   description:
-    "Síntesis de hipótesis funcionales desde el enfoque conductual-contextual y ACT",
+    "Análisis funcional y formulación de casos para la práctica clínica asistida por IA",
 };
 
 export default function RootLayout({

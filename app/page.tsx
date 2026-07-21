@@ -147,7 +147,7 @@ export default function Home() {
           AFA — Análisis Funcional Asistido
         </h1>
         <p className="mt-2 text-sm text-ink-muted sm:text-base">
-          Síntesis de hipótesis funcionales desde el enfoque conductual-contextual y ACT
+          Análisis funcional y formulación de casos para la práctica clínica asistida por IA
         </p>
       </header>
 
