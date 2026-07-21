@@ -279,6 +279,31 @@ function CicloInterconductual({ texto }: { texto: string }) {
   );
 }
 
+/** Detalle específico del modelo terapéutico: colapsado por defecto para que el informe se lea rápido. */
+function DetalleModalidad({ children }: { children: ReactNode }) {
+  const [abierto, setAbierto] = useState(false);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setAbierto((v) => !v)}
+        aria-expanded={abierto}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-accent transition-colors hover:text-accent/80 print:hidden"
+      >
+        {abierto
+          ? "Ocultar detalles del modelo terapéutico"
+          : "Mostrar más detalles según el modelo terapéutico"}
+        <span aria-hidden="true" className="text-xs">
+          {abierto ? "▲" : "▼"}
+        </span>
+      </button>
+      <div className={`mt-4 ${abierto ? "block" : "hidden print:block"}`}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function SituacionCard({ situacion }: { situacion: Situacion }) {
   const tieneAmbas = Boolean(
     situacion.cadena_respondiente && situacion.cadena_operante
@@ -752,6 +777,7 @@ export default function ReportView({
           </Seccion>
 
           <Seccion id="modalidad" titulo={TITULO_SECCION_MODALIDAD[analisis.modalidad]}>
+           <DetalleModalidad>
             {analisis.capa_modalidad.modalidad === "act" && (
               <div className="space-y-6">
                 <SubSeccion titulo="Reglas verbales">
@@ -941,6 +967,7 @@ export default function ReportView({
                 )}
               </>
             )}
+           </DetalleModalidad>
           </Seccion>
 
           <Seccion id="hipotesis-alternativas" titulo="Hipótesis alternativas">
