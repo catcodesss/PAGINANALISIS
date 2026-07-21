@@ -1,5 +1,14 @@
 export type NivelConfianza = "alta" | "media" | "baja";
 
+export type ModeloTerapeutico = "act" | "dbt";
+
+export interface HabilidadRecomendada {
+  habilidad: string;
+  modulo: string;
+  justificacion: string;
+  como_practicarla: string;
+}
+
 export interface ConductaProblema {
   descripcion: string;
   tipo: string;
@@ -78,4 +87,6 @@ export interface AnalisisFuncional {
   preguntas_para_sesion: string[];
   lineas_de_intervencion_tentativas: string[];
   datos_faltantes: string[];
+  modelo_terapeutico: ModeloTerapeutico;
+  habilidades_recomendadas: HabilidadRecomendada[];
 }

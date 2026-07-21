@@ -16,6 +16,7 @@ const SECCIONES_INDICE = [
   { id: "conductas", titulo: "Conductas problema" },
   { id: "analisis-funcional", titulo: "Análisis funcional detallado" },
   { id: "alternativas", titulo: "Hipótesis alternativas" },
+  { id: "habilidades", titulo: "Habilidades recomendadas" },
   { id: "reglas-procesos", titulo: "Reglas verbales y procesos ACT" },
   { id: "preguntas", titulo: "Preguntas para la próxima sesión" },
   { id: "intervencion", titulo: "Líneas de intervención" },
@@ -52,9 +53,18 @@ function colorConfianza(nivel: string): string {
   return "bg-ink-muted/50";
 }
 
+const EXPLICACION_CONFIANZA: Record<string, string> = {
+  alta: "Alta: la evidencia está explícita y clara en la nota.",
+  media: "Media: hay evidencia parcial, o se infiere con relativa seguridad.",
+  baja: "Baja: la evidencia es escasa; se apoya principalmente en inferencia clínica.",
+};
+
 function Confianza({ nivel }: { nivel: NivelConfianza | string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+    <span
+      title={EXPLICACION_CONFIANZA[nivel] ?? undefined}
+      className="inline-flex cursor-help items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-ink-muted"
+    >
       <span
         aria-hidden="true"
         className={`h-1.5 w-1.5 rounded-full ${colorConfianza(nivel)}`}
@@ -257,7 +267,7 @@ export default function ReportView({
   const activa = useSeccionActiva();
 
   return (
-    <div className="rounded-md border border-divider bg-surface px-5 py-6 shadow-sm sm:px-8 sm:py-8 print:rounded-none print:border-none print:px-0 print:py-0 print:shadow-none">
+    <div className="rounded-md border border-divider bg-surface px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-12 lg:py-10 print:rounded-none print:border-none print:px-0 print:py-0 print:shadow-none">
       <header className="mb-6 border-b border-divider pb-5">
         <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
           Expediente · Análisis funcional
@@ -286,6 +296,16 @@ export default function ReportView({
             </p>
           )}
         </div>
+        <p className="mt-3 text-xs text-ink-muted">
+          Los niveles de{" "}
+          <span className="inline-flex items-center gap-1">
+            confianza
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent" />
+          </span>{" "}
+          indican qué tan respaldada está cada hipótesis por evidencia
+          explícita en la nota (alta, media o baja); pasa el cursor sobre
+          ellos para el detalle.
+        </p>
       </header>
 
       {/* Hipótesis funcional principal — el titular del informe. */}
@@ -470,6 +490,42 @@ export default function ReportView({
                     </p>
                     <p className="mt-1 text-sm text-ink-muted">
                       Cómo descartarla: {h.como_descartarla}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Seccion>
+
+          <Seccion
+            id="habilidades"
+            titulo="Habilidades recomendadas"
+            extra={
+              <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+                Modelo: {analisis.modelo_terapeutico.toUpperCase()}
+              </span>
+            }
+          >
+            {analisis.habilidades_recomendadas.length === 0 ? (
+              <SinHallazgos />
+            ) : (
+              <ul className="space-y-4">
+                {analisis.habilidades_recomendadas.map((h, i) => (
+                  <li key={i}>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-[15px] font-medium leading-relaxed text-ink">
+                        {h.habilidad}
+                      </p>
+                      <Chip>{h.modulo}</Chip>
+                    </div>
+                    <p className="mt-1 text-sm text-ink-muted">
+                      {h.justificacion}
+                    </p>
+                    <p className="mt-1 text-sm text-ink-muted">
+                      <span className="font-medium text-ink">
+                        Cómo practicarla:
+                      </span>{" "}
+                      {h.como_practicarla}
                     </p>
                   </li>
                 ))}

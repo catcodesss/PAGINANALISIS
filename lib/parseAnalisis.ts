@@ -1,4 +1,8 @@
-import type { AnalisisFuncional, NivelConfianza } from "./types";
+import type {
+  AnalisisFuncional,
+  ModeloTerapeutico,
+  NivelConfianza,
+} from "./types";
 
 /**
  * Claude puede envolver el JSON en texto o fences pese a la instrucción del
@@ -40,7 +44,10 @@ function comoConfianza(valor: unknown): NivelConfianza {
  * claves: las listas ausentes se convierten en arreglos vacíos en lugar de
  * romper la interfaz.
  */
-export function normalizarAnalisis(json: unknown): AnalisisFuncional {
+export function normalizarAnalisis(
+  json: unknown,
+  modelo: ModeloTerapeutico
+): AnalisisFuncional {
   const datos = comoObjeto(json);
   const antecedentes = comoObjeto(datos.antecedentes);
   const consecuencias = comoObjeto(datos.consecuencias_y_mantenimiento);
@@ -74,5 +81,7 @@ export function normalizarAnalisis(json: unknown): AnalisisFuncional {
       datos.lineas_de_intervencion_tentativas
     ),
     datos_faltantes: comoArreglo<string>(datos.datos_faltantes),
+    modelo_terapeutico: modelo,
+    habilidades_recomendadas: comoArreglo(datos.habilidades_recomendadas),
   };
 }

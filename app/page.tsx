@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { AnalisisFuncional } from "@/lib/types";
+import type { AnalisisFuncional, ModeloTerapeutico } from "@/lib/types";
 import {
   contieneDatosIdentificables,
   enmascararDatosIdentificables,
@@ -20,6 +20,8 @@ const MENSAJE_ERROR_GENERICO = "No se pudo completar el análisis. Intenta nueva
 
 export default function Home() {
   const [nota, setNota] = useState("");
+  const [modeloTerapeutico, setModeloTerapeutico] =
+    useState<ModeloTerapeutico>("act");
   const [referenciaCaso, setReferenciaCaso] = useState("");
   const [estado, setEstado] = useState<EstadoApp>("inicial");
   const [mensajeValidacion, setMensajeValidacion] = useState("");
@@ -41,7 +43,7 @@ export default function Home() {
       const respuesta = await fetch("/api/analizar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nota: texto }),
+        body: JSON.stringify({ nota: texto, modelo: modeloTerapeutico }),
       });
 
       const datos = await respuesta.json().catch(() => null);
@@ -105,6 +107,7 @@ export default function Home() {
 
   function manejarNuevoAnalisis() {
     setNota("");
+    setModeloTerapeutico("act");
     setReferenciaCaso("");
     setEstado("inicial");
     setMensajeValidacion("");
@@ -134,7 +137,11 @@ export default function Home() {
   const formularioDeshabilitado = estado === "cargando";
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12 print:max-w-none print:px-0 print:py-0">
+    <main
+      className={`mx-auto px-4 py-8 sm:px-6 sm:py-12 print:max-w-none print:px-0 print:py-0 ${
+        estado === "resultado" ? "max-w-6xl" : "max-w-3xl"
+      }`}
+    >
       <header className="mb-8 print:hidden">
         <h1 className="font-serif text-2xl font-semibold text-ink sm:text-3xl">
           AFA — Análisis Funcional Asistido
@@ -147,6 +154,40 @@ export default function Home() {
       {formularioVisible && (
         <section className="print:hidden">
           <div className="rounded-md border border-divider bg-surface p-5 shadow-sm sm:p-6">
+            <fieldset className="mb-4">
+              <legend className="mb-2 text-sm font-medium text-ink">
+                Modelo terapéutico
+              </legend>
+              <div className="inline-flex overflow-hidden rounded border border-divider">
+                {(
+                  [
+                    { valor: "act" as const, etiqueta: "ACT" },
+                    { valor: "dbt" as const, etiqueta: "DBT" },
+                  ]
+                ).map(({ valor, etiqueta }) => (
+                  <button
+                    key={valor}
+                    type="button"
+                    disabled={formularioDeshabilitado}
+                    onClick={() => setModeloTerapeutico(valor)}
+                    aria-pressed={modeloTerapeutico === valor}
+                    className={`px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+                      modeloTerapeutico === valor
+                        ? "bg-accent text-white"
+                        : "bg-surface text-ink-muted hover:bg-canvas"
+                    }`}
+                  >
+                    {etiqueta}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-xs text-ink-muted">
+                Define el marco desde el cual se sugieren habilidades: ACT
+                (procesos del hexaflex) o DBT (mindfulness, tolerancia al
+                malestar, regulación emocional, efectividad interpersonal).
+              </p>
+            </fieldset>
+
             <label htmlFor="nota" className="sr-only">
               Notas clínicas
             </label>

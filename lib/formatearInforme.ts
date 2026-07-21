@@ -121,6 +121,18 @@ export function formatearInformeTexto(
     )
   );
 
+  partes.push(
+    seccion(
+      `HABILIDADES RECOMENDADAS (${analisis.modelo_terapeutico.toUpperCase()})`,
+      analisis.habilidades_recomendadas
+        .map(
+          (h) =>
+            `- [${h.modulo}] ${h.habilidad}\n  Justificación: ${h.justificacion}\n  Cómo practicarla: ${h.como_practicarla}`
+        )
+        .join("\n")
+    )
+  );
+
   partes.push(seccion("PREGUNTAS PARA LA PRÓXIMA SESIÓN", listaOTexto(analisis.preguntas_para_sesion)));
   partes.push(
     seccion("LÍNEAS DE INTERVENCIÓN TENTATIVAS", listaOTexto(analisis.lineas_de_intervencion_tentativas))

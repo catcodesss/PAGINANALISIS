@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { SYSTEM_PROMPT } from "@/lib/systemPrompt";
+import { construirSystemPrompt } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarAnalisis } from "@/lib/parseAnalisis";
+import type { ModeloTerapeutico } from "@/lib/types";
 
 const MODELO = "gpt-4o";
 const LONGITUD_MINIMA = 100;
@@ -13,9 +14,11 @@ function respuestaError(error: string, message: string, status: number) {
 
 export async function POST(request: Request) {
   let nota: unknown;
+  let modeloCrudo: unknown;
   try {
     const cuerpo = await request.json();
     nota = (cuerpo as { nota?: unknown } | null)?.nota;
+    modeloCrudo = (cuerpo as { modelo?: unknown } | null)?.modelo;
   } catch {
     return respuestaError(
       "solicitud_invalida",
@@ -40,6 +43,8 @@ export async function POST(request: Request) {
     );
   }
 
+  const modelo: ModeloTerapeutico = modeloCrudo === "dbt" ? "dbt" : "act";
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return respuestaError(
@@ -56,7 +61,7 @@ export async function POST(request: Request) {
       max_tokens: 4096,
       temperature: 0.2,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: construirSystemPrompt(modelo) },
         {
           role: "user",
           content: `Notas clínicas a analizar:\n\n${nota}`,
@@ -66,7 +71,7 @@ export async function POST(request: Request) {
 
     const texto = respuesta.choices[0]?.message?.content?.trim() ?? "";
 
-    const analisis = normalizarAnalisis(JSON.parse(extraerJSON(texto)));
+    const analisis = normalizarAnalisis(JSON.parse(extraerJSON(texto)), modelo);
 
     return NextResponse.json({ analisis });
   } catch (error) {
