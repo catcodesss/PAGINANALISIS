@@ -158,83 +158,84 @@ function SubSeccion({ titulo, children }: { titulo: string; children: ReactNode 
 }
 
 /** Una caja de la cadena visual (antecedente / respuesta / consecuencia / estímulo). */
-function CajaCadena({
-  etiqueta,
-  texto,
-  nota,
-  chips,
-  punteada,
-}: {
-  etiqueta: string;
-  texto: string;
-  nota?: string | null;
-  chips?: ReactNode;
-  punteada?: boolean;
-}) {
+interface FilaCadena {
+  elemento: string;
+  valor: string;
+}
+
+/** Tabla de dos columnas (Elemento / Análisis) para una cadena de contingencia. */
+function TablaCadena({ filas }: { filas: FilaCadena[] }) {
   return (
-    <div
-      className={`min-w-0 flex-1 rounded p-3 ${
-        punteada
-          ? "border border-dashed border-ink-muted/40 bg-canvas/20"
-          : "border border-divider bg-canvas/40"
-      }`}
-    >
-      {nota && (
-        <p className="mb-1 text-[11px] italic leading-snug text-ink-muted">
-          {nota}
-        </p>
-      )}
-      <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-        {etiqueta}
-      </p>
-      <p className="mt-0.5 text-sm leading-relaxed text-ink">{texto}</p>
-      {chips && <div className="mt-1.5 flex flex-wrap gap-1.5">{chips}</div>}
+    <div className="w-full overflow-x-auto">
+      <table className="w-full border-collapse text-sm">
+        <tbody>
+          {filas.map((f, i) => (
+            <tr
+              key={i}
+              className="border-b border-divider last:border-b-0 print:border-black"
+            >
+              <td className="w-[110px] py-3 pr-4 align-top font-mono text-xs font-bold text-ink">
+                {f.elemento}
+              </td>
+              <td className="py-3 align-top leading-relaxed text-ink">
+                {f.valor}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function FlechaConector() {
+/** Notación de flechas de la cadena: fórmula en código + paráfrasis en lenguaje natural. */
+function NotacionCadena({ formula, natural }: { formula: string; natural: string }) {
   return (
-    <div
-      aria-hidden="true"
-      className="flex items-center justify-center px-1 py-0.5 text-lg text-ink-muted/50 sm:py-0"
-    >
-      <span className="hidden sm:inline">→</span>
-      <span className="sm:hidden">↓</span>
+    <div className="mt-3">
+      <p className="text-sm text-ink">
+        <span className="mr-2 font-mono text-[10px] font-normal uppercase tracking-wide text-ink-muted">
+          Cadena:
+        </span>
+        <span className="font-mono font-bold">{formula}</span>
+      </p>
+      <p className="mt-1 text-sm italic leading-relaxed text-ink-muted">
+        {natural}
+      </p>
     </div>
   );
 }
+
+const CODIGO_CONTINGENCIA: Record<string, string> = {
+  "refuerzo positivo": "R+",
+  "refuerzo negativo": "R−",
+  "castigo positivo": "C+",
+  "castigo negativo": "C−",
+  extincion: "Ext.",
+};
 
 function CadenaOperanteView({ cadena }: { cadena: CadenaOperante }) {
+  const codigo = CODIGO_CONTINGENCIA[cadena.tipo_contingencia] ?? "?";
+  const filas: FilaCadena[] = [{ elemento: "ED", valor: cadena.antecedente }];
+  if (cadena.operacion_motivacional) {
+    filas.push({ elemento: "OM", valor: cadena.operacion_motivacional });
+  }
+  filas.push({ elemento: "RO", valor: cadena.respuesta });
+  filas.push({ elemento: "C", valor: cadena.consecuencia });
+  filas.push({
+    elemento: "Consecuencia",
+    valor: `${codigo} (${cadena.tipo_contingencia}, ${cadena.inmediatez})`,
+  });
+
   return (
     <div>
-      <p className="mb-2 font-mono text-xs uppercase tracking-wide text-ink-muted">
-        Cadena operante
+      <p className="mb-2 font-serif text-[15px] font-bold text-ink">
+        Cadena operante (CO)
       </p>
-      <div className="flex flex-col sm:flex-row sm:items-stretch print:flex-col">
-        <CajaCadena
-          etiqueta="Antecedente"
-          texto={cadena.antecedente}
-          nota={
-            cadena.operacion_motivacional
-              ? `OM: ${cadena.operacion_motivacional}`
-              : undefined
-          }
-        />
-        <FlechaConector />
-        <CajaCadena etiqueta="Respuesta" texto={cadena.respuesta} />
-        <FlechaConector />
-        <CajaCadena
-          etiqueta="Consecuencia"
-          texto={cadena.consecuencia}
-          chips={
-            <>
-              <Chip>{cadena.tipo_contingencia}</Chip>
-              <Chip>{cadena.inmediatez}</Chip>
-            </>
-          }
-        />
-      </div>
+      <TablaCadena filas={filas} />
+      <NotacionCadena
+        formula={`ED → RO → ${codigo}`}
+        natural={`${cadena.antecedente} → ${cadena.respuesta} → ${cadena.consecuencia}`}
+      />
       <Cita>{cadena.evidencia}</Cita>
     </div>
   );
@@ -243,60 +244,82 @@ function CadenaOperanteView({ cadena }: { cadena: CadenaOperante }) {
 function CadenaRespondienteView({ cadena }: { cadena: CadenaRespondiente }) {
   return (
     <div>
-      <p className="mb-2 font-mono text-xs uppercase tracking-wide text-ink-muted">
-        Cadena respondiente
+      <p className="mb-2 font-serif text-[15px] font-bold text-ink">
+        Cadena respondiente (CC)
       </p>
-      <div className="flex flex-col sm:flex-row sm:items-stretch print:flex-col">
-        <CajaCadena punteada etiqueta="Estímulo" texto={cadena.estimulo} />
-        <FlechaConector />
-        <CajaCadena
-          punteada
-          etiqueta="Respuesta condicionada"
-          texto={cadena.respuesta_condicionada}
-        />
-      </div>
-      {cadena.conexion_con_operante && (
-        <p className="mt-2 text-sm text-ink-muted">
-          <span className="font-medium text-ink">
-            Conexión con la cadena operante:
-          </span>{" "}
-          {cadena.conexion_con_operante}
-        </p>
-      )}
+      <TablaCadena
+        filas={[
+          { elemento: "EC", valor: cadena.estimulo },
+          { elemento: "RC", valor: cadena.respuesta_condicionada },
+        ]}
+      />
+      <NotacionCadena
+        formula="EC → RC"
+        natural={`${cadena.estimulo} → ${cadena.respuesta_condicionada}`}
+      />
       <Cita>{cadena.evidencia}</Cita>
     </div>
   );
 }
 
+function CicloInterconductual({ texto }: { texto: string }) {
+  return (
+    <div
+      className="mt-4 rounded-md border border-divider p-4"
+      style={{ backgroundColor: "#FAFAF8" }}
+    >
+      <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+        Ciclo interconductual
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-ink">{texto}</p>
+      <p className="mt-2 text-sm italic text-ink-muted">
+        Ambas conductas se refuerzan mutuamente, sosteniendo el patrón.
+      </p>
+    </div>
+  );
+}
+
 function SituacionCard({ situacion }: { situacion: Situacion }) {
+  const tieneAmbas = Boolean(
+    situacion.cadena_respondiente && situacion.cadena_operante
+  );
+
   return (
     <div className="rounded-md border border-divider p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-serif text-base font-semibold text-ink sm:text-lg">
+        <h3 className="flex items-center gap-3 font-serif text-base font-semibold text-ink sm:text-lg">
+          <span aria-hidden="true" className="h-4 w-1 rounded-full bg-accent" />
           {situacion.nombre}
         </h3>
         <Confianza nivel={situacion.confianza} />
       </div>
 
-      <div className="space-y-5">
-        {situacion.cadena_operante && (
-          <CadenaOperanteView cadena={situacion.cadena_operante} />
-        )}
+      {tieneAmbas && (
+        <p className="mb-4 text-sm italic text-ink-muted">
+          En esta situación aparecen dos procesos simultáneos.
+        </p>
+      )}
+
+      <div className="space-y-4">
         {situacion.cadena_respondiente && (
           <CadenaRespondienteView cadena={situacion.cadena_respondiente} />
         )}
+
+        {tieneAmbas && situacion.cadena_respondiente?.conexion_con_operante && (
+          <p className="text-sm italic text-ink-muted">Posteriormente</p>
+        )}
+
+        {situacion.cadena_operante && (
+          <CadenaOperanteView cadena={situacion.cadena_operante} />
+        )}
+
         {!situacion.cadena_operante && !situacion.cadena_respondiente && (
           <SinHallazgos />
         )}
       </div>
 
       {situacion.ciclo_interconductual && (
-        <div className="mt-4 flex items-start gap-2 rounded border border-accent/30 bg-accent/[0.04] p-3">
-          <span aria-hidden="true" className="text-lg leading-none text-accent">
-            ⟲
-          </span>
-          <p className="text-sm text-ink">{situacion.ciclo_interconductual}</p>
-        </div>
+        <CicloInterconductual texto={situacion.ciclo_interconductual} />
       )}
 
       {situacion.funcion_hipotetizada && (
