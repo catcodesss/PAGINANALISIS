@@ -61,7 +61,7 @@ function SinHallazgos() {
 /** Chip de clasificación técnica: informativo, discreto. */
 function Chip({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-block whitespace-nowrap rounded border border-accent/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-accent">
+    <span className="clasificacion-chip inline-block whitespace-nowrap rounded border border-accent/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-accent">
       {children}
     </span>
   );
@@ -70,7 +70,7 @@ function Chip({ children }: { children: ReactNode }) {
 /** Chip destacado: función hipotetizada o estado que es una conclusión. */
 function ChipDestacado({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-block whitespace-nowrap rounded bg-accent px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-white">
+    <span className="funcion-chip inline-block whitespace-nowrap rounded bg-accent px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-white">
       {children}
     </span>
   );
@@ -92,11 +92,11 @@ function Confianza({ nivel }: { nivel: NivelConfianza | string }) {
   return (
     <span
       title={EXPLICACION_CONFIANZA[nivel] ?? undefined}
-      className="inline-flex cursor-help items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-ink-muted"
+      className="conf-chip inline-flex cursor-help items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-ink-muted"
     >
       <span
         aria-hidden="true"
-        className={`h-1.5 w-1.5 rounded-full ${colorConfianza(nivel)}`}
+        className={`conf-dot h-1.5 w-1.5 rounded-full ${colorConfianza(nivel)}`}
       />
       Confianza: {nivel}
     </span>
@@ -107,11 +107,11 @@ function Confianza({ nivel }: { nivel: NivelConfianza | string }) {
 function Cita({ children }: { children: string | null | undefined }) {
   if (!children) return null;
   return (
-    <blockquote className="mt-2 border-l-2 border-divider pl-3">
-      <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted/70">
+    <blockquote className="evidence-block mt-2 border-l-2 border-divider pl-3">
+      <p className="evidence-prefix font-mono text-[10px] uppercase tracking-wide text-ink-muted/70">
         De la nota
       </p>
-      <p className="text-sm italic leading-relaxed text-ink-muted">
+      <p className="evidence-text text-sm italic leading-relaxed text-ink-muted">
         &quot;{children}&quot;
       </p>
     </blockquote>
@@ -135,7 +135,7 @@ function Seccion({
       className="scroll-mt-24 border-b border-divider py-6 last:border-b-0"
     >
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="flex items-center gap-3 font-serif text-lg font-semibold text-ink sm:text-xl">
+        <h2 className="section-title flex items-center gap-3 font-serif text-lg font-semibold text-ink sm:text-xl">
           <span aria-hidden="true" className="h-5 w-1 rounded-full bg-accent" />
           {titulo}
         </h2>
@@ -167,14 +167,14 @@ interface FilaCadena {
 function TablaCadena({ filas }: { filas: FilaCadena[] }) {
   return (
     <div className="w-full overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+      <table className="chain-table w-full border-collapse text-sm">
         <tbody>
           {filas.map((f, i) => (
             <tr
               key={i}
               className="border-b border-divider last:border-b-0 print:border-black"
             >
-              <td className="w-[110px] py-3 pr-4 align-top font-mono text-xs font-bold text-ink">
+              <td className="el-label w-[110px] py-3 pr-4 align-top font-mono text-xs font-bold text-ink">
                 {f.elemento}
               </td>
               <td className="py-3 align-top leading-relaxed text-ink">
@@ -191,9 +191,9 @@ function TablaCadena({ filas }: { filas: FilaCadena[] }) {
 /** Notación de flechas de la cadena: fórmula en código + paráfrasis en lenguaje natural. */
 function NotacionCadena({ formula, natural }: { formula: string; natural: string }) {
   return (
-    <div className="mt-3">
-      <p className="font-mono text-sm font-bold text-ink">{formula}</p>
-      <p className="mt-1 text-sm italic leading-relaxed text-ink-muted">
+    <div className="chain-arrow-block mt-3">
+      <p className="chain-formula font-mono text-sm font-bold text-ink">{formula}</p>
+      <p className="chain-natural mt-1 text-sm italic leading-relaxed text-ink-muted">
         {natural}
       </p>
     </div>
@@ -260,10 +260,10 @@ function CadenaRespondienteView({ cadena }: { cadena: CadenaRespondiente }) {
 function CicloInterconductual({ texto }: { texto: string }) {
   return (
     <div
-      className="mt-4 rounded-md border border-divider p-4"
+      className="cycle-box mt-4 rounded-md border border-divider p-4"
       style={{ backgroundColor: "#FAFAF8" }}
     >
-      <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+      <p className="cycle-label font-mono text-[10px] uppercase tracking-wide text-ink-muted">
         Ciclo interconductual
       </p>
       <p className="mt-2 text-sm leading-relaxed text-ink">{texto}</p>
@@ -305,7 +305,7 @@ function SituacionCard({ situacion }: { situacion: Situacion }) {
   );
 
   return (
-    <div className="rounded-md border border-divider p-5 sm:p-6">
+    <div className="sit-card rounded-md border border-divider p-5 sm:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-3 font-serif text-base font-semibold text-ink sm:text-lg">
           <span aria-hidden="true" className="h-4 w-1 rounded-full bg-accent" />
@@ -475,6 +475,101 @@ function IndiceMovil({
   );
 }
 
+const ETIQUETA_MODALIDAD_IMPRESION: Record<ModeloTerapeutico, string> = {
+  act: "ACT",
+  dbt: "DBT",
+  mc: "Modificación de conducta",
+};
+
+/** Encabezado de expediente clínico, visible solo al imprimir/exportar a PDF. */
+function PrintOnlyHeader({
+  referenciaCaso,
+  fecha,
+  modalidad,
+}: {
+  referenciaCaso: string;
+  fecha: string;
+  modalidad: ModeloTerapeutico;
+}) {
+  return (
+    <div className="print-only-header hidden print:block">
+      <div className="print-header-top">
+        <div className="print-logo-area">
+          <span className="print-logo-text">AFA</span>
+          <span className="print-logo-sub">Análisis Funcional Asistido</span>
+        </div>
+        <div className="print-doc-type">EXPEDIENTE · ANÁLISIS FUNCIONAL</div>
+      </div>
+      <div className="print-separator" />
+      <div className="print-meta-grid">
+        <div className="print-meta-item">
+          <span className="print-meta-label">Referencia del caso</span>
+          <span className="print-meta-value">
+            {referenciaCaso.trim() || "Sin referencia"}
+          </span>
+        </div>
+        <div className="print-meta-item">
+          <span className="print-meta-label">Fecha de generación</span>
+          <span className="print-meta-value">{fecha}</span>
+        </div>
+        <div className="print-meta-item">
+          <span className="print-meta-label">Modalidad</span>
+          <span className="print-meta-value">
+            {ETIQUETA_MODALIDAD_IMPRESION[modalidad]}
+          </span>
+        </div>
+        <div className="print-meta-item">
+          <span className="print-meta-label">Páginas</span>
+          <span className="print-meta-value">Ver pie de página</span>
+        </div>
+      </div>
+      <div className="print-separator" />
+      <div className="print-confidential">
+        DOCUMENTO CONFIDENCIAL — Solo para uso del profesional tratante
+      </div>
+    </div>
+  );
+}
+
+/** Pie de página fijo, visible solo al imprimir/exportar a PDF. */
+function PrintOnlyFooter() {
+  return (
+    <div className="print-only-footer hidden print:flex">
+      <div className="print-footer-left">AFA — Análisis Funcional Asistido</div>
+      <div className="print-footer-center">
+        Documento confidencial · Solo para uso clínico
+      </div>
+      <div className="print-footer-right" />
+    </div>
+  );
+}
+
+/** Descargo metodológico final, visible solo al imprimir/exportar a PDF. */
+function PrintOnlyDisclaimer({ fecha }: { fecha: string }) {
+  return (
+    <div className="print-only-disclaimer hidden print:block">
+      <div className="print-disclaimer-title">Nota metodológica</div>
+      <p>
+        Este análisis funcional fue generado mediante síntesis asistida por
+        inteligencia artificial a partir de las notas clínicas proporcionadas
+        por el profesional. Todas las hipótesis funcionales, clasificaciones y
+        líneas de intervención sugeridas constituyen aproximaciones que
+        requieren verificación mediante evaluación clínica directa.
+      </p>
+      <p>
+        Este documento no constituye un diagnóstico, no sustituye el juicio
+        clínico profesional, y no debe utilizarse como único fundamento para
+        decisiones terapéuticas. El profesional tratante es el único
+        responsable de la interpretación y aplicación de la información
+        contenida en este expediente.
+      </p>
+      <p className="print-disclaimer-tool">
+        Generado con AFA — Análisis Funcional Asistido · {fecha}
+      </p>
+    </div>
+  );
+}
+
 export default function ReportView({
   analisis,
   referenciaCaso,
@@ -502,7 +597,14 @@ export default function ReportView({
 
   return (
     <div className="rounded-md border border-divider bg-surface px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-12 lg:py-10 print:rounded-none print:border-none print:px-0 print:py-0 print:shadow-none">
-      <header className="mb-6 border-b border-divider pb-5">
+      <PrintOnlyHeader
+        referenciaCaso={referenciaCaso}
+        fecha={fecha}
+        modalidad={analisis.modalidad}
+      />
+      <PrintOnlyFooter />
+
+      <header className="mb-6 border-b border-divider pb-5 print:hidden">
         <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
           Expediente · Análisis funcional
         </p>
@@ -547,7 +649,7 @@ export default function ReportView({
       <section id="hipotesis-principal" className="scroll-mt-24 mb-8">
         {hipotesisDestacada && hipotesisDestacada.enunciado ? (
           <div
-            className="rounded-md border-l-4 border-accent p-8"
+            className="formulacion-destacada rounded-md border-l-4 border-accent p-8"
             style={{ backgroundColor: "#F0F4F2" }}
           >
             <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-accent">
@@ -577,7 +679,7 @@ export default function ReportView({
               )}
             <a
               href="#resumen"
-              className="mt-5 inline-block text-sm text-ink-muted underline decoration-divider underline-offset-4 transition-colors hover:text-accent"
+              className="mt-5 inline-block text-sm text-ink-muted underline decoration-divider underline-offset-4 transition-colors hover:text-accent print:hidden"
             >
               Ver análisis completo ↓
             </a>
@@ -677,7 +779,7 @@ export default function ReportView({
             ) : (
               <ul className="space-y-4">
                 {analisis.hipotesis_mantenimiento.map((h, i) => (
-                  <li key={i} className="rounded border border-divider p-4">
+                  <li key={i} className="hipotesis-card rounded border border-divider p-4">
                     <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
                       {h.conducta}
                     </p>
@@ -1028,12 +1130,14 @@ export default function ReportView({
         </div>
       </div>
 
-      <footer className="mt-6 rounded-md border border-divider bg-canvas p-4 text-xs leading-relaxed text-ink-muted print:bg-transparent">
+      <footer className="mt-6 rounded-md border border-divider bg-canvas p-4 text-xs leading-relaxed text-ink-muted print:hidden">
         Este análisis es una síntesis asistida de hipótesis funcionales generadas a
         partir de las notas proporcionadas. No constituye un diagnóstico ni
         sustituye el juicio clínico profesional. Toda hipótesis debe verificarse
         mediante evaluación directa.
       </footer>
+
+      <PrintOnlyDisclaimer fecha={fecha} />
     </div>
   );
 }
