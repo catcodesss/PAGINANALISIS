@@ -94,7 +94,9 @@ const FORMATO_BASE = `FORMATO: responde ÚNICAMENTE con un objeto JSON válido, 
   "preguntas_para_sesion": ["string"],
   "lineas_de_intervencion_tentativas": ["string"],
   "datos_faltantes": ["string"]
-}`;
+}
+
+REGISTRO DE ESCRITURA: todo el análisis está dirigido a un colega psicólogo con formación en análisis de conducta. Usa terminología técnica sin simplificar: "emite respuesta de evitación", no "evita"; "mantenida por R− (cese de estimulación aversiva)", no "se siente mejor"; "ante el Ed de evaluación social", no "cuando la gente lo mira". Las traducciones descriptivas de las cadenas (los enunciados de hipótesis, las descripciones de contingencias) deben leerse como un informe de supervisión clínica, no como una explicación para un paciente. Usa las abreviaturas estándar (Ed, SΔ, OE, OA, RO, R+, R−, C+, C−, EC, RC) naturalmente dentro del texto, como lo haría un analista de conducta escribiendo para otro.`;
 
 export function construirSystemPrompt(modelo: ModeloTerapeutico): string {
   return `${NUCLEO}

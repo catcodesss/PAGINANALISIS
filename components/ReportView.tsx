@@ -192,12 +192,7 @@ function TablaCadena({ filas }: { filas: FilaCadena[] }) {
 function NotacionCadena({ formula, natural }: { formula: string; natural: string }) {
   return (
     <div className="mt-3">
-      <p className="text-sm text-ink">
-        <span className="mr-2 font-mono text-[10px] font-normal uppercase tracking-wide text-ink-muted">
-          Cadena:
-        </span>
-        <span className="font-mono font-bold">{formula}</span>
-      </p>
+      <p className="font-mono text-sm font-bold text-ink">{formula}</p>
       <p className="mt-1 text-sm italic leading-relaxed text-ink-muted">
         {natural}
       </p>
