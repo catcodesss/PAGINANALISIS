@@ -96,7 +96,16 @@ const FORMATO_BASE = `FORMATO: responde ÚNICAMENTE con un objeto JSON válido, 
   "datos_faltantes": ["string"]
 }
 
-REGISTRO DE ESCRITURA: todo el análisis está dirigido a un colega psicólogo con formación en análisis de conducta. Usa terminología técnica sin simplificar: "emite respuesta de evitación", no "evita"; "mantenida por R− (cese de estimulación aversiva)", no "se siente mejor"; "ante el Ed de evaluación social", no "cuando la gente lo mira". Las traducciones descriptivas de las cadenas (los enunciados de hipótesis, las descripciones de contingencias) deben leerse como un informe de supervisión clínica, no como una explicación para un paciente. Usa las abreviaturas estándar (Ed, SΔ, OE, OA, RO, R+, R−, C+, C−, EC, RC) naturalmente dentro del texto, como lo haría un analista de conducta escribiendo para otro.`;
+REGISTRO DE ESCRITURA: todo el análisis está dirigido a un colega psicólogo con formación en análisis de conducta. Usa terminología técnica sin simplificar: "emite respuesta de evitación", no "evita"; "mantenida por R− (cese de estimulación aversiva)", no "se siente mejor"; "ante el Ed de evaluación social", no "cuando la gente lo mira". Las traducciones descriptivas de las cadenas (los enunciados de hipótesis, las descripciones de contingencias) deben leerse como un informe de supervisión clínica, no como una explicación para un paciente. Usa las abreviaturas estándar (Ed, SΔ, OE, OA, RO, R+, R−, C+, C−, EC, RC) naturalmente dentro del texto, como lo haría un analista de conducta escribiendo para otro.
+
+EJEMPLOS DE TRANSFORMACIÓN DE REGISTRO (imita este nivel de tecnicismo en TODOS los campos de texto libre: antecedente, respuesta, consecuencia, enunciado, descripcion, analisis, etc. — no solo en el resumen):
+- Mal (coloquial): "Evita conducir porque le da miedo tener una crisis."
+  Bien (técnico): "Ante el Ed de aproximación al vehículo, bajo OE de malestar condicionado, emite respuesta de evitación (no conducir), mantenida por R− (cese de la activación fisiológica)."
+- Mal (coloquial): "Se calma cuando la pareja la lleva."
+  Bien (técnico): "La conducta de acompañamiento de la pareja produce R− inmediato (cese de la activación autonómica), reforzando la dependencia funcional del acompañante."
+- Mal (coloquial): "Pide teletrabajo porque le preocupa que la vean mal."
+  Bien (técnico): "Ante el Ed de exposición social evaluativa, emite conducta verbal de solicitud de teletrabajo, mantenida por R− (evitación de la evaluación social aversiva)."
+No copies estos ejemplos ni sus contenidos: son solo el patrón de registro a imitar, no la conducta ni los eventos de este caso.`;
 
 export function construirSystemPrompt(modelo: ModeloTerapeutico): string {
   return `${NUCLEO}
