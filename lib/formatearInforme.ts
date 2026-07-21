@@ -1,4 +1,4 @@
-import type { AnalisisFuncional } from "./types";
+import type { AnalisisFuncional, EslabonCadena } from "./types";
 
 const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
 const DESCARGO =
@@ -10,6 +10,28 @@ function seccion(titulo: string, cuerpo: string): string {
 
 function listaOTexto(items: string[]): string {
   return items.length > 0 ? items.map((i) => `- ${i}`).join("\n") : SIN_HALLAZGOS;
+}
+
+function formatearEslabon(e: EslabonCadena): string {
+  const lineas: string[] = [];
+  lineas.push(`  Antecedente: ${e.antecedente.descripcion} — Evidencia: "${e.antecedente.evidencia}"`);
+  if (e.operacion_motivacional) {
+    const tipo = e.operacion_motivacional.tipo === "establecedora" ? "OE" : "OA";
+    lineas.push(
+      `  Operación motivacional [${tipo}]: ${e.operacion_motivacional.descripcion} — Evidencia: "${e.operacion_motivacional.evidencia}"`
+    );
+  }
+  lineas.push(
+    `  Conducta [${e.conducta.tipo_respuesta}, ${e.conducta.tipo_manifestacion}]: ${e.conducta.descripcion} — Evidencia: "${e.conducta.evidencia}"`
+  );
+  if (e.consecuencia) {
+    lineas.push(
+      `  Consecuencia [${e.consecuencia.tipo}, ${e.consecuencia.inmediatez}]: ${e.consecuencia.descripcion} — Evidencia: "${e.consecuencia.evidencia}"`
+    );
+  } else {
+    lineas.push("  Consecuencia: no aplica (respuesta respondiente, no mantenida por consecuencia).");
+  }
+  return lineas.join("\n");
 }
 
 /** Texto plano formateado para copiar al portapapeles, en el mismo orden que el informe visual. */
@@ -30,72 +52,46 @@ export function formatearInformeTexto(
 
   partes.push(
     seccion(
-      "CONDUCTAS PROBLEMA",
-      analisis.conductas_problema
-        .map((c) => `- [${c.tipo}] ${c.descripcion}\n  Evidencia: "${c.evidencia}"`)
+      "VARIABLES MODULADORAS",
+      analisis.variables_moduladoras
+        .map((v) => `- [${v.categoria}] ${v.descripcion} — Evidencia: "${v.evidencia}"`)
         .join("\n")
     )
   );
 
-  partes.push(
-    seccion(
-      `ANÁLISIS DE ANTECEDENTES (Confianza: ${analisis.antecedentes.confianza})`,
-      [
-        "Estímulos discriminativos y contexto situacional:",
-        listaOTexto(
-          analisis.antecedentes.estimulos_discriminativos.map(
-            (e) => `${e.descripcion} — Evidencia: "${e.evidencia}"`
-          )
-        ),
-        listaOTexto(
-          analisis.antecedentes.contexto_situacional.map(
-            (c) => `${c.descripcion} — Evidencia: "${c.evidencia}"`
-          )
-        ),
-      ].join("\n")
-    )
-  );
+  const situacional = analisis.analisis_situacional
+    .map((s) => {
+      const encabezado = `${s.contexto}${s.patron_central ? " (PATRÓN CENTRAL)" : ""}`;
+      const cadena = s.cadena.map(formatearEslabon).join("\n\n");
+      const hipotesis = `Hipótesis (Confianza: ${s.hipotesis.confianza}): ${s.hipotesis.enunciado}\nFunción: ${s.hipotesis.funcion}`;
+      const alternativas = s.hipotesis_alternativas.length
+        ? s.hipotesis_alternativas
+            .map((h) => `  - ${h.enunciado}\n    Cómo descartarla: ${h.como_descartarla}`)
+            .join("\n")
+        : "  Ninguna registrada.";
+      const cmlp = s.consecuencias_mantenimiento_largo_plazo
+        ? `Mantenimiento a largo plazo: ${s.consecuencias_mantenimiento_largo_plazo.descripcion} — Evidencia: "${s.consecuencias_mantenimiento_largo_plazo.evidencia}"`
+        : "";
+      return [
+        `## ${encabezado}`,
+        cadena,
+        hipotesis,
+        "Hipótesis alternativas:",
+        alternativas,
+        cmlp,
+      ]
+        .filter(Boolean)
+        .join("\n");
+    })
+    .join("\n\n");
+
+  partes.push(seccion("ANÁLISIS FUNCIONAL POR SITUACIÓN", situacional));
 
   partes.push(
     seccion(
-      "OPERACIONES MOTIVACIONALES",
-      analisis.operaciones_motivacionales
-        .map(
-          (o) =>
-            `- [${o.tipo === "establecedora" ? "OE" : "OA"}] ${o.descripcion}\n  Efecto hipotetizado: ${o.efecto_hipotetizado}\n  Evidencia: "${o.evidencia}"`
-        )
-        .join("\n")
-    )
-  );
-
-  partes.push(
-    seccion(
-      `CONSECUENCIAS Y MANTENIMIENTO (Confianza: ${analisis.consecuencias_y_mantenimiento.confianza})`,
-      analisis.consecuencias_y_mantenimiento.contingencias
-        .map(
-          (c) =>
-            `- [${c.tipo}, ${c.inmediatez}] ${c.descripcion}\n  Evidencia: "${c.evidencia}"`
-        )
-        .join("\n")
-    )
-  );
-
-  partes.push(
-    seccion(
-      `HIPÓTESIS FUNCIONAL PRINCIPAL (Confianza: ${analisis.hipotesis_funcional_principal.confianza})`,
-      `${analisis.hipotesis_funcional_principal.enunciado}${
-        analisis.hipotesis_funcional_principal.funcion
-          ? `\nFunción: ${analisis.hipotesis_funcional_principal.funcion}`
-          : ""
-      }`
-    )
-  );
-
-  partes.push(
-    seccion(
-      "HIPÓTESIS ALTERNATIVAS",
-      analisis.hipotesis_alternativas
-        .map((h) => `- ${h.enunciado}\n  Cómo descartarla: ${h.como_descartarla}`)
+      "ANÁLISIS DE LA CONDUCTA DEL CUIDADOR",
+      analisis.analisis_cuidador
+        .map((c) => `- [${c.patron}] ${c.descripcion} — Evidencia: "${c.evidencia}"`)
         .join("\n")
     )
   );

@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { AnalisisFuncional, NivelConfianza } from "@/lib/types";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type {
+  AnalisisFuncional,
+  AnalisisSituacional,
+  EslabonCadena,
+  NivelConfianza,
+} from "@/lib/types";
 
 interface ReportViewProps {
   analisis: AnalisisFuncional;
@@ -10,18 +15,24 @@ interface ReportViewProps {
   fecha: string;
 }
 
-const SECCIONES_INDICE = [
+interface SeccionIndice {
+  id: string;
+  titulo: string;
+}
+
+const BASE_SECCIONES: SeccionIndice[] = [
   { id: "hipotesis-principal", titulo: "Hipótesis principal" },
+  { id: "funciones", titulo: "Resumen de funciones" },
   { id: "resumen", titulo: "Resumen clínico" },
-  { id: "conductas", titulo: "Conductas problema" },
+  { id: "variables-moduladoras", titulo: "Variables moduladoras" },
   { id: "analisis-funcional", titulo: "Análisis funcional detallado" },
-  { id: "alternativas", titulo: "Hipótesis alternativas" },
-  { id: "habilidades", titulo: "Habilidades recomendadas" },
+  { id: "cuidador", titulo: "Conducta del cuidador" },
   { id: "reglas-procesos", titulo: "Reglas verbales y procesos ACT" },
+  { id: "habilidades", titulo: "Habilidades recomendadas" },
   { id: "preguntas", titulo: "Preguntas para la próxima sesión" },
   { id: "intervencion", titulo: "Líneas de intervención" },
   { id: "datos-faltantes", titulo: "Datos faltantes" },
-] as const;
+];
 
 function SinHallazgos() {
   return (
@@ -38,8 +49,8 @@ function Chip({ children }: { children: ReactNode }) {
   );
 }
 
-/** Chip de función hipotetizada: es una conclusión, va destacado. */
-function ChipFuncion({ children }: { children: ReactNode }) {
+/** Chip de función hipotetizada o estado destacado: es una conclusión, va resaltado. */
+function ChipDestacado({ children }: { children: ReactNode }) {
   return (
     <span className="inline-block whitespace-nowrap rounded bg-accent px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-white">
       {children}
@@ -78,7 +89,7 @@ function Confianza({ nivel }: { nivel: NivelConfianza | string }) {
 function Cita({ children }: { children: string }) {
   if (!children) return null;
   return (
-    <blockquote className="mt-2 border-l-2 border-divider pl-3">
+    <blockquote className="mt-1.5 border-l-2 border-divider pl-3">
       <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted/70">
         De la nota
       </p>
@@ -103,7 +114,6 @@ function Seccion({
   return (
     <section
       id={id}
-      data-seccion-indice={id}
       className="scroll-mt-24 border-b border-divider py-6 last:border-b-0"
     >
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -118,42 +128,226 @@ function Seccion({
   );
 }
 
-function SubSeccion({
-  titulo,
-  extra,
-  children,
-}: {
-  titulo: string;
-  extra?: ReactNode;
-  children: ReactNode;
-}) {
+function SubSeccion({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <div>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <h3 className="font-mono text-xs uppercase tracking-wide text-ink-muted">
-          {titulo}
-        </h3>
-        {extra}
-      </div>
+      <h3 className="mb-2 font-mono text-xs uppercase tracking-wide text-ink-muted">
+        {titulo}
+      </h3>
       {children}
     </div>
   );
 }
 
-function tipoOperacion(tipo: string): string {
-  if (tipo === "establecedora") return "OE";
-  if (tipo === "abolidora") return "OA";
-  return tipo;
+/** Un paso dentro de una cadena de contingencia (antecedente, OM, conducta o consecuencia). */
+function PasoCadena({
+  etiqueta,
+  texto,
+  evidencia,
+  chips,
+}: {
+  etiqueta: string;
+  texto: string;
+  evidencia: string;
+  chips?: ReactNode;
+}) {
+  return (
+    <div className="relative pl-5">
+      <span
+        aria-hidden="true"
+        className="absolute left-0 top-1.5 h-2 w-2 rounded-full border-2 border-accent bg-surface"
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+          {etiqueta}
+        </p>
+        {chips}
+      </div>
+      <p className="mt-0.5 text-[15px] leading-relaxed text-ink">{texto}</p>
+      <Cita>{evidencia}</Cita>
+    </div>
+  );
 }
 
-/** Índice de secciones con resaltado de la sección visible (scroll-spy). */
-function useSeccionActiva() {
-  const [activa, setActiva] = useState<string>(SECCIONES_INDICE[0].id);
+function EslabonView({ eslabon }: { eslabon: EslabonCadena }) {
+  return (
+    <div className="space-y-4 border-l-2 border-divider py-1">
+      <PasoCadena
+        etiqueta="Antecedente"
+        texto={eslabon.antecedente.descripcion}
+        evidencia={eslabon.antecedente.evidencia}
+      />
+      {eslabon.operacion_motivacional && (
+        <PasoCadena
+          etiqueta={`Operación motivacional (${
+            eslabon.operacion_motivacional.tipo === "establecedora" ? "OE" : "OA"
+          })`}
+          texto={eslabon.operacion_motivacional.descripcion}
+          evidencia={eslabon.operacion_motivacional.evidencia}
+        />
+      )}
+      <PasoCadena
+        etiqueta="Conducta"
+        texto={eslabon.conducta.descripcion}
+        evidencia={eslabon.conducta.evidencia}
+        chips={
+          <>
+            <Chip>
+              {eslabon.conducta.tipo_respuesta === "operante"
+                ? "Operante"
+                : "Respondiente"}
+            </Chip>
+            <Chip>{eslabon.conducta.tipo_manifestacion}</Chip>
+          </>
+        }
+      />
+      {eslabon.consecuencia ? (
+        <PasoCadena
+          etiqueta="Consecuencia"
+          texto={eslabon.consecuencia.descripcion}
+          evidencia={eslabon.consecuencia.evidencia}
+          chips={
+            <>
+              <Chip>{eslabon.consecuencia.tipo}</Chip>
+              <Chip>{eslabon.consecuencia.inmediatez}</Chip>
+            </>
+          }
+        />
+      ) : (
+        <p className="pl-5 text-xs text-ink-muted">
+          Sin consecuencia contingente: respuesta respondiente, elicitada
+          automáticamente por el antecedente.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SituacionCard({ situacion }: { situacion: AnalisisSituacional }) {
+  return (
+    <div
+      id={`situacion-${situacion.id}`}
+      className="scroll-mt-24 rounded-md border border-divider p-5 sm:p-6"
+    >
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-serif text-base font-semibold text-ink sm:text-lg">
+          {situacion.contexto}
+        </h3>
+        <div className="flex flex-wrap items-center gap-2">
+          {situacion.patron_central && <ChipDestacado>Patrón central</ChipDestacado>}
+          <Confianza nivel={situacion.hipotesis.confianza} />
+        </div>
+      </div>
+
+      <div className="space-y-5">
+        {situacion.cadena.length === 0 ? (
+          <SinHallazgos />
+        ) : (
+          situacion.cadena.map((eslabon, i) => (
+            <EslabonView key={i} eslabon={eslabon} />
+          ))
+        )}
+      </div>
+
+      {situacion.hipotesis.enunciado && (
+        <div className="mt-5 rounded border-l-4 border-accent/60 bg-accent/[0.04] p-4">
+          <p className="text-[15px] leading-relaxed text-ink">
+            {situacion.hipotesis.enunciado}
+          </p>
+          {situacion.hipotesis.funcion && (
+            <p className="mt-2">
+              <Chip>{situacion.hipotesis.funcion}</Chip>
+            </p>
+          )}
+        </div>
+      )}
+
+      {situacion.hipotesis_alternativas.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-2 font-mono text-xs uppercase tracking-wide text-ink-muted">
+            Hipótesis alternativas
+          </p>
+          <ul className="space-y-2">
+            {situacion.hipotesis_alternativas.map((h, i) => (
+              <li key={i}>
+                <p className="text-sm text-ink">{h.enunciado}</p>
+                <p className="text-sm text-ink-muted">
+                  Cómo descartarla: {h.como_descartarla}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {situacion.consecuencias_mantenimiento_largo_plazo && (
+        <div className="mt-4">
+          <p className="mb-1 font-mono text-xs uppercase tracking-wide text-ink-muted">
+            Mantenimiento a largo plazo
+          </p>
+          <p className="text-sm text-ink">
+            {situacion.consecuencias_mantenimiento_largo_plazo.descripcion}
+          </p>
+          <Cita>{situacion.consecuencias_mantenimiento_largo_plazo.evidencia}</Cita>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TablaResumenFunciones({
+  situaciones,
+}: {
+  situaciones: AnalisisSituacional[];
+}) {
+  if (situaciones.length === 0) return <SinHallazgos />;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[480px] border-collapse text-sm">
+        <thead>
+          <tr className="border-b border-divider text-left font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+            <th className="py-2 pr-4 font-medium">Situación</th>
+            <th className="py-2 pr-4 font-medium">Conducta</th>
+            <th className="py-2 pr-4 font-medium">Función probable</th>
+            <th className="py-2 font-medium">Confianza</th>
+          </tr>
+        </thead>
+        <tbody>
+          {situaciones.map((s) => {
+            const conducta = s.cadena[0]?.conducta.descripcion ?? "—";
+            return (
+              <tr key={s.id} className="border-b border-divider last:border-b-0">
+                <td className="py-2.5 pr-4 align-top">
+                  <a
+                    href={`#situacion-${s.id}`}
+                    className="text-ink underline decoration-divider underline-offset-2 transition-colors hover:text-accent"
+                  >
+                    {s.contexto}
+                  </a>
+                </td>
+                <td className="py-2.5 pr-4 align-top text-ink">{conducta}</td>
+                <td className="py-2.5 pr-4 align-top text-ink-muted">
+                  {s.hipotesis.funcion || "—"}
+                </td>
+                <td className="py-2.5 align-top">
+                  <Confianza nivel={s.hipotesis.confianza} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function useSeccionActiva(ids: string[]) {
+  const [activa, setActiva] = useState<string>(ids[0] ?? "");
 
   useEffect(() => {
-    const elementos = SECCIONES_INDICE.map(({ id }) =>
-      document.getElementById(id)
-    ).filter((el): el is HTMLElement => el !== null);
+    const elementos = ids
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
 
     if (elementos.length === 0) return;
 
@@ -171,19 +365,25 @@ function useSeccionActiva() {
 
     elementos.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, []);
+  }, [ids]);
 
   return activa;
 }
 
-function IndiceLateral({ activa }: { activa: string }) {
+function IndiceLateral({
+  secciones,
+  activa,
+}: {
+  secciones: SeccionIndice[];
+  activa: string;
+}) {
   return (
     <nav
       aria-label="Índice del informe"
-      className="hidden shrink-0 lg:sticky lg:top-24 lg:block lg:h-fit lg:w-[190px]"
+      className="hidden shrink-0 lg:sticky lg:top-24 lg:block lg:h-fit lg:w-[200px]"
     >
       <ul className="space-y-1 border-l border-divider pl-3 text-sm">
-        {SECCIONES_INDICE.map(({ id, titulo }) => (
+        {secciones.map(({ id, titulo }) => (
           <li key={id}>
             <a
               href={`#${id}`}
@@ -202,7 +402,13 @@ function IndiceLateral({ activa }: { activa: string }) {
   );
 }
 
-function IndiceMovil({ activa }: { activa: string }) {
+function IndiceMovil({
+  secciones,
+  activa,
+}: {
+  secciones: SeccionIndice[];
+  activa: string;
+}) {
   const [abierto, setAbierto] = useState(false);
   const contenedorRef = useRef<HTMLDivElement>(null);
 
@@ -220,7 +426,7 @@ function IndiceMovil({ activa }: { activa: string }) {
   }, []);
 
   const tituloActivo =
-    SECCIONES_INDICE.find((s) => s.id === activa)?.titulo ?? "Ir a…";
+    secciones.find((s) => s.id === activa)?.titulo ?? "Ir a…";
 
   return (
     <div ref={contenedorRef} className="relative mb-4 lg:hidden">
@@ -239,7 +445,7 @@ function IndiceMovil({ activa }: { activa: string }) {
       </button>
       {abierto && (
         <ul className="absolute z-10 mt-1 w-full rounded border border-divider bg-surface py-1 shadow-md">
-          {SECCIONES_INDICE.map(({ id, titulo }) => (
+          {secciones.map(({ id, titulo }) => (
             <li key={id}>
               <a
                 href={`#${id}`}
@@ -264,7 +470,18 @@ export default function ReportView({
   onReferenciaCasoChange,
   fecha,
 }: ReportViewProps) {
-  const activa = useSeccionActiva();
+  const hayCuidador = analisis.analisis_cuidador.length > 0;
+  const secciones = useMemo(
+    () => BASE_SECCIONES.filter((s) => s.id !== "cuidador" || hayCuidador),
+    [hayCuidador]
+  );
+  const ids = useMemo(() => secciones.map((s) => s.id), [secciones]);
+  const activa = useSeccionActiva(ids);
+
+  const situacionCentral =
+    analisis.analisis_situacional.find((s) => s.patron_central) ??
+    analisis.analisis_situacional[0] ??
+    null;
 
   return (
     <div className="rounded-md border border-divider bg-surface px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-12 lg:py-10 print:rounded-none print:border-none print:px-0 print:py-0 print:shadow-none">
@@ -310,24 +527,22 @@ export default function ReportView({
 
       {/* Hipótesis funcional principal — el titular del informe. */}
       <section id="hipotesis-principal" className="scroll-mt-24 mb-8">
-        {analisis.hipotesis_funcional_principal.enunciado ? (
+        {situacionCentral && situacionCentral.hipotesis.enunciado ? (
           <div className="rounded-md border-l-4 border-accent bg-accent/[0.06] p-6 sm:p-8">
             <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-accent">
-              Hipótesis funcional principal
+              Hipótesis funcional principal · {situacionCentral.contexto}
             </p>
             <p className="mt-3 font-serif text-xl leading-relaxed text-ink sm:text-2xl">
-              {analisis.hipotesis_funcional_principal.enunciado}
+              {situacionCentral.hipotesis.enunciado}
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              {analisis.hipotesis_funcional_principal.funcion && (
-                <ChipFuncion>
-                  {analisis.hipotesis_funcional_principal.funcion}
-                </ChipFuncion>
+              {situacionCentral.hipotesis.funcion && (
+                <ChipDestacado>{situacionCentral.hipotesis.funcion}</ChipDestacado>
               )}
-              <Confianza nivel={analisis.hipotesis_funcional_principal.confianza} />
+              <Confianza nivel={situacionCentral.hipotesis.confianza} />
             </div>
             <a
-              href="#resumen"
+              href="#funciones"
               className="mt-5 inline-block text-sm text-ink-muted underline decoration-divider underline-offset-4 transition-colors hover:text-accent"
             >
               Ver análisis completo ↓
@@ -338,12 +553,16 @@ export default function ReportView({
         )}
       </section>
 
-      <IndiceMovil activa={activa} />
+      <IndiceMovil secciones={secciones} activa={activa} />
 
       <div className="lg:flex lg:items-start lg:gap-10">
-        <IndiceLateral activa={activa} />
+        <IndiceLateral secciones={secciones} activa={activa} />
 
         <div className="min-w-0 flex-1">
+          <Seccion id="funciones" titulo="Resumen de funciones">
+            <TablaResumenFunciones situaciones={analisis.analisis_situacional} />
+          </Seccion>
+
           <Seccion id="resumen" titulo="Resumen clínico">
             {analisis.resumen_clinico ? (
               <p className="text-[15px] leading-relaxed text-ink">
@@ -354,14 +573,56 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="conductas" titulo="Conductas problema">
-            {analisis.conductas_problema.length === 0 ? (
+          <Seccion id="variables-moduladoras" titulo="Variables moduladoras">
+            {analisis.variables_moduladoras.length === 0 ? (
               <SinHallazgos />
             ) : (
+              <div className="space-y-5">
+                {(["personal", "ambiental"] as const).map((categoria) => {
+                  const items = analisis.variables_moduladoras.filter(
+                    (v) => v.categoria === categoria
+                  );
+                  if (items.length === 0) return null;
+                  return (
+                    <SubSeccion
+                      key={categoria}
+                      titulo={categoria === "personal" ? "Personales" : "Ambientales"}
+                    >
+                      <ul className="space-y-3">
+                        {items.map((v, i) => (
+                          <li key={i}>
+                            <p className="text-[15px] leading-relaxed text-ink">
+                              {v.descripcion}
+                            </p>
+                            <Cita>{v.evidencia}</Cita>
+                          </li>
+                        ))}
+                      </ul>
+                    </SubSeccion>
+                  );
+                })}
+              </div>
+            )}
+          </Seccion>
+
+          <Seccion id="analisis-funcional" titulo="Análisis funcional detallado">
+            {analisis.analisis_situacional.length === 0 ? (
+              <SinHallazgos />
+            ) : (
+              <div className="space-y-6">
+                {analisis.analisis_situacional.map((s) => (
+                  <SituacionCard key={s.id} situacion={s} />
+                ))}
+              </div>
+            )}
+          </Seccion>
+
+          {hayCuidador && (
+            <Seccion id="cuidador" titulo="Conducta del cuidador">
               <ul className="space-y-4">
-                {analisis.conductas_problema.map((c, i) => (
+                {analisis.analisis_cuidador.map((c, i) => (
                   <li key={i}>
-                    <Chip>{c.tipo}</Chip>
+                    <Chip>{c.patron}</Chip>
                     <p className="mt-1 text-[15px] leading-relaxed text-ink">
                       {c.descripcion}
                     </p>
@@ -369,169 +630,8 @@ export default function ReportView({
                   </li>
                 ))}
               </ul>
-            )}
-          </Seccion>
-
-          <Seccion id="analisis-funcional" titulo="Análisis funcional detallado">
-            <div className="space-y-6">
-              <SubSeccion
-                titulo="Antecedentes"
-                extra={<Confianza nivel={analisis.antecedentes.confianza} />}
-              >
-                <div className="space-y-4">
-                  <div>
-                    <p className="mb-1.5 text-xs font-medium text-ink-muted">
-                      Estímulos discriminativos
-                    </p>
-                    {analisis.antecedentes.estimulos_discriminativos.length === 0 ? (
-                      <SinHallazgos />
-                    ) : (
-                      <ul className="space-y-3">
-                        {analisis.antecedentes.estimulos_discriminativos.map(
-                          (e, i) => (
-                            <li key={i}>
-                              <p className="text-[15px] leading-relaxed text-ink">
-                                {e.descripcion}
-                              </p>
-                              <Cita>{e.evidencia}</Cita>
-                            </li>
-                          )
-                        )}
-                      </ul>
-                    )}
-                  </div>
-                  <div>
-                    <p className="mb-1.5 text-xs font-medium text-ink-muted">
-                      Contexto situacional
-                    </p>
-                    {analisis.antecedentes.contexto_situacional.length === 0 ? (
-                      <SinHallazgos />
-                    ) : (
-                      <ul className="space-y-3">
-                        {analisis.antecedentes.contexto_situacional.map((c, i) => (
-                          <li key={i}>
-                            <p className="text-[15px] leading-relaxed text-ink">
-                              {c.descripcion}
-                            </p>
-                            <Cita>{c.evidencia}</Cita>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              </SubSeccion>
-
-              <SubSeccion titulo="Operaciones motivacionales">
-                {analisis.operaciones_motivacionales.length === 0 ? (
-                  <SinHallazgos />
-                ) : (
-                  <ul className="space-y-4">
-                    {analisis.operaciones_motivacionales.map((o, i) => (
-                      <li key={i}>
-                        <Chip>{tipoOperacion(o.tipo)}</Chip>
-                        <p className="mt-1 text-[15px] leading-relaxed text-ink">
-                          {o.descripcion}
-                        </p>
-                        {o.efecto_hipotetizado && (
-                          <p className="mt-1 text-sm text-ink-muted">
-                            Efecto hipotetizado: {o.efecto_hipotetizado}
-                          </p>
-                        )}
-                        <Cita>{o.evidencia}</Cita>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </SubSeccion>
-
-              <SubSeccion
-                titulo="Consecuencias y contingencias de mantenimiento"
-                extra={
-                  <Confianza
-                    nivel={analisis.consecuencias_y_mantenimiento.confianza}
-                  />
-                }
-              >
-                {analisis.consecuencias_y_mantenimiento.contingencias.length ===
-                0 ? (
-                  <SinHallazgos />
-                ) : (
-                  <ul className="space-y-4">
-                    {analisis.consecuencias_y_mantenimiento.contingencias.map(
-                      (c, i) => (
-                        <li key={i}>
-                          <div className="flex flex-wrap gap-2">
-                            <Chip>{c.tipo}</Chip>
-                            <Chip>{c.inmediatez}</Chip>
-                          </div>
-                          <p className="mt-1 text-[15px] leading-relaxed text-ink">
-                            {c.descripcion}
-                          </p>
-                          <Cita>{c.evidencia}</Cita>
-                        </li>
-                      )
-                    )}
-                  </ul>
-                )}
-              </SubSeccion>
-            </div>
-          </Seccion>
-
-          <Seccion id="alternativas" titulo="Hipótesis alternativas">
-            {analisis.hipotesis_alternativas.length === 0 ? (
-              <SinHallazgos />
-            ) : (
-              <ul className="space-y-4">
-                {analisis.hipotesis_alternativas.map((h, i) => (
-                  <li key={i}>
-                    <p className="text-[15px] leading-relaxed text-ink">
-                      {h.enunciado}
-                    </p>
-                    <p className="mt-1 text-sm text-ink-muted">
-                      Cómo descartarla: {h.como_descartarla}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Seccion>
-
-          <Seccion
-            id="habilidades"
-            titulo="Habilidades recomendadas"
-            extra={
-              <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
-                Modelo: {analisis.modelo_terapeutico.toUpperCase()}
-              </span>
-            }
-          >
-            {analisis.habilidades_recomendadas.length === 0 ? (
-              <SinHallazgos />
-            ) : (
-              <ul className="space-y-4">
-                {analisis.habilidades_recomendadas.map((h, i) => (
-                  <li key={i}>
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="text-[15px] font-medium leading-relaxed text-ink">
-                        {h.habilidad}
-                      </p>
-                      <Chip>{h.modulo}</Chip>
-                    </div>
-                    <p className="mt-1 text-sm text-ink-muted">
-                      {h.justificacion}
-                    </p>
-                    <p className="mt-1 text-sm text-ink-muted">
-                      <span className="font-medium text-ink">
-                        Cómo practicarla:
-                      </span>{" "}
-                      {h.como_practicarla}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Seccion>
+            </Seccion>
+          )}
 
           <Seccion id="reglas-procesos" titulo="Reglas verbales y procesos ACT">
             <div className="space-y-6">
@@ -578,6 +678,42 @@ export default function ReportView({
                 )}
               </SubSeccion>
             </div>
+          </Seccion>
+
+          <Seccion
+            id="habilidades"
+            titulo="Habilidades recomendadas"
+            extra={
+              <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+                Modelo: {analisis.modelo_terapeutico.toUpperCase()}
+              </span>
+            }
+          >
+            {analisis.habilidades_recomendadas.length === 0 ? (
+              <SinHallazgos />
+            ) : (
+              <ul className="space-y-4">
+                {analisis.habilidades_recomendadas.map((h, i) => (
+                  <li key={i}>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="text-[15px] font-medium leading-relaxed text-ink">
+                        {h.habilidad}
+                      </p>
+                      <Chip>{h.modulo}</Chip>
+                    </div>
+                    <p className="mt-1 text-sm text-ink-muted">
+                      {h.justificacion}
+                    </p>
+                    <p className="mt-1 text-sm text-ink-muted">
+                      <span className="font-medium text-ink">
+                        Cómo practicarla:
+                      </span>{" "}
+                      {h.como_practicarla}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Seccion>
 
           <Seccion id="preguntas" titulo="Preguntas para la próxima sesión">

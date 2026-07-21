@@ -9,56 +9,71 @@ export interface HabilidadRecomendada {
   como_practicarla: string;
 }
 
-export interface ConductaProblema {
+export type TipoRespuesta = "operante" | "respondiente";
+export type TipoManifestacion = "manifiesta" | "encubierta";
+export type CategoriaVariableModuladora = "personal" | "ambiental";
+export type TipoContingencia =
+  | "refuerzo positivo"
+  | "refuerzo negativo"
+  | "castigo positivo"
+  | "castigo negativo"
+  | "extincion";
+
+export interface VariableModuladora {
   descripcion: string;
-  tipo: string;
+  categoria: CategoriaVariableModuladora;
   evidencia: string;
 }
 
-export interface EstimuloDiscriminativo {
-  descripcion: string;
-  evidencia: string;
-}
-
-export interface ContextoSituacional {
-  descripcion: string;
-  evidencia: string;
-}
-
-export interface Antecedentes {
-  estimulos_discriminativos: EstimuloDiscriminativo[];
-  contexto_situacional: ContextoSituacional[];
-  confianza: NivelConfianza;
-}
-
-export interface OperacionMotivacional {
-  tipo: string;
-  descripcion: string;
-  efecto_hipotetizado: string;
-  evidencia: string;
-}
-
-export interface Contingencia {
-  tipo: string;
-  descripcion: string;
-  inmediatez: string;
-  evidencia: string;
-}
-
-export interface ConsecuenciasYMantenimiento {
-  contingencias: Contingencia[];
-  confianza: NivelConfianza;
-}
-
-export interface HipotesisFuncionalPrincipal {
-  enunciado: string;
-  funcion: string;
-  confianza: NivelConfianza;
+export interface EslabonCadena {
+  antecedente: { descripcion: string; evidencia: string };
+  operacion_motivacional: {
+    tipo: "establecedora" | "abolidora";
+    descripcion: string;
+    evidencia: string;
+  } | null;
+  conducta: {
+    descripcion: string;
+    tipo_manifestacion: TipoManifestacion;
+    tipo_respuesta: TipoRespuesta;
+    evidencia: string;
+  };
+  /** null cuando tipo_respuesta = "respondiente": no está mantenida por una consecuencia. */
+  consecuencia: {
+    tipo: TipoContingencia;
+    descripcion: string;
+    inmediatez: "inmediata" | "demorada";
+    evidencia: string;
+  } | null;
 }
 
 export interface HipotesisAlternativa {
   enunciado: string;
   como_descartarla: string;
+}
+
+export interface AnalisisSituacional {
+  id: string;
+  contexto: string;
+  patron_central: boolean;
+  cadena: EslabonCadena[];
+  hipotesis: {
+    enunciado: string;
+    funcion: string;
+    confianza: NivelConfianza;
+  };
+  hipotesis_alternativas: HipotesisAlternativa[];
+  consecuencias_mantenimiento_largo_plazo: {
+    descripcion: string;
+    evidencia: string;
+  } | null;
+}
+
+export interface AnalisisCuidador {
+  situacion_id: string | null;
+  patron: string;
+  descripcion: string;
+  evidencia: string;
 }
 
 export interface ReglaVerbal {
@@ -76,12 +91,9 @@ export interface ProcesoACT {
 
 export interface AnalisisFuncional {
   resumen_clinico: string;
-  conductas_problema: ConductaProblema[];
-  antecedentes: Antecedentes;
-  operaciones_motivacionales: OperacionMotivacional[];
-  consecuencias_y_mantenimiento: ConsecuenciasYMantenimiento;
-  hipotesis_funcional_principal: HipotesisFuncionalPrincipal;
-  hipotesis_alternativas: HipotesisAlternativa[];
+  variables_moduladoras: VariableModuladora[];
+  analisis_situacional: AnalisisSituacional[];
+  analisis_cuidador: AnalisisCuidador[];
   reglas_verbales: ReglaVerbal[];
   procesos_act: ProcesoACT[];
   preguntas_para_sesion: string[];
