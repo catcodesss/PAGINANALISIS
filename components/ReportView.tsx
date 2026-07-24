@@ -702,18 +702,19 @@ function IndiceLateral({
   return (
     <nav
       aria-label="Índice del informe"
-      className="hidden shrink-0 print:hidden lg:sticky lg:top-24 lg:block lg:h-fit lg:w-[200px]"
+      className="hidden shrink-0 print:hidden lg:sticky lg:top-24 lg:block lg:h-fit lg:w-[210px]"
     >
-      <ul className="space-y-1 border-l border-divider pl-3 text-sm">
+      <ul className="space-y-3.5 text-sm">
         {secciones.map(({ id, titulo }) => (
           <li key={id}>
             <a
               href={`#${id}`}
-              className={
+              aria-current={activa === id ? "true" : undefined}
+              className={`block border-l-2 py-0.5 pl-3 transition-colors ${
                 activa === id
-                  ? "font-medium text-accent"
-                  : "text-ink-muted transition-colors hover:text-ink"
-              }
+                  ? "border-accent font-semibold text-accent"
+                  : "border-divider text-ink-muted hover:border-ink-muted hover:text-ink"
+              }`}
             >
               {titulo}
             </a>
@@ -871,6 +872,69 @@ function PrintOnlyDisclaimer({ fecha }: { fecha: string }) {
   );
 }
 
+const NIVELES_CONFIANZA: { nivel: string; etiqueta: string }[] = [
+  { nivel: "alta", etiqueta: "Alta" },
+  { nivel: "media", etiqueta: "Media" },
+  { nivel: "baja", etiqueta: "Baja" },
+];
+
+/**
+ * Leyenda de confianza flotante: se queda fija en pantalla mientras el
+ * usuario scrollea el informe, para que siempre pueda consultar qué
+ * significa cada nivel. Se puede minimizar/reabrir con el ícono.
+ */
+function LeyendaConfianzaFlotante() {
+  const [abierta, setAbierta] = useState(true);
+
+  return (
+    <div className="fixed bottom-4 right-4 z-30 print:hidden">
+      {abierta ? (
+        <div className="w-64 rounded-md border border-divider bg-surface p-4 shadow-lg">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+              Niveles de confianza
+            </p>
+            <button
+              type="button"
+              onClick={() => setAbierta(false)}
+              aria-label="Minimizar leyenda de confianza"
+              className="rounded p-1 text-ink-muted transition-colors hover:bg-canvas hover:text-ink"
+            >
+              ✕
+            </button>
+          </div>
+          <ul className="space-y-2">
+            {NIVELES_CONFIANZA.map(({ nivel, etiqueta }) => (
+              <li key={nivel} className="flex items-start gap-2">
+                <span
+                  aria-hidden="true"
+                  className={`mt-1 h-2 w-2 shrink-0 rounded-full ${colorConfianza(nivel)}`}
+                />
+                <p className="text-xs leading-relaxed text-ink-muted">
+                  <span className="font-medium text-ink">{etiqueta}: </span>
+                  {EXPLICACION_CONFIANZA[nivel]?.replace(/^\w+:\s*/, "")}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAbierta(true)}
+          aria-label="Mostrar leyenda de niveles de confianza"
+          title="Niveles de confianza"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-divider bg-surface text-accent shadow-lg transition-colors hover:bg-canvas"
+        >
+          <span aria-hidden="true" className="font-serif text-base font-semibold">
+            i
+          </span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function ReportView({
   analisis,
   referenciaCaso,
@@ -928,14 +992,8 @@ export default function ReportView({
           )}
         </div>
         <p className="mt-3 text-xs text-ink-muted">
-          Los niveles de{" "}
-          <span className="inline-flex items-center gap-1">
-            confianza
-            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent" />
-          </span>{" "}
-          indican qué tan respaldada está cada hipótesis por evidencia
-          explícita en la nota (alta, media o baja); pasa el cursor sobre
-          ellos para el detalle.
+          Los niveles de confianza indican qué tan respaldada está cada
+          hipótesis por evidencia explícita en la nota (alta, media o baja).
         </p>
       </header>
 
@@ -1254,6 +1312,7 @@ export default function ReportView({
       </footer>
 
       <PrintOnlyDisclaimer fecha={fecha} />
+      <LeyendaConfianzaFlotante />
     </div>
   );
 }
