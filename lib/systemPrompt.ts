@@ -44,8 +44,10 @@ Además del núcleo, analiza:
 
 const BLOQUE_DBT = `CAPA DBT.
 Además del núcleo, analiza:
-- ANÁLISIS EN CADENA de la conducta problema prioritaria, en formato DBT: factores de vulnerabilidad (derívalos de las variables moduladoras), evento precipitante, eslabones intermedios (pensamientos, emociones, sensaciones, impulsos y acciones en secuencia, según lo que la nota permita reconstruir), conducta problema, y consecuencias que la refuerzan a corto plazo y la perjudican a largo plazo.
+- ANÁLISIS EN CADENA de la conducta problema prioritaria (la de mayor importancia), en formato DBT: factores de vulnerabilidad (derívalos de las variables moduladoras), evento precipitante, eslabones intermedios (pensamientos, emociones, sensaciones, impulsos y acciones en secuencia, según lo que la nota permita reconstruir), conducta problema, y consecuencias que la refuerzan a corto plazo y la perjudican a largo plazo.
 - HABILIDADES SUGERIDAS: para los eslabones identificados, sugiere habilidades DBT específicas indicando el módulo (mindfulness, tolerancia al malestar, regulación emocional, efectividad interpersonal) y qué eslabón de la cadena interrumpiría cada una. Solo sugiere habilidades pertinentes a lo identificado.`;
+
+const NOTA_CADENA_DBT_POR_SITUACION = `DIFERENCIA CONCEPTUAL ENTRE ACT/MC Y DBT DENTRO DE "situaciones": en ACT y MC, lo que hace más probable la conducta se conceptualiza como una operación motivacional (OE/OA) sobre un antecedente puntual ("cadena_operante"). En DBT, ese mismo fenómeno se conceptualiza de otro modo: como FACTORES DE VULNERABILIDAD dentro de una cadena de eslabones, no como una operación motivacional. Por eso, para CADA situación de "situaciones", además de "cadena_operante" (para las pestañas ACT/MC) genera también "cadena_dbt" (para la pestaña DBT) describiendo esa MISMA situación con vocabulario DBT: factores de vulnerabilidad (derivados de las variables moduladoras: sueño, sustancias, historia de aprendizaje, contexto), evento precipitante (equivalente DBT del antecedente inmediato), eslabones intermedios (pensamientos, emociones, sensaciones, impulsos, acciones), la conducta problema de esa situación, y sus consecuencias (a corto y largo plazo, en una sola descripción). NO uses OE/OA/Ed dentro de los campos de "cadena_dbt": describe todo en vocabulario DBT (vulnerabilidad, eslabón, precipitante). Genera "cadena_dbt" en null solo si la situación es puramente respondiente y no tiene ninguna conducta operante que analizar en cadena (en ese caso "cadena_operante" también debe ir en null).`;
 
 const BLOQUE_MC = `CAPA CONDUCTUAL (MODIFICACIÓN DE CONDUCTA).
 Trabaja EXCLUSIVAMENTE con el aparato conceptual operante y respondiente del núcleo. NO uses procesos del hexaflex, ni módulos DBT, ni vocabulario de terapias de tercera ola.
@@ -59,6 +61,7 @@ const FORMATO_BASE = `FORMATO: responde ÚNICAMENTE con un objeto JSON válido, 
   "situaciones": [{
     "nombre": "string (etiqueta funcional breve, p. ej. 'Demandas sociales evaluativas')",
     "cadena_operante": { "antecedente": "string", "operacion_motivacional": "string o null", "respuesta": "string", "consecuencia": "string", "tipo_contingencia": "refuerzo positivo | refuerzo negativo | castigo positivo | castigo negativo | extincion", "inmediatez": "inmediata | demorada", "evidencia": "string" } o null,
+    "cadena_dbt": { "factores_vulnerabilidad": ["string"], "evento_precipitante": "string", "eslabones": [{ "tipo": "pensamiento | emocion | sensacion | impulso | accion", "descripcion": "string" }], "conducta_problema": "string", "consecuencias": "string", "evidencia": "string" } o null,
     "cadena_respondiente": { "estimulo": "string", "respuesta_condicionada": "string", "conexion_con_operante": "string o null", "evidencia": "string" } o null,
     "ciclo_interconductual": "string o null (quién refuerza a quién)",
     "funcion_hipotetizada": "string",
@@ -99,6 +102,8 @@ Genera SIEMPRE las tres capas de modalidad en la misma respuesta (el usuario pod
 ${BLOQUE_ACT}
 
 ${BLOQUE_DBT}
+
+${NOTA_CADENA_DBT_POR_SITUACION}
 
 ${BLOQUE_MC}
 

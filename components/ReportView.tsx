@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type {
   AnalisisFuncional,
+  CadenaDBT,
   CadenaOperante,
   CadenaRespondiente,
   ModeloTerapeutico,
@@ -249,6 +250,47 @@ function CadenaRespondienteView({ cadena }: { cadena: CadenaRespondiente }) {
   );
 }
 
+/** Cadena de eslabones DBT: misma situación que cadena_operante, conceptualizada con vocabulario DBT. */
+function CadenaDBTView({ cadena }: { cadena: CadenaDBT }) {
+  const filas: FilaCadena[] = [
+    { elemento: "Precipitante", valor: cadena.evento_precipitante },
+    ...cadena.eslabones.map((e, i) => ({
+      elemento: `Eslabón ${i + 1}`,
+      valor: `[${e.tipo}] ${e.descripcion}`,
+    })),
+    { elemento: "Conducta", valor: cadena.conducta_problema },
+    { elemento: "Consecuencias", valor: cadena.consecuencias },
+  ];
+
+  return (
+    <div>
+      <p className="mb-2 font-serif text-[15px] font-bold text-ink">
+        Cadena de eslabones (DBT)
+      </p>
+      {cadena.factores_vulnerabilidad.length > 0 && (
+        <div className="mb-3">
+          <p className="mb-1 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+            Factores de vulnerabilidad
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            {cadena.factores_vulnerabilidad.map((v, i) => (
+              <li key={i} className="text-sm text-ink">
+                {v}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <TablaCadena filas={filas} />
+      <NotacionCadena
+        formula="Precipitante → Eslabones → Conducta → Consecuencias"
+        natural={`${cadena.evento_precipitante} → ${cadena.conducta_problema} → ${cadena.consecuencias}`}
+      />
+      <Cita>{cadena.evidencia}</Cita>
+    </div>
+  );
+}
+
 function CicloInterconductual({ texto }: { texto: string }) {
   return (
     <div
@@ -471,38 +513,60 @@ function DetalleMC({ capa }: { capa: AnalisisFuncional["capa_mc"] }) {
 
 const MODELOS: ModeloTerapeutico[] = ["act", "dbt", "mc"];
 
-/** Selector de pestañas cliente-side: alterna cuál capa se muestra sin volver a consultar la IA. */
+/**
+ * Botones de pestaña reutilizables: se usan tanto arriba de "Análisis por
+ * situaciones" (donde cambian qué cadena se ve) como en "Detalle según
+ * modelo terapéutico" (donde cambian qué capa se ve), ambos ligados al mismo
+ * estado para que no se desincronicen.
+ */
+function BotonesModalidad({
+  activa,
+  onChange,
+}: {
+  activa: ModeloTerapeutico;
+  onChange: (m: ModeloTerapeutico) => void;
+}) {
+  return (
+    <div className="flex w-full overflow-hidden rounded border border-divider print:hidden sm:inline-flex sm:w-auto">
+      {MODELOS.map((m) => (
+        <button
+          key={m}
+          type="button"
+          onClick={() => onChange(m)}
+          aria-pressed={activa === m}
+          className={`flex-1 px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:flex-none ${
+            activa === m
+              ? "bg-accent text-white"
+              : "bg-surface text-ink-muted hover:bg-canvas"
+          }`}
+        >
+          {ETIQUETA_MODELO[m]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Detalle de capa según la pestaña activa; en impresión no hay pestañas interactivas, así que se listan las tres. */
 function SelectorCapaModalidad({
   analisis,
+  pestanaActiva,
+  onCambiarPestana,
 }: {
   analisis: AnalisisFuncional;
+  pestanaActiva: ModeloTerapeutico;
+  onCambiarPestana: (m: ModeloTerapeutico) => void;
 }) {
-  const [modeloVisible, setModeloVisible] = useState<ModeloTerapeutico>("act");
-
   return (
     <div>
-      <div className="mb-4 flex w-full overflow-hidden rounded border border-divider print:hidden sm:inline-flex sm:w-auto">
-        {MODELOS.map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => setModeloVisible(m)}
-            aria-pressed={modeloVisible === m}
-            className={`flex-1 px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:flex-none ${
-              modeloVisible === m
-                ? "bg-accent text-white"
-                : "bg-surface text-ink-muted hover:bg-canvas"
-            }`}
-          >
-            {ETIQUETA_MODELO[m]}
-          </button>
-        ))}
+      <div className="mb-4">
+        <BotonesModalidad activa={pestanaActiva} onChange={onCambiarPestana} />
       </div>
 
       <div className="print:hidden">
-        {modeloVisible === "act" && <DetalleACT capa={analisis.capa_act} />}
-        {modeloVisible === "dbt" && <DetalleDBT capa={analisis.capa_dbt} />}
-        {modeloVisible === "mc" && <DetalleMC capa={analisis.capa_mc} />}
+        {pestanaActiva === "act" && <DetalleACT capa={analisis.capa_act} />}
+        {pestanaActiva === "dbt" && <DetalleDBT capa={analisis.capa_dbt} />}
+        {pestanaActiva === "mc" && <DetalleMC capa={analisis.capa_mc} />}
       </div>
 
       {/* Impresión: no hay pestañas interactivas en papel, así que se listan las tres. */}
@@ -530,9 +594,16 @@ function SelectorCapaModalidad({
   );
 }
 
-function SituacionCard({ situacion }: { situacion: Situacion }) {
+function SituacionCard({
+  situacion,
+  pestanaActiva,
+}: {
+  situacion: Situacion;
+  pestanaActiva: ModeloTerapeutico;
+}) {
   const tieneAmbas = Boolean(
-    situacion.cadena_respondiente && situacion.cadena_operante
+    situacion.cadena_respondiente &&
+      (situacion.cadena_operante || situacion.cadena_dbt)
   );
 
   return (
@@ -560,13 +631,22 @@ function SituacionCard({ situacion }: { situacion: Situacion }) {
           <p className="text-sm italic text-ink-muted">Posteriormente</p>
         )}
 
+        {/* En pantalla se muestra solo la cadena de la pestaña activa; en impresión, ambas (no hay pestañas en papel). */}
         {situacion.cadena_operante && (
-          <CadenaOperanteView cadena={situacion.cadena_operante} />
+          <div className={pestanaActiva === "dbt" ? "hidden print:block" : "block"}>
+            <CadenaOperanteView cadena={situacion.cadena_operante} />
+          </div>
         )}
 
-        {!situacion.cadena_operante && !situacion.cadena_respondiente && (
-          <SinHallazgos />
+        {situacion.cadena_dbt && (
+          <div className={pestanaActiva === "dbt" ? "block" : "hidden print:block"}>
+            <CadenaDBTView cadena={situacion.cadena_dbt} />
+          </div>
         )}
+
+        {!situacion.cadena_operante &&
+          !situacion.cadena_respondiente &&
+          !situacion.cadena_dbt && <SinHallazgos />}
       </div>
 
       {situacion.ciclo_interconductual && (
@@ -799,6 +879,7 @@ export default function ReportView({
 }: ReportViewProps) {
   const ids = useMemo(() => SECCIONES.map((s) => s.id), []);
   const activa = useSeccionActiva(ids);
+  const [pestanaActiva, setPestanaActiva] = useState<ModeloTerapeutico>("act");
 
   const hipotesisDestacada = useMemo(() => {
     const conductaAlta = analisis.conductas_problema.find(
@@ -974,13 +1055,19 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="situaciones" titulo="Análisis por situaciones">
+          <Seccion
+            id="situaciones"
+            titulo="Análisis por situaciones"
+            extra={
+              <BotonesModalidad activa={pestanaActiva} onChange={setPestanaActiva} />
+            }
+          >
             {analisis.situaciones.length === 0 ? (
               <SinHallazgos />
             ) : (
               <div className="space-y-6">
                 {analisis.situaciones.map((s, i) => (
-                  <SituacionCard key={i} situacion={s} />
+                  <SituacionCard key={i} situacion={s} pestanaActiva={pestanaActiva} />
                 ))}
               </div>
             )}
@@ -1088,7 +1175,11 @@ export default function ReportView({
 
           <Seccion id="modalidad" titulo="Detalle según modelo terapéutico">
             <DetalleModalidad>
-              <SelectorCapaModalidad analisis={analisis} />
+              <SelectorCapaModalidad
+                analisis={analisis}
+                pestanaActiva={pestanaActiva}
+                onCambiarPestana={setPestanaActiva}
+              />
             </DetalleModalidad>
           </Seccion>
 

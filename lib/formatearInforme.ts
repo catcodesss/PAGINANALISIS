@@ -29,6 +29,21 @@ function formatearSituacion(s: Situacion): string {
     lineas.push(`  Evidencia: "${c.evidencia}"`);
   }
 
+  if (s.cadena_dbt) {
+    const c = s.cadena_dbt;
+    lineas.push("Cadena de eslabones (DBT):");
+    lineas.push(
+      `  Factores de vulnerabilidad: ${c.factores_vulnerabilidad.join("; ") || "—"}`
+    );
+    lineas.push(`  Evento precipitante: ${c.evento_precipitante}`);
+    c.eslabones.forEach((e, i) => {
+      lineas.push(`  Eslabón ${i + 1} [${e.tipo}]: ${e.descripcion}`);
+    });
+    lineas.push(`  Conducta problema: ${c.conducta_problema}`);
+    lineas.push(`  Consecuencias: ${c.consecuencias}`);
+    lineas.push(`  Evidencia: "${c.evidencia}"`);
+  }
+
   if (s.cadena_respondiente) {
     const c = s.cadena_respondiente;
     lineas.push("Cadena respondiente:");

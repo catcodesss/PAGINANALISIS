@@ -42,10 +42,27 @@ export interface CadenaRespondiente {
   evidencia: string;
 }
 
+/**
+ * Cadena de eslabones al estilo DBT para la misma situación: lo que en la
+ * cadena operante se conceptualiza como operación motivacional (OE/OA) aquí
+ * se conceptualiza como factores de vulnerabilidad dentro de una cadena de
+ * eslabones. Se genera siempre junto a cadena_operante (no una en vez de la
+ * otra) para poder alternar de pestaña sin volver a consultar la IA.
+ */
+export interface CadenaDBT {
+  factores_vulnerabilidad: string[];
+  evento_precipitante: string;
+  eslabones: EslabonDBT[];
+  conducta_problema: string;
+  consecuencias: string;
+  evidencia: string;
+}
+
 export interface Situacion {
   nombre: string;
   cadena_operante: CadenaOperante | null;
   cadena_respondiente: CadenaRespondiente | null;
+  cadena_dbt: CadenaDBT | null;
   ciclo_interconductual: string | null;
   funcion_hipotetizada: string;
   confianza: NivelConfianza;

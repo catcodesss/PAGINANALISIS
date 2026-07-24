@@ -1,5 +1,6 @@
 import type {
   AnalisisFuncional,
+  CadenaDBT,
   CadenaOperante,
   CadenaRespondiente,
   CapaModalidadACT,
@@ -124,12 +125,34 @@ function normalizarCadenaRespondiente(valor: unknown): CadenaRespondiente | null
   };
 }
 
+function normalizarCadenaDBT(valor: unknown): CadenaDBT | null {
+  const d = comoObjetoONulo(valor);
+  if (!d) return null;
+  return {
+    factores_vulnerabilidad: comoArreglo<string>(d.factores_vulnerabilidad),
+    evento_precipitante: comoTexto(d.evento_precipitante),
+    eslabones: comoArreglo<unknown>(d.eslabones).map((e) => {
+      const eo = comoObjeto(e);
+      return {
+        tipo: TIPOS_ESLABON_DBT.includes(eo.tipo as string)
+          ? (eo.tipo as "pensamiento")
+          : "pensamiento",
+        descripcion: comoTexto(eo.descripcion),
+      };
+    }),
+    conducta_problema: comoTexto(d.conducta_problema),
+    consecuencias: comoTexto(d.consecuencias),
+    evidencia: comoTexto(d.evidencia),
+  };
+}
+
 function normalizarSituacion(valor: unknown, indice: number): Situacion {
   const d = comoObjeto(valor);
   return {
     nombre: comoTexto(d.nombre, `Situación ${indice + 1}`),
     cadena_operante: normalizarCadenaOperante(d.cadena_operante),
     cadena_respondiente: normalizarCadenaRespondiente(d.cadena_respondiente),
+    cadena_dbt: normalizarCadenaDBT(d.cadena_dbt),
     ciclo_interconductual: comoTextoONulo(d.ciclo_interconductual),
     funcion_hipotetizada: comoTexto(d.funcion_hipotetizada),
     confianza: comoConfianza(d.confianza),
