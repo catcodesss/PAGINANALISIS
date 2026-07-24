@@ -110,6 +110,7 @@ function normalizarCadenaOperante(valor: unknown): CadenaOperante | null {
     consecuencia: comoTexto(d.consecuencia),
     tipo_contingencia: comoTipoContingencia(d.tipo_contingencia),
     inmediatez: d.inmediatez === "demorada" ? "demorada" : "inmediata",
+    consecuencias_largo_plazo: comoTextoONulo(d.consecuencias_largo_plazo),
     evidencia: comoTexto(d.evidencia),
   };
 }

@@ -26,6 +26,9 @@ function formatearSituacion(s: Situacion): string {
     lineas.push(
       `  Consecuencia [${c.tipo_contingencia}, ${c.inmediatez}]: ${c.consecuencia}`
     );
+    if (c.consecuencias_largo_plazo) {
+      lineas.push(`  Consecuencias a largo plazo: ${c.consecuencias_largo_plazo}`);
+    }
     lineas.push(`  Evidencia: "${c.evidencia}"`);
   }
 

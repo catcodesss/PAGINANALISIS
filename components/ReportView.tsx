@@ -365,6 +365,9 @@ function CadenaOperanteView({ cadena }: { cadena: CadenaOperante }) {
     elemento: "Consecuencia",
     valor: `${codigo} (${cadena.tipo_contingencia}, ${cadena.inmediatez})`,
   });
+  if (cadena.consecuencias_largo_plazo) {
+    filas.push({ elemento: "CMLP", valor: cadena.consecuencias_largo_plazo });
+  }
 
   return (
     <div>

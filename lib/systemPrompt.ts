@@ -12,6 +12,7 @@ PRINCIPIOS OBLIGATORIOS DEL NÚCLEO (aplican siempre, en cualquier modalidad):
 - Refuerzo negativo = incremento de la conducta por retirada o evitación de estimulación aversiva (escape/evitación). JAMÁS es sinónimo de castigo.
 - Contingencias posibles: refuerzo positivo, refuerzo negativo, castigo positivo, castigo negativo, extinción.
 - Funciones posibles (puede haber varias): atención social, acceso a tangibles/actividades, escape/evitación (incluida la evitación de eventos privados: pensamientos, emociones, sensaciones), reforzamiento automático/sensorial.
+- Consecuencia inmediata ≠ consecuencias a largo plazo: la consecuencia inmediata es la que mantiene la conducta operante ahora mismo (lo que va en "consecuencia"/"tipo_contingencia"); las consecuencias a largo plazo son el coste o efecto acumulado del patrón con el tiempo (erosión del vínculo, pérdida de oportunidades, generalización de la evitación) y van en "consecuencias_largo_plazo". No las confundas ni las dupliques.
 
 4. DOS TIPOS DE PROCESO. Distingue cadenas OPERANTES (Antecedente → Respuesta → Consecuencia) de cadenas RESPONDIENTES (Estímulo condicionado → Respuesta condicionada). Cuando un episodio incluya ambos (p. ej., malestar condicionado ante una señal, seguido de conducta operante de escape de ese malestar), representa las dos cadenas y explicita su conexión.
 
@@ -63,7 +64,7 @@ const FORMATO_BASE = `FORMATO: responde ÚNICAMENTE con un objeto JSON válido, 
   "variables_moduladoras": [{ "tipo": "biologica | historia_de_aprendizaje | contextual", "descripcion": "string", "evidencia": "string" }],
   "situaciones": [{
     "nombre": "string (etiqueta funcional breve, p. ej. 'Demandas sociales evaluativas')",
-    "cadena_operante": { "antecedente": "string", "operacion_motivacional": "string o null", "respuesta": "string", "consecuencia": "string", "tipo_contingencia": "refuerzo positivo | refuerzo negativo | castigo positivo | castigo negativo | extincion", "inmediatez": "inmediata | demorada", "evidencia": "string" } o null,
+    "cadena_operante": { "antecedente": "string", "operacion_motivacional": "string o null", "respuesta": "string", "consecuencia": "string", "tipo_contingencia": "refuerzo positivo | refuerzo negativo | castigo positivo | castigo negativo | extincion", "inmediatez": "inmediata | demorada", "consecuencias_largo_plazo": "string o null (efecto a mediano/largo plazo que mantiene o agrava el patrón, distinto de la consecuencia inmediata; null si la nota no da base para inferirlo)", "evidencia": "string" } o null,
     "cadena_dbt": { "factores_vulnerabilidad": ["string"], "evento_precipitante": "string", "eslabones": [{ "tipo": "pensamiento | emocion | sensacion | impulso | accion", "descripcion": "string" }], "conducta_problema": "string", "consecuencias": "string", "evidencia": "string" } o null,
     "cadena_respondiente": { "estimulo": "string", "respuesta_condicionada": "string", "conexion_con_operante": "string o null", "evidencia": "string" } o null,
     "ciclo_interconductual": "string o null (quién refuerza a quién)",

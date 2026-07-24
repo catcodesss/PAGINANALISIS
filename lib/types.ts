@@ -32,6 +32,8 @@ export interface CadenaOperante {
   consecuencia: string;
   tipo_contingencia: TipoContingencia;
   inmediatez: "inmediata" | "demorada";
+  /** Efecto a mediano/largo plazo del patrón (CMLP): coste o mantenimiento futuro, distinto de la consecuencia inmediata. */
+  consecuencias_largo_plazo: string | null;
   evidencia: string;
 }
 
