@@ -2,13 +2,14 @@ import type {
   AnalisisFuncional,
   CadenaOperante,
   CadenaRespondiente,
-  CapaModalidad,
+  CapaModalidadACT,
+  CapaModalidadDBT,
+  CapaModalidadMC,
   ConductaAlternativa,
   ConductaProblema,
   Formulacion,
   HipotesisAlternativa,
   HipotesisMantenimiento,
-  ModeloTerapeutico,
   NivelConfianza,
   PriorizacionBlanco,
   Situacion,
@@ -178,87 +179,15 @@ function normalizarHipotesisAlternativa(valor: unknown): HipotesisAlternativa {
   };
 }
 
-function normalizarCapaModalidad(
-  modelo: ModeloTerapeutico,
-  valor: unknown
-): CapaModalidad {
+function normalizarCapaAct(valor: unknown): CapaModalidadACT {
   const d = comoObjeto(valor);
-
-  if (modelo === "dbt") {
-    const cadena = comoObjeto(d.analisis_en_cadena);
-    return {
-      modalidad: "dbt",
-      analisis_en_cadena: {
-        conducta_objetivo: comoTexto(cadena.conducta_objetivo),
-        vulnerabilidades: comoArreglo<string>(cadena.vulnerabilidades),
-        evento_precipitante: comoTexto(cadena.evento_precipitante),
-        eslabones: comoArreglo<unknown>(cadena.eslabones).map((e) => {
-          const eo = comoObjeto(e);
-          const tiposValidos = [
-            "pensamiento",
-            "emocion",
-            "sensacion",
-            "impulso",
-            "accion",
-          ];
-          return {
-            tipo: tiposValidos.includes(eo.tipo as string)
-              ? (eo.tipo as "pensamiento")
-              : "pensamiento",
-            descripcion: comoTexto(eo.descripcion),
-          };
-        }),
-        consecuencias_corto_plazo: comoArreglo<string>(
-          cadena.consecuencias_corto_plazo
-        ),
-        consecuencias_largo_plazo: comoArreglo<string>(
-          cadena.consecuencias_largo_plazo
-        ),
-      },
-      habilidades_sugeridas: comoArreglo<unknown>(d.habilidades_sugeridas).map(
-        (h) => {
-          const ho = comoObjeto(h);
-          const modulosValidos = [
-            "mindfulness",
-            "tolerancia_al_malestar",
-            "regulacion_emocional",
-            "efectividad_interpersonal",
-          ];
-          return {
-            modulo: modulosValidos.includes(ho.modulo as string)
-              ? (ho.modulo as "mindfulness")
-              : "mindfulness",
-            habilidad: comoTexto(ho.habilidad),
-            eslabon_objetivo: comoTexto(ho.eslabon_objetivo),
-          };
-        }
-      ),
-    };
-  }
-
-  if (modelo === "mc") {
-    return {
-      modalidad: "mc",
-      procedimientos_sugeridos: comoArreglo<unknown>(
-        d.procedimientos_sugeridos
-      ).map((p) => {
-        const po = comoObjeto(p);
-        return {
-          procedimiento: comoTexto(po.procedimiento),
-          contingencia_objetivo: comoTexto(po.contingencia_objetivo),
-          precauciones: comoTexto(po.precauciones),
-        };
-      }),
-    };
-  }
-
   return {
-    modalidad: "act",
     reglas_verbales: comoArreglo<unknown>(d.reglas_verbales).map((r) => {
       const ro = comoObjeto(r);
       return {
         regla: comoTexto(ro.regla),
-        textual_o_inferida: ro.textual_o_inferida === "inferida" ? "inferida" : "textual",
+        textual_o_inferida:
+          ro.textual_o_inferida === "inferida" ? "inferida" : "textual",
         clase:
           ro.clase === "tracking" || ro.clase === "augmenting"
             ? ro.clase
@@ -278,19 +207,78 @@ function normalizarCapaModalidad(
   };
 }
 
+const TIPOS_ESLABON_DBT = ["pensamiento", "emocion", "sensacion", "impulso", "accion"];
+const MODULOS_DBT = [
+  "mindfulness",
+  "tolerancia_al_malestar",
+  "regulacion_emocional",
+  "efectividad_interpersonal",
+];
+
+function normalizarCapaDbt(valor: unknown): CapaModalidadDBT {
+  const d = comoObjeto(valor);
+  const cadena = comoObjeto(d.analisis_en_cadena);
+  return {
+    analisis_en_cadena: {
+      conducta_objetivo: comoTexto(cadena.conducta_objetivo),
+      vulnerabilidades: comoArreglo<string>(cadena.vulnerabilidades),
+      evento_precipitante: comoTexto(cadena.evento_precipitante),
+      eslabones: comoArreglo<unknown>(cadena.eslabones).map((e) => {
+        const eo = comoObjeto(e);
+        return {
+          tipo: TIPOS_ESLABON_DBT.includes(eo.tipo as string)
+            ? (eo.tipo as "pensamiento")
+            : "pensamiento",
+          descripcion: comoTexto(eo.descripcion),
+        };
+      }),
+      consecuencias_corto_plazo: comoArreglo<string>(
+        cadena.consecuencias_corto_plazo
+      ),
+      consecuencias_largo_plazo: comoArreglo<string>(
+        cadena.consecuencias_largo_plazo
+      ),
+    },
+    habilidades_sugeridas: comoArreglo<unknown>(d.habilidades_sugeridas).map(
+      (h) => {
+        const ho = comoObjeto(h);
+        return {
+          modulo: MODULOS_DBT.includes(ho.modulo as string)
+            ? (ho.modulo as "mindfulness")
+            : "mindfulness",
+          habilidad: comoTexto(ho.habilidad),
+          eslabon_objetivo: comoTexto(ho.eslabon_objetivo),
+        };
+      }
+    ),
+  };
+}
+
+function normalizarCapaMc(valor: unknown): CapaModalidadMC {
+  const d = comoObjeto(valor);
+  return {
+    procedimientos_sugeridos: comoArreglo<unknown>(
+      d.procedimientos_sugeridos
+    ).map((p) => {
+      const po = comoObjeto(p);
+      return {
+        procedimiento: comoTexto(po.procedimiento),
+        contingencia_objetivo: comoTexto(po.contingencia_objetivo),
+        precauciones: comoTexto(po.precauciones),
+      };
+    }),
+  };
+}
+
 /**
  * Garantiza la forma completa de AnalisisFuncional aunque el modelo omita
  * claves: las listas ausentes se convierten en arreglos vacíos y los objetos
  * ausentes en null, en lugar de romper la interfaz.
  */
-export function normalizarAnalisis(
-  json: unknown,
-  modelo: ModeloTerapeutico
-): AnalisisFuncional {
+export function normalizarAnalisis(json: unknown): AnalisisFuncional {
   const d = comoObjeto(json);
 
   return {
-    modalidad: modelo,
     resumen_clinico: comoTexto(d.resumen_clinico),
     conductas_problema: comoArreglo<unknown>(d.conductas_problema).map(
       normalizarConductaProblema
@@ -307,7 +295,9 @@ export function normalizarAnalisis(
     conductas_alternativas: comoArreglo<unknown>(d.conductas_alternativas).map(
       normalizarConductaAlternativa
     ),
-    capa_modalidad: normalizarCapaModalidad(modelo, d.capa_modalidad),
+    capa_act: normalizarCapaAct(d.capa_act),
+    capa_dbt: normalizarCapaDbt(d.capa_dbt),
+    capa_mc: normalizarCapaMc(d.capa_mc),
     hipotesis_alternativas: comoArreglo<unknown>(d.hipotesis_alternativas).map(
       normalizarHipotesisAlternativa
     ),

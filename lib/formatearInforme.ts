@@ -4,12 +4,6 @@ const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
 const DESCARGO =
   "Este análisis es una síntesis asistida de hipótesis funcionales generadas a partir de las notas proporcionadas. No constituye un diagnóstico ni sustituye el juicio clínico profesional. Toda hipótesis debe verificarse mediante evaluación directa.";
 
-const ETIQUETA_MODALIDAD: Record<string, string> = {
-  act: "ACT",
-  dbt: "DBT",
-  mc: "Conductual (MC)",
-};
-
 function seccion(titulo: string, cuerpo: string): string {
   return `${titulo}\n${"-".repeat(titulo.length)}\n${cuerpo || SIN_HALLAZGOS}\n`;
 }
@@ -64,7 +58,6 @@ export function formatearInformeTexto(
   const partes: string[] = [];
   partes.push("AFA — ANÁLISIS FUNCIONAL ASISTIDO");
   partes.push(`Fecha de generación: ${fecha}`);
-  partes.push(`Modelo terapéutico: ${ETIQUETA_MODALIDAD[analisis.modalidad] ?? analisis.modalidad}`);
   if (referenciaCaso.trim()) {
     partes.push(`Referencia del caso: ${referenciaCaso.trim()}`);
   }
@@ -143,72 +136,72 @@ export function formatearInformeTexto(
     )
   );
 
-  const capa = analisis.capa_modalidad;
-  if (capa.modalidad === "act") {
-    partes.push(
-      seccion(
-        "CAPA ACT — REGLAS VERBALES",
-        capa.reglas_verbales
-          .map(
-            (r) =>
-              `- [${r.clase}, ${r.textual_o_inferida}, rigidez ${r.rigidez}] "${r.regla}"\n  ${r.analisis}`
-          )
-          .join("\n")
-      )
-    );
-    partes.push(
-      seccion(
-        "CAPA ACT — PROCESOS DE INFLEXIBILIDAD",
-        capa.procesos_act
-          .map(
-            (p) =>
-              `- ${p.proceso}: ${p.vinculo_con_cadena}\n  Evidencia: "${p.evidencia}"`
-          )
-          .join("\n")
-      )
-    );
-  } else if (capa.modalidad === "dbt") {
-    const cadena = capa.analisis_en_cadena;
-    partes.push(
-      seccion(
-        "CAPA DBT — ANÁLISIS EN CADENA",
-        [
-          `Conducta objetivo: ${cadena.conducta_objetivo}`,
-          "Vulnerabilidades:",
-          listaOTexto(cadena.vulnerabilidades),
-          `Evento precipitante: ${cadena.evento_precipitante}`,
-          "Eslabones:",
-          listaOTexto(cadena.eslabones.map((e) => `[${e.tipo}] ${e.descripcion}`)),
-          "Consecuencias corto plazo:",
-          listaOTexto(cadena.consecuencias_corto_plazo),
-          "Consecuencias largo plazo:",
-          listaOTexto(cadena.consecuencias_largo_plazo),
-        ].join("\n")
-      )
-    );
-    partes.push(
-      seccion(
-        "CAPA DBT — HABILIDADES SUGERIDAS",
-        capa.habilidades_sugeridas
-          .map(
-            (h) => `- [${h.modulo}] ${h.habilidad}\n  Eslabón objetivo: ${h.eslabon_objetivo}`
-          )
-          .join("\n")
-      )
-    );
-  } else {
-    partes.push(
-      seccion(
-        "CAPA CONDUCTUAL — PROCEDIMIENTOS SUGERIDOS",
-        capa.procedimientos_sugeridos
-          .map(
-            (p) =>
-              `- ${p.procedimiento}\n  Contingencia objetivo: ${p.contingencia_objetivo}\n  Precauciones: ${p.precauciones}`
-          )
-          .join("\n")
-      )
-    );
-  }
+  partes.push(
+    seccion(
+      "CAPA ACT — REGLAS VERBALES",
+      analisis.capa_act.reglas_verbales
+        .map(
+          (r) =>
+            `- [${r.clase}, ${r.textual_o_inferida}, rigidez ${r.rigidez}] "${r.regla}"\n  ${r.analisis}`
+        )
+        .join("\n")
+    )
+  );
+  partes.push(
+    seccion(
+      "CAPA ACT — PROCESOS DE INFLEXIBILIDAD",
+      analisis.capa_act.procesos_act
+        .map(
+          (p) =>
+            `- ${p.proceso}: ${p.vinculo_con_cadena}\n  Evidencia: "${p.evidencia}"`
+        )
+        .join("\n")
+    )
+  );
+
+  const cadenaDbt = analisis.capa_dbt.analisis_en_cadena;
+  partes.push(
+    seccion(
+      "CAPA DBT — ANÁLISIS EN CADENA",
+      [
+        `Conducta objetivo: ${cadenaDbt.conducta_objetivo}`,
+        "Vulnerabilidades:",
+        listaOTexto(cadenaDbt.vulnerabilidades),
+        `Evento precipitante: ${cadenaDbt.evento_precipitante}`,
+        "Eslabones:",
+        listaOTexto(
+          cadenaDbt.eslabones.map((e) => `[${e.tipo}] ${e.descripcion}`)
+        ),
+        "Consecuencias corto plazo:",
+        listaOTexto(cadenaDbt.consecuencias_corto_plazo),
+        "Consecuencias largo plazo:",
+        listaOTexto(cadenaDbt.consecuencias_largo_plazo),
+      ].join("\n")
+    )
+  );
+  partes.push(
+    seccion(
+      "CAPA DBT — HABILIDADES SUGERIDAS",
+      analisis.capa_dbt.habilidades_sugeridas
+        .map(
+          (h) =>
+            `- [${h.modulo}] ${h.habilidad}\n  Eslabón objetivo: ${h.eslabon_objetivo}`
+        )
+        .join("\n")
+    )
+  );
+
+  partes.push(
+    seccion(
+      "CAPA CONDUCTUAL — PROCEDIMIENTOS SUGERIDOS",
+      analisis.capa_mc.procedimientos_sugeridos
+        .map(
+          (p) =>
+            `- ${p.procedimiento}\n  Contingencia objetivo: ${p.contingencia_objetivo}\n  Precauciones: ${p.precauciones}`
+        )
+        .join("\n")
+    )
+  );
 
   partes.push(
     seccion(

@@ -22,35 +22,27 @@ interface SeccionIndice {
   titulo: string;
 }
 
-const ETIQUETA_MODALIDAD: Record<ModeloTerapeutico, string> = {
+const ETIQUETA_MODELO: Record<ModeloTerapeutico, string> = {
   act: "ACT",
   dbt: "DBT",
   mc: "Conductual (MC)",
 };
 
-const TITULO_SECCION_MODALIDAD: Record<ModeloTerapeutico, string> = {
-  act: "Capa ACT",
-  dbt: "Capa DBT",
-  mc: "Capa conductual",
-};
-
-function construirSecciones(modalidad: ModeloTerapeutico): SeccionIndice[] {
-  return [
-    { id: "hipotesis-principal", titulo: "Formulación destacada" },
-    { id: "resumen", titulo: "Resumen clínico" },
-    { id: "conductas", titulo: "Conductas problema" },
-    { id: "variables-moduladoras", titulo: "Variables moduladoras" },
-    { id: "situaciones", titulo: "Análisis por situaciones" },
-    { id: "hipotesis-mantenimiento", titulo: "Hipótesis de mantenimiento" },
-    { id: "formulacion", titulo: "Formulación del caso" },
-    { id: "conductas-alternativas", titulo: "Conductas alternativas" },
-    { id: "modalidad", titulo: TITULO_SECCION_MODALIDAD[modalidad] },
-    { id: "hipotesis-alternativas", titulo: "Hipótesis alternativas" },
-    { id: "preguntas", titulo: "Preguntas para la próxima sesión" },
-    { id: "intervencion", titulo: "Líneas de intervención" },
-    { id: "datos-faltantes", titulo: "Datos faltantes" },
-  ];
-}
+const SECCIONES: SeccionIndice[] = [
+  { id: "hipotesis-principal", titulo: "Formulación destacada" },
+  { id: "resumen", titulo: "Resumen clínico" },
+  { id: "conductas", titulo: "Conductas problema" },
+  { id: "variables-moduladoras", titulo: "Variables moduladoras" },
+  { id: "situaciones", titulo: "Análisis por situaciones" },
+  { id: "hipotesis-mantenimiento", titulo: "Hipótesis de mantenimiento" },
+  { id: "formulacion", titulo: "Formulación del caso" },
+  { id: "conductas-alternativas", titulo: "Conductas alternativas" },
+  { id: "modalidad", titulo: "Detalle según modelo terapéutico" },
+  { id: "hipotesis-alternativas", titulo: "Hipótesis alternativas" },
+  { id: "preguntas", titulo: "Preguntas para la próxima sesión" },
+  { id: "intervencion", titulo: "Líneas de intervención" },
+  { id: "datos-faltantes", titulo: "Datos faltantes" },
+];
 
 function SinHallazgos() {
   return (
@@ -299,6 +291,245 @@ function DetalleModalidad({ children }: { children: ReactNode }) {
   );
 }
 
+/** Reglas verbales + procesos de inflexibilidad (capa ACT). */
+function DetalleACT({ capa }: { capa: AnalisisFuncional["capa_act"] }) {
+  return (
+    <div className="space-y-6">
+      <SubSeccion titulo="Reglas verbales">
+        {capa.reglas_verbales.length === 0 ? (
+          <SinHallazgos />
+        ) : (
+          <ul className="space-y-4">
+            {capa.reglas_verbales.map((r, i) => (
+              <li key={i}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Chip>{r.clase}</Chip>
+                  <Chip>{r.textual_o_inferida}</Chip>
+                  <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+                    Rigidez: {r.rigidez}
+                  </span>
+                </div>
+                <p className="mt-1 text-[15px] italic leading-relaxed text-ink">
+                  &quot;{r.regla}&quot;
+                </p>
+                <p className="mt-1 text-sm text-ink-muted">{r.analisis}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SubSeccion>
+      <SubSeccion titulo="Procesos de inflexibilidad">
+        {capa.procesos_act.length === 0 ? (
+          <SinHallazgos />
+        ) : (
+          <ul className="space-y-4">
+            {capa.procesos_act.map((p, i) => (
+              <li key={i}>
+                <Chip>{p.proceso}</Chip>
+                <p className="mt-1 text-[15px] leading-relaxed text-ink">
+                  {p.vinculo_con_cadena}
+                </p>
+                <Cita>{p.evidencia}</Cita>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SubSeccion>
+    </div>
+  );
+}
+
+/** Análisis en cadena + habilidades sugeridas (capa DBT). */
+function DetalleDBT({ capa }: { capa: AnalisisFuncional["capa_dbt"] }) {
+  const cadena = capa.analisis_en_cadena;
+  return (
+    <div className="space-y-6">
+      <SubSeccion titulo="Análisis en cadena">
+        <div className="rounded border border-divider p-4">
+          <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
+            Conducta objetivo
+          </p>
+          <p className="mt-1 text-[15px] leading-relaxed text-ink">
+            {cadena.conducta_objetivo || "—"}
+          </p>
+
+          <ol className="mt-4 space-y-3 border-l-2 border-divider pl-4">
+            <li>
+              <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                Vulnerabilidades
+              </p>
+              {cadena.vulnerabilidades.length === 0 ? (
+                <SinHallazgos />
+              ) : (
+                <ul className="list-disc space-y-1 pl-5">
+                  {cadena.vulnerabilidades.map((v, i) => (
+                    <li key={i} className="text-sm text-ink">
+                      {v}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+            <li>
+              <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                Evento precipitante
+              </p>
+              <p className="text-sm text-ink">
+                {cadena.evento_precipitante || "—"}
+              </p>
+            </li>
+            {cadena.eslabones.map((e, i) => (
+              <li key={i}>
+                <Chip>{e.tipo}</Chip>
+                <p className="mt-1 text-sm text-ink">{e.descripcion}</p>
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                Consecuencias corto plazo
+              </p>
+              <ul className="mt-1 list-disc space-y-1 pl-5">
+                {cadena.consecuencias_corto_plazo.map((c, i) => (
+                  <li key={i} className="text-sm text-ink">
+                    {c}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                Consecuencias largo plazo
+              </p>
+              <ul className="mt-1 list-disc space-y-1 pl-5">
+                {cadena.consecuencias_largo_plazo.map((c, i) => (
+                  <li key={i} className="text-sm text-ink">
+                    {c}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </SubSeccion>
+
+      <SubSeccion titulo="Habilidades sugeridas">
+        {capa.habilidades_sugeridas.length === 0 ? (
+          <SinHallazgos />
+        ) : (
+          <ul className="space-y-4">
+            {capa.habilidades_sugeridas.map((h, i) => (
+              <li key={i}>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-[15px] font-medium leading-relaxed text-ink">
+                    {h.habilidad}
+                  </p>
+                  <Chip>{h.modulo.replace(/_/g, " ")}</Chip>
+                </div>
+                <p className="mt-1 text-sm text-ink-muted">
+                  <span className="font-medium text-ink">
+                    Eslabón objetivo:
+                  </span>{" "}
+                  {h.eslabon_objetivo}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SubSeccion>
+    </div>
+  );
+}
+
+/** Procedimientos sugeridos de manejo de contingencias (capa Conductual/MC). */
+function DetalleMC({ capa }: { capa: AnalisisFuncional["capa_mc"] }) {
+  if (capa.procedimientos_sugeridos.length === 0) return <SinHallazgos />;
+  return (
+    <ul className="space-y-4">
+      {capa.procedimientos_sugeridos.map((p, i) => (
+        <li key={i} className="rounded border border-divider p-4">
+          <p className="text-[15px] font-medium leading-relaxed text-ink">
+            {p.procedimiento}
+          </p>
+          <p className="mt-1 text-sm text-ink-muted">
+            <span className="font-medium text-ink">
+              Contingencia objetivo:
+            </span>{" "}
+            {p.contingencia_objetivo}
+          </p>
+          <p className="mt-1 text-sm text-warn">
+            <span className="font-medium">Precauciones:</span>{" "}
+            {p.precauciones}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const MODELOS: ModeloTerapeutico[] = ["act", "dbt", "mc"];
+
+/** Selector de pestañas cliente-side: alterna cuál capa se muestra sin volver a consultar la IA. */
+function SelectorCapaModalidad({
+  analisis,
+}: {
+  analisis: AnalisisFuncional;
+}) {
+  const [modeloVisible, setModeloVisible] = useState<ModeloTerapeutico>("act");
+
+  return (
+    <div>
+      <div className="mb-4 flex w-full overflow-hidden rounded border border-divider print:hidden sm:inline-flex sm:w-auto">
+        {MODELOS.map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setModeloVisible(m)}
+            aria-pressed={modeloVisible === m}
+            className={`flex-1 px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:flex-none ${
+              modeloVisible === m
+                ? "bg-accent text-white"
+                : "bg-surface text-ink-muted hover:bg-canvas"
+            }`}
+          >
+            {ETIQUETA_MODELO[m]}
+          </button>
+        ))}
+      </div>
+
+      <div className="print:hidden">
+        {modeloVisible === "act" && <DetalleACT capa={analisis.capa_act} />}
+        {modeloVisible === "dbt" && <DetalleDBT capa={analisis.capa_dbt} />}
+        {modeloVisible === "mc" && <DetalleMC capa={analisis.capa_mc} />}
+      </div>
+
+      {/* Impresión: no hay pestañas interactivas en papel, así que se listan las tres. */}
+      <div className="hidden space-y-8 print:block">
+        <div>
+          <p className="section-title mb-3 font-serif text-base font-semibold text-ink">
+            ACT
+          </p>
+          <DetalleACT capa={analisis.capa_act} />
+        </div>
+        <div>
+          <p className="section-title mb-3 font-serif text-base font-semibold text-ink">
+            DBT
+          </p>
+          <DetalleDBT capa={analisis.capa_dbt} />
+        </div>
+        <div>
+          <p className="section-title mb-3 font-serif text-base font-semibold text-ink">
+            Conductual (MC)
+          </p>
+          <DetalleMC capa={analisis.capa_mc} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SituacionCard({ situacion }: { situacion: Situacion }) {
   const tieneAmbas = Boolean(
     situacion.cadena_respondiente && situacion.cadena_operante
@@ -475,21 +706,13 @@ function IndiceMovil({
   );
 }
 
-const ETIQUETA_MODALIDAD_IMPRESION: Record<ModeloTerapeutico, string> = {
-  act: "ACT",
-  dbt: "DBT",
-  mc: "Modificación de conducta",
-};
-
 /** Encabezado de expediente clínico, visible solo al imprimir/exportar a PDF. */
 function PrintOnlyHeader({
   referenciaCaso,
   fecha,
-  modalidad,
 }: {
   referenciaCaso: string;
   fecha: string;
-  modalidad: ModeloTerapeutico;
 }) {
   return (
     <div className="print-only-header hidden print:block">
@@ -513,10 +736,8 @@ function PrintOnlyHeader({
           <span className="print-meta-value">{fecha}</span>
         </div>
         <div className="print-meta-item">
-          <span className="print-meta-label">Modalidad</span>
-          <span className="print-meta-value">
-            {ETIQUETA_MODALIDAD_IMPRESION[modalidad]}
-          </span>
+          <span className="print-meta-label">Modalidades incluidas</span>
+          <span className="print-meta-value">ACT · DBT · Conductual</span>
         </div>
         <div className="print-meta-item">
           <span className="print-meta-label">Páginas</span>
@@ -576,11 +797,7 @@ export default function ReportView({
   onReferenciaCasoChange,
   fecha,
 }: ReportViewProps) {
-  const secciones = useMemo(
-    () => construirSecciones(analisis.modalidad),
-    [analisis.modalidad]
-  );
-  const ids = useMemo(() => secciones.map((s) => s.id), [secciones]);
+  const ids = useMemo(() => SECCIONES.map((s) => s.id), []);
   const activa = useSeccionActiva(ids);
 
   const hipotesisDestacada = useMemo(() => {
@@ -597,11 +814,7 @@ export default function ReportView({
 
   return (
     <div className="rounded-md border border-divider bg-surface px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-12 lg:py-10 print:rounded-none print:border-none print:px-0 print:py-0 print:shadow-none">
-      <PrintOnlyHeader
-        referenciaCaso={referenciaCaso}
-        fecha={fecha}
-        modalidad={analisis.modalidad}
-      />
+      <PrintOnlyHeader referenciaCaso={referenciaCaso} fecha={fecha} />
       <PrintOnlyFooter />
 
       <header className="mb-6 border-b border-divider pb-5 print:hidden">
@@ -615,7 +828,7 @@ export default function ReportView({
           <p>
             Fecha de generación: <span className="text-ink">{fecha}</span>
           </p>
-          <Chip>{ETIQUETA_MODALIDAD[analisis.modalidad]}</Chip>
+          <Chip>ACT · DBT · Conductual</Chip>
           <label className="flex items-center gap-2 print:hidden">
             <span>Referencia del caso (opcional):</span>
             <input
@@ -689,10 +902,10 @@ export default function ReportView({
         )}
       </section>
 
-      <IndiceMovil secciones={secciones} activa={activa} />
+      <IndiceMovil secciones={SECCIONES} activa={activa} />
 
       <div className="lg:flex lg:items-start lg:gap-10">
-        <IndiceLateral secciones={secciones} activa={activa} />
+        <IndiceLateral secciones={SECCIONES} activa={activa} />
 
         <div className="min-w-0 flex-1">
           <Seccion id="resumen" titulo="Resumen clínico">
@@ -873,198 +1086,10 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="modalidad" titulo={TITULO_SECCION_MODALIDAD[analisis.modalidad]}>
-           <DetalleModalidad>
-            {analisis.capa_modalidad.modalidad === "act" && (
-              <div className="space-y-6">
-                <SubSeccion titulo="Reglas verbales">
-                  {analisis.capa_modalidad.reglas_verbales.length === 0 ? (
-                    <SinHallazgos />
-                  ) : (
-                    <ul className="space-y-4">
-                      {analisis.capa_modalidad.reglas_verbales.map((r, i) => (
-                        <li key={i}>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Chip>{r.clase}</Chip>
-                            <Chip>{r.textual_o_inferida}</Chip>
-                            <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
-                              Rigidez: {r.rigidez}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-[15px] italic leading-relaxed text-ink">
-                            &quot;{r.regla}&quot;
-                          </p>
-                          <p className="mt-1 text-sm text-ink-muted">
-                            {r.analisis}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </SubSeccion>
-                <SubSeccion titulo="Procesos de inflexibilidad">
-                  {analisis.capa_modalidad.procesos_act.length === 0 ? (
-                    <SinHallazgos />
-                  ) : (
-                    <ul className="space-y-4">
-                      {analisis.capa_modalidad.procesos_act.map((p, i) => (
-                        <li key={i}>
-                          <Chip>{p.proceso}</Chip>
-                          <p className="mt-1 text-[15px] leading-relaxed text-ink">
-                            {p.vinculo_con_cadena}
-                          </p>
-                          <Cita>{p.evidencia}</Cita>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </SubSeccion>
-              </div>
-            )}
-
-            {analisis.capa_modalidad.modalidad === "dbt" && (
-              <div className="space-y-6">
-                <SubSeccion titulo="Análisis en cadena">
-                  <div className="rounded border border-divider p-4">
-                    <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
-                      Conducta objetivo
-                    </p>
-                    <p className="mt-1 text-[15px] leading-relaxed text-ink">
-                      {analisis.capa_modalidad.analisis_en_cadena.conducta_objetivo ||
-                        "—"}
-                    </p>
-
-                    <ol className="mt-4 space-y-3 border-l-2 border-divider pl-4">
-                      <li>
-                        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                          Vulnerabilidades
-                        </p>
-                        {analisis.capa_modalidad.analisis_en_cadena.vulnerabilidades
-                          .length === 0 ? (
-                          <SinHallazgos />
-                        ) : (
-                          <ul className="list-disc space-y-1 pl-5">
-                            {analisis.capa_modalidad.analisis_en_cadena.vulnerabilidades.map(
-                              (v, i) => (
-                                <li key={i} className="text-sm text-ink">
-                                  {v}
-                                </li>
-                              )
-                            )}
-                          </ul>
-                        )}
-                      </li>
-                      <li>
-                        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                          Evento precipitante
-                        </p>
-                        <p className="text-sm text-ink">
-                          {analisis.capa_modalidad.analisis_en_cadena
-                            .evento_precipitante || "—"}
-                        </p>
-                      </li>
-                      {analisis.capa_modalidad.analisis_en_cadena.eslabones.map(
-                        (e, i) => (
-                          <li key={i}>
-                            <Chip>{e.tipo}</Chip>
-                            <p className="mt-1 text-sm text-ink">{e.descripcion}</p>
-                          </li>
-                        )
-                      )}
-                    </ol>
-
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                          Consecuencias corto plazo
-                        </p>
-                        <ul className="mt-1 list-disc space-y-1 pl-5">
-                          {analisis.capa_modalidad.analisis_en_cadena.consecuencias_corto_plazo.map(
-                            (c, i) => (
-                              <li key={i} className="text-sm text-ink">
-                                {c}
-                              </li>
-                            )
-                          )}
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                          Consecuencias largo plazo
-                        </p>
-                        <ul className="mt-1 list-disc space-y-1 pl-5">
-                          {analisis.capa_modalidad.analisis_en_cadena.consecuencias_largo_plazo.map(
-                            (c, i) => (
-                              <li key={i} className="text-sm text-ink">
-                                {c}
-                              </li>
-                            )
-                          )}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </SubSeccion>
-
-                <SubSeccion titulo="Habilidades sugeridas">
-                  {analisis.capa_modalidad.habilidades_sugeridas.length === 0 ? (
-                    <SinHallazgos />
-                  ) : (
-                    <ul className="space-y-4">
-                      {analisis.capa_modalidad.habilidades_sugeridas.map(
-                        (h, i) => (
-                          <li key={i}>
-                            <div className="flex flex-wrap items-baseline justify-between gap-2">
-                              <p className="text-[15px] font-medium leading-relaxed text-ink">
-                                {h.habilidad}
-                              </p>
-                              <Chip>{h.modulo.replace(/_/g, " ")}</Chip>
-                            </div>
-                            <p className="mt-1 text-sm text-ink-muted">
-                              <span className="font-medium text-ink">
-                                Eslabón objetivo:
-                              </span>{" "}
-                              {h.eslabon_objetivo}
-                            </p>
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  )}
-                </SubSeccion>
-              </div>
-            )}
-
-            {analisis.capa_modalidad.modalidad === "mc" && (
-              <>
-                {analisis.capa_modalidad.procedimientos_sugeridos.length === 0 ? (
-                  <SinHallazgos />
-                ) : (
-                  <ul className="space-y-4">
-                    {analisis.capa_modalidad.procedimientos_sugeridos.map(
-                      (p, i) => (
-                        <li key={i} className="rounded border border-divider p-4">
-                          <p className="text-[15px] font-medium leading-relaxed text-ink">
-                            {p.procedimiento}
-                          </p>
-                          <p className="mt-1 text-sm text-ink-muted">
-                            <span className="font-medium text-ink">
-                              Contingencia objetivo:
-                            </span>{" "}
-                            {p.contingencia_objetivo}
-                          </p>
-                          <p className="mt-1 text-sm text-warn">
-                            <span className="font-medium">Precauciones:</span>{" "}
-                            {p.precauciones}
-                          </p>
-                        </li>
-                      )
-                    )}
-                  </ul>
-                )}
-              </>
-            )}
-           </DetalleModalidad>
+          <Seccion id="modalidad" titulo="Detalle según modelo terapéutico">
+            <DetalleModalidad>
+              <SelectorCapaModalidad analisis={analisis} />
+            </DetalleModalidad>
           </Seccion>
 
           <Seccion id="hipotesis-alternativas" titulo="Hipótesis alternativas">

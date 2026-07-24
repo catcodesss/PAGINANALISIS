@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { AnalisisFuncional, ModeloTerapeutico } from "@/lib/types";
+import type { AnalisisFuncional } from "@/lib/types";
 import {
   contieneDatosIdentificables,
   enmascararDatosIdentificables,
@@ -20,8 +20,6 @@ const MENSAJE_ERROR_GENERICO = "No se pudo completar el análisis. Intenta nueva
 
 export default function Home() {
   const [nota, setNota] = useState("");
-  const [modeloTerapeutico, setModeloTerapeutico] =
-    useState<ModeloTerapeutico>("act");
   const [referenciaCaso, setReferenciaCaso] = useState("");
   const [estado, setEstado] = useState<EstadoApp>("inicial");
   const [mensajeValidacion, setMensajeValidacion] = useState("");
@@ -43,7 +41,7 @@ export default function Home() {
       const respuesta = await fetch("/api/analizar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nota: texto, modelo: modeloTerapeutico }),
+        body: JSON.stringify({ nota: texto }),
       });
 
       const datos = await respuesta.json().catch(() => null);
@@ -107,7 +105,6 @@ export default function Home() {
 
   function manejarNuevoAnalisis() {
     setNota("");
-    setModeloTerapeutico("act");
     setReferenciaCaso("");
     setEstado("inicial");
     setMensajeValidacion("");
@@ -154,43 +151,6 @@ export default function Home() {
       {formularioVisible && (
         <section className="print:hidden">
           <div className="rounded-md border border-divider bg-surface p-5 shadow-sm sm:p-6">
-            <fieldset className="mb-4">
-              <legend className="mb-2 text-sm font-medium text-ink">
-                Modelo terapéutico
-              </legend>
-              <div className="flex w-full overflow-hidden rounded border border-divider sm:inline-flex sm:w-auto">
-                {(
-                  [
-                    { valor: "act" as const, etiqueta: "ACT" },
-                    { valor: "dbt" as const, etiqueta: "DBT" },
-                    { valor: "mc" as const, etiqueta: "Conductual (MC)" },
-                  ]
-                ).map(({ valor, etiqueta }) => (
-                  <button
-                    key={valor}
-                    type="button"
-                    disabled={formularioDeshabilitado}
-                    onClick={() => setModeloTerapeutico(valor)}
-                    aria-pressed={modeloTerapeutico === valor}
-                    className={`flex-1 px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none ${
-                      modeloTerapeutico === valor
-                        ? "bg-accent text-white"
-                        : "bg-surface text-ink-muted hover:bg-canvas"
-                    }`}
-                  >
-                    {etiqueta}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-1.5 text-xs text-ink-muted">
-                Define el marco de la capa de intervención: ACT (procesos del
-                hexaflex y reglas verbales), DBT (análisis en cadena y
-                habilidades por módulo) o Conductual (manejo directo de
-                contingencias, sin marcos de tercera ola). El análisis
-                funcional de base es el mismo en los tres.
-              </p>
-            </fieldset>
-
             <label htmlFor="nota" className="sr-only">
               Notas clínicas
             </label>

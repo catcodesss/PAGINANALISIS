@@ -79,7 +79,8 @@ export interface HipotesisAlternativa {
   como_descartarla: string;
 }
 
-// --- Capa de modalidad: unión discriminada por "modalidad" ---
+// --- Capas de modalidad: las tres se generan siempre en la misma llamada,
+// para poder alternar entre ellas en pantalla sin volver a consultar la IA. ---
 
 export interface ReglaVerbal {
   regla: string;
@@ -96,7 +97,6 @@ export interface ProcesoACT {
 }
 
 export interface CapaModalidadACT {
-  modalidad: "act";
   reglas_verbales: ReglaVerbal[];
   procesos_act: ProcesoACT[];
 }
@@ -135,7 +135,6 @@ export interface HabilidadSugeridaDBT {
 }
 
 export interface CapaModalidadDBT {
-  modalidad: "dbt";
   analisis_en_cadena: AnalisisEnCadenaDBT;
   habilidades_sugeridas: HabilidadSugeridaDBT[];
 }
@@ -147,14 +146,10 @@ export interface ProcedimientoSugeridoMC {
 }
 
 export interface CapaModalidadMC {
-  modalidad: "mc";
   procedimientos_sugeridos: ProcedimientoSugeridoMC[];
 }
 
-export type CapaModalidad = CapaModalidadACT | CapaModalidadDBT | CapaModalidadMC;
-
 export interface AnalisisFuncional {
-  modalidad: ModeloTerapeutico;
   resumen_clinico: string;
   conductas_problema: ConductaProblema[];
   variables_moduladoras: VariableModuladora[];
@@ -163,7 +158,9 @@ export interface AnalisisFuncional {
   hipotesis_origen: string[];
   formulacion: Formulacion;
   conductas_alternativas: ConductaAlternativa[];
-  capa_modalidad: CapaModalidad;
+  capa_act: CapaModalidadACT;
+  capa_dbt: CapaModalidadDBT;
+  capa_mc: CapaModalidadMC;
   hipotesis_alternativas: HipotesisAlternativa[];
   preguntas_para_sesion: string[];
   lineas_de_intervencion_tentativas: string[];
