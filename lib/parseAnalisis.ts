@@ -331,3 +331,84 @@ export function normalizarAnalisis(json: unknown): AnalisisFuncional {
     datos_faltantes: comoArreglo<string>(d.datos_faltantes),
   };
 }
+
+/**
+ * Normaliza una respuesta parcial (reanálisis de una sola sección): solo
+ * rellena las claves pedidas en "campos", reutilizando los mismos
+ * normalizadores tolerantes que el análisis completo.
+ */
+export function normalizarFragmento(
+  campos: string[],
+  json: unknown
+): Partial<AnalisisFuncional> {
+  const d = comoObjeto(json);
+  const resultado: Partial<AnalisisFuncional> = {};
+
+  for (const campo of campos) {
+    switch (campo) {
+      case "resumen_clinico":
+        resultado.resumen_clinico = comoTexto(d.resumen_clinico);
+        break;
+      case "conductas_problema":
+        resultado.conductas_problema = comoArreglo<unknown>(
+          d.conductas_problema
+        ).map(normalizarConductaProblema);
+        break;
+      case "variables_moduladoras":
+        resultado.variables_moduladoras = comoArreglo<unknown>(
+          d.variables_moduladoras
+        ).map(normalizarVariableModuladora);
+        break;
+      case "situaciones":
+        resultado.situaciones = comoArreglo<unknown>(d.situaciones).map(
+          normalizarSituacion
+        );
+        break;
+      case "hipotesis_mantenimiento":
+        resultado.hipotesis_mantenimiento = comoArreglo<unknown>(
+          d.hipotesis_mantenimiento
+        ).map(normalizarHipotesisMantenimiento);
+        break;
+      case "hipotesis_origen":
+        resultado.hipotesis_origen = comoArreglo<string>(d.hipotesis_origen);
+        break;
+      case "formulacion":
+        resultado.formulacion = normalizarFormulacion(d.formulacion);
+        break;
+      case "conductas_alternativas":
+        resultado.conductas_alternativas = comoArreglo<unknown>(
+          d.conductas_alternativas
+        ).map(normalizarConductaAlternativa);
+        break;
+      case "capa_act":
+        resultado.capa_act = normalizarCapaAct(d.capa_act);
+        break;
+      case "capa_dbt":
+        resultado.capa_dbt = normalizarCapaDbt(d.capa_dbt);
+        break;
+      case "capa_mc":
+        resultado.capa_mc = normalizarCapaMc(d.capa_mc);
+        break;
+      case "hipotesis_alternativas":
+        resultado.hipotesis_alternativas = comoArreglo<unknown>(
+          d.hipotesis_alternativas
+        ).map(normalizarHipotesisAlternativa);
+        break;
+      case "preguntas_para_sesion":
+        resultado.preguntas_para_sesion = comoArreglo<string>(
+          d.preguntas_para_sesion
+        );
+        break;
+      case "lineas_de_intervencion_tentativas":
+        resultado.lineas_de_intervencion_tentativas = comoArreglo<string>(
+          d.lineas_de_intervencion_tentativas
+        );
+        break;
+      case "datos_faltantes":
+        resultado.datos_faltantes = comoArreglo<string>(d.datos_faltantes);
+        break;
+    }
+  }
+
+  return resultado;
+}

@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type {
   AnalisisFuncional,
   CadenaDBT,
@@ -10,12 +18,18 @@ import type {
   NivelConfianza,
   Situacion,
 } from "@/lib/types";
+import {
+  contieneDatosIdentificables,
+  enmascararDatosIdentificables,
+} from "@/lib/pii";
 
 interface ReportViewProps {
   analisis: AnalisisFuncional;
   referenciaCaso: string;
   onReferenciaCasoChange: (valor: string) => void;
   fecha: string;
+  notaOriginal: string;
+  onAnalisisActualizado: (fragmento: Partial<AnalisisFuncional>) => void;
 }
 
 interface SeccionIndice {
@@ -111,16 +125,151 @@ function Cita({ children }: { children: string | null | undefined }) {
   );
 }
 
+interface ReanalisisContextValor {
+  notaOriginal: string;
+  analisis: AnalisisFuncional;
+  onAnalisisActualizado: (fragmento: Partial<AnalisisFuncional>) => void;
+}
+
+const ReanalisisContext = createContext<ReanalisisContextValor | null>(null);
+
+/** Botón + cuadro de texto para agregar una nota y reanalizar solo esta sección. */
+function BloqueReanalisis({
+  campos,
+  seccionId,
+}: {
+  campos: (keyof AnalisisFuncional)[];
+  seccionId: string;
+}) {
+  const contexto = useContext(ReanalisisContext);
+  const [abierto, setAbierto] = useState(false);
+  const [texto, setTexto] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!contexto) return null;
+  const { notaOriginal, analisis, onAnalisisActualizado } = contexto;
+
+  const contieneDatos = texto.trim().length > 0 && contieneDatosIdentificables(texto);
+
+  async function reanalizar() {
+    if (!texto.trim() || enviando) return;
+    setEnviando(true);
+    setError(null);
+
+    const notaAdicional = contieneDatosIdentificables(texto)
+      ? enmascararDatosIdentificables(texto)
+      : texto;
+
+    try {
+      const respuesta = await fetch("/api/reanalizar-seccion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          notaOriginal,
+          notaAdicional,
+          campos,
+          analisisActual: analisis,
+        }),
+      });
+
+      const datos = await respuesta.json().catch(() => null);
+
+      if (!respuesta.ok || !datos?.fragmento) {
+        setError(
+          datos?.message ?? "No se pudo reanalizar esta sección. Intenta nuevamente."
+        );
+        return;
+      }
+
+      onAnalisisActualizado(datos.fragmento as Partial<AnalisisFuncional>);
+      setTexto("");
+      setAbierto(false);
+    } catch {
+      setError("No se pudo reanalizar esta sección. Intenta nuevamente.");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 border-t border-divider pt-3 print:hidden">
+      {!abierto ? (
+        <button
+          type="button"
+          onClick={() => setAbierto(true)}
+          className="text-sm font-medium text-accent transition-colors hover:text-accent/80"
+        >
+          + Agregar nota y reanalizar esta sección
+        </button>
+      ) : (
+        <div className="space-y-2">
+          <label
+            htmlFor={`nota-reanalisis-${seccionId}`}
+            className="block text-xs font-medium text-ink-muted"
+          >
+            Nota adicional para esta sección
+          </label>
+          <textarea
+            id={`nota-reanalisis-${seccionId}`}
+            value={texto}
+            onChange={(evento) => setTexto(evento.target.value)}
+            disabled={enviando}
+            rows={3}
+            placeholder="Agrega información nueva u observaciones para esta sección…"
+            className="w-full resize-y rounded border border-divider bg-white px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+          />
+          {contieneDatos && (
+            <p className="text-xs text-warn">
+              Se detectaron posibles datos identificables; se enmascararán
+              automáticamente antes de enviarse.
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="text-xs text-warn">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={reanalizar}
+              disabled={enviando || !texto.trim()}
+              className="rounded bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {enviando ? "Reanalizando…" : "Reanalizar esta sección"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAbierto(false);
+                setTexto("");
+                setError(null);
+              }}
+              disabled={enviando}
+              className="rounded border border-divider px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Seccion({
   id,
   titulo,
   extra,
   children,
+  camposReanalisis,
 }: {
   id: string;
   titulo: string;
   extra?: ReactNode;
   children: ReactNode;
+  camposReanalisis?: (keyof AnalisisFuncional)[];
 }) {
   return (
     <section
@@ -135,6 +284,9 @@ function Seccion({
         {extra}
       </div>
       {children}
+      {camposReanalisis && (
+        <BloqueReanalisis campos={camposReanalisis} seccionId={id} />
+      )}
     </section>
   );
 }
@@ -940,6 +1092,8 @@ export default function ReportView({
   referenciaCaso,
   onReferenciaCasoChange,
   fecha,
+  notaOriginal,
+  onAnalisisActualizado,
 }: ReportViewProps) {
   const ids = useMemo(() => SECCIONES.map((s) => s.id), []);
   const activa = useSeccionActiva(ids);
@@ -958,6 +1112,9 @@ export default function ReportView({
   }, [analisis.conductas_problema, analisis.hipotesis_mantenimiento]);
 
   return (
+    <ReanalisisContext.Provider
+      value={{ notaOriginal, analisis, onAnalisisActualizado }}
+    >
     <div className="rounded-md border border-divider bg-surface px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-12 lg:py-10 print:rounded-none print:border-none print:px-0 print:py-0 print:shadow-none">
       <PrintOnlyHeader referenciaCaso={referenciaCaso} fecha={fecha} />
       <PrintOnlyFooter />
@@ -1047,7 +1204,7 @@ export default function ReportView({
         <IndiceLateral secciones={SECCIONES} activa={activa} />
 
         <div className="min-w-0 flex-1">
-          <Seccion id="resumen" titulo="Resumen clínico">
+          <Seccion id="resumen" titulo="Resumen clínico" camposReanalisis={["resumen_clinico"]}>
             {analisis.resumen_clinico ? (
               <p className="text-[15px] leading-relaxed text-ink">
                 {analisis.resumen_clinico}
@@ -1057,7 +1214,7 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="conductas" titulo="Conductas problema">
+          <Seccion id="conductas" titulo="Conductas problema" camposReanalisis={["conductas_problema"]}>
             {analisis.conductas_problema.length === 0 ? (
               <SinHallazgos />
             ) : (
@@ -1078,7 +1235,7 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="variables-moduladoras" titulo="Variables moduladoras">
+          <Seccion id="variables-moduladoras" titulo="Variables moduladoras" camposReanalisis={["variables_moduladoras"]}>
             {analisis.variables_moduladoras.length === 0 ? (
               <SinHallazgos />
             ) : (
@@ -1116,6 +1273,7 @@ export default function ReportView({
           <Seccion
             id="situaciones"
             titulo="Análisis por situaciones"
+            camposReanalisis={["situaciones"]}
             extra={
               <BotonesModalidad activa={pestanaActiva} onChange={setPestanaActiva} />
             }
@@ -1131,7 +1289,11 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="hipotesis-mantenimiento" titulo="Hipótesis de mantenimiento">
+          <Seccion
+            id="hipotesis-mantenimiento"
+            titulo="Hipótesis de mantenimiento"
+            camposReanalisis={["hipotesis_mantenimiento", "hipotesis_origen"]}
+          >
             {analisis.hipotesis_mantenimiento.length === 0 ? (
               <SinHallazgos />
             ) : (
@@ -1168,7 +1330,7 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="formulacion" titulo="Formulación del caso">
+          <Seccion id="formulacion" titulo="Formulación del caso" camposReanalisis={["formulacion"]}>
             <div className="space-y-5">
               <SubSeccion titulo="Relaciones entre problemas">
                 {analisis.formulacion.relaciones_entre_problemas.length === 0 ? (
@@ -1206,7 +1368,11 @@ export default function ReportView({
             </div>
           </Seccion>
 
-          <Seccion id="conductas-alternativas" titulo="Conductas alternativas propuestas">
+          <Seccion
+            id="conductas-alternativas"
+            titulo="Conductas alternativas propuestas"
+            camposReanalisis={["conductas_alternativas"]}
+          >
             {analisis.conductas_alternativas.length === 0 ? (
               <SinHallazgos />
             ) : (
@@ -1231,7 +1397,11 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="modalidad" titulo="Detalle según modelo terapéutico">
+          <Seccion
+            id="modalidad"
+            titulo="Detalle según modelo terapéutico"
+            camposReanalisis={[`capa_${pestanaActiva}` as keyof AnalisisFuncional]}
+          >
             <DetalleModalidad>
               <SelectorCapaModalidad
                 analisis={analisis}
@@ -1241,7 +1411,7 @@ export default function ReportView({
             </DetalleModalidad>
           </Seccion>
 
-          <Seccion id="hipotesis-alternativas" titulo="Hipótesis alternativas">
+          <Seccion id="hipotesis-alternativas" titulo="Hipótesis alternativas" camposReanalisis={["hipotesis_alternativas"]}>
             {analisis.hipotesis_alternativas.length === 0 ? (
               <SinHallazgos />
             ) : (
@@ -1260,7 +1430,7 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="preguntas" titulo="Preguntas para la próxima sesión">
+          <Seccion id="preguntas" titulo="Preguntas para la próxima sesión" camposReanalisis={["preguntas_para_sesion"]}>
             {analisis.preguntas_para_sesion.length === 0 ? (
               <SinHallazgos />
             ) : (
@@ -1274,7 +1444,11 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="intervencion" titulo="Líneas de intervención tentativas">
+          <Seccion
+            id="intervencion"
+            titulo="Líneas de intervención tentativas"
+            camposReanalisis={["lineas_de_intervencion_tentativas"]}
+          >
             {analisis.lineas_de_intervencion_tentativas.length === 0 ? (
               <SinHallazgos />
             ) : (
@@ -1288,7 +1462,7 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="datos-faltantes" titulo="Datos faltantes">
+          <Seccion id="datos-faltantes" titulo="Datos faltantes" camposReanalisis={["datos_faltantes"]}>
             {analisis.datos_faltantes.length === 0 ? (
               <SinHallazgos />
             ) : (
@@ -1314,5 +1488,6 @@ export default function ReportView({
       <PrintOnlyDisclaimer fecha={fecha} />
       <LeyendaConfianzaFlotante />
     </div>
+    </ReanalisisContext.Provider>
   );
 }

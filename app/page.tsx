@@ -291,6 +291,10 @@ export default function Home() {
             referenciaCaso={referenciaCaso}
             onReferenciaCasoChange={setReferenciaCaso}
             fecha={fechaGeneracion}
+            notaOriginal={ultimoTextoEnviado}
+            onAnalisisActualizado={(fragmento) =>
+              setAnalisis((previo) => (previo ? { ...previo, ...fragmento } : previo))
+            }
           />
         </div>
       )}

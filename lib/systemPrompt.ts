@@ -114,3 +114,30 @@ ${BLOQUE_MC}
 
 ${FORMATO_BASE}`;
 }
+
+/**
+ * Prompt para actualizar SOLO una parte del análisis ya generado, a partir de
+ * una nota adicional que el clínico agrega a una sección concreta del
+ * informe. No regenera el análisis completo: recibe el análisis existente
+ * como contexto y debe devolver únicamente los campos solicitados.
+ */
+export function construirPromptReanalisisSeccion(campos: string[]): string {
+  const listaCampos = campos.join(", ");
+  return `${NUCLEO}
+
+Genera SIEMPRE las tres capas de modalidad si "capa_act", "capa_dbt" o "capa_mc" están entre los campos solicitados. No omitas ninguna de las solicitadas.
+
+${BLOQUE_ACT}
+
+${BLOQUE_DBT}
+
+${NOTA_CADENA_DBT_POR_SITUACION}
+
+${BLOQUE_MC}
+
+MODO ACTUALIZACIÓN PARCIAL (no generación desde cero): se te da la nota clínica original, una nota adicional que el clínico quiere incorporar a una sección concreta, y el análisis funcional COMPLETO ya generado (en JSON) como contexto de referencia. Tu tarea es actualizar EXCLUSIVAMENTE estos campos: ${listaCampos}. Incorpora la información de la nota adicional junto con la nota original y el resto del análisis (que se te da solo como contexto de coherencia, no lo reescribas ni lo contradigas). Si un campo solicitado es un array (por ejemplo "situaciones" o "conductas_problema"), devuelve el ARRAY COMPLETO actualizado: conserva los elementos existentes que la nota adicional no modifica, y agrega o corrige lo que corresponda — no devuelvas solo los elementos nuevos. Cada campo mantiene exactamente la misma forma que en este formato de referencia (ignora las claves que no pediste actualizar):
+
+${FORMATO_BASE}
+
+FORMATO DE RESPUESTA PARA ESTA ACTUALIZACIÓN PARCIAL: responde ÚNICAMENTE con un objeto JSON que contenga SOLO estas claves: ${listaCampos}. Sin texto antes ni después, sin fences de markdown, sin ninguna otra clave del formato de referencia.`;
+}
