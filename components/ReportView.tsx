@@ -44,6 +44,7 @@ const ETIQUETA_MODELO: Record<ModeloTerapeutico, string> = {
 };
 
 const SECCIONES: SeccionIndice[] = [
+  { id: "datos-faltantes", titulo: "Datos faltantes" },
   { id: "hipotesis-principal", titulo: "Formulación destacada" },
   { id: "resumen", titulo: "Resumen clínico" },
   { id: "conductas", titulo: "Conductas problema" },
@@ -56,7 +57,6 @@ const SECCIONES: SeccionIndice[] = [
   { id: "hipotesis-alternativas", titulo: "Hipótesis alternativas" },
   { id: "preguntas", titulo: "Preguntas para la próxima sesión" },
   { id: "intervencion", titulo: "Líneas de intervención" },
-  { id: "datos-faltantes", titulo: "Datos faltantes" },
 ];
 
 function SinHallazgos() {
@@ -1157,6 +1157,35 @@ export default function ReportView({
         </p>
       </header>
 
+      {/* Datos faltantes: lo primero que debe revisar el terapeuta, antes de confiar en el resto del análisis. */}
+      <section id="datos-faltantes" className="scroll-mt-24 mb-8">
+        <div className="mb-3 flex items-center gap-3">
+          <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
+          <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
+            Datos faltantes
+          </h2>
+        </div>
+        <p className="mb-3 text-sm text-ink-muted">
+          Revisa esto antes que el resto del informe: es la información que la
+          nota no incluyó y que conviene confirmar o completar en sesión.
+        </p>
+        {analisis.datos_faltantes.length === 0 ? (
+          <SinHallazgos />
+        ) : (
+          <ul className="list-disc space-y-2 pl-5">
+            {analisis.datos_faltantes.map((d, i) => (
+              <li key={i} className="text-[15px] leading-relaxed text-ink">
+                {d}
+              </li>
+            ))}
+          </ul>
+        )}
+        <BloqueReanalisis
+          campos={["datos_faltantes", "situaciones"]}
+          seccionId="datos-faltantes"
+        />
+      </section>
+
       {/* Formulación funcional destacada — el titular del informe. */}
       <section id="hipotesis-principal" className="scroll-mt-24 mb-8">
         {hipotesisDestacada && hipotesisDestacada.enunciado ? (
@@ -1465,19 +1494,6 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="datos-faltantes" titulo="Datos faltantes" camposReanalisis={["datos_faltantes"]}>
-            {analisis.datos_faltantes.length === 0 ? (
-              <SinHallazgos />
-            ) : (
-              <ul className="list-disc space-y-2 pl-5">
-                {analisis.datos_faltantes.map((d, i) => (
-                  <li key={i} className="text-[15px] leading-relaxed text-ink">
-                    {d}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Seccion>
         </div>
       </div>
 

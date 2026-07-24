@@ -81,6 +81,8 @@ export function formatearInformeTexto(
   }
   partes.push("");
 
+  partes.push(seccion("DATOS FALTANTES", listaOTexto(analisis.datos_faltantes)));
+
   partes.push(seccion("RESUMEN CLÍNICO", analisis.resumen_clinico));
 
   partes.push(
@@ -234,7 +236,6 @@ export function formatearInformeTexto(
   partes.push(
     seccion("LÍNEAS DE INTERVENCIÓN TENTATIVAS", listaOTexto(analisis.lineas_de_intervencion_tentativas))
   );
-  partes.push(seccion("DATOS FALTANTES", listaOTexto(analisis.datos_faltantes)));
 
   partes.push(DESCARGO);
 
