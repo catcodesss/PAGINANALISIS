@@ -43,6 +43,18 @@ const ETIQUETA_MODELO: Record<ModeloTerapeutico, string> = {
   mc: "Conductual (MC)",
 };
 
+/**
+ * Qué campo de AnalisisFuncional corresponde a la capa de cada modalidad.
+ * Tipado como Record<ModeloTerapeutico, keyof AnalisisFuncional> para que el
+ * compilador avise si algún nombre de campo cambia, en vez de construirlo
+ * con un template literal + "as" que no se vuelve a chequear.
+ */
+const CAMPO_CAPA_POR_MODELO: Record<ModeloTerapeutico, keyof AnalisisFuncional> = {
+  act: "capa_act",
+  dbt: "capa_dbt",
+  mc: "capa_mc",
+};
+
 const SECCIONES: SeccionIndice[] = [
   { id: "datos-faltantes", titulo: "Datos faltantes" },
   { id: "hipotesis-principal", titulo: "Formulación destacada" },
@@ -1432,7 +1444,7 @@ export default function ReportView({
           <Seccion
             id="modalidad"
             titulo="Detalle según modelo terapéutico"
-            camposReanalisis={[`capa_${pestanaActiva}` as keyof AnalisisFuncional]}
+            camposReanalisis={[CAMPO_CAPA_POR_MODELO[pestanaActiva]]}
           >
             <DetalleModalidad>
               <SelectorCapaModalidad

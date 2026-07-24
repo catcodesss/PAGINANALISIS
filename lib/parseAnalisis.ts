@@ -1,21 +1,22 @@
-import type {
-  AnalisisFuncional,
-  CadenaDBT,
-  CadenaOperante,
-  CadenaRespondiente,
-  CapaModalidadACT,
-  CapaModalidadDBT,
-  CapaModalidadMC,
-  ConductaAlternativa,
-  ConductaProblema,
-  Formulacion,
-  HipotesisAlternativa,
-  HipotesisMantenimiento,
-  NivelConfianza,
-  PriorizacionBlanco,
-  Situacion,
-  TipoContingencia,
-  VariableModuladora,
+import {
+  CAMPOS_ANALISIS_FUNCIONAL,
+  type AnalisisFuncional,
+  type CadenaDBT,
+  type CadenaOperante,
+  type CadenaRespondiente,
+  type CapaModalidadACT,
+  type CapaModalidadDBT,
+  type CapaModalidadMC,
+  type ConductaAlternativa,
+  type ConductaProblema,
+  type Formulacion,
+  type HipotesisAlternativa,
+  type HipotesisMantenimiento,
+  type NivelConfianza,
+  type PriorizacionBlanco,
+  type Situacion,
+  type TipoContingencia,
+  type VariableModuladora,
 } from "./types";
 
 /**
@@ -35,6 +36,18 @@ export function extraerJSON(textoCrudo: string): string {
 
 function comoArreglo<T>(valor: unknown): T[] {
   return Array.isArray(valor) ? (valor as T[]) : [];
+}
+
+/**
+ * Como comoArreglo<string>, pero valida el contenido real de cada elemento
+ * en vez de solo confiar en el tipo genérico: filtra cualquier elemento que
+ * no sea texto en lugar de dejarlo pasar como si lo fuera (el proveedor de
+ * IA a veces devuelve objetos donde se le pidió una lista de strings).
+ */
+function comoArregloDeTexto(valor: unknown): string[] {
+  return comoArreglo<unknown>(valor).filter(
+    (elemento): elemento is string => typeof elemento === "string"
+  );
 }
 
 function comoTexto(valor: unknown, porDefecto = ""): string {
@@ -130,7 +143,7 @@ function normalizarCadenaDBT(valor: unknown): CadenaDBT | null {
   const d = comoObjetoONulo(valor);
   if (!d) return null;
   return {
-    factores_vulnerabilidad: comoArreglo<string>(d.factores_vulnerabilidad),
+    factores_vulnerabilidad: comoArregloDeTexto(d.factores_vulnerabilidad),
     evento_precipitante: comoTexto(d.evento_precipitante),
     eslabones: comoArreglo<unknown>(d.eslabones).map((e) => {
       const eo = comoObjeto(e);
@@ -181,7 +194,7 @@ function normalizarPriorizacion(valor: unknown): PriorizacionBlanco {
 function normalizarFormulacion(valor: unknown): Formulacion {
   const d = comoObjeto(valor);
   return {
-    relaciones_entre_problemas: comoArreglo<string>(d.relaciones_entre_problemas),
+    relaciones_entre_problemas: comoArregloDeTexto(d.relaciones_entre_problemas),
     priorizacion: comoArreglo<unknown>(d.priorizacion).map(normalizarPriorizacion),
   };
 }
@@ -245,7 +258,7 @@ function normalizarCapaDbt(valor: unknown): CapaModalidadDBT {
   return {
     analisis_en_cadena: {
       conducta_objetivo: comoTexto(cadena.conducta_objetivo),
-      vulnerabilidades: comoArreglo<string>(cadena.vulnerabilidades),
+      vulnerabilidades: comoArregloDeTexto(cadena.vulnerabilidades),
       evento_precipitante: comoTexto(cadena.evento_precipitante),
       eslabones: comoArreglo<unknown>(cadena.eslabones).map((e) => {
         const eo = comoObjeto(e);
@@ -256,10 +269,10 @@ function normalizarCapaDbt(valor: unknown): CapaModalidadDBT {
           descripcion: comoTexto(eo.descripcion),
         };
       }),
-      consecuencias_corto_plazo: comoArreglo<string>(
+      consecuencias_corto_plazo: comoArregloDeTexto(
         cadena.consecuencias_corto_plazo
       ),
-      consecuencias_largo_plazo: comoArreglo<string>(
+      consecuencias_largo_plazo: comoArregloDeTexto(
         cadena.consecuencias_largo_plazo
       ),
     },
@@ -314,7 +327,7 @@ export function normalizarAnalisis(json: unknown): AnalisisFuncional {
     hipotesis_mantenimiento: comoArreglo<unknown>(
       d.hipotesis_mantenimiento
     ).map(normalizarHipotesisMantenimiento),
-    hipotesis_origen: comoArreglo<string>(d.hipotesis_origen),
+    hipotesis_origen: comoArregloDeTexto(d.hipotesis_origen),
     formulacion: normalizarFormulacion(d.formulacion),
     conductas_alternativas: comoArreglo<unknown>(d.conductas_alternativas).map(
       normalizarConductaAlternativa
@@ -325,18 +338,75 @@ export function normalizarAnalisis(json: unknown): AnalisisFuncional {
     hipotesis_alternativas: comoArreglo<unknown>(d.hipotesis_alternativas).map(
       normalizarHipotesisAlternativa
     ),
-    preguntas_para_sesion: comoArreglo<string>(d.preguntas_para_sesion),
-    lineas_de_intervencion_tentativas: comoArreglo<string>(
+    preguntas_para_sesion: comoArregloDeTexto(d.preguntas_para_sesion),
+    lineas_de_intervencion_tentativas: comoArregloDeTexto(
       d.lineas_de_intervencion_tentativas
     ),
-    datos_faltantes: comoArreglo<string>(d.datos_faltantes),
+    datos_faltantes: comoArregloDeTexto(d.datos_faltantes),
   };
+}
+
+/**
+ * Un normalizador por cada clave de AnalisisFuncional, reutilizando las
+ * mismas funciones tolerantes que usa normalizarAnalisis. El tipo de este
+ * objeto obliga (en tiempo de compilación) a que TODAS las claves de
+ * AnalisisFuncional tengan un normalizador: si agregas un campo al tipo y
+ * olvidas agregarlo aquí, el build falla en vez de fallar en silencio
+ * cuando alguien reanalice esa sección en producción.
+ */
+const NORMALIZADORES_POR_CAMPO: {
+  [K in keyof AnalisisFuncional]: (d: Record<string, unknown>) => AnalisisFuncional[K];
+} = {
+  resumen_clinico: (d) => comoTexto(d.resumen_clinico),
+  conductas_problema: (d) =>
+    comoArreglo<unknown>(d.conductas_problema).map(normalizarConductaProblema),
+  variables_moduladoras: (d) =>
+    comoArreglo<unknown>(d.variables_moduladoras).map(
+      normalizarVariableModuladora
+    ),
+  situaciones: (d) => comoArreglo<unknown>(d.situaciones).map(normalizarSituacion),
+  hipotesis_mantenimiento: (d) =>
+    comoArreglo<unknown>(d.hipotesis_mantenimiento).map(
+      normalizarHipotesisMantenimiento
+    ),
+  hipotesis_origen: (d) => comoArregloDeTexto(d.hipotesis_origen),
+  formulacion: (d) => normalizarFormulacion(d.formulacion),
+  conductas_alternativas: (d) =>
+    comoArreglo<unknown>(d.conductas_alternativas).map(
+      normalizarConductaAlternativa
+    ),
+  capa_act: (d) => normalizarCapaAct(d.capa_act),
+  capa_dbt: (d) => normalizarCapaDbt(d.capa_dbt),
+  capa_mc: (d) => normalizarCapaMc(d.capa_mc),
+  hipotesis_alternativas: (d) =>
+    comoArreglo<unknown>(d.hipotesis_alternativas).map(
+      normalizarHipotesisAlternativa
+    ),
+  preguntas_para_sesion: (d) => comoArregloDeTexto(d.preguntas_para_sesion),
+  lineas_de_intervencion_tentativas: (d) =>
+    comoArregloDeTexto(d.lineas_de_intervencion_tentativas),
+  datos_faltantes: (d) => comoArregloDeTexto(d.datos_faltantes),
+};
+
+function esCampoDeAnalisis(campo: string): campo is keyof AnalisisFuncional {
+  return (CAMPOS_ANALISIS_FUNCIONAL as readonly string[]).includes(campo);
+}
+
+/** Asigna resultado[campo] con el normalizador correspondiente, sin recurrir a "as" para saltarse el tipo. */
+function asignarCampoNormalizado<K extends keyof AnalisisFuncional>(
+  resultado: Partial<AnalisisFuncional>,
+  campo: K,
+  d: Record<string, unknown>
+): void {
+  resultado[campo] = NORMALIZADORES_POR_CAMPO[campo](d);
 }
 
 /**
  * Normaliza una respuesta parcial (reanálisis de una sola sección): solo
  * rellena las claves pedidas en "campos", reutilizando los mismos
- * normalizadores tolerantes que el análisis completo.
+ * normalizadores tolerantes que el análisis completo. Las claves que no son
+ * un campo válido de AnalisisFuncional se ignoran silenciosamente (ya se
+ * validaron antes en la API route; esto es una segunda barrera).
  */
 export function normalizarFragmento(
   campos: string[],
@@ -346,68 +416,8 @@ export function normalizarFragmento(
   const resultado: Partial<AnalisisFuncional> = {};
 
   for (const campo of campos) {
-    switch (campo) {
-      case "resumen_clinico":
-        resultado.resumen_clinico = comoTexto(d.resumen_clinico);
-        break;
-      case "conductas_problema":
-        resultado.conductas_problema = comoArreglo<unknown>(
-          d.conductas_problema
-        ).map(normalizarConductaProblema);
-        break;
-      case "variables_moduladoras":
-        resultado.variables_moduladoras = comoArreglo<unknown>(
-          d.variables_moduladoras
-        ).map(normalizarVariableModuladora);
-        break;
-      case "situaciones":
-        resultado.situaciones = comoArreglo<unknown>(d.situaciones).map(
-          normalizarSituacion
-        );
-        break;
-      case "hipotesis_mantenimiento":
-        resultado.hipotesis_mantenimiento = comoArreglo<unknown>(
-          d.hipotesis_mantenimiento
-        ).map(normalizarHipotesisMantenimiento);
-        break;
-      case "hipotesis_origen":
-        resultado.hipotesis_origen = comoArreglo<string>(d.hipotesis_origen);
-        break;
-      case "formulacion":
-        resultado.formulacion = normalizarFormulacion(d.formulacion);
-        break;
-      case "conductas_alternativas":
-        resultado.conductas_alternativas = comoArreglo<unknown>(
-          d.conductas_alternativas
-        ).map(normalizarConductaAlternativa);
-        break;
-      case "capa_act":
-        resultado.capa_act = normalizarCapaAct(d.capa_act);
-        break;
-      case "capa_dbt":
-        resultado.capa_dbt = normalizarCapaDbt(d.capa_dbt);
-        break;
-      case "capa_mc":
-        resultado.capa_mc = normalizarCapaMc(d.capa_mc);
-        break;
-      case "hipotesis_alternativas":
-        resultado.hipotesis_alternativas = comoArreglo<unknown>(
-          d.hipotesis_alternativas
-        ).map(normalizarHipotesisAlternativa);
-        break;
-      case "preguntas_para_sesion":
-        resultado.preguntas_para_sesion = comoArreglo<string>(
-          d.preguntas_para_sesion
-        );
-        break;
-      case "lineas_de_intervencion_tentativas":
-        resultado.lineas_de_intervencion_tentativas = comoArreglo<string>(
-          d.lineas_de_intervencion_tentativas
-        );
-        break;
-      case "datos_faltantes":
-        resultado.datos_faltantes = comoArreglo<string>(d.datos_faltantes);
-        break;
+    if (esCampoDeAnalisis(campo)) {
+      asignarCampoNormalizado(resultado, campo, d);
     }
   }
 

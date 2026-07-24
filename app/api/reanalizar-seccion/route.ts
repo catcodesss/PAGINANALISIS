@@ -2,29 +2,26 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { construirPromptReanalisisSeccion } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarFragmento } from "@/lib/parseAnalisis";
+import { CAMPOS_ANALISIS_FUNCIONAL, type AnalisisFuncional } from "@/lib/types";
 
 const MODELO = "gpt-4o";
 const LONGITUD_MINIMA_NOTA_ORIGINAL = 20;
 const LONGITUD_MINIMA_NOTA_ADICIONAL = 3;
 const LONGITUD_MAXIMA_NOTA_ADICIONAL = 4000;
 
-const CAMPOS_VALIDOS = new Set([
-  "resumen_clinico",
-  "conductas_problema",
-  "variables_moduladoras",
-  "situaciones",
-  "hipotesis_mantenimiento",
-  "hipotesis_origen",
-  "formulacion",
-  "conductas_alternativas",
-  "capa_act",
-  "capa_dbt",
-  "capa_mc",
-  "hipotesis_alternativas",
-  "preguntas_para_sesion",
-  "lineas_de_intervencion_tentativas",
-  "datos_faltantes",
-]);
+// Misma lista que usa lib/parseAnalisis.ts para normalizar: una sola fuente
+// de verdad (lib/types.ts) evita que esta ruta y el normalizador se desincronicen.
+const CAMPOS_VALIDOS = new Set<string>(CAMPOS_ANALISIS_FUNCIONAL);
+
+function esListaDeCamposValida(
+  valor: unknown
+): valor is (keyof AnalisisFuncional)[] {
+  return (
+    Array.isArray(valor) &&
+    valor.length > 0 &&
+    valor.every((c) => typeof c === "string" && CAMPOS_VALIDOS.has(c))
+  );
+}
 
 function respuestaError(error: string, message: string, status: number) {
   return NextResponse.json({ error, message }, { status });
@@ -82,11 +79,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (
-    !Array.isArray(campos) ||
-    campos.length === 0 ||
-    !campos.every((c) => typeof c === "string" && CAMPOS_VALIDOS.has(c))
-  ) {
+  if (!esListaDeCamposValida(campos)) {
     return respuestaError(
       "solicitud_invalida",
       "No se reconoce la sección a reanalizar.",
@@ -120,7 +113,7 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "system",
-          content: construirPromptReanalisisSeccion(campos as string[]),
+          content: construirPromptReanalisisSeccion(campos),
         },
         {
           role: "user",
@@ -133,7 +126,7 @@ export async function POST(request: Request) {
 
     const texto = respuesta.choices[0]?.message?.content?.trim() ?? "";
     const json = JSON.parse(extraerJSON(texto));
-    const fragmento = normalizarFragmento(campos as string[], json);
+    const fragmento = normalizarFragmento(campos, json);
 
     return NextResponse.json({ fragmento });
   } catch (error) {

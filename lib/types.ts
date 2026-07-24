@@ -185,3 +185,36 @@ export interface AnalisisFuncional {
   lineas_de_intervencion_tentativas: string[];
   datos_faltantes: string[];
 }
+
+/**
+ * Única fuente de verdad de las claves de nivel superior de AnalisisFuncional
+ * que se pueden reanalizar por separado (ver /api/reanalizar-seccion y
+ * lib/parseAnalisis.ts#normalizarFragmento). La línea de abajo no compila si
+ * falta o sobra una clave respecto a AnalisisFuncional — así, si agregas un
+ * campo nuevo al análisis y olvidas añadirlo aquí, el build falla en vez de
+ * fallar en silencio en producción.
+ */
+export const CAMPOS_ANALISIS_FUNCIONAL = [
+  "resumen_clinico",
+  "conductas_problema",
+  "variables_moduladoras",
+  "situaciones",
+  "hipotesis_mantenimiento",
+  "hipotesis_origen",
+  "formulacion",
+  "conductas_alternativas",
+  "capa_act",
+  "capa_dbt",
+  "capa_mc",
+  "hipotesis_alternativas",
+  "preguntas_para_sesion",
+  "lineas_de_intervencion_tentativas",
+  "datos_faltantes",
+] as const satisfies readonly (keyof AnalisisFuncional)[];
+
+type _TodasLasClavesCubiertas =
+  keyof AnalisisFuncional extends (typeof CAMPOS_ANALISIS_FUNCIONAL)[number]
+    ? true
+    : ["Falta una clave de AnalisisFuncional en CAMPOS_ANALISIS_FUNCIONAL"];
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _chequeoCamposCompletos: _TodasLasClavesCubiertas = true;
