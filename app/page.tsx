@@ -298,6 +298,18 @@ export default function Home() {
           />
         </div>
       )}
+
+      <footer className="mt-10 border-t border-divider pt-6 text-center text-xs text-ink-muted print:hidden">
+        Elaborado por{" "}
+        <a
+          href="https://catcodesss.github.io/catcode/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-accent hover:underline"
+        >
+          CatCodes
+        </a>
+      </footer>
     </main>
   );
 }
