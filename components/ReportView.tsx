@@ -1145,7 +1145,6 @@ export default function ReportView({
           <p>
             Fecha de generación: <span className="text-ink">{fecha}</span>
           </p>
-          <Chip>ACT · DBT · Conductual</Chip>
           <label className="flex items-center gap-2 print:hidden">
             <span>Referencia del caso (opcional):</span>
             <input

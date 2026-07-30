@@ -300,15 +300,18 @@ export default function Home() {
       )}
 
       <footer className="mt-10 border-t border-divider pt-6 text-center text-xs text-ink-muted print:hidden">
-        Elaborado por{" "}
-        <a
-          href="https://catcodesss.github.io/catcode/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium text-accent hover:underline"
-        >
-          CatCodes
-        </a>
+        <p>
+          Elaborado por{" "}
+          <a
+            href="https://catcodesss.github.io/catcode/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-accent hover:underline"
+          >
+            CatCodes
+          </a>
+        </p>
+        <p className="mt-1 font-mono text-[11px] text-ink-muted/70">v0.1.2</p>
       </footer>
     </main>
   );
