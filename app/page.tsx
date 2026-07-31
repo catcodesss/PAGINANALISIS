@@ -10,8 +10,10 @@ import {
 import { formatearInformeTexto } from "@/lib/formatearInforme";
 import ReportView from "@/components/ReportView";
 import Historial from "@/components/Historial";
+import GuiaRapida from "@/components/GuiaRapida";
+import GuiaCompleta from "@/components/GuiaCompleta";
 import EsqueletoInforme from "@/components/EsqueletoInforme";
-import Sidebar from "@/components/Sidebar";
+import Sidebar, { type Vista } from "@/components/Sidebar";
 import PanelRecomendaciones from "@/components/PanelRecomendaciones";
 
 const EJEMPLO_NOTA = `Ejemplo:
@@ -39,6 +41,8 @@ export default function Home() {
   const [fechaGeneracion, setFechaGeneracion] = useState("");
   const [ultimoTextoEnviado, setUltimoTextoEnviado] = useState("");
   const [copiado, setCopiado] = useState(false);
+  const [guiaAbierta, setGuiaAbierta] = useState(false);
+  const [vista, setVista] = useState<Vista>("analisis");
 
   async function ejecutarAnalisis(texto: string) {
     setUltimoTextoEnviado(texto);
@@ -140,12 +144,15 @@ export default function Home() {
     }
   }
 
-  const formularioVisible = estado !== "resultado";
+  // En la guía se ocultan tanto el formulario como el informe: comparten el
+  // mismo contenedor y la misma cabecera, solo cambia el cuerpo.
+  const enAnalisis = vista === "analisis";
+  const formularioVisible = enAnalisis && estado !== "resultado";
   const formularioDeshabilitado = estado === "cargando";
 
   return (
     <div className="flex min-h-screen bg-canvas print:block">
-      <Sidebar />
+      <Sidebar vista={vista} onCambiarVista={setVista} />
 
       <div className="min-w-0 flex-1">
         <main
@@ -156,21 +163,26 @@ export default function Home() {
           <header className="mb-6 flex flex-wrap items-start justify-between gap-4 print:hidden">
             <div>
               <h1 className="font-serif text-2xl font-semibold text-ink sm:text-3xl">
-                ANIA — Análisis de conducta asistido por IA
+                {enAnalisis
+                  ? "ANIA — Análisis de conducta asistido por IA"
+                  : "Guía de uso"}
               </h1>
               <p className="mt-2 text-sm text-ink-muted sm:text-base">
-                Herramienta clínica para formular casos con claridad, precisión y enfoque
-                funcional.
+                {enAnalisis
+                  ? "Herramienta clínica para formular casos con claridad, precisión y enfoque funcional."
+                  : "Cómo escribir la nota, cómo se convierte en análisis funcional y cómo leer el informe sin darle más crédito del que tiene."}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                title="Próximamente"
+                onClick={() =>
+                  enAnalisis ? setGuiaAbierta(true) : setVista("analisis")
+                }
                 className="flex items-center gap-2 rounded-lg border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas"
               >
                 <BookOpenText className="h-4 w-4 text-accent" aria-hidden="true" />
-                Guía rápida
+                {enAnalisis ? "Guía rápida" : "Volver al análisis"}
               </button>
               <button
                 type="button"
@@ -327,7 +339,7 @@ export default function Home() {
             </section>
           )}
 
-          {estado === "resultado" && analisis && (
+          {enAnalisis && estado === "resultado" && analisis && (
             <div className="mt-2">
               <div className="sticky top-0 z-10 -mx-4 mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-divider bg-surface/95 px-4 py-3 backdrop-blur print:hidden sm:-mx-6 sm:px-6">
                 <p className="min-w-0 truncate text-sm text-ink-muted">
@@ -373,25 +385,29 @@ export default function Home() {
             </div>
           )}
 
-          <Historial
-            analisisActual={analisis}
-            notaActual={ultimoTextoEnviado}
-            referenciaActual={referenciaCaso}
-            onAbrir={(registro) => {
-              setAnalisis(registro.analisis);
-              setNota(registro.nota);
-              setUltimoTextoEnviado(registro.nota);
-              setReferenciaCaso(registro.referencia);
-              setFechaGeneracion(
-                new Date(registro.fecha).toLocaleString("es", {
-                  dateStyle: "long",
-                  timeStyle: "short",
-                })
-              );
-              setEstado("resultado");
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-          />
+          {enAnalisis && (
+            <Historial
+              analisisActual={analisis}
+              notaActual={ultimoTextoEnviado}
+              referenciaActual={referenciaCaso}
+              onAbrir={(registro) => {
+                setAnalisis(registro.analisis);
+                setNota(registro.nota);
+                setUltimoTextoEnviado(registro.nota);
+                setReferenciaCaso(registro.referencia);
+                setFechaGeneracion(
+                  new Date(registro.fecha).toLocaleString("es", {
+                    dateStyle: "long",
+                    timeStyle: "short",
+                  })
+                );
+                setEstado("resultado");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            />
+          )}
+
+          {!enAnalisis && <GuiaCompleta />}
 
           <footer className="mt-10 border-t border-divider pt-6 text-center text-xs text-ink-muted print:hidden">
             <p>
@@ -409,6 +425,16 @@ export default function Home() {
           </footer>
         </main>
       </div>
+      {guiaAbierta && (
+        <GuiaRapida
+          onCerrar={() => setGuiaAbierta(false)}
+          onVerCompleta={() => {
+            setGuiaAbierta(false);
+            setVista("guia");
+            window.scrollTo({ top: 0 });
+          }}
+        />
+      )}
     </div>
   );
 }
