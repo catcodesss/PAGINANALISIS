@@ -3,9 +3,13 @@ import OpenAI from "openai";
 import { construirPromptReanalisisSeccion } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarFragmento } from "@/lib/parseAnalisis";
 import { numerarNota } from "@/lib/citas";
+import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
 import { CAMPOS_ANALISIS_FUNCIONAL, type AnalisisFuncional } from "@/lib/types";
 
 const MODELO = "gpt-4o";
+const RUTA = "reanalizar";
+const LIMITE_PETICIONES = Number(process.env.LIMITE_REANALISIS_POR_VENTANA ?? 20);
+const VENTANA_MS = Number(process.env.LIMITE_VENTANA_MS ?? 10 * 60 * 1000);
 const LONGITUD_MINIMA_NOTA_ORIGINAL = 20;
 const LONGITUD_MINIMA_NOTA_ADICIONAL = 3;
 const LONGITUD_MAXIMA_NOTA_ADICIONAL = 4000;
@@ -29,6 +33,16 @@ function respuestaError(error: string, message: string, status: number) {
 }
 
 export async function POST(request: Request) {
+  // Ruta pública sin autenticación: sin límite, cualquiera puede consumir el
+  // saldo de OpenAI del propietario. Ver lib/limitePeticiones.ts.
+  const limite = comprobarLimite(`${RUTA}:${ipDe(request)}`, LIMITE_PETICIONES, VENTANA_MS);
+  if (!limite.permitido) {
+    return NextResponse.json(
+      { error: "demasiadas_peticiones", message: "Has alcanzado el límite de reanálisis por ahora. Espera unos minutos e intenta de nuevo." },
+      { status: 429, headers: { "Retry-After": String(limite.reintentarEn) } }
+    );
+  }
+
   let notaOriginal: unknown;
   let notaAdicional: unknown;
   let campos: unknown;

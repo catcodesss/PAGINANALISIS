@@ -4,8 +4,12 @@ import { construirSystemPrompt } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarAnalisis } from "@/lib/parseAnalisis";
 import { numerarNota } from "@/lib/citas";
 import { validarAnalisis } from "@/lib/validadores";
+import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
 
 const MODELO = "gpt-4o";
+const RUTA = "analizar";
+const LIMITE_PETICIONES = Number(process.env.LIMITE_ANALISIS_POR_VENTANA ?? 5);
+const VENTANA_MS = Number(process.env.LIMITE_VENTANA_MS ?? 10 * 60 * 1000);
 const LONGITUD_MINIMA = 100;
 const LONGITUD_MAXIMA = 15000;
 
@@ -14,6 +18,24 @@ function respuestaError(error: string, message: string, status: number) {
 }
 
 export async function POST(request: Request) {
+  // Ruta pública sin autenticación: sin límite, cualquiera puede consumir el
+  // saldo de OpenAI del propietario. Ver lib/limitePeticiones.ts.
+  const limite = comprobarLimite(
+    `${RUTA}:${ipDe(request)}`,
+    LIMITE_PETICIONES,
+    VENTANA_MS
+  );
+  if (!limite.permitido) {
+    return NextResponse.json(
+      {
+        error: "demasiadas_peticiones",
+        message:
+          "Has alcanzado el límite de análisis por ahora. Espera unos minutos e intenta de nuevo.",
+      },
+      { status: 429, headers: { "Retry-After": String(limite.reintentarEn) } }
+    );
+  }
+
   let nota: unknown;
   try {
     const cuerpo = await request.json();

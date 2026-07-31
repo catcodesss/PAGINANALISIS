@@ -82,3 +82,34 @@ lib/parseAnalisis.ts             Extracción y normalización robusta del JSON d
 lib/pii.ts                       Detección y enmascarado de datos identificables (cliente)
 lib/formatearInforme.ts          Formateo de texto plano para "Copiar informe"
 ```
+
+## Pendiente para el propietario (no es trabajo de código)
+
+Antes de procesar notas de pacientes reales con esta herramienta:
+
+- **Firmar el DPA con OpenAI.** El RGPD exige tener el acuerdo de encargado del
+  tratamiento antes de enviar datos personales a un tercero.
+  https://openai.com/policies/data-processing-addendum/
+- **Solicitar Zero Data Retention.** Por defecto OpenAI puede retener entradas y
+  salidas de la API hasta 30 días para detección de abusos. ZDR no viene activado:
+  requiere solicitud y aprobación previa.
+- **Valorar residencia de datos en Europa** si los usuarios son europeos.
+- **Revisar que el texto de privacidad de la interfaz** siga coincidiendo con la
+  configuración real de la cuenta (app/page.tsx).
+
+El límite de peticiones de `lib/limitePeticiones.ts` guarda el contador en memoria
+del proceso. En Vercel cada invocación puede caer en una instancia distinta, así
+que frena el uso accidental pero no un abuso decidido. Para un límite fiable hace
+falta un almacén compartido (Vercel KV o Upstash).
+
+## Pruebas
+
+Ninguna consume API:
+
+```bash
+node --experimental-strip-types evals/citas.test.mjs   # citas verificables
+node --experimental-strip-types evals/pii.test.mjs     # enmascarado
+node evals/validadores.test.mjs                        # validadores deterministas
+```
+
+Las evals completas (seis llamadas a OpenAI) están documentadas en `evals/README.md`.

@@ -9,6 +9,7 @@ import {
 } from "@/lib/pii";
 import { formatearInformeTexto } from "@/lib/formatearInforme";
 import ReportView from "@/components/ReportView";
+import Historial from "@/components/Historial";
 import EsqueletoInforme from "@/components/EsqueletoInforme";
 import Sidebar from "@/components/Sidebar";
 import PanelRecomendaciones from "@/components/PanelRecomendaciones";
@@ -234,8 +235,11 @@ export default function Home() {
                     <div>
                       <p className="text-sm font-semibold text-ink">Privacidad</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
-                        Tus notas se procesan de forma efímera y no se almacenan en ningún
-                        servidor propio. Recomendación: usa iniciales o seudónimos.
+                        Para generar el análisis, el texto de tus notas se envía a la
+                        API de OpenAI. ANIA no lo almacena en ningún servidor propio,
+                        pero OpenAI puede conservarlo temporalmente según su política
+                        de retención. No introduzcas nombres reales ni datos de
+                        contacto: usa iniciales o seudónimos.
                       </p>
                     </div>
                   </div>
@@ -368,6 +372,26 @@ export default function Home() {
               />
             </div>
           )}
+
+          <Historial
+            analisisActual={analisis}
+            notaActual={ultimoTextoEnviado}
+            referenciaActual={referenciaCaso}
+            onAbrir={(registro) => {
+              setAnalisis(registro.analisis);
+              setNota(registro.nota);
+              setUltimoTextoEnviado(registro.nota);
+              setReferenciaCaso(registro.referencia);
+              setFechaGeneracion(
+                new Date(registro.fecha).toLocaleString("es", {
+                  dateStyle: "long",
+                  timeStyle: "short",
+                })
+              );
+              setEstado("resultado");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
 
           <footer className="mt-10 border-t border-divider pt-6 text-center text-xs text-ink-muted print:hidden">
             <p>
