@@ -1,0 +1,13 @@
+# Finales de línea: todo el texto se guarda en el repositorio con LF.
+#
+# Sin esto, Git avisa en cada commit desde Windows y algunos archivos aparecen
+# como modificados cuando solo han cambiado los finales de línea, lo que
+# esconde los cambios reales entre el ruido.
+* text=auto eol=lf
+
+# Binarios: que Git no los toque.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
