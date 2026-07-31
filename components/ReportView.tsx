@@ -14,6 +14,7 @@ import type {
   CadenaDBT,
   CadenaOperante,
   CadenaRespondiente,
+  Cita as CitaVerificada,
   ModeloTerapeutico,
   NivelConfianza,
   Situacion,
@@ -57,6 +58,7 @@ const CAMPO_CAPA_POR_MODELO: Record<ModeloTerapeutico, keyof AnalisisFuncional> 
 
 const SECCIONES: SeccionIndice[] = [
   { id: "datos-faltantes", titulo: "Datos faltantes" },
+  { id: "alertas", titulo: "Revisiones sugeridas" },
   { id: "hipotesis-principal", titulo: "Formulación destacada" },
   { id: "resumen", titulo: "Resumen clínico" },
   { id: "conductas", titulo: "Conductas problema" },
@@ -123,15 +125,35 @@ function Confianza({ nivel }: { nivel: NivelConfianza | string }) {
 }
 
 /** Cita textual de la nota original, distinguida como bloque. */
-function Cita({ children }: { children: string | null | undefined }) {
+/**
+ * Solo se muestra entre comillas bajo el rótulo "De la nota" el texto que el
+ * servidor recortó de la propia nota (ver lib/citas.ts). Si la cita no se pudo
+ * verificar, se dice explícitamente que es una inferencia: nunca se presenta
+ * como textual algo que el modelo redactó.
+ */
+function Cita({ children }: { children: CitaVerificada | null | undefined }) {
   if (!children) return null;
+
+  if (!children.verificada) {
+    return (
+      <p className="evidence-prefix mt-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted/70">
+        Inferido — sin cita literal en la nota
+      </p>
+    );
+  }
+
+  const rango =
+    children.linea_inicio === children.linea_fin
+      ? `línea ${children.linea_inicio}`
+      : `líneas ${children.linea_inicio}–${children.linea_fin}`;
+
   return (
     <blockquote className="evidence-block mt-2 border-l-2 border-divider pl-3">
       <p className="evidence-prefix font-mono text-[10px] uppercase tracking-wide text-ink-muted/70">
-        De la nota
+        De la nota · {rango}
       </p>
       <p className="evidence-text text-sm italic leading-relaxed text-ink-muted">
-        &quot;{children}&quot;
+        &quot;{children.texto}&quot;
       </p>
     </blockquote>
   );
@@ -1203,6 +1225,39 @@ export default function ReportView({
             />
           </section>
 
+          {/*
+            Avisos metodológicos del validador del servidor, no del modelo.
+            Van aquí arriba, junto a los datos faltantes, porque son la misma
+            clase de información: lo que hay que mirar con cautela antes de
+            confiar en el resto. Deliberadamente sobrios: son advertencias
+            para revisar, no errores.
+          */}
+          {analisis.alertas.length > 0 && (
+            <section id="alertas" className="scroll-mt-24 mb-8">
+              <div className="mb-3 flex items-center gap-3">
+                <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
+                <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
+                  Revisiones sugeridas
+                </h2>
+              </div>
+              <p className="mb-3 text-sm text-ink-muted">
+                Comprobaciones automáticas sobre la coherencia del informe. No las
+                genera la IA: las emite el sistema al contrastar el análisis con tu
+                nota.
+              </p>
+              <ul className="space-y-3">
+                {analisis.alertas.map((a, i) => (
+                  <li key={i} className="border-l-2 border-divider pl-3">
+                    <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted/70">
+                      {a.gravedad === "alta" ? "Revisar antes de usar" : "Conviene revisar"}
+                    </p>
+                    <p className="text-[15px] leading-relaxed text-ink">{a.mensaje}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {/* Formulación funcional destacada — el titular del informe. */}
           <section id="hipotesis-principal" className="scroll-mt-24 mb-8">
             {hipotesisDestacada && hipotesisDestacada.enunciado ? (
@@ -1267,10 +1322,19 @@ export default function ReportView({
                     <div className="flex flex-wrap gap-2">
                       <Chip>{c.tipo}</Chip>
                       <Chip>importancia {c.importancia}</Chip>
+                      {c.es_conducta_seguridad && <Chip>conducta de seguridad</Chip>}
+                      {c.deficit_o_interferencia !== "no_determinable" && (
+                        <Chip>{c.deficit_o_interferencia}</Chip>
+                      )}
                     </div>
                     <p className="mt-1 text-[15px] leading-relaxed text-ink">
                       {c.descripcion}
                     </p>
+                    {c.justificacion_deficit && (
+                      <p className="mt-1 text-sm leading-relaxed text-ink-muted">
+                        {c.justificacion_deficit}
+                      </p>
+                    )}
                     <Cita>{c.evidencia}</Cita>
                   </li>
                 ))}

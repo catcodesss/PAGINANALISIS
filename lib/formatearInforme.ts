@@ -1,8 +1,22 @@
-import type { AnalisisFuncional, Situacion } from "./types";
+import type { AnalisisFuncional, Cita, Situacion } from "./types";
 
 const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
 const DESCARGO =
   "Este análisis es una síntesis asistida de hipótesis funcionales generadas a partir de las notas proporcionadas. No constituye un diagnóstico ni sustituye el juicio clínico profesional. Toda hipótesis debe verificarse mediante evaluación directa.";
+
+/**
+ * Mismo criterio que el componente Cita de la interfaz: solo se entrecomilla el
+ * texto recortado de la nota. Lo no verificado se declara como inferencia, para
+ * que el informe copiado o impreso no afirme más de lo que sostiene la nota.
+ */
+function textoCita(cita: Cita): string {
+  if (!cita.verificada) return "inferido — sin cita literal en la nota";
+  const rango =
+    cita.linea_inicio === cita.linea_fin
+      ? `línea ${cita.linea_inicio}`
+      : `líneas ${cita.linea_inicio}–${cita.linea_fin}`;
+  return `"${cita.texto}" (${rango})`;
+}
 
 function seccion(titulo: string, cuerpo: string): string {
   return `${titulo}\n${"-".repeat(titulo.length)}\n${cuerpo || SIN_HALLAZGOS}\n`;
@@ -29,7 +43,7 @@ function formatearSituacion(s: Situacion): string {
     if (c.consecuencias_largo_plazo) {
       lineas.push(`  Consecuencias a largo plazo: ${c.consecuencias_largo_plazo}`);
     }
-    lineas.push(`  Evidencia: "${c.evidencia}"`);
+    lineas.push(`  Evidencia: ${textoCita(c.evidencia)}`);
   }
 
   if (s.cadena_dbt) {
@@ -44,7 +58,7 @@ function formatearSituacion(s: Situacion): string {
     });
     lineas.push(`  Conducta problema: ${c.conducta_problema}`);
     lineas.push(`  Consecuencias: ${c.consecuencias}`);
-    lineas.push(`  Evidencia: "${c.evidencia}"`);
+    lineas.push(`  Evidencia: ${textoCita(c.evidencia)}`);
   }
 
   if (s.cadena_respondiente) {
@@ -55,7 +69,7 @@ function formatearSituacion(s: Situacion): string {
     if (c.conexion_con_operante) {
       lineas.push(`  Conexión con la cadena operante: ${c.conexion_con_operante}`);
     }
-    lineas.push(`  Evidencia: "${c.evidencia}"`);
+    lineas.push(`  Evidencia: ${textoCita(c.evidencia)}`);
   }
 
   if (s.ciclo_interconductual) {
@@ -83,6 +97,22 @@ export function formatearInformeTexto(
 
   partes.push(seccion("DATOS FALTANTES", listaOTexto(analisis.datos_faltantes)));
 
+  // Las revisiones del validador acompañan al informe exportado: si se imprime o
+  // se pega en una historia clínica, las advertencias viajan con él.
+  if (analisis.alertas.length > 0) {
+    partes.push(
+      seccion(
+        "REVISIONES SUGERIDAS",
+        analisis.alertas
+          .map(
+            (a) =>
+              `- [${a.gravedad === "alta" ? "revisar antes de usar" : "conviene revisar"}] ${a.mensaje}`
+          )
+          .join("\n")
+      )
+    );
+  }
+
   partes.push(seccion("RESUMEN CLÍNICO", analisis.resumen_clinico));
 
   partes.push(
@@ -91,7 +121,7 @@ export function formatearInformeTexto(
       analisis.conductas_problema
         .map(
           (c) =>
-            `- [${c.tipo}, importancia ${c.importancia}] ${c.descripcion}\n  Evidencia: "${c.evidencia}"`
+            `- [${c.tipo}, importancia ${c.importancia}${c.es_conducta_seguridad ? ", CONDUCTA DE SEGURIDAD" : ""}${c.deficit_o_interferencia !== "no_determinable" ? `, ${c.deficit_o_interferencia}` : ""}] ${c.descripcion}${c.justificacion_deficit ? `\n  ${c.justificacion_deficit}` : ""}\n  Evidencia: ${textoCita(c.evidencia)}`
         )
         .join("\n")
     )
@@ -101,7 +131,7 @@ export function formatearInformeTexto(
     seccion(
       "VARIABLES MODULADORAS",
       analisis.variables_moduladoras
-        .map((v) => `- [${v.tipo}] ${v.descripcion} — Evidencia: "${v.evidencia}"`)
+        .map((v) => `- [${v.tipo}] ${v.descripcion} — Evidencia: ${textoCita(v.evidencia)}`)
         .join("\n")
     )
   );
@@ -173,7 +203,7 @@ export function formatearInformeTexto(
       analisis.capa_act.procesos_act
         .map(
           (p) =>
-            `- ${p.proceso}: ${p.vinculo_con_cadena}\n  Evidencia: "${p.evidencia}"`
+            `- ${p.proceso}: ${p.vinculo_con_cadena}\n  Evidencia: ${textoCita(p.evidencia)}`
         )
         .join("\n")
     )

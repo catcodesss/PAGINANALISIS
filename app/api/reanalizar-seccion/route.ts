@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { construirPromptReanalisisSeccion } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarFragmento } from "@/lib/parseAnalisis";
+import { numerarNota } from "@/lib/citas";
 import { CAMPOS_ANALISIS_FUNCIONAL, type AnalisisFuncional } from "@/lib/types";
 
 const MODELO = "gpt-4o";
@@ -105,6 +106,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    // La nota original y la adicional se numeran como un solo documento continuo:
+    // la evidencia del reanálisis puede proceder de cualquiera de las dos, y los
+    // números de línea deben resolverse contra el mismo arreglo (ver lib/citas.ts).
+    const documento = `${notaOriginal}\n\n--- Nota adicional del clínico ---\n\n${notaAdicional}`;
+    const { lineas, texto: documentoNumerado } = numerarNota(documento);
+
     const openai = new OpenAI({ apiKey });
     const respuesta = await openai.chat.completions.create({
       model: MODELO,
@@ -117,16 +124,16 @@ export async function POST(request: Request) {
         },
         {
           role: "user",
-          content: `Nota clínica original:\n\n${notaOriginal}\n\nAnálisis funcional actual (contexto, no lo reescribas salvo los campos solicitados):\n\n${JSON.stringify(
+          content: `Nota clínica original y nota adicional del clínico (un solo documento, con líneas numeradas):\n\n${documentoNumerado}\n\nAnálisis funcional actual (contexto, no lo reescribas salvo los campos solicitados):\n\n${JSON.stringify(
             analisisActual
-          )}\n\nNota adicional del clínico para esta sección:\n\n${notaAdicional}`,
+          )}`,
         },
       ],
     });
 
     const texto = respuesta.choices[0]?.message?.content?.trim() ?? "";
     const json = JSON.parse(extraerJSON(texto));
-    const fragmento = normalizarFragmento(campos, json);
+    const fragmento = normalizarFragmento(campos, json, lineas);
 
     return NextResponse.json({ fragmento });
   } catch (error) {

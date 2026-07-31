@@ -18,9 +18,12 @@ PRINCIPIOS OBLIGATORIOS DEL NÚCLEO (aplican siempre, en cualquier modalidad):
 
 5. ANÁLISIS POR SITUACIONES FUNCIONALES. Agrupa la nota en situaciones funcionalmente distintas (máximo 6). El criterio de agrupación es la FUNCIÓN, no el lugar: si la conducta en casa y en el trabajo responde a la misma contingencia, es UNA situación funcional. Solo separa escenarios cuando la contingencia difiere.
 
-6. VARIABLES MODULADORAS/DISPOSICIONALES. Identifica variables biológicas (diagnósticos, condiciones médicas, sueño, sustancias), de historia de aprendizaje (patrones reforzados en el pasado) y contextuales estables (entorno laboral, familiar, económico) que modulan las cadenas. No las confundas con antecedentes inmediatos: la moduladora predispone, el antecedente dispara.
+6. VARIABLES MODULADORAS/DISPOSICIONALES. Identifica variables biológicas, de historia de aprendizaje (patrones reforzados en el pasado) y contextuales estables (entorno laboral, familiar, económico) que modulan las cadenas. No las confundas con antecedentes inmediatos: la moduladora predispone, el antecedente dispara.
+- DIRECCIÓN CAUSAL (comprobación obligatoria): una variable moduladora es previa o concurrente al problema y NO es producto suyo. Antes de clasificar algo como moduladora, pregúntate si empezó ANTES o DESPUÉS del cuadro. El insomnio, la pérdida de peso, el aislamiento, la desmoralización o la fatiga que aparecen DESPUÉS del inicio son CONSECUENCIAS del patrón (van en consecuencias_largo_plazo o como conducta problema), no vulnerabilidades.
+- Una variable BIOLÓGICA exige un dato médico verificable en la nota: diagnóstico, medicación, resultado analítico, antecedente familiar o consumo de sustancias documentado. Un síntoma no es una variable biológica: "duerme mal desde que empezó el problema" es consecuencia; "hipotiroidismo en tratamiento con levotiroxina" sí es biológica. Si no puedes señalar el dato médico, no lo clasifiques como biológico.
 
-7. CONTINGENCIAS ENTRELAZADAS. Cuando la conducta de otra persona es reforzada por la conducta del consultante o viceversa (p. ej., un familiar que cede ante la crisis y con ello se alivia, reforzando a ambos), descríbelo explícitamente como ciclo interconductual, indicando qué refuerza a quién.
+7. CONTINGENCIAS ENTRELAZADAS Y ACOMODACIÓN DEL ENTORNO. Cuando la conducta de otra persona es reforzada por la conducta del consultante o viceversa (p. ej., un familiar que cede ante la crisis y con ello se alivia, reforzando a ambos), descríbelo explícitamente como ciclo interconductual, indicando qué refuerza a quién.
+- ACOMODACIÓN: si alguien del entorno hace gestiones POR el consultante, responde por él, lo tranquiliza, lo sustituye, cede a sus demandas o le evita la situación temida, eso es acomodación y es un mantenedor de primer orden. Va en el ANÁLISIS PRINCIPAL (ciclo_interconductual de la situación correspondiente y variables_moduladoras contextuales), NUNCA relegado a hipotesis_alternativas. Señales en la nota: "su pareja llama por ella", "la madre se queda con él", "le responden cuando se bloquea", "le agradece que lo haga".
 
 8. MANTENIMIENTO ≠ ORIGEN. Las hipótesis de mantenimiento explican por qué la conducta persiste HOY (contingencias actuales). Las hipótesis de origen son históricas, van separadas y siempre en tono tentativo.
 
@@ -28,7 +31,7 @@ PRINCIPIOS OBLIGATORIOS DEL NÚCLEO (aplican siempre, en cualquier modalidad):
 
 10. CONDUCTA ALTERNATIVA. Por cada hipótesis funcional principal, propone una conducta alternativa funcionalmente equivalente o competidora que la persona podría emitir en la misma situación, y qué consecuencia tendría que producirse para mantenerla.
 
-11. EVIDENCIA Y HONESTIDAD. Cada hallazgo incluye una cita textual breve de la nota (máximo 15 palabras). Asigna confianza (alta/media/baja) por sección según la calidad de la evidencia. Lo que la nota no contiene NO se inventa: se registra en datos_faltantes.
+11. EVIDENCIA REFERENCIADA, NUNCA TRANSCRITA. La nota se te entrega con cada línea precedida por su número entre corchetes ([L1], [L2], ...). En el campo "evidencia" NO escribas texto: ni cita, ni paráfrasis, ni resumen. Devuelve únicamente el rango de líneas que sostiene el hallazgo, con la forma exacta {"linea_inicio": N, "linea_fin": M} (el mismo número en ambos si es una sola línea). El sistema recorta el texto real de la nota a partir de ese rango, de modo que cualquier texto que escribas ahí se descarta. Elige el rango MÁS CORTO que contenga la evidencia. Si ninguna línea sostiene el hallazgo de forma explícita, devuelve "evidencia": null. Confianza (alta/media/baja) según la calidad de la evidencia: ALTA solo si la línea referenciada afirma el hallazgo explícitamente; MEDIA si hay evidencia parcial o inferencia razonable; BAJA si es inferencia clínica. Un hallazgo con "evidencia": null NUNCA puede tener confianza alta. Lo que la nota no contiene NO se inventa: se registra en datos_faltantes.
 
 12. AUTOVERIFICACIÓN OBLIGATORIA. Antes de responder, revisa tu propio análisis contra estos errores típicos y corrígelos si aparecen:
 - ¿Confundí topografía (forma de la conducta) con función (para qué sirve)?
@@ -38,8 +41,33 @@ PRINCIPIOS OBLIGATORIOS DEL NÚCLEO (aplican siempre, en cualquier modalidad):
 - ¿Asigné una función sin evidencia de la consecuencia en la nota?
 - ¿Fragmenté en situaciones distintas contingencias que son la misma?
 - ¿Alguna "descripcion" de conducta problema es en realidad una etiqueta o inferencia ("ansiedad", "resistencia") en vez de topografía observable?
+- ¿La nota describe rumiación, anticipación o repaso mental y NO registré ninguna conducta encubierta?
+- ¿Propuse como intervención alguna conducta que en la nota ya funciona como evitación o conducta de seguridad?
+- ¿Clasifiqué como variable biológica algo que es consecuencia del problema (sueño, peso, fatiga) en vez de un dato médico?
+- ¿Alguien del entorno acomoda el problema y lo dejé fuera del análisis principal?
+- ¿Asigné refuerzo negativo a TODAS las situaciones sin haber considerado refuerzo positivo?
+- ¿Alguna pregunta para la próxima sesión ya está respondida en la nota?
 
-13. Escribe en español, en registro técnico-profesional dirigido a un colega psicólogo.`;
+13. CONDUCTA ENCUBIERTA. La conducta problema no es solo lo observable. La rumiación, la preocupación anticipatoria, el procesamiento post-evento, la comprobación mental, el ensayo mental y la supresión de pensamientos SON conductas problema y se registran con "tipo": "encubierta", con su propia función. Señales en la nota: "estuvo dándole vueltas", "revisando mentalmente la conversación", "no puede parar de pensar", "repasa una y otra vez", "se anticipa desde el domingo", "se queda enganchado a lo que pasó". Si la nota describe alguna de estas y no aparece ninguna conducta encubierta en tu análisis, has perdido un mantenedor central: revísalo.
+
+14. CONDUCTAS DE SEGURIDAD Y BÚSQUEDA DE TRANQUILIZACIÓN. Identifica las conductas que reducen el malestar DENTRO de la situación temida sin resolver la demanda: respirar para calmarse, ensayar mentalmente la frase, llevar un objeto, mirar el móvil, beber antes, ir acompañado, hablar lo mínimo, sentarse cerca de la salida, llegar antes o después.
+- BÚSQUEDA DE TRANQUILIZACIÓN Y COMPROBACIÓN: acudir a urgencias o al médico por síntomas ya descartados, repetir consultas, pedir que le confirmen que está bien, comprobar el pulso o las sensaciones corporales, buscar información médica. Son conductas problema con función de R− (cese momentáneo de la incertidumbre) y suelen mantener el problema al impedir la habituación. Si la nota menciona consultas médicas repetidas o urgencias sin hallazgos, NO puede desaparecer del informe: entra en conductas_problema. Márcalas con "es_conducta_seguridad": true. Funcionan como evitación encubierta: alivian a corto plazo e impiden el aprendizaje inhibitorio, de modo que son BLANCO DE ELIMINACIÓN, nunca de prescripción.
+- PROHIBICIÓN ESTRICTA: no propongas en "conductas_alternativas", "habilidades_sugeridas", "procedimientos_sugeridos" ni "lineas_de_intervencion_tentativas" ninguna conducta cuya topografía ya aparezca en la nota cumpliendo función de evitación o escape. Si la persona ya respira para calmarse antes de exponer, "respiración para manejar la ansiedad" NO es una intervención válida: es el mantenedor.
+
+15. DÉFICIT DE REPERTORIO FRENTE A INTERFERENCIA. Para cada conducta problema determina si la persona NO SABE emitir la conducta adecuada (déficit) o SABE pero no la emite porque otra contingencia lo impide (interferencia). Criterios: ¿la ejecuta en algún otro contexto?, ¿hay activación fisiológica o cognición anticipatoria?, ¿ha tenido oportunidad de aprenderla? Si no hay activación ni evitación y nunca tuvo ocasión de aprender, es DÉFICIT, y la intervención es de adquisición (instrucción, modelado, ensayo conductual, moldeamiento, encadenamiento), NO exposición. Registra la decisión en "deficit_o_interferencia" con su justificación. Confundir ambos lleva a exponer a alguien a una situación para la que no tiene la conducta en su repertorio.
+
+16. NO CIERRES TODO EN REFUERZO NEGATIVO. Es el error más frecuente en este tipo de análisis. Antes de asignar una función, evalúa explícitamente refuerzo positivo (atención, control de la interacción, acceso a tangibles o actividades), castigo y control por reglas. Usa los DATOS DIFERENCIALES de la nota: ¿ocurre los fines de semana?, ¿ante quién sí y ante quién no?, ¿en qué contextos no aparece? Si el problema desaparece cuando cambia una persona presente y no cuando cambia la demanda, la función probablemente es social y no de escape. Cuando descartes una función alternativa, deja constancia en hipotesis_alternativas con su "como_descartarla".
+
+17. RIESGO Y COORDINACIÓN MÉDICA. Revisa siempre indicadores de riesgo: escalada de consumo, ideación suicida o autolesión, riesgo laboral o legal derivado de la conducta, menores implicados, violencia, deterioro físico. Si los hay, señálalos de forma explícita en datos_faltantes o en la priorización. Si la nota no aporta datos, dilo en datos_faltantes ("no se ha evaluado riesgo en la nota") en lugar de omitir el asunto.
+- COORDINACIÓN MÉDICA: si la nota recoge una condición médica activa, medicación psicoactiva o un parámetro alterado (analítica, ajuste de dosis reciente, síntomas somáticos sin estudiar), señala explícitamente que el cuadro no puede atribuirse solo a variables funcionales sin coordinar con el profesional médico correspondiente. Va en datos_faltantes o en lineas_de_intervencion_tentativas, nunca omitido.
+
+18. VALORES Y METAS DEL CONSULTANTE. Si la persona expresa lo que quiere conseguir o recuperar (un ascenso, volver a una actividad, una relación), recógelo: orienta la priorización y, en la capa ACT, la intervención debe apuntar a esa dirección valiosa, no solo a reducir malestar.
+
+19. PÉRDIDA DE REFORZADORES. El abandono de actividades que antes eran reforzantes (aficiones, deporte, vida social) se registra siempre y se explica su papel en el mantenimiento: al retirarse, la persona pierde las fuentes de reforzamiento que competirían con el patrón.
+
+20. PREGUNTAS ÚTILES. Antes de emitir cada elemento de "preguntas_para_sesion", comprueba que su respuesta NO está ya en la nota. Una pregunta cuya respuesta la nota ya contiene es ruido y resta credibilidad al resto del informe.
+
+21. Escribe en español, en registro técnico-profesional dirigido a un colega psicólogo.`;
 
 const BLOQUE_ACT = `CAPA ACT / CONTEXTUAL.
 Además del núcleo, analiza:
@@ -57,16 +85,16 @@ const BLOQUE_MC = `CAPA CONDUCTUAL (MODIFICACIÓN DE CONDUCTA).
 Trabaja EXCLUSIVAMENTE con el aparato conceptual operante y respondiente del núcleo. NO uses procesos del hexaflex, ni módulos DBT, ni vocabulario de terapias de tercera ola.
 - PROCEDIMIENTOS SUGERIDOS: a partir de las funciones identificadas, sugiere procedimientos directos de manejo de contingencias: reforzamiento diferencial (de conductas alternativas, incompatibles u otras), extinción (señalando siempre sus precauciones: brote de extinción, necesidad de consistencia), control de estímulos, moldeamiento, encadenamiento, entrenamiento en comunicación funcional, y para cadenas respondientes, procedimientos de exposición. Por cada procedimiento indica sobre qué contingencia concreta actuaría y qué precaución requiere.`;
 
-const FORMATO_BASE = `FORMATO: responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, sin fences de markdown, con exactamente esta estructura:
+const FORMATO_BASE = `FORMATO: responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, sin fences de markdown, con exactamente esta estructura. RECORDATORIO SOBRE "evidencia": es SIEMPRE un rango de líneas de la nota numerada ({"linea_inicio": N, "linea_fin": M}) o null. Nunca una cadena de texto.
 {
   "resumen_clinico": "string (3-4 frases: quién consulta, motivo, patrón central hipotetizado)",
-  "conductas_problema": [{ "descripcion": "string (topografía observable, ver principio 2; sin cuantificadores inventados)", "tipo": "manifiesta | encubierta", "importancia": "alta | media | baja", "evidencia": "string" }],
-  "variables_moduladoras": [{ "tipo": "biologica | historia_de_aprendizaje | contextual", "descripcion": "string", "evidencia": "string" }],
+  "conductas_problema": [{ "descripcion": "string (topografía observable, ver principio 2; sin cuantificadores inventados)", "tipo": "manifiesta | encubierta", "importancia": "alta | media | baja", "es_conducta_seguridad": boolean (ver principio 14), "deficit_o_interferencia": "deficit | interferencia | mixto | no_determinable", "justificacion_deficit": "string (por qué, según el principio 15)", "evidencia": { "linea_inicio": number, "linea_fin": number } o null }],
+  "variables_moduladoras": [{ "tipo": "biologica | historia_de_aprendizaje | contextual", "descripcion": "string", "evidencia": { "linea_inicio": number, "linea_fin": number } o null }],
   "situaciones": [{
     "nombre": "string (etiqueta funcional breve, p. ej. 'Demandas sociales evaluativas')",
-    "cadena_operante": { "antecedente": "string", "operacion_motivacional": "string o null", "respuesta": "string", "consecuencia": "string", "tipo_contingencia": "refuerzo positivo | refuerzo negativo | castigo positivo | castigo negativo | extincion", "inmediatez": "inmediata | demorada", "consecuencias_largo_plazo": "string o null (efecto a mediano/largo plazo que mantiene o agrava el patrón, distinto de la consecuencia inmediata; null si la nota no da base para inferirlo)", "evidencia": "string" } o null,
-    "cadena_dbt": { "factores_vulnerabilidad": ["string"], "evento_precipitante": "string", "eslabones": [{ "tipo": "pensamiento | emocion | sensacion | impulso | accion", "descripcion": "string" }], "conducta_problema": "string", "consecuencias": "string", "evidencia": "string" } o null,
-    "cadena_respondiente": { "estimulo": "string", "respuesta_condicionada": "string", "conexion_con_operante": "string o null", "evidencia": "string" } o null,
+    "cadena_operante": { "antecedente": "string", "operacion_motivacional": "string o null", "respuesta": "string", "consecuencia": "string", "tipo_contingencia": "refuerzo positivo | refuerzo negativo | castigo positivo | castigo negativo | extincion", "inmediatez": "inmediata | demorada", "consecuencias_largo_plazo": "string o null (efecto a mediano/largo plazo que mantiene o agrava el patrón, distinto de la consecuencia inmediata; null si la nota no da base para inferirlo)", "evidencia": { "linea_inicio": number, "linea_fin": number } o null } o null,
+    "cadena_dbt": { "factores_vulnerabilidad": ["string"], "evento_precipitante": "string", "eslabones": [{ "tipo": "pensamiento | emocion | sensacion | impulso | accion", "descripcion": "string" }], "conducta_problema": "string", "consecuencias": "string", "evidencia": { "linea_inicio": number, "linea_fin": number } o null } o null,
+    "cadena_respondiente": { "estimulo": "string", "respuesta_condicionada": "string", "conexion_con_operante": "string o null", "evidencia": { "linea_inicio": number, "linea_fin": number } o null } o null,
     "ciclo_interconductual": "string o null (quién refuerza a quién)",
     "funcion_hipotetizada": "string",
     "confianza": "alta | media | baja"
@@ -78,7 +106,7 @@ const FORMATO_BASE = `FORMATO: responde ÚNICAMENTE con un objeto JSON válido, 
     "priorizacion": [{ "blanco": "string", "justificacion": "string (importancia + modificabilidad)" }]
   },
   "conductas_alternativas": [{ "situacion": "string", "conducta_propuesta": "string", "consecuencia_necesaria": "string" }],
-  "capa_act": { "reglas_verbales": [{ "regla": "string", "textual_o_inferida": "textual | inferida", "clase": "pliance | tracking | augmenting", "rigidez": "alta | media | baja", "analisis": "string" }], "procesos_act": [{ "proceso": "string", "vinculo_con_cadena": "string", "evidencia": "string" }] },
+  "capa_act": { "reglas_verbales": [{ "regla": "string", "textual_o_inferida": "textual | inferida", "clase": "pliance | tracking | augmenting", "rigidez": "alta | media | baja", "analisis": "string" }], "procesos_act": [{ "proceso": "string", "vinculo_con_cadena": "string", "evidencia": { "linea_inicio": number, "linea_fin": number } o null }] },
   "capa_dbt": { "analisis_en_cadena": { "conducta_objetivo": "string", "vulnerabilidades": ["string"], "evento_precipitante": "string", "eslabones": [{ "tipo": "pensamiento | emocion | sensacion | impulso | accion", "descripcion": "string" }], "consecuencias_corto_plazo": ["string"], "consecuencias_largo_plazo": ["string"] }, "habilidades_sugeridas": [{ "modulo": "mindfulness | tolerancia_al_malestar | regulacion_emocional | efectividad_interpersonal", "habilidad": "string", "eslabon_objetivo": "string" }] },
   "capa_mc": { "procedimientos_sugeridos": [{ "procedimiento": "string", "contingencia_objetivo": "string", "precauciones": "string" }] },
   "hipotesis_alternativas": [{ "enunciado": "string", "como_descartarla": "string" }],

@@ -1,3 +1,7 @@
+import type { Cita } from "./citas";
+
+export type { Cita };
+
 export type NivelConfianza = "alta" | "media" | "baja";
 export type ModeloTerapeutico = "act" | "dbt" | "mc";
 export type TipoConducta = "manifiesta" | "encubierta";
@@ -12,17 +16,32 @@ export type TipoContingencia =
   | "castigo negativo"
   | "extincion";
 
+/**
+ * Distingue si la persona no sabe emitir la conducta adecuada o sabe pero otra
+ * contingencia lo impide. Cambia por completo la intervención: adquisición
+ * (modelado, ensayo, moldeamiento) frente a exposición o manejo de contingencias.
+ */
+export type DeficitOInterferencia =
+  | "deficit"
+  | "interferencia"
+  | "mixto"
+  | "no_determinable";
+
 export interface ConductaProblema {
   descripcion: string;
   tipo: TipoConducta;
   importancia: NivelConfianza;
-  evidencia: string;
+  /** Conducta que alivia dentro de la situación temida sin resolverla: blanco de eliminación, nunca de prescripción. */
+  es_conducta_seguridad: boolean;
+  deficit_o_interferencia: DeficitOInterferencia;
+  justificacion_deficit: string;
+  evidencia: Cita;
 }
 
 export interface VariableModuladora {
   tipo: TipoVariableModuladora;
   descripcion: string;
-  evidencia: string;
+  evidencia: Cita;
 }
 
 export interface CadenaOperante {
@@ -34,14 +53,14 @@ export interface CadenaOperante {
   inmediatez: "inmediata" | "demorada";
   /** Efecto a mediano/largo plazo del patrón (CMLP): coste o mantenimiento futuro, distinto de la consecuencia inmediata. */
   consecuencias_largo_plazo: string | null;
-  evidencia: string;
+  evidencia: Cita;
 }
 
 export interface CadenaRespondiente {
   estimulo: string;
   respuesta_condicionada: string;
   conexion_con_operante: string | null;
-  evidencia: string;
+  evidencia: Cita;
 }
 
 /**
@@ -57,7 +76,7 @@ export interface CadenaDBT {
   eslabones: EslabonDBT[];
   conducta_problema: string;
   consecuencias: string;
-  evidencia: string;
+  evidencia: Cita;
 }
 
 export interface Situacion {
@@ -112,7 +131,7 @@ export interface ReglaVerbal {
 export interface ProcesoACT {
   proceso: string;
   vinculo_con_cadena: string;
-  evidencia: string;
+  evidencia: Cita;
 }
 
 export interface CapaModalidadACT {
@@ -168,6 +187,21 @@ export interface CapaModalidadMC {
   procedimientos_sugeridos: ProcedimientoSugeridoMC[];
 }
 
+/**
+ * Aviso metodológico producido por los validadores del servidor (lib/validadores.ts),
+ * NO por el modelo. Señala problemas de coherencia del propio informe.
+ */
+export interface Alerta {
+  codigo:
+    | "confianza_sin_cita"
+    | "conducta_sin_analisis"
+    | "prescribe_conducta_seguridad"
+    | "intervencion_depende_de_dato_faltante";
+  gravedad: "alta" | "media";
+  ruta: string;
+  mensaje: string;
+}
+
 export interface AnalisisFuncional {
   resumen_clinico: string;
   conductas_problema: ConductaProblema[];
@@ -184,6 +218,8 @@ export interface AnalisisFuncional {
   preguntas_para_sesion: string[];
   lineas_de_intervencion_tentativas: string[];
   datos_faltantes: string[];
+  /** Lo rellena el servidor tras validar; el modelo nunca lo envía. */
+  alertas: Alerta[];
 }
 
 /**
@@ -210,6 +246,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "preguntas_para_sesion",
   "lineas_de_intervencion_tentativas",
   "datos_faltantes",
+  "alertas",
 ] as const satisfies readonly (keyof AnalisisFuncional)[];
 
 type _TodasLasClavesCubiertas =

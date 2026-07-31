@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { construirSystemPrompt } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarAnalisis } from "@/lib/parseAnalisis";
+import { numerarNota } from "@/lib/citas";
+import { validarAnalisis } from "@/lib/validadores";
 
 const MODELO = "gpt-4o";
 const LONGITUD_MINIMA = 100;
@@ -50,6 +52,10 @@ export async function POST(request: Request) {
   }
 
   try {
+    // La nota se envía con las líneas numeradas: el modelo referencia evidencia
+    // por número de línea y el servidor recorta el texto real (ver lib/citas.ts).
+    const { lineas, texto: notaNumerada } = numerarNota(nota);
+
     const openai = new OpenAI({ apiKey });
     const respuesta = await openai.chat.completions.create({
       model: MODELO,
@@ -59,14 +65,17 @@ export async function POST(request: Request) {
         { role: "system", content: construirSystemPrompt() },
         {
           role: "user",
-          content: `Notas clínicas a analizar:\n\n${nota}`,
+          content: `Notas clínicas a analizar (con líneas numeradas):\n\n${notaNumerada}`,
         },
       ],
     });
 
     const texto = respuesta.choices[0]?.message?.content?.trim() ?? "";
 
-    const analisis = normalizarAnalisis(JSON.parse(extraerJSON(texto)));
+    const analisis = validarAnalisis(
+      normalizarAnalisis(JSON.parse(extraerJSON(texto)), lineas),
+      nota
+    );
 
     return NextResponse.json({ analisis });
   } catch (error) {
