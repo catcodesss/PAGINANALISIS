@@ -143,6 +143,9 @@ export default function Home() {
         <h1 className="font-serif text-2xl font-semibold text-ink sm:text-3xl">
           ANIA — Análisis Funcional Asistido
         </h1>
+        <p className="mt-1 font-mono text-[11px] uppercase tracking-wide text-ink-muted/80">
+          ANIA: ANálisis (de conducta) asistido por IA
+        </p>
         <p className="mt-2 text-sm text-ink-muted sm:text-base">
           Análisis funcional y formulación de casos para la práctica clínica asistida por IA
         </p>

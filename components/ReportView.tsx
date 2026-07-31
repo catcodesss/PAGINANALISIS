@@ -1141,6 +1141,9 @@ export default function ReportView({
         <h1 className="mt-1 font-serif text-2xl font-semibold text-ink sm:text-3xl">
           ANIA — Análisis Funcional Asistido
         </h1>
+        <p className="mt-1 font-mono text-[11px] uppercase tracking-wide text-ink-muted/80">
+          ANIA: ANálisis (de conducta) asistido por IA
+        </p>
         <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-ink-muted">
           <p>
             Fecha de generación: <span className="text-ink">{fecha}</span>
