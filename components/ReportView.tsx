@@ -967,7 +967,7 @@ function PrintOnlyHeader({
       <div className="print-header-top">
         <div className="print-logo-area">
           <span className="print-logo-text">ANIA</span>
-          <span className="print-logo-sub">Análisis Funcional Asistido</span>
+          <span className="print-logo-sub">Análisis de conducta asistido por IA</span>
         </div>
         <div className="print-doc-type">EXPEDIENTE · ANÁLISIS FUNCIONAL</div>
       </div>
@@ -1004,7 +1004,7 @@ function PrintOnlyHeader({
 function PrintOnlyFooter() {
   return (
     <div className="print-only-footer hidden print:flex">
-      <div className="print-footer-left">ANIA — Análisis Funcional Asistido</div>
+      <div className="print-footer-left">ANIA — Análisis de conducta asistido por IA</div>
       <div className="print-footer-center">
         Documento confidencial · Solo para uso clínico
       </div>
@@ -1033,7 +1033,7 @@ function PrintOnlyDisclaimer({ fecha }: { fecha: string }) {
         contenida en este expediente.
       </p>
       <p className="print-disclaimer-tool">
-        Generado con ANIA — Análisis Funcional Asistido · {fecha}
+        Generado con ANIA — Análisis de conducta asistido por IA · {fecha}
       </p>
     </div>
   );
@@ -1139,11 +1139,8 @@ export default function ReportView({
           Expediente · Análisis funcional
         </p>
         <h1 className="mt-1 font-serif text-2xl font-semibold text-ink sm:text-3xl">
-          ANIA — Análisis Funcional Asistido
+          ANIA — Análisis de conducta asistido por IA
         </h1>
-        <p className="mt-1 font-mono text-[11px] uppercase tracking-wide text-ink-muted/80">
-          ANIA: ANálisis (de conducta) asistido por IA
-        </p>
         <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-ink-muted">
           <p>
             Fecha de generación: <span className="text-ink">{fecha}</span>

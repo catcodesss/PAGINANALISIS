@@ -21,7 +21,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ANIA — Análisis Funcional Asistido",
+  title: "ANIA — Análisis de conducta asistido por IA",
   description:
     "Análisis funcional y formulación de casos para la práctica clínica asistida por IA",
 };
