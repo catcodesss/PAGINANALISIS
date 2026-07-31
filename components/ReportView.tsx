@@ -966,7 +966,7 @@ function PrintOnlyHeader({
     <div className="print-only-header hidden print:block">
       <div className="print-header-top">
         <div className="print-logo-area">
-          <span className="print-logo-text">AFA</span>
+          <span className="print-logo-text">ANIA</span>
           <span className="print-logo-sub">Análisis Funcional Asistido</span>
         </div>
         <div className="print-doc-type">EXPEDIENTE · ANÁLISIS FUNCIONAL</div>
@@ -1004,7 +1004,7 @@ function PrintOnlyHeader({
 function PrintOnlyFooter() {
   return (
     <div className="print-only-footer hidden print:flex">
-      <div className="print-footer-left">AFA — Análisis Funcional Asistido</div>
+      <div className="print-footer-left">ANIA — Análisis Funcional Asistido</div>
       <div className="print-footer-center">
         Documento confidencial · Solo para uso clínico
       </div>
@@ -1033,7 +1033,7 @@ function PrintOnlyDisclaimer({ fecha }: { fecha: string }) {
         contenida en este expediente.
       </p>
       <p className="print-disclaimer-tool">
-        Generado con AFA — Análisis Funcional Asistido · {fecha}
+        Generado con ANIA — Análisis Funcional Asistido · {fecha}
       </p>
     </div>
   );
@@ -1139,7 +1139,7 @@ export default function ReportView({
           Expediente · Análisis funcional
         </p>
         <h1 className="mt-1 font-serif text-2xl font-semibold text-ink sm:text-3xl">
-          AFA — Análisis Funcional Asistido
+          ANIA — Análisis Funcional Asistido
         </h1>
         <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-ink-muted">
           <p>
@@ -1168,85 +1168,85 @@ export default function ReportView({
         </p>
       </header>
 
-      {/* Datos faltantes: lo primero que debe revisar el terapeuta, antes de confiar en el resto del análisis. */}
-      <section id="datos-faltantes" className="scroll-mt-24 mb-8">
-        <div className="mb-3 flex items-center gap-3">
-          <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
-          <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
-            Datos faltantes
-          </h2>
-        </div>
-        <p className="mb-3 text-sm text-ink-muted">
-          Revisa esto antes que el resto del informe: es la información que la
-          nota no incluyó y que conviene confirmar o completar en sesión.
-        </p>
-        {analisis.datos_faltantes.length === 0 ? (
-          <SinHallazgos />
-        ) : (
-          <ul className="list-disc space-y-2 pl-5">
-            {analisis.datos_faltantes.map((d, i) => (
-              <li key={i} className="text-[15px] leading-relaxed text-ink">
-                {d}
-              </li>
-            ))}
-          </ul>
-        )}
-        <BloqueReanalisis
-          campos={["datos_faltantes", "situaciones"]}
-          seccionId="datos-faltantes"
-        />
-      </section>
-
-      {/* Formulación funcional destacada — el titular del informe. */}
-      <section id="hipotesis-principal" className="scroll-mt-24 mb-8">
-        {hipotesisDestacada && hipotesisDestacada.enunciado ? (
-          <div
-            className="formulacion-destacada rounded-md border-l-4 border-accent p-8"
-            style={{ backgroundColor: "#F0F4F2" }}
-          >
-            <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-accent">
-              Formulación funcional destacada · {hipotesisDestacada.conducta}
-            </p>
-            <p className="mt-3 font-serif text-[21px] leading-relaxed text-ink">
-              {hipotesisDestacada.enunciado}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              {hipotesisDestacada.funcion && (
-                <ChipDestacado>{hipotesisDestacada.funcion}</ChipDestacado>
-              )}
-              <Confianza nivel={hipotesisDestacada.confianza} />
-            </div>
-            {analisis.hipotesis_mantenimiento.length > 1 &&
-              analisis.formulacion.priorizacion.length > 0 && (
-                <div className="mt-4 space-y-1 border-t border-accent/20 pt-3">
-                  {analisis.formulacion.priorizacion.map((p, i) => (
-                    <p key={i} className="text-sm text-ink-muted">
-                      <span className="font-medium text-ink">
-                        {i + 1}. {p.blanco}:
-                      </span>{" "}
-                      {p.justificacion}
-                    </p>
-                  ))}
-                </div>
-              )}
-            <a
-              href="#resumen"
-              className="mt-5 inline-block text-sm text-ink-muted underline decoration-divider underline-offset-4 transition-colors hover:text-accent print:hidden"
-            >
-              Ver análisis completo ↓
-            </a>
-          </div>
-        ) : (
-          <SinHallazgos />
-        )}
-      </section>
-
       <IndiceMovil secciones={SECCIONES} activa={activa} />
 
       <div className="lg:flex lg:items-start lg:gap-10">
         <IndiceLateral secciones={SECCIONES} activa={activa} />
 
         <div className="min-w-0 flex-1">
+          {/* Datos faltantes: lo primero que debe revisar el terapeuta, antes de confiar en el resto del análisis. */}
+          <section id="datos-faltantes" className="scroll-mt-24 mb-8">
+            <div className="mb-3 flex items-center gap-3">
+              <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
+              <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
+                Datos faltantes
+              </h2>
+            </div>
+            <p className="mb-3 text-sm text-ink-muted">
+              Revisa esto antes que el resto del informe: es la información que la
+              nota no incluyó y que conviene confirmar o completar en sesión.
+            </p>
+            {analisis.datos_faltantes.length === 0 ? (
+              <SinHallazgos />
+            ) : (
+              <ul className="list-disc space-y-2 pl-5">
+                {analisis.datos_faltantes.map((d, i) => (
+                  <li key={i} className="text-[15px] leading-relaxed text-ink">
+                    {d}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <BloqueReanalisis
+              campos={["datos_faltantes", "situaciones"]}
+              seccionId="datos-faltantes"
+            />
+          </section>
+
+          {/* Formulación funcional destacada — el titular del informe. */}
+          <section id="hipotesis-principal" className="scroll-mt-24 mb-8">
+            {hipotesisDestacada && hipotesisDestacada.enunciado ? (
+              <div
+                className="formulacion-destacada rounded-md border-l-4 border-accent p-8"
+                style={{ backgroundColor: "#F0F4F2" }}
+              >
+                <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-accent">
+                  Formulación funcional destacada · {hipotesisDestacada.conducta}
+                </p>
+                <p className="mt-3 font-serif text-[21px] leading-relaxed text-ink">
+                  {hipotesisDestacada.enunciado}
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  {hipotesisDestacada.funcion && (
+                    <ChipDestacado>{hipotesisDestacada.funcion}</ChipDestacado>
+                  )}
+                  <Confianza nivel={hipotesisDestacada.confianza} />
+                </div>
+                {analisis.hipotesis_mantenimiento.length > 1 &&
+                  analisis.formulacion.priorizacion.length > 0 && (
+                    <div className="mt-4 space-y-1 border-t border-accent/20 pt-3">
+                      {analisis.formulacion.priorizacion.map((p, i) => (
+                        <p key={i} className="text-sm text-ink-muted">
+                          <span className="font-medium text-ink">
+                            {i + 1}. {p.blanco}:
+                          </span>{" "}
+                          {p.justificacion}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                <a
+                  href="#resumen"
+                  className="mt-5 inline-block text-sm text-ink-muted underline decoration-divider underline-offset-4 transition-colors hover:text-accent print:hidden"
+                >
+                  Ver análisis completo ↓
+                </a>
+              </div>
+            ) : (
+              <SinHallazgos />
+            )}
+          </section>
+
           <Seccion id="resumen" titulo="Resumen clínico" camposReanalisis={["resumen_clinico"]}>
             {analisis.resumen_clinico ? (
               <p className="text-[15px] leading-relaxed text-ink">

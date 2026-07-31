@@ -1,4 +1,4 @@
-# AFA — Análisis Funcional Asistido
+# ANIA — Análisis Funcional Asistido
 
 Herramienta profesional para psicólogos clínicos de orientación conductual. El terapeuta pega notas clínicas desordenadas, elige un modelo terapéutico (ACT, DBT o Conductual/MC) y la aplicación devuelve un análisis funcional estructurado por situaciones —siempre presentado como hipótesis a verificar, nunca como conclusiones cerradas.
 

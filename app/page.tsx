@@ -141,7 +141,7 @@ export default function Home() {
     >
       <header className="mb-8 print:hidden">
         <h1 className="font-serif text-2xl font-semibold text-ink sm:text-3xl">
-          AFA — Análisis Funcional Asistido
+          ANIA — Análisis Funcional Asistido
         </h1>
         <p className="mt-2 text-sm text-ink-muted sm:text-base">
           Análisis funcional y formulación de casos para la práctica clínica asistida por IA
@@ -179,6 +179,21 @@ export default function Home() {
               Privacidad: tus notas se procesan de forma efímera y no se almacenan en
               ningún servidor propio. Recomendación: usa iniciales o seudónimos.
             </p>
+
+            <div className="mt-4 rounded-md border border-divider bg-canvas/60 p-4">
+              <p className="text-xs font-semibold text-ink">
+                Sugerencias para un análisis más preciso y económico
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-ink-muted">
+                <li>Escribe en prosa (oraciones completas), no en frases sueltas o telegráficas.</li>
+                <li>Cuida la ortografía y la puntuación: los errores obligan a inferir y alargan el análisis.</li>
+                <li>Sé directo y evita relleno, repeticiones o rodeos innecesarios.</li>
+                <li>Usa abreviaturas o siglas solo si son estándar (ej. TCC, ansiedad social); explica las demás una vez.</li>
+                <li>Incluye lo esencial de cada episodio: situación, conducta, y consecuencia inmediata.</li>
+                <li>Evita pegar transcripciones completas o notas duplicadas de varias sesiones sobre lo mismo.</li>
+                <li>No incluyas nombres reales, direcciones ni otros datos identificables.</li>
+              </ul>
+            </div>
 
             {mensajeValidacion && (
               <p role="alert" className="mt-3 text-sm text-warn">

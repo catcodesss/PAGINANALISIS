@@ -74,7 +74,7 @@ export function formatearInformeTexto(
   fecha: string
 ): string {
   const partes: string[] = [];
-  partes.push("AFA — ANÁLISIS FUNCIONAL ASISTIDO");
+  partes.push("ANIA — ANÁLISIS FUNCIONAL ASISTIDO");
   partes.push(`Fecha de generación: ${fecha}`);
   if (referenciaCaso.trim()) {
     partes.push(`Referencia del caso: ${referenciaCaso.trim()}`);

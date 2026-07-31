@@ -21,7 +21,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AFA — Análisis Funcional Asistido",
+  title: "ANIA — Análisis Funcional Asistido",
   description:
     "Análisis funcional y formulación de casos para la práctica clínica asistida por IA",
 };
