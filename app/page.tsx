@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BookOpenText, Lock, Sparkles, SunMedium } from "lucide-react";
 import type { AnalisisFuncional } from "@/lib/types";
 import {
   contieneDatosIdentificables,
@@ -9,6 +10,14 @@ import {
 import { formatearInformeTexto } from "@/lib/formatearInforme";
 import ReportView from "@/components/ReportView";
 import EsqueletoInforme from "@/components/EsqueletoInforme";
+import Sidebar from "@/components/Sidebar";
+import PanelRecomendaciones from "@/components/PanelRecomendaciones";
+
+const EJEMPLO_NOTA = `Ejemplo:
+– Durante la tarea de matemáticas, el paciente se levanta de su silla.
+– Dice: "no puedo" y empuja el cuaderno.
+– La terapeuta le pide que vuelva a su lugar.
+– El paciente se calma y retoma la actividad.`;
 
 type EstadoApp = "inicial" | "cargando" | "resultado" | "error";
 
@@ -134,203 +143,251 @@ export default function Home() {
   const formularioDeshabilitado = estado === "cargando";
 
   return (
-    <main
-      className={`mx-auto px-4 py-8 sm:px-6 sm:py-12 print:max-w-none print:px-0 print:py-0 ${
-        estado === "resultado" ? "max-w-6xl" : "max-w-3xl"
-      }`}
-    >
-      <header className="mb-8 print:hidden">
-        <h1 className="font-serif text-2xl font-semibold text-ink sm:text-3xl">
-          ANIA — Análisis Funcional Asistido
-        </h1>
-        <p className="mt-1 font-mono text-[11px] uppercase tracking-wide text-ink-muted/80">
-          ANIA: ANálisis (de conducta) asistido por IA
-        </p>
-        <p className="mt-2 text-sm text-ink-muted sm:text-base">
-          Análisis funcional y formulación de casos para la práctica clínica asistida por IA
-        </p>
-      </header>
+    <div className="flex min-h-screen bg-canvas print:block">
+      <Sidebar />
 
-      {formularioVisible && (
-        <section className="print:hidden">
-          <div className="rounded-md border border-divider bg-surface p-5 shadow-sm sm:p-6">
-            <label htmlFor="nota" className="sr-only">
-              Notas clínicas
-            </label>
-            <textarea
-              id="nota"
-              value={nota}
-              disabled={formularioDeshabilitado}
-              onChange={(evento) => {
-                setNota(evento.target.value);
-                if (avisoPII) setAvisoPII(false);
-                if (mensajeValidacion) setMensajeValidacion("");
-              }}
-              maxLength={LONGITUD_MAXIMA}
-              rows={12}
-              placeholder="Pega aquí tus notas de sesión, registros u observaciones. No necesitan estar ordenadas: describe situaciones, conductas, lo que la persona dice y lo que ocurre después. Evita nombres reales."
-              className="w-full resize-y rounded border border-divider bg-white px-3 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
-            />
-
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="font-mono text-xs text-ink-muted">
-                {nota.length} / {LONGITUD_MAXIMA}
+      <div className="min-w-0 flex-1">
+        <main
+          className={`mx-auto px-4 py-8 sm:px-6 sm:py-10 lg:px-10 print:max-w-none print:px-0 print:py-0 ${
+            estado === "resultado" ? "max-w-6xl" : "max-w-6xl"
+          }`}
+        >
+          <header className="mb-6 flex flex-wrap items-start justify-between gap-4 print:hidden">
+            <div>
+              <h1 className="font-serif text-2xl font-semibold text-ink sm:text-3xl">
+                ANIA — Análisis Funcional Asistido
+              </h1>
+              <p className="mt-1 font-mono text-[11px] uppercase tracking-wide text-ink-muted/80">
+                ANIA: ANálisis (de conducta) asistido por IA
+              </p>
+              <p className="mt-2 text-sm text-ink-muted sm:text-base">
+                Herramienta clínica para formular casos con claridad, precisión y enfoque
+                funcional.
               </p>
             </div>
-
-            <p className="mt-3 text-xs leading-relaxed text-ink-muted">
-              Privacidad: tus notas se procesan de forma efímera y no se almacenan en
-              ningún servidor propio. Recomendación: usa iniciales o seudónimos.
-            </p>
-
-            <div className="mt-4 rounded-md border border-divider bg-canvas/60 p-4">
-              <p className="text-xs font-semibold text-ink">
-                Sugerencias para un análisis más preciso y económico
-              </p>
-              <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-ink-muted">
-                <li>Escribe en prosa (oraciones completas), no en frases sueltas o telegráficas.</li>
-                <li>Cuida la ortografía y la puntuación: los errores obligan a inferir y alargan el análisis.</li>
-                <li>Sé directo y evita relleno, repeticiones o rodeos innecesarios.</li>
-                <li>Usa abreviaturas o siglas solo si son estándar (ej. TCC, ansiedad social); explica las demás una vez.</li>
-                <li>Incluye lo esencial de cada episodio: situación, conducta, y consecuencia inmediata.</li>
-                <li>Evita pegar transcripciones completas o notas duplicadas de varias sesiones sobre lo mismo.</li>
-                <li>No incluyas nombres reales, direcciones ni otros datos identificables.</li>
-              </ul>
-            </div>
-
-            {mensajeValidacion && (
-              <p role="alert" className="mt-3 text-sm text-warn">
-                {mensajeValidacion}
-              </p>
-            )}
-
-            {estado === "error" && mensajeError && (
-              <div
-                role="alert"
-                className="mt-4 rounded-md border border-warn/30 bg-warn/5 p-4"
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                title="Próximamente"
+                className="flex items-center gap-2 rounded-lg border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas"
               >
-                <p className="text-sm text-ink">{mensajeError}</p>
-                <button
-                  type="button"
-                  onClick={manejarReintentar}
-                  className="mt-3 rounded border border-divider px-4 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-                >
-                  Reintentar
-                </button>
+                <BookOpenText className="h-4 w-4 text-accent" aria-hidden="true" />
+                Guía rápida
+              </button>
+              <button
+                type="button"
+                title="Próximamente"
+                aria-label="Cambiar tema"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-divider bg-surface text-ink-muted transition-colors hover:bg-canvas"
+              >
+                <SunMedium className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          </header>
+
+          {formularioVisible && (
+            <section className="grid gap-6 print:hidden lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_360px]">
+              <div className="min-w-0">
+                <div className="rounded-2xl border border-divider bg-surface p-5 shadow-sm sm:p-6">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft">
+                      <Sparkles className="h-[18px] w-[18px] text-accent" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <p className="font-serif text-base font-semibold text-ink sm:text-lg">
+                        Describe la situación
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+                    Pega aquí tus notas de sesión, registros u observaciones. No necesitan
+                    estar ordenadas: describe situaciones, conductas, lo que la persona dice
+                    y lo que ocurre después. Evita nombres reales.
+                  </p>
+
+                  <label htmlFor="nota" className="sr-only">
+                    Notas clínicas
+                  </label>
+                  <textarea
+                    id="nota"
+                    value={nota}
+                    disabled={formularioDeshabilitado}
+                    onChange={(evento) => {
+                      setNota(evento.target.value);
+                      if (avisoPII) setAvisoPII(false);
+                      if (mensajeValidacion) setMensajeValidacion("");
+                    }}
+                    maxLength={LONGITUD_MAXIMA}
+                    rows={11}
+                    placeholder={EJEMPLO_NOTA}
+                    className="mt-4 w-full resize-y rounded-lg border border-divider bg-white px-3 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  />
+
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-mono text-xs text-ink-muted">
+                      {nota.length} / {LONGITUD_MAXIMA}
+                    </p>
+                    <p className="text-xs text-ink-muted">
+                      Consejo: escribe en prosa, luego la IA identificará patrones.
+                    </p>
+                  </div>
+
+                  <div className="mt-4 flex items-start gap-3 rounded-xl border border-accent/20 bg-accent-soft p-4">
+                    <Lock className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+                    <div>
+                      <p className="text-sm font-semibold text-ink">Privacidad</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
+                        Tus notas se procesan de forma efímera y no se almacenan en ningún
+                        servidor propio. Recomendación: usa iniciales o seudónimos.
+                      </p>
+                    </div>
+                  </div>
+
+                  {mensajeValidacion && (
+                    <p role="alert" className="mt-3 text-sm text-warn">
+                      {mensajeValidacion}
+                    </p>
+                  )}
+
+                  {estado === "error" && mensajeError && (
+                    <div
+                      role="alert"
+                      className="mt-4 rounded-md border border-warn/30 bg-warn/5 p-4"
+                    >
+                      <p className="text-sm text-ink">{mensajeError}</p>
+                      <button
+                        type="button"
+                        onClick={manejarReintentar}
+                        className="mt-3 rounded border border-divider px-4 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                      >
+                        Reintentar
+                      </button>
+                    </div>
+                  )}
+
+                  {avisoPII && (
+                    <div
+                      role="alert"
+                      className="mt-4 rounded-md border border-warn/30 bg-warn/5 p-4"
+                    >
+                      <p className="text-sm text-ink">
+                        Detectamos posibles datos identificables (correo, teléfono o
+                        documento). ¿Deseas enmascararlos automáticamente antes de
+                        analizar?
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={manejarEnmascararYAnalizar}
+                          className="rounded bg-accent px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                        >
+                          Enmascarar y analizar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={manejarAnalizarSinCambios}
+                          className="rounded border border-divider px-4 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                        >
+                          Analizar sin cambios
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!avisoPII && (
+                    <button
+                      type="button"
+                      onClick={manejarGenerarClick}
+                      disabled={formularioDeshabilitado}
+                      className="mt-5 flex w-full items-center gap-3 rounded-xl bg-accent px-5 py-3.5 text-left text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                    >
+                      <Sparkles className="h-5 w-5 shrink-0" aria-hidden="true" />
+                      <span>
+                        <span className="block text-sm font-semibold">
+                          Generar análisis funcional
+                        </span>
+                        <span className="block text-xs text-white/75">
+                          La IA analizará tu información y te entregará un análisis
+                          estructurado.
+                        </span>
+                      </span>
+                    </button>
+                  )}
+                </div>
+
+                {estado === "cargando" && (
+                  <div className="mt-8">
+                    <EsqueletoInforme />
+                  </div>
+                )}
               </div>
-            )}
 
-            {avisoPII && (
-              <div
-                role="alert"
-                className="mt-4 rounded-md border border-warn/30 bg-warn/5 p-4"
-              >
-                <p className="text-sm text-ink">
-                  Detectamos posibles datos identificables (correo, teléfono o
-                  documento). ¿Deseas enmascararlos automáticamente antes de
-                  analizar?
+              <PanelRecomendaciones />
+            </section>
+          )}
+
+          {estado === "resultado" && analisis && (
+            <div className="mt-2">
+              <div className="sticky top-0 z-10 -mx-4 mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-divider bg-surface/95 px-4 py-3 backdrop-blur print:hidden sm:-mx-6 sm:px-6">
+                <p className="min-w-0 truncate text-sm text-ink-muted">
+                  {referenciaCaso.trim() && (
+                    <span className="text-ink">{referenciaCaso.trim()} · </span>
+                  )}
+                  {fechaGeneracion}
                 </p>
-                <div className="mt-3 flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
-                    onClick={manejarEnmascararYAnalizar}
-                    className="rounded bg-accent px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                    onClick={manejarCopiarInforme}
+                    className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                   >
-                    Enmascarar y analizar
+                    {copiado ? "Copiado" : "Copiar informe"}
                   </button>
                   <button
                     type="button"
-                    onClick={manejarAnalizarSinCambios}
-                    className="rounded border border-divider px-4 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                    onClick={() => window.print()}
+                    className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                   >
-                    Analizar sin cambios
+                    Imprimir / Guardar como PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={manejarNuevoAnalisis}
+                    className="rounded bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                  >
+                    Nuevo análisis
                   </button>
                 </div>
               </div>
-            )}
-
-            {!avisoPII && (
-              <div className="mt-5">
-                <button
-                  type="button"
-                  onClick={manejarGenerarClick}
-                  disabled={formularioDeshabilitado}
-                  className="rounded bg-accent px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-                >
-                  Generar análisis funcional
-                </button>
-              </div>
-            )}
-          </div>
-
-          {estado === "cargando" && (
-            <div className="mt-8">
-              <EsqueletoInforme />
+              <ReportView
+                analisis={analisis}
+                referenciaCaso={referenciaCaso}
+                onReferenciaCasoChange={setReferenciaCaso}
+                fecha={fechaGeneracion}
+                notaOriginal={ultimoTextoEnviado}
+                onAnalisisActualizado={(fragmento) =>
+                  setAnalisis((previo) => (previo ? { ...previo, ...fragmento } : previo))
+                }
+              />
             </div>
           )}
-        </section>
-      )}
 
-      {estado === "resultado" && analisis && (
-        <div className="mt-2">
-          <div className="sticky top-0 z-10 -mx-4 mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-divider bg-surface/95 px-4 py-3 backdrop-blur print:hidden sm:-mx-6 sm:px-6">
-            <p className="min-w-0 truncate text-sm text-ink-muted">
-              {referenciaCaso.trim() && (
-                <span className="text-ink">{referenciaCaso.trim()} · </span>
-              )}
-              {fechaGeneracion}
+          <footer className="mt-10 border-t border-divider pt-6 text-center text-xs text-ink-muted print:hidden">
+            <p>
+              Elaborado por{" "}
+              <a
+                href="https://catcodesss.github.io/catcode/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-accent hover:underline"
+              >
+                CatCodes
+              </a>
             </p>
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={manejarCopiarInforme}
-                className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-              >
-                {copiado ? "Copiado" : "Copiar informe"}
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-              >
-                Imprimir / Guardar como PDF
-              </button>
-              <button
-                type="button"
-                onClick={manejarNuevoAnalisis}
-                className="rounded bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-              >
-                Nuevo análisis
-              </button>
-            </div>
-          </div>
-          <ReportView
-            analisis={analisis}
-            referenciaCaso={referenciaCaso}
-            onReferenciaCasoChange={setReferenciaCaso}
-            fecha={fechaGeneracion}
-            notaOriginal={ultimoTextoEnviado}
-            onAnalisisActualizado={(fragmento) =>
-              setAnalisis((previo) => (previo ? { ...previo, ...fragmento } : previo))
-            }
-          />
-        </div>
-      )}
-
-      <footer className="mt-10 border-t border-divider pt-6 text-center text-xs text-ink-muted print:hidden">
-        <p>
-          Elaborado por{" "}
-          <a
-            href="https://catcodesss.github.io/catcode/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-accent hover:underline"
-          >
-            CatCodes
-          </a>
-        </p>
-        <p className="mt-1 font-mono text-[11px] text-ink-muted/70">v0.1.2</p>
-      </footer>
-    </main>
+            <p className="mt-1 font-mono text-[11px] text-ink-muted/70">v0.1.2</p>
+          </footer>
+        </main>
+      </div>
+    </div>
   );
 }
