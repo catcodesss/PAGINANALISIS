@@ -93,7 +93,11 @@ Lo que separa "generador de hipótesis" de "herramienta de seguimiento".
 - [ ] **Persistencia y seguimiento longitudinal.** Guardar análisis por referencia
       de caso y poder compararlos en el tiempo. Un análisis funcional sin línea
       base ni medida de cambio es media herramienta. Cierras la pestaña y se pierde.
-- [ ] **Exportación estructurada** (JSON y DOCX), además de copiar e imprimir.
+- [x] **Exportación JSON**, además de copiar e imprimir. Botón "Descargar JSON"
+      junto a "Copiar informe"; genera el archivo en el navegador (la nota no
+      vuelve a tocar el servidor). Probado en vivo.
+- [ ] **Exportación DOCX.** Requiere una librería nueva (p. ej. `docx`) — pendiente
+      de decidirlo con el autor antes de añadir la dependencia.
 - [x] **Trazabilidad en el informe:** modelo, versión del prompt y fecha. Campo
       `meta` en `AnalisisFuncional` (lib/types.ts), fijado por el servidor tras
       generar; `VERSION_PROMPT` en lib/systemPrompt.ts. Visible junto a la fecha

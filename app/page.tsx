@@ -151,6 +151,27 @@ export default function Home() {
     }
   }
 
+  /**
+   * Exportación estructurada: el mismo AnalisisFuncional que consume la
+   * interfaz, para quien quiera procesarlo con otra herramienta. Se genera en
+   * el navegador; la nota nunca vuelve a tocar el servidor para esto.
+   */
+  function manejarDescargarJSON() {
+    if (!analisis) return;
+    const nombreBase = referenciaCaso.trim()
+      ? referenciaCaso.trim().replace(/[^a-zA-Z0-9-_]+/g, "_")
+      : "analisis";
+    const blob = new Blob([JSON.stringify(analisis, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement("a");
+    enlace.href = url;
+    enlace.download = `${nombreBase}.json`;
+    enlace.click();
+    URL.revokeObjectURL(url);
+  }
+
   // En la guía se ocultan tanto el formulario como el informe: comparten el
   // mismo contenedor y la misma cabecera, solo cambia el cuerpo.
   const enAnalisis = vista === "analisis";
@@ -393,6 +414,13 @@ export default function Home() {
                     className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                   >
                     {copiado ? "Copiado" : "Copiar informe"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={manejarDescargarJSON}
+                    className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                  >
+                    Descargar JSON
                   </button>
                   <button
                     type="button"
