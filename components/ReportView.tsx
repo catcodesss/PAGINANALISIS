@@ -420,14 +420,7 @@ function ReportarFallo({ seccionId }: { seccionId: string }) {
   if (!contexto) return null;
 
   function abrir() {
-    setBorrador(
-      construirReporteFallo(
-        contexto!.analisis,
-        seccionId,
-        JSON.stringify(seccionParaReporte(contexto!.analisis, seccionId), null, 2),
-        ""
-      )
-    );
+    setBorrador(construirReporteFallo(contexto!.analisis, seccionId, ""));
     setAbierto(true);
   }
 
@@ -459,16 +452,18 @@ function ReportarFallo({ seccionId }: { seccionId: string }) {
   return (
     <div className="mt-3 rounded border border-divider bg-canvas p-3 print:hidden">
       {/*
-        Se muestra el reporte entero y editable ANTES de copiarlo. No basta con
-        prometer que no viaja la nota: se ha quitado la nota y sus citas
-        literales, pero el texto que escribió la IA describe el caso igualmente.
-        Que el clínico lea y recorte lo que salga de su dispositivo es la única
-        garantía real.
+        El reporte se muestra entero y editable ANTES de copiarlo, y no incluye
+        el análisis generado: describe el caso, así que es contenido clínico
+        (ver lib/reporteFallo.ts). Lo que el clínico añada a mano es cosa suya,
+        pero lo ve delante antes de que salga del dispositivo.
       */}
       <p className="mb-2 text-sm text-ink-muted">
-        Esto es exactamente lo que se copiará. No lleva tu nota ni sus citas
-        literales, pero lo que la IA escribió describe el caso:{" "}
-        <span className="text-ink">revísalo y borra lo que no quieras compartir.</span>
+        Esto es exactamente lo que se copiará.{" "}
+        <span className="text-ink">
+          No lleva tu nota ni el análisis generado
+        </span>{" "}
+        — solo el modelo, la versión del prompt y la sección. Si para explicar el
+        fallo hace falta el texto, escríbelo tú con datos ficticios.
       </p>
       <textarea
         value={borrador}
@@ -494,36 +489,6 @@ function ReportarFallo({ seccionId }: { seccionId: string }) {
         </button>
       </div>
     </div>
-  );
-}
-
-/**
- * El trozo del análisis que corresponde a una sección, sin las citas: son
- * recortes literales de la nota y saldrían del dispositivo con el reporte.
- */
-function seccionParaReporte(
-  analisis: AnalisisFuncional,
-  seccionId: string
-): unknown {
-  const campo = BLOQUE_DE_SECCION[seccionId];
-  const porSeccion: Record<string, unknown> = {
-    resumen: analisis.resumen_clinico,
-    conductas: analisis.conductas_problema,
-    "variables-moduladoras": analisis.variables_moduladoras,
-    situaciones: analisis.situaciones,
-    "hipotesis-mantenimiento": analisis.hipotesis_mantenimiento,
-    formulacion: analisis.formulacion,
-    "conductas-alternativas": analisis.conductas_alternativas,
-    "hipotesis-alternativas": analisis.hipotesis_alternativas,
-    preguntas: analisis.preguntas_para_sesion,
-    intervencion: analisis.lineas_de_intervencion_tentativas,
-    riesgo: analisis.riesgo,
-    "datos-faltantes": analisis.datos_faltantes,
-  };
-  const valor = porSeccion[seccionId] ?? campo ?? seccionId;
-  // Las claves "evidencia" contienen texto recortado de la nota: se eliminan.
-  return JSON.parse(
-    JSON.stringify(valor, (clave, v) => (clave === "evidencia" ? undefined : v))
   );
 }
 

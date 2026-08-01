@@ -44,11 +44,18 @@ razón; si algo obliga a tocarlos, avisa antes.
    puede recibir un informe clínicamente peor. Ver `MONETIZACION.md`.
 
 5. **La nota no se registra en ningún log.** Ni servidor, ni telemetría, ni
-   mensajes de error. El reporte de fallo del modelo (`lib/reporteFallo.ts`)
-   excluye la nota y sus citas literales, pero el texto que escribió la IA
-   describe el caso igualmente — comprobado en pruebas. Por eso la interfaz
-   enseña el reporte completo y editable antes de copiarlo, en vez de prometer
-   una anonimización que no puede garantizar.
+   mensajes de error.
+
+   **El análisis generado también es contenido clínico.** No es "texto del
+   modelo" separable de la nota: describe el caso. Donde la nota dice "pidió ir
+   al baño", el informe escribe "pide ir al baño y se ausenta"; y una hipótesis
+   con confianza ALTA lo es, por el principio 11, *precisamente porque* hay una
+   línea de la nota que la sostiene explícitamente — son las más pegadas al
+   original. Por eso el reporte de fallo (`lib/reporteFallo.ts`) no lleva ni la
+   nota, ni las citas, ni el análisis, ni los mensajes de alerta (que citan el
+   texto generado): solo modelo, versión de prompt, sección y códigos. Lo
+   clínico lo escribe el profesional a mano, con datos ficticios, y lo ve antes
+   de copiar. `evals/reporteFallo.test.mjs` lo fija.
 
 6. **Lo que escribe el clínico no se presenta como generado por la IA.** Es el
    invariante 2 en el sentido inverso. Editar a mano marca la sección
@@ -109,6 +116,7 @@ npx tsc --noEmit
 node --experimental-strip-types evals/citas.test.mjs    # 10 pruebas
 node --experimental-strip-types evals/pii.test.mjs      # 11 pruebas
 node evals/validadores.test.mjs                         # 9 pruebas
+node evals/reporteFallo.test.mjs                        # 7 pruebas
 ```
 
 Las evals completas sí gastan (9 llamadas, una por caso). Ejecuta antes y

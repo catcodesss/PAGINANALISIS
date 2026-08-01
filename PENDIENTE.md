@@ -103,10 +103,16 @@ Lo que separa "generador de hipótesis" de "herramienta de seguimiento".
       - Revalidación: las comprobaciones deterministas se repiten en el
         navegador sobre lo editado (`revalidarTrasEdicion`) — avisan, nunca
         corrigen ni degradan lo que escribió el profesional.
-      - Botón de reportar fallo de la IA por sección. Ver la nota de privacidad
-        en el invariante 5 de CLAUDE.md: excluye la nota y sus citas, pero
-        enseña el reporte editable antes de copiar porque el texto de la IA
-        describe el caso de todos modos.
+      - Botón de reportar fallo de la IA por sección. **Corregido tras revisión
+        del autor:** la primera versión incluía el análisis generado y solo
+        quitaba las citas, con el argumento de que el texto era "del modelo".
+        El autor señaló que no: el análisis describe el caso, y las hipótesis
+        con confianza alta son justo las más pegadas a la nota, porque esa
+        confianza exige una línea que las sostenga. Ahora el reporte solo lleva
+        modelo, versión de prompt, sección y códigos de alerta — ni el
+        análisis, ni las citas, ni los mensajes de alerta (que citan el texto
+        generado). Medido: de ~1960 caracteres con el caso a ~655 de metadatos.
+        Fijado con `evals/reporteFallo.test.mjs` (7 pruebas, en CI).
       Verificado en vivo: editar, borrar, marca en pantalla y en el Word
       exportado, aviso de sobrescritura, y que el reporte copia exactamente lo
       que el clínico dejó en el cuadro.

@@ -32,3 +32,6 @@ jobs:
 
       - name: Validadores deterministas
         run: node evals/validadores.test.mjs
+
+      - name: Reporte de fallo sin contenido clínico
+        run: node evals/reporteFallo.test.mjs
