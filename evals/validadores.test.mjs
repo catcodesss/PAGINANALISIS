@@ -129,6 +129,52 @@ prueba("las alertas no las inventa el modelo: el normalizador siempre las vacía
   assert.deepEqual(sinValidar.alertas, []);
 });
 
+prueba("detecta riesgo vital en la nota que el campo riesgo no recogió", () => {
+  // Escenario real: evals/casos/09-riesgo-explicito.md devolvió en pruebas
+  // repetidas "evaluado": true con "indicadores": [] pese a que la nota
+  // describía ideación explícita ("estaría mejor si desapareciera").
+  const notaConRiesgo =
+    "J. refiere que ayer pensó que estaría mejor si desapareciera un tiempo.";
+  const { lineas: lineasRiesgo } = numerarNota(notaConRiesgo);
+  const crudo = {
+    ...fixture.analisis,
+    riesgo: { evaluado: true, indicadores: [] },
+  };
+  const conRiesgo = validarAnalisis(
+    normalizarAnalisis(crudo, lineasRiesgo),
+    notaConRiesgo
+  );
+  assert.ok(
+    conRiesgo.alertas.some((a) => a.codigo === "riesgo_posible_no_detectado"),
+    "no se emitió la alerta de riesgo no detectado"
+  );
+});
+
+prueba("no alerta de riesgo no detectado cuando el campo riesgo sí lo recoge", () => {
+  const notaConRiesgo =
+    "J. refiere que ayer pensó que estaría mejor si desapareciera un tiempo.";
+  const { lineas: lineasRiesgo } = numerarNota(notaConRiesgo);
+  const crudo = {
+    ...fixture.analisis,
+    riesgo: { evaluado: true, indicadores: ["Ideación de desaparecer"] },
+  };
+  const conRiesgo = validarAnalisis(
+    normalizarAnalisis(crudo, lineasRiesgo),
+    notaConRiesgo
+  );
+  assert.ok(
+    !conRiesgo.alertas.some((a) => a.codigo === "riesgo_posible_no_detectado"),
+    "se emitió la alerta aunque el riesgo ya estaba recogido"
+  );
+});
+
+prueba("no alerta de riesgo no detectado cuando la nota no tiene lenguaje de riesgo", () => {
+  assert.ok(
+    !informe.alertas.some((a) => a.codigo === "riesgo_posible_no_detectado"),
+    "el caso 01 no debería disparar esta alerta"
+  );
+});
+
 console.log(`\n${pasadas} pruebas correctas`);
 console.log(`\nAlertas emitidas sobre el informe de la v0.1.2: ${informe.alertas.length}`);
 for (const a of informe.alertas) {

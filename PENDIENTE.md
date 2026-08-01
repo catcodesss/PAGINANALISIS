@@ -111,9 +111,20 @@ Lo que separa "generador de hipótesis" de "herramienta de seguimiento".
       `incluirRuta` para comprobar la combinación etiqueta+contenido; el caso 06
       quitó el `ambito` sobrante (igual que su hermano `no-inventa-alcohol`, que
       ya escaneaba todo el informe).
-- [ ] **Más casos.** Faltan al menos: un caso infantil con contingencias en el aula,
-      un caso de pareja con contingencias entrelazadas, y uno con riesgo explícito
-      para probar el principio 17.
+- [x] **Más casos.** Añadidos los tres que faltaban: 07 infantil (doble función,
+      no diagnostica), 08 pareja (ciclo interconductual, acomodación), 09 riesgo
+      explícito (principio 17). Calibrados contra el endpoint real, no en frío:
+      dos patrones de comprobación tuvieron que ampliarse porque el modelo
+      escribió "desaparición"/"reforzando la evitación" en vez de las palabras
+      que yo esperaba — no era el modelo, era mi regex.
+      **Hallazgo de seguridad, no solo de evals:** probando el caso 09 en vivo (4
+      llamadas), 1 de 4 devolvió `riesgo.evaluado: true` con `indicadores: []`
+      pese a que la nota describía ideación explícita y escalada de consumo —
+      peor que "no decir nada", porque afirma que sí se evaluó. Añadido un
+      quinto validador determinista (`riesgo_posible_no_detectado` en
+      lib/validadores.ts): escanea la nota en busca de lenguaje de riesgo vital
+      y avisa si el campo `riesgo` no lo recogió. Ver el invariante 3 actualizado
+      en CLAUDE.md. 3 pruebas nuevas en evals/validadores.test.mjs (9 en total).
 - [x] **Ejecutar con `--reps=3`** de vez en cuando. Corrida del 01/08/2026: 86/90,
       citas 100%. Confirma la inestabilidad: `no-inventa-evitacion` (caso 02) en
       2/3. Ver también la marca actual en CLAUDE.md.

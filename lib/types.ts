@@ -222,7 +222,8 @@ export interface Alerta {
     | "confianza_sin_cita"
     | "conducta_sin_analisis"
     | "prescribe_conducta_seguridad"
-    | "intervencion_depende_de_dato_faltante";
+    | "intervencion_depende_de_dato_faltante"
+    | "riesgo_posible_no_detectado";
   gravedad: "alta" | "media";
   ruta: string;
   mensaje: string;

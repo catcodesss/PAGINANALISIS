@@ -10,6 +10,9 @@ import { normalizarTexto } from "./citas";
  * prompt, el informe propuso primero "exponer sin conductas de seguridad" y
  * después "Respiración consciente" para el mismo caso, en el que respirar en el
  * baño ERA la conducta de seguridad. Lo que el prompt pide, esto lo verifica.
+ * La misma lógica motivó V5: en pruebas repetidas con una nota de riesgo
+ * explícito, el modelo marcó "riesgo.evaluado": true con "indicadores": []
+ * pese a que la nota describía ideación.
  */
 
 /**
@@ -27,6 +30,14 @@ const NUCLEOS_SEGURIDAD: { id: string; patron: RegExp; etiqueta: string }[] = [
   { id: "consumo", patron: /alcohol|ansiolitic|copas de/, etiqueta: "consumo para afrontar la situación" },
   { id: "ensayo_mental", patron: /ensayar mentalmente|repasar mentalmente|ensayo mental/, etiqueta: "ensayo mental" },
 ];
+
+/**
+ * Lenguaje asociado a riesgo vital (ideación, autolesión). Deliberadamente
+ * amplio: es un aviso de "revisa esto", no una detección clínica exhaustiva,
+ * así que una alerta de más cuesta poco y una de menos puede costar mucho.
+ */
+const PATRON_RIESGO_VITAL =
+  /suicid|autolesion|quitarse la vida|acabar con (su|mi) vida|no quiero vivir|no quiere vivir|mejor (estaria|estuviera) (muert[oa]|sin vivir)|desaparec|desaparici/;
 
 const VACIAS = new Set([
   "ante", "para", "porque", "cuando", "sobre", "desde", "entre", "hacia",
@@ -236,6 +247,29 @@ function validarDependenciaDeDatosFaltantes(a: AnalisisFuncional): Alerta[] {
 }
 
 /**
+ * V5 · La nota contiene lenguaje de riesgo vital que el campo "riesgo" no
+ * recoge. Existe porque en pruebas repetidas con la misma nota (evals/casos/
+ * 09-riesgo-explicito.md), el modelo devolvió "evaluado": true con
+ * "indicadores": [] pese a que la nota describía ideación explícita: el
+ * principio 17 pide revisarlo, esto comprueba que de verdad quedó recogido.
+ */
+function validarRiesgoNoDetectado(a: AnalisisFuncional, nota: string): Alerta[] {
+  if (!PATRON_RIESGO_VITAL.test(normalizarTexto(nota))) return [];
+  if (PATRON_RIESGO_VITAL.test(normalizarTexto(a.riesgo.indicadores.join(" ")))) {
+    return [];
+  }
+  return [
+    {
+      codigo: "riesgo_posible_no_detectado",
+      gravedad: "alta",
+      ruta: "riesgo",
+      mensaje:
+        "La nota contiene lenguaje asociado a riesgo vital (ideación, autolesión) que no aparece reflejado en los indicadores de riesgo del informe. Revisa la nota directamente antes de descartarlo.",
+    },
+  ];
+}
+
+/**
  * Ejecuta todas las comprobaciones y devuelve el análisis con sus alertas.
  * Modifica confianzas cuando la evidencia no las sostiene (ver V1).
  */
@@ -248,6 +282,7 @@ export function validarAnalisis(
     ...validarCobertura(analisis),
     ...validarConductasSeguridad(analisis, nota),
     ...validarDependenciaDeDatosFaltantes(analisis),
+    ...validarRiesgoNoDetectado(analisis, nota),
   ];
 
   // Una misma intervención puede disparar la misma alerta por dos caminos.

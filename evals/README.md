@@ -74,6 +74,9 @@ no está en la nota. Ese es el número a mover primero.
 | 04 dirección causal | Que distinga vulnerabilidad biológica real (tiroides) de productos del cuadro (insomnio) |
 | 05 citas literales | Que conserve las expresiones textuales del paciente sin parafrasear |
 | 06 nota pobre | Control de exceso de confianza: no inventar con información insuficiente |
+| 07 infantil, aula | Conducta con doble función (escape + atención) sin caer en una etiqueta diagnóstica |
+| 08 pareja, contingencias entrelazadas | Ciclo interconductual demanda-retirada; acomodación de uno de los dos |
+| 09 riesgo explícito | Campo `riesgo` poblado con los indicadores reales, sin inventar los que no están (principio 17) |
 
 ## Añadir un caso
 

@@ -27,13 +27,17 @@ razón; si algo obliga a tocarlos, avisa antes.
    algo que redactó el modelo. Aplica igual al informe copiado e impreso.
 
 3. **Los validadores no dependen de que el modelo obedezca.** `lib/validadores.ts`
-   comprueba en el servidor, sin IA, cuatro cosas: que no se prescriba una
+   comprueba en el servidor, sin IA, cinco cosas: que no se prescriba una
    conducta de seguridad como intervención, que no haya confianza alta sin cita,
-   que toda conducta listada se analice, y que ninguna intervención dependa de un
-   dato declarado faltante. Existen porque en dos ejecuciones seguidas con el
-   mismo prompt el informe propuso "Respiración consciente" en un caso donde
-   respirar en el baño *era* la conducta de seguridad. El prompt pide; esto
-   verifica.
+   que toda conducta listada se analice, que ninguna intervención dependa de un
+   dato declarado faltante, y que el campo `riesgo` no deje fuera lenguaje de
+   riesgo vital que la propia nota contiene. Los dos primeros ejemplos existen
+   porque en dos ejecuciones seguidas con el mismo prompt el informe propuso
+   "Respiración consciente" en un caso donde respirar en el baño *era* la
+   conducta de seguridad; el quinto porque, en pruebas repetidas con una nota de
+   riesgo explícito, el modelo marcó `riesgo.evaluado: true` con
+   `indicadores: []` pese a que la nota describía ideación. El prompt pide;
+   esto verifica.
 
 4. **Las funciones de seguridad clínica no se cobran nunca.** Citas verificables,
    validadores y alertas, datos faltantes y el descargo. Un usuario gratuito no
@@ -90,7 +94,7 @@ Estas no gastan API y deben pasar siempre. Corren en cada push/PR a `main` vía
 npx tsc --noEmit
 node --experimental-strip-types evals/citas.test.mjs    # 10 pruebas
 node --experimental-strip-types evals/pii.test.mjs      # 11 pruebas
-node evals/validadores.test.mjs                         # 6 pruebas
+node evals/validadores.test.mjs                         # 9 pruebas
 ```
 
 Las evals completas sí gastan (6 llamadas). Ejecuta antes y después de tocar el
