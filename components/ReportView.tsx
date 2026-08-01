@@ -91,6 +91,7 @@ function seccionVisible(analisis: AnalisisFuncional, id: string): boolean {
 
 const SECCIONES: SeccionIndice[] = [
   { id: "datos-faltantes", titulo: "Datos faltantes" },
+  { id: "riesgo", titulo: "Riesgo" },
   { id: "alertas", titulo: "Revisiones sugeridas" },
   { id: "hipotesis-principal", titulo: "Formulación destacada" },
   { id: "resumen", titulo: "Resumen clínico" },
@@ -1316,6 +1317,36 @@ export default function ReportView({
             />
           </section>
 
+          {/* Riesgo: misma prioridad que datos faltantes, por su relevancia de seguridad clínica. */}
+          <section id="riesgo" className="scroll-mt-24 mb-8">
+            <div className="mb-3 flex items-center gap-3">
+              <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
+              <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
+                Riesgo
+              </h2>
+            </div>
+            {!analisis.riesgo.evaluado ? (
+              <p className="text-sm text-ink-muted">
+                No se ha evaluado el riesgo en esta nota: falta información para
+                pronunciarse sobre escalada de consumo, ideación, riesgo laboral o
+                legal, menores implicados u otros indicadores.
+              </p>
+            ) : analisis.riesgo.indicadores.length === 0 ? (
+              <p className="text-sm text-ink-muted">
+                Sin indicadores de riesgo detectados en la nota.
+              </p>
+            ) : (
+              <ul className="list-disc space-y-2 pl-5">
+                {analisis.riesgo.indicadores.map((r, i) => (
+                  <li key={i} className="text-[15px] leading-relaxed text-ink">
+                    {r}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <BloqueReanalisis campos={["riesgo"]} seccionId="riesgo" />
+          </section>
+
           {/*
             Avisos metodológicos del validador del servidor, no del modelo.
             Van aquí arriba, junto a los datos faltantes, porque son la misma
@@ -1471,7 +1502,7 @@ export default function ReportView({
           <Seccion
             id="situaciones"
             titulo="Análisis por situaciones"
-            camposReanalisis={["situaciones"]}
+            camposReanalisis={["situaciones", "acomodacion_entorno"]}
             extra={
               <BotonesModalidad activa={pestanaActiva} onChange={setPestanaActiva} modelos={modalidades} />
             }
@@ -1483,6 +1514,29 @@ export default function ReportView({
                 {analisis.situaciones.map((s, i) => (
                   <SituacionCard key={i} situacion={s} pestanaActiva={pestanaActiva} />
                 ))}
+              </div>
+            )}
+
+            {analisis.acomodacion_entorno.length > 0 && (
+              <div className="mt-6">
+                <SubSeccion titulo="Acomodación del entorno">
+                  <ul className="space-y-3">
+                    {analisis.acomodacion_entorno.map((a, i) => (
+                      <li key={i} className="rounded border border-divider p-4">
+                        <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
+                          {a.quien}
+                        </p>
+                        <p className="mt-1 text-[15px] leading-relaxed text-ink">
+                          {a.conducta_acomodacion}
+                        </p>
+                        {a.funcion && (
+                          <p className="mt-1 text-sm text-ink-muted">{a.funcion}</p>
+                        )}
+                        <Cita>{a.evidencia}</Cita>
+                      </li>
+                    ))}
+                  </ul>
+                </SubSeccion>
               </div>
             )}
           </Seccion>
@@ -1528,7 +1582,11 @@ export default function ReportView({
             )}
           </Seccion>
 
-          <Seccion id="formulacion" titulo="Formulación del caso" camposReanalisis={["formulacion"]}>
+          <Seccion
+            id="formulacion"
+            titulo="Formulación del caso"
+            camposReanalisis={["formulacion", "valores_y_metas", "perdida_de_reforzadores"]}
+          >
             <div className="space-y-5">
               <SubSeccion titulo="Relaciones entre problemas">
                 {analisis.formulacion.relaciones_entre_problemas.length === 0 ? (
@@ -1563,6 +1621,28 @@ export default function ReportView({
                   </ul>
                 )}
               </SubSeccion>
+              {analisis.valores_y_metas.length > 0 && (
+                <SubSeccion titulo="Valores y metas del consultante">
+                  <ul className="list-disc space-y-2 pl-5">
+                    {analisis.valores_y_metas.map((v, i) => (
+                      <li key={i} className="text-[15px] leading-relaxed text-ink">
+                        {v}
+                      </li>
+                    ))}
+                  </ul>
+                </SubSeccion>
+              )}
+              {analisis.perdida_de_reforzadores.length > 0 && (
+                <SubSeccion titulo="Pérdida de reforzadores">
+                  <ul className="list-disc space-y-2 pl-5">
+                    {analisis.perdida_de_reforzadores.map((p, i) => (
+                      <li key={i} className="text-[15px] leading-relaxed text-ink">
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                </SubSeccion>
+              )}
             </div>
           </Seccion>
 

@@ -389,12 +389,17 @@ export function BloqueLosLimites() {
 
       <div className="rounded-xl border-l-4 border-warn bg-canvas p-5">
         <h3 className="mb-2 font-serif text-base font-semibold text-ink">
-          Empieza siempre por &quot;Datos faltantes&quot;
+          Empieza siempre por &quot;Datos faltantes&quot; y &quot;Riesgo&quot;
         </h3>
         <p className="text-sm leading-relaxed text-ink-muted">
-          Es la primera sección del informe a propósito: recoge lo que tu nota no
-          incluía. Leerla antes que las conclusiones evita tomar por establecido
-          algo que solo era una inferencia sobre información incompleta.
+          Son las dos primeras secciones del informe a propósito. Datos
+          faltantes recoge lo que tu nota no incluía. Riesgo señala si se
+          detectaron indicadores (escalada de consumo, ideación, riesgo
+          laboral o legal, menores implicados) o si la nota no daba
+          información suficiente para evaluarlo — en ese caso lo dice
+          explícitamente, no lo deja en blanco. Léelas antes que las
+          conclusiones: evita tomar por establecido algo que solo era una
+          inferencia sobre información incompleta.
         </p>
       </div>
     </div>

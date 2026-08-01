@@ -45,21 +45,41 @@ tiene un problema de base legal, no técnico.
 
 ## 3. Carencias clínicas del análisis
 
-- [ ] **Sección de riesgo como campo propio del esquema.** Hoy el principio 17 pide
-      señalar riesgo, pero acaba en `datos_faltantes` o en la priorización, mezclado
-      con todo lo demás. Debería ser un campo `riesgo` con `evaluado`, `indicadores[]`
-      y su propio bloque en la interfaz: escalada de consumo, ideación, riesgo
-      laboral o legal, menores implicados.
-- [ ] **`acomodacion_entorno` como campo estructurado.** El principio 7 ya lo cubre
-      en prosa, pero tenerlo como lista (quién, qué conducta de acomodación, qué
-      función) permitiría validarlo y mostrarlo aparte.
-- [ ] **`valores_y_metas` y `perdida_de_reforzadores` como campos.** Mismo caso:
-      están en el prompt, no en el esquema.
-- [ ] **Caso 02 de las evals.** La función se sigue etiquetando como escape en un
-      caso diseñado como déficit puro. Es discutible —responder con monosílabos
-      puede leerse como escape de la demanda— y lo importante lo acierta (propone
-      adquisición, no exposición). Decidir si la comprobación es demasiado estricta
-      o si hay que afinar el principio 15.
+- [x] **Sección de riesgo como campo propio del esquema.** Campo `riesgo` con
+      `evaluado: boolean` e `indicadores: string[]` (lib/types.ts), siempre
+      presente (CAMPOS_SIEMPRE en lib/bloques.ts) igual que datos_faltantes.
+      Sección propia en la interfaz justo debajo de Datos faltantes. Probado en
+      vivo: `evaluado: true, indicadores: []` en el caso 01 (sin indicadores
+      reales de riesgo en la nota).
+- [x] **`acomodacion_entorno` como campo estructurado.** `{ quien,
+      conducta_acomodacion, funcion, evidencia }[]`, con cita verificable.
+      Vive en el bloque "situaciones" y se muestra como subsección aparte de
+      "Análisis por situaciones". Probado en vivo con el caso 01: resolvió la
+      acomodación de la pareja con cita literal de la nota.
+- [x] **`valores_y_metas` y `perdida_de_reforzadores` como campos.** `string[]`
+      cada uno, en el bloque "formulación", mostrados como subsecciones de
+      "Formulación del caso". Probado en vivo con el caso 01.
+      `VERSION_PROMPT` subida a 1.1.0 por el cambio de esquema y principios
+      7/17/18/19. Evals sin coste y con `--fixture` verificados tras el cambio;
+      dos checks nuevos añadidos al caso 01 (`acomodacion-como-campo-propio`,
+      `riesgo-evaluado`), ambos en verde.
+- [ ] **Caso 02 de las evals — recomendación, pendiente de que el autor decida.**
+      Revisado el 01/08/2026 con la corrida de `--reps=3`: `no-inventa-evitacion`
+      es inestable (2/3), pero lo importante se acierta siempre (identifica
+      déficit, propone adquisición, nunca exposición).
+      Análisis: la nota no aporta ningún dato de R− (alivio, reducción de
+      malestar) que sostenga una función de escape — es un déficit topográfico
+      puro (nunca recibió formación, no distingue tarea de competencia, sigue
+      presentándose motivado a más entrevistas). Etiquetar las respuestas breves
+      como "escape de la demanda" sin esa evidencia es precisamente el sesgo que
+      ya advierte el principio 16 (forzar refuerzo negativo como explicación
+      por defecto). Mi lectura: la comprobación del eval está bien como está;
+      el fallo intermitente es un fallo real del prompt, no un falso positivo
+      del test. Si se quiere corregir, el cambio mínimo sería añadir al
+      principio 15 o 16 una advertencia explícita: no atribuir función de
+      escape a una respuesta breve/incompleta sin evidencia de una consecuencia
+      de alivio (R−) en la nota. No lo he tocado — es un cambio al prompt
+      clínico y el autor debe decidirlo.
 
 ## 4. Producto
 

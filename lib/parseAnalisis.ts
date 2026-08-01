@@ -1,6 +1,7 @@
 import { resolverCita } from "./citas";
 import {
   CAMPOS_ANALISIS_FUNCIONAL,
+  type Acomodacion,
   type AnalisisFuncional,
   type CadenaDBT,
   type CadenaOperante,
@@ -16,6 +17,7 @@ import {
   type HipotesisMantenimiento,
   type NivelConfianza,
   type PriorizacionBlanco,
+  type Riesgo,
   type Situacion,
   type TipoContingencia,
   type VariableModuladora,
@@ -309,6 +311,24 @@ function normalizarCapaDbt(valor: unknown): CapaModalidadDBT {
   };
 }
 
+function normalizarAcomodacion(valor: unknown, lineas: string[]): Acomodacion {
+  const d = comoObjeto(valor);
+  return {
+    quien: comoTexto(d.quien),
+    conducta_acomodacion: comoTexto(d.conducta_acomodacion),
+    funcion: comoTexto(d.funcion),
+    evidencia: resolverCita(lineas, d.evidencia),
+  };
+}
+
+function normalizarRiesgo(valor: unknown): Riesgo {
+  const d = comoObjeto(valor);
+  return {
+    evaluado: d.evaluado === true,
+    indicadores: comoArregloDeTexto(d.indicadores),
+  };
+}
+
 function normalizarCapaMc(valor: unknown): CapaModalidadMC {
   const d = comoObjeto(valor);
   return {
@@ -363,6 +383,12 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
       d.lineas_de_intervencion_tentativas
     ),
     datos_faltantes: comoArregloDeTexto(d.datos_faltantes),
+    acomodacion_entorno: comoArreglo<unknown>(d.acomodacion_entorno).map((a) =>
+      normalizarAcomodacion(a, lineas)
+    ),
+    valores_y_metas: comoArregloDeTexto(d.valores_y_metas),
+    perdida_de_reforzadores: comoArregloDeTexto(d.perdida_de_reforzadores),
+    riesgo: normalizarRiesgo(d.riesgo),
     // Las alertas no vienen del modelo: las produce lib/validadores.ts.
     alertas: [],
     // Lo fija la ruta según lo que se haya pedido, no el modelo.
@@ -420,6 +446,13 @@ const NORMALIZADORES_POR_CAMPO: {
   lineas_de_intervencion_tentativas: (d) =>
     comoArregloDeTexto(d.lineas_de_intervencion_tentativas),
   datos_faltantes: (d) => comoArregloDeTexto(d.datos_faltantes),
+  acomodacion_entorno: (d, lineas) =>
+    comoArreglo<unknown>(d.acomodacion_entorno).map((a) =>
+      normalizarAcomodacion(a, lineas)
+    ),
+  valores_y_metas: (d) => comoArregloDeTexto(d.valores_y_metas),
+  perdida_de_reforzadores: (d) => comoArregloDeTexto(d.perdida_de_reforzadores),
+  riesgo: (d) => normalizarRiesgo(d.riesgo),
   alertas: () => [],
   campos_generados: () => [],
   meta: () => ({ modelo: "", version_prompt: "" }),

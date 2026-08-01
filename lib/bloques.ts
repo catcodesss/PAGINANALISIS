@@ -26,6 +26,7 @@ export type CampoAnalisis = keyof AnalisisFuncional;
 const CAMPOS_SIEMPRE: CampoAnalisis[] = [
   "resumen_clinico",
   "datos_faltantes",
+  "riesgo",
   "alertas",
   "campos_generados",
   "meta",
@@ -60,7 +61,7 @@ export const BLOQUES: Bloque[] = [
     id: "situaciones",
     etiqueta: "Análisis por situaciones",
     descripcion: "Las cadenas operante y respondiente de cada situación funcional.",
-    campos: ["conductas_problema", "situaciones"],
+    campos: ["conductas_problema", "situaciones", "acomodacion_entorno"],
     peso: 3,
   },
   {
@@ -79,6 +80,8 @@ export const BLOQUES: Bloque[] = [
       "situaciones",
       "hipotesis_mantenimiento",
       "formulacion",
+      "valores_y_metas",
+      "perdida_de_reforzadores",
     ],
     peso: 5,
   },

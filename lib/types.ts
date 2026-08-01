@@ -44,6 +44,32 @@ export interface VariableModuladora {
   evidencia: Cita;
 }
 
+/**
+ * Ciclo de acomodación del entorno (principio 7): alguien del entorno hace
+ * gestiones por el consultante, responde por él, lo tranquiliza, lo sustituye
+ * o le evita la situación temida. Antes vivía solo en prosa dentro de
+ * variables_moduladoras/ciclo_interconductual; como campo propio se puede
+ * validar y mostrar aparte.
+ */
+export interface Acomodacion {
+  quien: string;
+  conducta_acomodacion: string;
+  funcion: string;
+  evidencia: Cita;
+}
+
+/**
+ * Revisión de indicadores de riesgo (principio 17): escalada de consumo,
+ * ideación suicida o autolesión, riesgo laboral o legal, menores implicados,
+ * violencia, deterioro físico. `evaluado: false` es una respuesta válida y
+ * distinta de "sin indicadores": significa que la nota no daba base para
+ * pronunciarse, no que se haya descartado el riesgo.
+ */
+export interface Riesgo {
+  evaluado: boolean;
+  indicadores: string[];
+}
+
 export interface CadenaOperante {
   antecedente: string;
   operacion_motivacional: string | null;
@@ -228,6 +254,14 @@ export interface AnalisisFuncional {
   preguntas_para_sesion: string[];
   lineas_de_intervencion_tentativas: string[];
   datos_faltantes: string[];
+  /** Principio 7: ciclos de acomodación del entorno, con quién y qué función. */
+  acomodacion_entorno: Acomodacion[];
+  /** Principio 18: direcciones valiosas o metas que el consultante expresa. */
+  valores_y_metas: string[];
+  /** Principio 19: actividades reforzantes abandonadas y su papel en el mantenimiento. */
+  perdida_de_reforzadores: string[];
+  /** Principio 17: revisión de indicadores de riesgo. Ver tipo Riesgo. */
+  riesgo: Riesgo;
   /** Lo rellena el servidor tras validar; el modelo nunca lo envía. */
   alertas: Alerta[];
   /**
@@ -264,6 +298,10 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "preguntas_para_sesion",
   "lineas_de_intervencion_tentativas",
   "datos_faltantes",
+  "acomodacion_entorno",
+  "valores_y_metas",
+  "perdida_de_reforzadores",
+  "riesgo",
   "alertas",
   "campos_generados",
   "meta",

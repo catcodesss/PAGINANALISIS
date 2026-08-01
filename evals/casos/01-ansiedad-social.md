@@ -38,7 +38,14 @@ En cuanto a antecedentes, describe un padre muy crítico con el rendimiento esco
     "id": "pareja-como-mantenedor",
     "descripcion": "La pareja que gestiona por ella debe aparecer en el análisis principal, no solo como hipótesis alternativa",
     "tipo": "debe_aparecer",
-    "ambito": "variables_moduladoras|analisis_por_situaciones|situaciones|hipotesis_mantenimiento|formulacion",
+    "ambito": "variables_moduladoras|analisis_por_situaciones|situaciones|hipotesis_mantenimiento|formulacion|acomodacion_entorno",
+    "patron": "pareja"
+  },
+  {
+    "id": "acomodacion-como-campo-propio",
+    "descripcion": "La acomodación de la pareja debe registrarse en el campo acomodacion_entorno, no solo mencionarse de paso",
+    "tipo": "debe_aparecer",
+    "ambito": "acomodacion_entorno",
     "patron": "pareja"
   },
   {
@@ -87,6 +94,13 @@ En cuanto a antecedentes, describe un padre muy crítico con el rendimiento esco
     "tipo": "debe_aparecer",
     "ambito": "hipotesis_alternativas|hipotesis_mantenimiento",
     "patron": "refuerzo positivo|reforzamiento positivo"
+  },
+  {
+    "id": "riesgo-evaluado",
+    "descripcion": "El campo riesgo debe marcarse como evaluado: la nota da base para pronunciarse, aunque no haya indicadores",
+    "tipo": "debe_aparecer",
+    "ambito": "riesgo",
+    "patron": "^true$"
   }
 ]
 ```
