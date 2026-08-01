@@ -19,10 +19,12 @@ const RAIZ = join(AQUI, "..");
 
 // Estos módulos se importan entre sí sin extensión (resolución de TypeScript),
 // que Node no entiende en ESM. Se compilan a CommonJS en una carpeta temporal.
+// Se invoca el bin de TypeScript vía `node` (no `npx.cmd`): en Windows, Node
+// 24 exige `shell: true` para lanzar .cmd y si no, falla con EINVAL.
 execFileSync(
-  process.platform === "win32" ? "npx.cmd" : "npx",
+  process.execPath,
   [
-    "tsc",
+    join(RAIZ, "node_modules/typescript/bin/tsc"),
     "lib/citas.ts",
     "lib/parseAnalisis.ts",
     "lib/validadores.ts",
