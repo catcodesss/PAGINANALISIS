@@ -38,10 +38,17 @@ interface SidebarProps {
 /**
  * Los ítems sin `vista` son de próxima disponibilidad: se muestran para
  * comunicar el mapa del producto, pero no navegan a ninguna parte.
+ *
+ * La barra queda anclada al desplazar el informe: un análisis ocupa varias
+ * pantallas y volver arriba solo para cambiar de vista era una fricción real.
+ * `self-start` es imprescindible — sin él, el estirado por defecto del flex
+ * padre le da la altura de todo el contenido y `sticky` se queda sin recorrido
+ * donde actuar. El scroll propio cubre las ventanas bajas, donde el menú no
+ * cabría entero.
  */
 export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
   return (
-    <aside className="hidden w-64 shrink-0 flex-col bg-sidebar px-4 py-6 text-white lg:flex print:hidden">
+    <aside className="hidden w-64 shrink-0 flex-col bg-sidebar px-4 py-6 text-white lg:flex print:hidden lg:sticky lg:top-0 lg:h-screen lg:self-start lg:overflow-y-auto">
       <button
         type="button"
         onClick={() => onCambiarVista("analisis")}
