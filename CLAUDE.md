@@ -97,24 +97,31 @@ node --experimental-strip-types evals/pii.test.mjs      # 11 pruebas
 node evals/validadores.test.mjs                         # 9 pruebas
 ```
 
-Las evals completas sí gastan (6 llamadas). Ejecuta antes y después de tocar el
-prompt, y anota los dos números en el commit:
+Las evals completas sí gastan (9 llamadas, una por caso). Ejecuta antes y
+después de tocar el prompt, y anota los dos números en el commit:
 
 ```bash
 npm run dev
 node evals/run.mjs --endpoint=http://localhost:3000/api/analizar
 ```
 
-**Marca actual (01/08/2026, `--reps=3`): caso 01 en 9/10, 86/90 comprobaciones,
-integridad de citas 100%.** Si baja, algo se rompió. Dos cosas conocidas, no
-regresiones:
-- `respiracion-no-como-intervencion` (caso 01) falla de forma consistente: el
-  modelo sigue sugiriendo "Respiración consciente/profunda" en
-  `capa_dbt.habilidades_sugeridas`, saltándose la prohibición del principio 14
-  para ese campo concreto. El validador `prescribe_conducta_seguridad` ya lo
-  detecta y emite alerta, así que no llega sin avisar a la interfaz.
-- `no-inventa-evitacion` (caso 02) es inestable (2/3): confirma el aviso de
-  abajo sobre medir con una sola repetición.
+**Marca actual (01/08/2026): 9 casos, 42/47 comprobaciones (1 rep),
+integridad de citas 75/77 (97%).** Si baja, algo se rompió. Con `--reps=3`
+sobre los 6 primeros casos: 86/90, citas 100%. Fallos conocidos, no
+regresiones — las tres son fallos reales del modelo, intermitentes,
+verificados en vivo, no fallos de calibración del test:
+- `respiracion-no-como-intervencion` (caso 01): el modelo a veces sugiere
+  "Respiración consciente/profunda" en `capa_dbt.habilidades_sugeridas`,
+  saltándose la prohibición del principio 14 para ese campo concreto. El
+  validador `prescribe_conducta_seguridad` ya lo detecta y emite alerta.
+- `no-inventa-evitacion` (caso 02): inestable (2/3 con `--reps=3`). Ver el
+  análisis completo en PENDIENTE.md — es un fallo real del prompt (forzar
+  refuerzo negativo sin evidencia de R−), no un falso positivo del test.
+- Caso 09 (riesgo explícito): en pruebas repetidas, 1 de 4 llamadas idénticas
+  devolvió `riesgo.evaluado: true` con `indicadores: []` pese a que la nota
+  describía ideación explícita. Por eso existe el validador 5 de
+  `lib/validadores.ts` (`riesgo_posible_no_detectado`): no depende de que el
+  modelo acierte, escanea la nota directamente.
 
 Lo que no cubre ninguna prueba: que el informe sea *clínicamente útil*. Eso solo
 lo juzga el autor, que es psicólogo.

@@ -1,9 +1,10 @@
 # Pendiente
 
-Estado a 31/07/2026, tras las fases 1 a 4. Ordenado por lo que más importa.
+Estado a 01/08/2026. Ordenado por lo que más importa.
 
 Línea base actual (`node evals/run.mjs --endpoint=http://localhost:3000/api/analizar`):
-caso 01 en 8/10, 28/30 comprobaciones, integridad de citas 100%.
+9 casos, 42/47 comprobaciones, integridad de citas 75/77 (97%). Ver la marca
+detallada por caso en CLAUDE.md.
 
 ---
 
