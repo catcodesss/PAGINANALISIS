@@ -44,6 +44,12 @@ Sin `ambito`, busca en todo el informe.
 Los patrones se comparan sin acentos y en minúsculas, así que escribe
 `deficit` y encontrará `déficit`.
 
+Con `"incluirRuta": true` el patrón se compara contra `ruta + valor` en vez de
+solo `valor`. Sirve para comprobar una combinación (p. ej. "esta entrada está
+etiquetada como biológica Y menciona el sueño") usando un ámbito amplio que
+casi siempre está poblado — así un `no_debe_aparecer` verifica la ausencia de
+verdad, en vez de pasar porque `ambito` no encontró nada que mirar.
+
 **2. Integridad de citas.** Comprobación automática en todos los casos: cada
 campo `evidencia` debe ser texto literal presente en la nota original. Es el
 fallo más grave de la v0.1.2 y aquí queda cuantificado.

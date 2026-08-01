@@ -1,0 +1,34 @@
+name: Evals sin coste
+
+# Solo las comprobaciones que no gastan API (ver CLAUDE.md > Verificación):
+# tipos, citas, PII y validadores. Las evals completas contra OpenAI se
+# ejecutan a mano (node evals/run.mjs), nunca en CI.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verificacion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - name: Tipos (tsc --noEmit)
+        run: npx tsc --noEmit
+
+      - name: Citas verificables
+        run: node --experimental-strip-types evals/citas.test.mjs
+
+      - name: Enmascarado de PII
+        run: node --experimental-strip-types evals/pii.test.mjs
+
+      - name: Validadores deterministas
+        run: node evals/validadores.test.mjs

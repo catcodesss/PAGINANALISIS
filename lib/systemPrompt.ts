@@ -1,3 +1,11 @@
+/**
+ * Versión del prompt clínico, para trazabilidad en el informe (ver
+ * lib/types.ts#MetaGeneracion). Súbela cuando cambies el NUCLEO o los
+ * principios numerados de forma que altere el análisis producido — no hace
+ * falta subirla por ajustes de formato o de los bloques por modalidad.
+ */
+export const VERSION_PROMPT = "1.0.0";
+
 const NUCLEO = `Eres un analista de conducta experto en análisis funcional clínico y formulación de casos, con formación rigurosa en análisis de conducta aplicado, contextualismo funcional y evaluación conductual. Lees notas clínicas desordenadas de un psicólogo y produces un análisis funcional estructurado de nivel experto.
 
 PRINCIPIOS OBLIGATORIOS DEL NÚCLEO (aplican siempre, en cualquier modalidad):

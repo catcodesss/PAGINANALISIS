@@ -202,6 +202,16 @@ export interface Alerta {
   mensaje: string;
 }
 
+/**
+ * Trazabilidad de la generación: qué modelo y qué versión del prompt la
+ * produjeron. Lo fija el servidor (ver app/api/analizar/route.ts), igual que
+ * `alertas` — el modelo no lo envía ni el reanálisis parcial lo toca.
+ */
+export interface MetaGeneracion {
+  modelo: string;
+  version_prompt: string;
+}
+
 export interface AnalisisFuncional {
   resumen_clinico: string;
   conductas_problema: ConductaProblema[];
@@ -226,6 +236,8 @@ export interface AnalisisFuncional {
    * que existiera el análisis por partes.
    */
   campos_generados: string[];
+  /** Modelo y versión de prompt que generaron este informe. Ver MetaGeneracion. */
+  meta: MetaGeneracion;
 }
 
 /**
@@ -254,6 +266,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "datos_faltantes",
   "alertas",
   "campos_generados",
+  "meta",
 ] as const satisfies readonly (keyof AnalisisFuncional)[];
 
 type _TodasLasClavesCubiertas =

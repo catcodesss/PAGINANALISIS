@@ -58,8 +58,9 @@ En cuanto a antecedentes, describe un padre muy crítico con el rendimiento esco
     "id": "sueno-no-es-vulnerabilidad-biologica",
     "descripcion": "Dormir mal los domingos es consecuencia de la anticipación, no una vulnerabilidad biológica",
     "tipo": "no_debe_aparecer",
-    "ambito": "biologic",
-    "patron": "duerme|dormir|sueno|insomnio"
+    "ambito": "variables_moduladoras",
+    "incluirRuta": true,
+    "patron": "(?=.*biologic)(?=.*(duerme|dormir|sueno|insomnio))"
   },
   {
     "id": "perdida-de-reforzadores",

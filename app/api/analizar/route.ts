@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
-import { construirSystemPrompt } from "@/lib/systemPrompt";
+import { construirSystemPrompt, VERSION_PROMPT } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarAnalisis } from "@/lib/parseAnalisis";
 import { numerarNota } from "@/lib/citas";
 import { validarAnalisis } from "@/lib/validadores";
@@ -9,6 +9,9 @@ import { camposParaBloques, IDS_TODOS } from "@/lib/bloques";
 import { CAMPOS_ANALISIS_FUNCIONAL } from "@/lib/types";
 
 const MODELO = "gpt-4o";
+// Fija para que las evals sean comparables entre ejecuciones. El modelo lo
+// trata como "mejor esfuerzo": no garantiza determinismo, pero reduce varianza.
+const SEED = Number(process.env.OPENAI_SEED ?? 42);
 const RUTA = "analizar";
 const LIMITE_PETICIONES = Number(process.env.LIMITE_ANALISIS_POR_VENTANA ?? 5);
 const VENTANA_MS = Number(process.env.LIMITE_VENTANA_MS ?? 10 * 60 * 1000);
@@ -104,6 +107,7 @@ export async function POST(request: Request) {
       model: MODELO,
       max_tokens: techoDeSalida(campos.length),
       temperature: 0.2,
+      seed: SEED,
       messages: [
         { role: "system", content: construirSystemPrompt(campos) },
         {
@@ -122,6 +126,8 @@ export async function POST(request: Request) {
     // Qué se pidió, para que la interfaz sepa qué secciones tiene sentido mostrar.
     analisis.campos_generados =
       bloquesPedidos.length === IDS_TODOS.length ? [] : bloquesPedidos;
+    // Trazabilidad: qué modelo y qué versión del prompt generaron este informe.
+    analisis.meta = { modelo: MODELO, version_prompt: VERSION_PROMPT };
 
     return NextResponse.json({ analisis });
   } catch (error) {

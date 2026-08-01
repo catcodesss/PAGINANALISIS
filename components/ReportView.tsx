@@ -15,6 +15,7 @@ import type {
   CadenaOperante,
   CadenaRespondiente,
   Cita as CitaVerificada,
+  MetaGeneracion,
   ModeloTerapeutico,
   NivelConfianza,
   Situacion,
@@ -1028,9 +1029,11 @@ function IndiceMovil({
 function PrintOnlyHeader({
   referenciaCaso,
   fecha,
+  meta,
 }: {
   referenciaCaso: string;
   fecha: string;
+  meta: MetaGeneracion;
 }) {
   return (
     <div className="print-only-header hidden print:block">
@@ -1061,6 +1064,12 @@ function PrintOnlyHeader({
           <span className="print-meta-label">Páginas</span>
           <span className="print-meta-value">Ver pie de página</span>
         </div>
+        <div className="print-meta-item">
+          <span className="print-meta-label">Generado con</span>
+          <span className="print-meta-value">
+            {meta.modelo || "—"} · prompt v{meta.version_prompt || "—"}
+          </span>
+        </div>
       </div>
       <div className="print-separator" />
       <div className="print-confidential">
@@ -1084,7 +1093,13 @@ function PrintOnlyFooter() {
 }
 
 /** Descargo metodológico final, visible solo al imprimir/exportar a PDF. */
-function PrintOnlyDisclaimer({ fecha }: { fecha: string }) {
+function PrintOnlyDisclaimer({
+  fecha,
+  meta,
+}: {
+  fecha: string;
+  meta: MetaGeneracion;
+}) {
   return (
     <div className="print-only-disclaimer hidden print:block">
       <div className="print-disclaimer-title">Nota metodológica</div>
@@ -1104,6 +1119,7 @@ function PrintOnlyDisclaimer({ fecha }: { fecha: string }) {
       </p>
       <p className="print-disclaimer-tool">
         Generado con ANCIA — Análisis de conducta asistido por IA · {fecha}
+        {meta.modelo ? ` · ${meta.modelo} · prompt v${meta.version_prompt}` : ""}
       </p>
     </div>
   );
@@ -1220,7 +1236,7 @@ export default function ReportView({
       value={{ notaOriginal, analisis, onAnalisisActualizado }}
     >
     <div className="rounded-md border border-divider bg-surface px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-12 lg:py-10 print:rounded-none print:border-none print:px-0 print:py-0 print:shadow-none">
-      <PrintOnlyHeader referenciaCaso={referenciaCaso} fecha={fecha} />
+      <PrintOnlyHeader referenciaCaso={referenciaCaso} fecha={fecha} meta={analisis.meta} />
       <PrintOnlyFooter />
 
       <header className="mb-6 border-b border-divider pb-5 print:hidden">
@@ -1234,6 +1250,14 @@ export default function ReportView({
           <p>
             Fecha de generación: <span className="text-ink">{fecha}</span>
           </p>
+          {analisis.meta.modelo && (
+            <p className="print:hidden">
+              Generado con:{" "}
+              <span className="text-ink">
+                {analisis.meta.modelo} · prompt v{analisis.meta.version_prompt}
+              </span>
+            </p>
+          )}
           <label className="flex items-center gap-2 print:hidden">
             <span>Referencia del caso (opcional):</span>
             <input
@@ -1647,7 +1671,7 @@ export default function ReportView({
         mediante evaluación directa.
       </footer>
 
-      <PrintOnlyDisclaimer fecha={fecha} />
+      <PrintOnlyDisclaimer fecha={fecha} meta={analisis.meta} />
       <LeyendaConfianzaFlotante />
     </div>
     </ReanalisisContext.Provider>

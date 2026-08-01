@@ -28,6 +28,7 @@ const CAMPOS_SIEMPRE: CampoAnalisis[] = [
   "datos_faltantes",
   "alertas",
   "campos_generados",
+  "meta",
 ];
 
 export interface Bloque {

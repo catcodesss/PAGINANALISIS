@@ -28,7 +28,6 @@ Paciente acude por ansiedad. Refiere malestar en el trabajo. Dice que le cuesta 
     "id": "no-inventa-antecedentes",
     "descripcion": "No debe atribuir historia de aprendizaje que la nota no contiene",
     "tipo": "no_debe_aparecer",
-    "ambito": "historia|aprendizaje",
     "patron": "padre|madre|infancia|escolar|burlas|critic"
   },
   {

@@ -89,7 +89,15 @@ function comprobar(check, entradas) {
   const reAmbito = check.ambito ? new RegExp(check.ambito, 'i') : null;
   const candidatas = reAmbito ? entradas.filter((e) => reAmbito.test(sinAcentos(e.ruta))) : entradas;
   const rePatron = new RegExp(check.patron, 'i');
-  const aciertos = candidatas.filter((e) => rePatron.test(norm(e.valor)));
+  // incluirRuta: el patrón se compara contra ruta+valor en vez de solo valor.
+  // Sirve para comprobar una combinación (p. ej. "esta entrada está etiquetada
+  // como biológica Y menciona el sueño") sin depender de que `ambito` acote a
+  // una categoría que puede no existir — así "no aparece" se verifica sobre un
+  // ámbito que casi siempre está poblado, en vez de pasar porque no hay nada
+  // que mirar.
+  const aciertos = candidatas.filter((e) =>
+    rePatron.test(check.incluirRuta ? `${norm(e.ruta)} ${norm(e.valor)}` : norm(e.valor))
+  );
   const encontrado = aciertos.length > 0;
   const pasa = check.tipo === 'debe_aparecer' ? encontrado : !encontrado;
   return {

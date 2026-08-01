@@ -83,7 +83,8 @@ normalizador, el build falla. Es deliberado, no lo desactives.
 
 ### Verificación
 
-Estas no gastan API y deben pasar siempre:
+Estas no gastan API y deben pasar siempre. Corren en cada push/PR a `main` vía
+`.github/workflows/evals.yml`:
 
 ```bash
 npx tsc --noEmit

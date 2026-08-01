@@ -39,8 +39,9 @@ tiene un problema de base legal, no técnico.
       nota no recogido, confianza por encima de la evidencia, contradicciones.
       Sus observaciones se fusionan con `alertas`. Duplica el coste por análisis,
       así que debe poder desactivarse por configuración.
-- [ ] **`seed` fijo** en la llamada a OpenAI, si el modelo lo admite, para que las
-      evals sean comparables entre ejecuciones.
+- [x] **`seed` fijo** en la llamada a OpenAI, si el modelo lo admite, para que las
+      evals sean comparables entre ejecuciones. `OPENAI_SEED` (por defecto 42) en
+      ambas rutas.
 
 ## 3. Carencias clínicas del análisis
 
@@ -73,21 +74,24 @@ Lo que separa "generador de hipótesis" de "herramienta de seguimiento".
       de caso y poder compararlos en el tiempo. Un análisis funcional sin línea
       base ni medida de cambio es media herramienta. Cierras la pestaña y se pierde.
 - [ ] **Exportación estructurada** (JSON y DOCX), además de copiar e imprimir.
-- [ ] **Trazabilidad en el informe:** modelo, versión del prompt y fecha. Hoy el
-      pie muestra la versión de la app, que no es lo mismo.
+- [x] **Trazabilidad en el informe:** modelo, versión del prompt y fecha. Campo
+      `meta` en `AnalisisFuncional` (lib/types.ts), fijado por el servidor tras
+      generar; `VERSION_PROMPT` en lib/systemPrompt.ts. Visible junto a la fecha
+      de generación y en el encabezado/descargo de impresión.
 
 ## 5. Deuda de las evals
 
-- [ ] **Dos comprobaciones pasan con `[ámbito vacío]`** (`sueno-no-es-vulnerabilidad-biologica`
-      en el caso 01 y `no-inventa-antecedentes` en el 06). El fondo es correcto
-      —no hay ninguna variable clasificada en esos ámbitos, que es lo que se
-      quería—, pero la comprobación no verifica nada: pasa porque no encuentra
-      dónde mirar. Reescribirlas para que comprueben la ausencia de forma positiva.
+- [x] **Dos comprobaciones pasan con `[ámbito vacío]`** (`sueno-no-es-vulnerabilidad-biologica`
+      en el caso 01 y `no-inventa-antecedentes` en el 06). Arreglado: el caso 01
+      ahora usa un ámbito casi siempre poblado (`variables_moduladoras`) más
+      `incluirRuta` para comprobar la combinación etiqueta+contenido; el caso 06
+      quitó el `ambito` sobrante (igual que su hermano `no-inventa-alcohol`, que
+      ya escaneaba todo el informe).
 - [ ] **Más casos.** Faltan al menos: un caso infantil con contingencias en el aula,
       un caso de pareja con contingencias entrelazadas, y uno con riesgo explícito
       para probar el principio 17.
 - [ ] **Ejecutar con `--reps=3`** de vez en cuando. La ejecución de las 03:48
       demostró que una misma comprobación pasa y falla entre ejecuciones idénticas:
       medir con una sola repetición da una falsa sensación de estabilidad.
-- [ ] **Automatizar en CI.** Las pruebas que no gastan API (citas, PII, validadores)
-      pueden correr en cada push.
+- [x] **Automatizar en CI.** `.github/workflows/evals.yml`: tsc --noEmit + citas +
+      PII + validadores en cada push/PR a main.

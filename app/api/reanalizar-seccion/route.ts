@@ -7,6 +7,8 @@ import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
 import { CAMPOS_ANALISIS_FUNCIONAL, type AnalisisFuncional } from "@/lib/types";
 
 const MODELO = "gpt-4o";
+// Misma semilla que app/api/analizar/route.ts: mejor esfuerzo de determinismo.
+const SEED = Number(process.env.OPENAI_SEED ?? 42);
 const RUTA = "reanalizar";
 const LIMITE_PETICIONES = Number(process.env.LIMITE_REANALISIS_POR_VENTANA ?? 20);
 const VENTANA_MS = Number(process.env.LIMITE_VENTANA_MS ?? 10 * 60 * 1000);
@@ -131,6 +133,7 @@ export async function POST(request: Request) {
       model: MODELO,
       max_tokens: 6000,
       temperature: 0.2,
+      seed: SEED,
       messages: [
         {
           role: "system",

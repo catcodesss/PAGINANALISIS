@@ -367,6 +367,8 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     alertas: [],
     // Lo fija la ruta según lo que se haya pedido, no el modelo.
     campos_generados: [],
+    // Lo fija la ruta tras la llamada a OpenAI (ver app/api/analizar/route.ts).
+    meta: { modelo: "", version_prompt: "" },
   };
 }
 
@@ -420,6 +422,7 @@ const NORMALIZADORES_POR_CAMPO: {
   datos_faltantes: (d) => comoArregloDeTexto(d.datos_faltantes),
   alertas: () => [],
   campos_generados: () => [],
+  meta: () => ({ modelo: "", version_prompt: "" }),
 };
 
 function esCampoDeAnalisis(campo: string): campo is keyof AnalisisFuncional {
