@@ -200,7 +200,7 @@ export default function Home() {
             <div>
               <h1 className="font-serif text-2xl font-semibold text-ink sm:text-3xl">
                 {enAnalisis
-                  ? "ANCIA — Análisis de conducta asistido por IA"
+                  ? "ACIA — Análisis de conducta asistido por IA"
                   : "Guía de uso"}
               </h1>
               <p className="mt-2 text-sm text-ink-muted sm:text-base">
@@ -284,7 +284,7 @@ export default function Home() {
                       <p className="text-sm font-semibold text-ink">Privacidad</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
                         Para generar el análisis, el texto de tus notas se envía a la
-                        API de OpenAI. ANCIA no lo almacena en ningún servidor propio,
+                        API de OpenAI. ACIA no lo almacena en ningún servidor propio,
                         pero OpenAI puede conservarlo temporalmente según su política
                         de retención. No introduzcas nombres reales ni datos de
                         contacto: usa iniciales o seudónimos.

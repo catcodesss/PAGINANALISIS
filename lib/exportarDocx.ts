@@ -115,7 +115,7 @@ export function descargarDocx(
 ): void {
   const texto = formatearInformeTexto(analisis, referenciaCaso, fecha);
   const html = documentoWord(
-    `ANCIA — ${referenciaCaso.trim() || "Análisis funcional"}`,
+    `ACIA — ${referenciaCaso.trim() || "Análisis funcional"}`,
     cuerpoHtml(texto)
   );
 

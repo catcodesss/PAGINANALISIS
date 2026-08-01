@@ -21,7 +21,7 @@ export function construirReporteFallo(
   comentario: string
 ): string {
   const lineas = [
-    "Reporte de fallo — ANCIA",
+    "Reporte de fallo — ACIA",
     "",
     `Fecha: ${new Date().toISOString()}`,
     `Modelo: ${analisis.meta.modelo || "(desconocido)"}`,

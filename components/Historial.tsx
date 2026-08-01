@@ -143,7 +143,7 @@ export default function Historial({
       const url = URL.createObjectURL(blob);
       const enlace = document.createElement("a");
       enlace.href = url;
-      enlace.download = `ancia-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
+      enlace.download = `acia-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
       enlace.click();
       URL.revokeObjectURL(url);
     });

@@ -21,7 +21,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ANCIA — Análisis de conducta asistido por IA",
+  title: "ACIA — Análisis de conducta asistido por IA",
   description:
     "Análisis funcional y formulación de casos para la práctica clínica asistida por IA",
 };

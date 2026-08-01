@@ -1,4 +1,4 @@
-# Set de evals para ANCIA
+# Set de evals para ACIA
 
 Batería de casos de prueba para medir si el análisis funcional mejora o empeora
 cuando tocas el prompt. Sin esto, cada cambio es a ciegas.

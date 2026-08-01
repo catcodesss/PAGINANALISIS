@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Runner de evals para ANCIA
+ * Runner de evals para ACIA
  * ------------------------------------------------------------
  * Envía cada nota de prueba a /api/analizar, recoge el JSON del informe
  * y comprueba: (a) las trampas definidas en cada caso y (b) que todas las
@@ -25,8 +25,8 @@ const arg = (n, def) => {
   return p ? p.split('=').slice(1).join('=') : def;
 };
 
-const ENDPOINT = arg('endpoint', process.env.ANCIA_ENDPOINT || 'http://localhost:3000/api/analizar');
-const CAMPO = arg('campo', process.env.ANCIA_CAMPO || 'nota'); // clave del body que espera tu API
+const ENDPOINT = arg('endpoint', process.env.ACIA_ENDPOINT || 'http://localhost:3000/api/analizar');
+const CAMPO = arg('campo', process.env.ACIA_CAMPO || 'nota'); // clave del body que espera tu API
 const REPS = Number(arg('reps', 1));
 const SOLO = arg('caso', null);
 const FIXTURE = arg('fixture', null);

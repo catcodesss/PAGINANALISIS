@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 64" role="img" aria-label="ACIA — análisis conductual asistido por IA">
+  <title>ACIA</title>
+  <desc>Isotipo de corchete seguido del logotipo ACIA.</desc>
+  <g fill="none" stroke="currentColor" stroke-linecap="round">
+    <path d="M25 15 L17 15 L17 49 L25 49" stroke-width="4.5"/>
+    <path d="M39 15 L47 15 L47 49 L39 49" stroke-width="4.5"/>
+    <line x1="24" y1="24" x2="40" y2="24" stroke-width="3" opacity="0.35"/>
+    <line x1="24" y1="32" x2="40" y2="32" stroke-width="4.5"/>
+    <line x1="24" y1="40" x2="34" y2="40" stroke-width="3" opacity="0.35"/>
+  </g>
+  <text x="70" y="43" fill="currentColor"
+        font-family="'Source Serif 4', 'Source Serif Pro', Georgia, serif"
+        font-size="34" font-weight="600" letter-spacing="7">ACIA</text>
+</svg>

@@ -263,7 +263,7 @@ export function BloqueComoSeLee() {
     <div className="space-y-6">
       <Intro
         titulo="De tu nota a la cadena funcional"
-        texto="ANCIA agrupa la nota en situaciones y reconstruye la contingencia de cada una. Este es el resultado del ejemplo anterior."
+        texto="ACIA agrupa la nota en situaciones y reconstruye la contingencia de cada una. Este es el resultado del ejemplo anterior."
       />
 
       <div className="rounded-xl border border-divider bg-canvas p-5">
@@ -366,7 +366,7 @@ export function BloqueLosLimites() {
     <div className="space-y-5">
       <Intro
         titulo="Qué es y qué no es"
-        texto="ANCIA genera hipótesis funcionales para contrastar en sesión. No sustituye tu juicio clínico ni evalúa a nadie."
+        texto="ACIA genera hipótesis funcionales para contrastar en sesión. No sustituye tu juicio clínico ni evalúa a nadie."
       />
 
       <div className="grid gap-4 sm:grid-cols-2">

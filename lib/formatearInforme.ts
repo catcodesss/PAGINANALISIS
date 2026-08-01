@@ -88,7 +88,7 @@ export function formatearInformeTexto(
   fecha: string
 ): string {
   const partes: string[] = [];
-  partes.push("ANCIA — ANÁLISIS DE CONDUCTA ASISTIDO POR IA");
+  partes.push("ACIA — ANÁLISIS DE CONDUCTA ASISTIDO POR IA");
   partes.push(`Fecha de generación: ${fecha}`);
   if (referenciaCaso.trim()) {
     partes.push(`Referencia del caso: ${referenciaCaso.trim()}`);

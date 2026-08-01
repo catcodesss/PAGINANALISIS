@@ -62,7 +62,7 @@ export interface Repositorio {
 
 // --- IndexedDB ---------------------------------------------------------
 
-const BD = "ancia-historial";
+const BD = "acia-historial";
 const VERSION = 1;
 const ALMACEN_REGISTROS = "registros";
 const ALMACEN_CONFIG = "config";
@@ -277,7 +277,7 @@ class RepositorioLocal implements Repositorio {
     if (!config) throw new Error("No hay historial que exportar.");
 
     const respaldo = {
-      formato: "ancia-respaldo-v1",
+      formato: "acia-respaldo-v1",
       exportado: new Date().toISOString(),
       sal: config.sal,
       testigo: config.testigo,
@@ -288,8 +288,8 @@ class RepositorioLocal implements Repositorio {
 
   async importarRespaldo(contenido: string): Promise<number> {
     const respaldo = JSON.parse(contenido);
-    if (respaldo?.formato !== "ancia-respaldo-v1") {
-      throw new Error("El archivo no es un respaldo de ANCIA.");
+    if (respaldo?.formato !== "acia-respaldo-v1") {
+      throw new Error("El archivo no es un respaldo de ACIA.");
     }
 
     const config = await leerConfig();

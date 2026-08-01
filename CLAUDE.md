@@ -1,4 +1,4 @@
-# ANCIA — contexto para Claude Code
+# ACIA — contexto para Claude Code
 
 Herramienta clínica que convierte notas de sesión en un análisis funcional
 estructurado. Next.js 16 + React 19 + Tailwind v4, desplegada en Vercel. El
@@ -161,6 +161,7 @@ lo juzga el autor, que es psicólogo.
 
 - `PENDIENTE.md` — lo que falta, por prioridad
 - `MONETIZACION.md` — plan premium y por qué el almacenamiento es local
+- `MARCA.md` — nombre, símbolo, color, tipografía y voz; normativo
 - `evals/README.md` — cómo funcionan los casos de prueba
 - `BRIEF-ANIA.md` — la auditoría original (nombre antiguo del producto)
 

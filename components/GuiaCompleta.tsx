@@ -124,7 +124,7 @@ export default function GuiaCompleta() {
           <div className="space-y-4">
             <p className="text-sm leading-relaxed text-ink-muted">
               Para generar el análisis, el texto de tus notas se envía a la API de
-              OpenAI. ANCIA no lo almacena en ningún servidor propio, pero OpenAI
+              OpenAI. ACIA no lo almacena en ningún servidor propio, pero OpenAI
               puede conservarlo temporalmente según su política de retención.
             </p>
             <p className="text-sm leading-relaxed text-ink-muted">
