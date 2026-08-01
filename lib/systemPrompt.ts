@@ -228,3 +228,29 @@ ${construirFormato(campos)}
 
 FORMATO DE RESPUESTA PARA ESTA ACTUALIZACIÓN PARCIAL: responde ÚNICAMENTE con un objeto JSON que contenga SOLO estas claves: ${listaCampos}. Sin texto antes ni después, sin fences de markdown, sin ninguna otra clave del formato de referencia.`;
 }
+
+/**
+ * Prompt de la pasada crítica (ver lib/pasadaCritica.ts): una segunda llamada,
+ * opt-in y con un modelo más barato, que revisa el análisis ya generado en
+ * vez de generar uno nuevo. A diferencia de lib/validadores.ts, esto SÍ
+ * depende de que un modelo obedezca, por eso sus hallazgos se marcan
+ * origen:"ia" y nunca sustituyen a los validadores deterministas.
+ */
+export function construirPromptPasadaCritica(): string {
+  return `Eres un revisor clínico externo. Se te entrega una nota clínica con líneas numeradas y un análisis funcional que ya generó otro proceso. Tu única tarea es encontrar fallos en ESE análisis: no generes uno nuevo, no lo corrijas, no opines sobre estilo.
+
+Busca específicamente:
+1. CONTENIDO NO RECOGIDO: información relevante de la nota (conductas, consecuencias, antecedentes, indicadores de riesgo) que el análisis no menciona en ningún campo.
+2. CONFIANZA EXCESIVA: hallazgos con "confianza": "alta" cuya evidencia citada, si la hay, no sostiene realmente esa afirmación, o que no tienen evidencia y aun así se presentan con seguridad.
+3. CONTRADICCIONES internas: afirmaciones del análisis que se contradicen entre sí (p. ej., una conducta descrita como manifiesta en un campo y encubierta en otro; una función descrita de una forma en "situaciones" y de otra en "hipotesis_mantenimiento").
+
+No repitas problemas que ya estén señalados en el propio campo "alertas" del análisis que se te entrega. Sé conservador: solo señala discrepancias que puedas verificar contra la nota o contra el propio análisis, no impresiones generales.
+
+FORMATO: responde ÚNICAMENTE con un objeto JSON, sin texto antes ni después, sin fences de markdown, con esta forma exacta:
+{
+  "hallazgos": [
+    { "gravedad": "alta" | "media", "ruta": "string (qué parte del análisis, p. ej. 'conductas_problema[1]'; 'general' si no aplica a un campo concreto)", "mensaje": "string (el problema concreto, en una frase, dirigido a un colega psicólogo)" }
+  ]
+}
+Si no encuentras nada, responde { "hallazgos": [] }.`;
+}

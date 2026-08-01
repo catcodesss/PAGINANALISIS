@@ -57,6 +57,7 @@ lib/systemPrompt.ts              21 principios + esquema JSON troceado por campo
 lib/bloques.ts                   qué se puede pedir por separado y sus dependencias
 lib/citas.ts                     numerar la nota y resolver citas por línea
 lib/validadores.ts               comprobaciones deterministas → alertas
+lib/pasadaCritica.ts             2ª llamada opt-in (gpt-4o-mini) que revisa el informe ya generado
 lib/parseAnalisis.ts             normalizadores tolerantes de la respuesta
 lib/types.ts                     tipos + CAMPOS_ANALISIS_FUNCIONAL (chequeo en compilación)
 lib/cifrado.ts / repositorio.ts  historial local cifrado (WebCrypto + IndexedDB)

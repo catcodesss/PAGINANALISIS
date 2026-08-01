@@ -1363,15 +1363,17 @@ export default function ReportView({
                 </h2>
               </div>
               <p className="mb-3 text-sm text-ink-muted">
-                Comprobaciones automáticas sobre la coherencia del informe. No las
-                genera la IA: las emite el sistema al contrastar el análisis con tu
-                nota.
+                Comprobaciones sobre la coherencia del informe. La mayoría las
+                emite el sistema al contrastar el análisis con tu nota, sin IA;
+                las marcadas "revisión con IA" vienen de una segunda lectura
+                opcional y pueden equivocarse igual que la primera.
               </p>
               <ul className="space-y-3">
                 {analisis.alertas.map((a, i) => (
                   <li key={i} className="border-l-2 border-divider pl-3">
                     <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted/70">
                       {a.gravedad === "alta" ? "Revisar antes de usar" : "Conviene revisar"}
+                      {a.origen === "ia" && " · revisión con IA"}
                     </p>
                     <p className="text-[15px] leading-relaxed text-ink">{a.mensaje}</p>
                   </li>

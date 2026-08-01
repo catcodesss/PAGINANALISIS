@@ -35,11 +35,17 @@ tiene un problema de base legal, no técnico.
       `extraerJSON` + normalizadores tolerantes, que funciona pero no garantiza
       la forma. Con el esquema en modo estricto, un campo obligatorio no puede
       faltar. Requiere comprobar que el modelo en uso (`gpt-4o`) lo soporta.
-- [ ] **Pasada crítica.** Segunda llamada, con modelo más barato, que recibe la
-      nota numerada más el informe generado y solo busca fallos: contenido de la
-      nota no recogido, confianza por encima de la evidencia, contradicciones.
-      Sus observaciones se fusionan con `alertas`. Duplica el coste por análisis,
-      así que debe poder desactivarse por configuración.
+- [x] **Pasada crítica.** `lib/pasadaCritica.ts`: segunda llamada con
+      `gpt-4o-mini` (decisión del autor, 01/08/2026) que recibe la nota numerada
+      más el informe generado y busca contenido no recogido, confianza por
+      encima de la evidencia y contradicciones internas. Solo corre sobre el
+      informe completo (no en análisis por partes). Sus hallazgos se fusionan
+      con `alertas` marcados `origen: "ia"`, distinguibles en la interfaz de
+      los 5 validadores deterministas (`origen: "validador"`). Desactivada por
+      defecto (decisión del autor): se activa con `PASADA_CRITICA=true`, ver
+      `.env.example`. Probada en vivo: sobre el caso 01, corroboró de forma
+      independiente 4 de las 5 alertas deterministas y no rompió el análisis
+      principal.
 - [x] **`seed` fijo** en la llamada a OpenAI, si el modelo lo admite, para que las
       evals sean comparables entre ejecuciones. `OPENAI_SEED` (por defecto 42) en
       ambas rutas.

@@ -223,10 +223,18 @@ export interface Alerta {
     | "conducta_sin_analisis"
     | "prescribe_conducta_seguridad"
     | "intervencion_depende_de_dato_faltante"
-    | "riesgo_posible_no_detectado";
+    | "riesgo_posible_no_detectado"
+    | "pasada_critica";
   gravedad: "alta" | "media";
   ruta: string;
   mensaje: string;
+  /**
+   * "validador": lib/validadores.ts, determinista, sin IA, siempre el mismo
+   * resultado. "ia": una segunda llamada a un modelo revisando al primero
+   * (ver lib/pasadaCritica.ts) — es una opinión más, no una comprobación
+   * determinista, y la interfaz debe distinguirla como tal.
+   */
+  origen: "validador" | "ia";
 }
 
 /**

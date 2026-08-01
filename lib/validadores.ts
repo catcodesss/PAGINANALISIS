@@ -107,6 +107,7 @@ function validarConfianzaSinCita(a: AnalisisFuncional): Alerta[] {
     s.confianza = "media";
     alertas.push({
       codigo: "confianza_sin_cita",
+      origen: "validador",
       gravedad: "media",
       ruta: `situaciones[${i}]`,
       mensaje: `La situación "${s.nombre}" se presentaba con confianza alta sin ninguna cita verificable en la nota. Se ha degradado a media.`,
@@ -146,6 +147,7 @@ function validarCobertura(a: AnalisisFuncional): Alerta[] {
     return [
       {
         codigo: "conducta_sin_analisis",
+        origen: "validador" as const,
         gravedad: "media" as const,
         ruta: `conductas_problema[${i}]`,
         mensaje: `La conducta "${c.descripcion}" no aparece analizada en ninguna situación.`,
@@ -189,6 +191,7 @@ function validarConductasSeguridad(a: AnalisisFuncional, nota: string): Alerta[]
       if (!nucleo.patron.test(normalizarTexto(intervencion.texto))) continue;
       alertas.push({
         codigo: "prescribe_conducta_seguridad",
+        origen: "validador",
         gravedad: "alta",
         ruta: intervencion.ruta,
         mensaje: `Se propone "${intervencion.texto.trim()}", pero ${nucleo.etiqueta} ya aparece en el caso cumpliendo función de alivio. Revisa si es una conducta de seguridad: de serlo, es blanco de eliminación, no de prescripción.`,
@@ -206,6 +209,7 @@ function validarConductasSeguridad(a: AnalisisFuncional, nota: string): Alerta[]
         if (comunes.length < 2) continue;
         alertas.push({
           codigo: "prescribe_conducta_seguridad",
+          origen: "validador",
           gravedad: "alta",
           ruta: intervencion.ruta,
           mensaje: `"${intervencion.texto.trim()}" se parece a una conducta marcada como de seguridad ("${c.descripcion}").`,
@@ -236,6 +240,7 @@ function validarDependenciaDeDatosFaltantes(a: AnalisisFuncional): Alerta[] {
       if (comunes.length === 0) continue;
       alertas.push({
         codigo: "intervencion_depende_de_dato_faltante",
+        origen: "validador",
         gravedad: "media",
         ruta: intervencion.ruta,
         mensaje: `"${intervencion.texto.trim()}" depende de información que el informe declara faltante: "${falta}". Trátala como condicional hasta confirmarlo.`,
@@ -261,6 +266,7 @@ function validarRiesgoNoDetectado(a: AnalisisFuncional, nota: string): Alerta[] 
   return [
     {
       codigo: "riesgo_posible_no_detectado",
+      origen: "validador",
       gravedad: "alta",
       ruta: "riesgo",
       mensaje:
