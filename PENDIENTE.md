@@ -90,8 +90,8 @@ Lo que separa "generador de hipótesis" de "herramienta de seguimiento".
 - [ ] **Más casos.** Faltan al menos: un caso infantil con contingencias en el aula,
       un caso de pareja con contingencias entrelazadas, y uno con riesgo explícito
       para probar el principio 17.
-- [ ] **Ejecutar con `--reps=3`** de vez en cuando. La ejecución de las 03:48
-      demostró que una misma comprobación pasa y falla entre ejecuciones idénticas:
-      medir con una sola repetición da una falsa sensación de estabilidad.
+- [x] **Ejecutar con `--reps=3`** de vez en cuando. Corrida del 01/08/2026: 86/90,
+      citas 100%. Confirma la inestabilidad: `no-inventa-evitacion` (caso 02) en
+      2/3. Ver también la marca actual en CLAUDE.md.
 - [x] **Automatizar en CI.** `.github/workflows/evals.yml`: tsc --noEmit + citas +
       PII + validadores en cada push/PR a main.

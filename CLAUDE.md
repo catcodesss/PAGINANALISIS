@@ -101,10 +101,16 @@ npm run dev
 node evals/run.mjs --endpoint=http://localhost:3000/api/analizar
 ```
 
-**Marca actual: caso 01 en 8/10, 28/30 comprobaciones, integridad de citas 100%.**
-Si baja, algo se rompió. Con `--reps=3` se ve la estabilidad: hubo una
-comprobación que pasaba y fallaba entre ejecuciones idénticas, así que medir con
-una sola repetición da falsa seguridad.
+**Marca actual (01/08/2026, `--reps=3`): caso 01 en 9/10, 86/90 comprobaciones,
+integridad de citas 100%.** Si baja, algo se rompió. Dos cosas conocidas, no
+regresiones:
+- `respiracion-no-como-intervencion` (caso 01) falla de forma consistente: el
+  modelo sigue sugiriendo "Respiración consciente/profunda" en
+  `capa_dbt.habilidades_sugeridas`, saltándose la prohibición del principio 14
+  para ese campo concreto. El validador `prescribe_conducta_seguridad` ya lo
+  detecta y emite alerta, así que no llega sin avisar a la interfaz.
+- `no-inventa-evitacion` (caso 02) es inestable (2/3): confirma el aviso de
+  abajo sobre medir con una sola repetición.
 
 Lo que no cubre ninguna prueba: que el informe sea *clínicamente útil*. Eso solo
 lo juzga el autor, que es psicólogo.
