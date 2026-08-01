@@ -1230,7 +1230,7 @@ function PrintOnlyHeader({
       <div className="print-header-top">
         <div className="print-logo-area">
           <span className="print-logo-text">ACIA</span>
-          <span className="print-logo-sub">Análisis de conducta asistido por IA</span>
+          <span className="print-logo-sub">análisis conductual asistido por IA</span>
         </div>
         <div className="print-doc-type">EXPEDIENTE · ANÁLISIS FUNCIONAL</div>
       </div>
@@ -1273,7 +1273,7 @@ function PrintOnlyHeader({
 function PrintOnlyFooter() {
   return (
     <div className="print-only-footer hidden print:flex">
-      <div className="print-footer-left">ACIA — Análisis de conducta asistido por IA</div>
+      <div className="print-footer-left">ACIA — análisis conductual asistido por IA</div>
       <div className="print-footer-center">
         Documento confidencial · Solo para uso clínico
       </div>
@@ -1308,7 +1308,7 @@ function PrintOnlyDisclaimer({
         contenida en este expediente.
       </p>
       <p className="print-disclaimer-tool">
-        Generado con ACIA — Análisis de conducta asistido por IA · {fecha}
+        Generado con ACIA — análisis conductual asistido por IA · {fecha}
         {meta.modelo ? ` · ${meta.modelo} · prompt v${meta.version_prompt}` : ""}
       </p>
     </div>
@@ -1441,7 +1441,7 @@ export default function ReportView({
           Expediente · Análisis funcional
         </p>
         <h1 className="mt-1 font-serif text-2xl font-semibold text-ink sm:text-3xl">
-          ACIA — Análisis de conducta asistido por IA
+          ACIA — análisis conductual asistido por IA
         </h1>
         <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-ink-muted">
           <p>

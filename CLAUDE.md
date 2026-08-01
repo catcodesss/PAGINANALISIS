@@ -171,6 +171,5 @@ lo juzga el autor, que es psicólogo.
 - `MONETIZACION.md` — plan premium y por qué el almacenamiento es local
 - `MARCA.md` — nombre, símbolo, color, tipografía y voz; normativo
 - `evals/README.md` — cómo funcionan los casos de prueba
-- `BRIEF-ANIA.md` — la auditoría original (nombre antiguo del producto)
 
 Al terminar algo, actualiza `PENDIENTE.md`.

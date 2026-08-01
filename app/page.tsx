@@ -200,7 +200,7 @@ export default function Home() {
             <div>
               <h1 className="font-serif text-2xl font-semibold text-ink sm:text-3xl">
                 {enAnalisis
-                  ? "ACIA — Análisis de conducta asistido por IA"
+                  ? "ACIA — análisis conductual asistido por IA"
                   : "Guía de uso"}
               </h1>
               <p className="mt-2 text-sm text-ink-muted sm:text-base">
