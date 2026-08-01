@@ -92,19 +92,46 @@ tiene un problema de base legal, no técnico.
 
 Lo que separa "generador de hipótesis" de "herramienta de seguimiento".
 
-- [ ] **Edición manual del informe.** Hoy el clínico solo puede pedirle a la IA que
-      rehaga una sección. Debería poder corregir, borrar y añadir a mano, y que
-      quede marcado qué es generado y qué es suyo. Es la carencia que más limita
-      el uso profesional: ahora mismo no hay forma de corregir una hipótesis
-      errónea sin volver a tirar de la IA.
+- [x] **Edición manual del informe.** Decisiones del autor (01/08/2026): solo
+      campos de texto libre (los chips de clasificación no se tocan), por
+      elemento individual, con borrar y añadir. `components/edicionManual.tsx`
+      tiene las primitivas; `secciones_editadas` en `AnalisisFuncional` registra
+      qué tocó el clínico y produce la marca "Editado por ti" (chip textual, no
+      solo color: sobrevive impreso y en blanco y negro).
+      - Persistencia: solo en la sesión; va al historial si el usuario guarda.
+      - Reanálisis sobre una sección editada: avisa y exige confirmar.
+      - Revalidación: las comprobaciones deterministas se repiten en el
+        navegador sobre lo editado (`revalidarTrasEdicion`) — avisan, nunca
+        corrigen ni degradan lo que escribió el profesional.
+      - Botón de reportar fallo de la IA por sección. Ver la nota de privacidad
+        en el invariante 5 de CLAUDE.md: excluye la nota y sus citas, pero
+        enseña el reporte editable antes de copiar porque el texto de la IA
+        describe el caso de todos modos.
+      Verificado en vivo: editar, borrar, marca en pantalla y en el Word
+      exportado, aviso de sobrescritura, y que el reporte copia exactamente lo
+      que el clínico dejó en el cuadro.
 - [ ] **Persistencia y seguimiento longitudinal.** Guardar análisis por referencia
       de caso y poder compararlos en el tiempo. Un análisis funcional sin línea
       base ni medida de cambio es media herramienta. Cierras la pestaña y se pierde.
-- [x] **Exportación JSON**, además de copiar e imprimir. Botón "Descargar JSON"
-      junto a "Copiar informe"; genera el archivo en el navegador (la nota no
-      vuelve a tocar el servidor). Probado en vivo.
-- [ ] **Exportación DOCX.** Requiere una librería nueva (p. ej. `docx`) — pendiente
-      de decidirlo con el autor antes de añadir la dependencia.
+- [x] **Exportación.** Las únicas salidas son **Word y PDF** (decisión del autor,
+      01/08/2026). La exportación JSON que se había añadido antes se retiró: un
+      terapeuta no tiene por qué querer un `.json`. No confundir con "Exportar
+      respaldo" de `Historial.tsx`, que sigue siendo JSON **cifrado** y es la
+      única forma de restaurar el historial en otro dispositivo.
+      - Word: `lib/exportarDocx.ts`, HTML con namespace MSO, **sin dependencias**
+        (decisión del autor: la opción más barata que no comprometa la
+        velocidad). Se construye sobre `formatearInformeTexto` para que copiar,
+        imprimir y exportar no puedan divergir.
+      - PDF: sigue siendo `window.print()`.
+- [ ] **Discutir a fondo la exportación DOCX** (pendiente explícito del autor).
+      Para esa conversación: la vía que da fidelidad completa sin coste de carga
+      es importar la librería `docx` de forma dinámica al pulsar el botón, en
+      vez de meterla en el bundle. Lo actual es HTML-como-.doc: Word lo abre
+      bien, pero no hay control fino de saltos de página ni estilos de documento.
+- [x] **Hueco detectado al hacer el Word:** `formatearInforme.ts` no incluía los
+      cuatro campos añadidos hoy (riesgo, acomodación, valores, reforzadores),
+      así que el informe copiado e impreso los perdía. Corregido; ahora también
+      lleva la trazabilidad del modelo y la marca de secciones editadas.
 - [x] **Trazabilidad en el informe:** modelo, versión del prompt y fecha. Campo
       `meta` en `AnalisisFuncional` (lib/types.ts), fijado por el servidor tras
       generar; `VERSION_PROMPT` en lib/systemPrompt.ts. Visible junto a la fecha

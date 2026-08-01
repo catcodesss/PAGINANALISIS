@@ -281,6 +281,14 @@ export interface AnalisisFuncional {
   campos_generados: string[];
   /** Modelo y versión de prompt que generaron este informe. Ver MetaGeneracion. */
   meta: MetaGeneracion;
+  /**
+   * Ids de las secciones del informe que el clínico ha editado a mano (ver
+   * components/ReportView.tsx#SECCIONES). El modelo nunca lo envía: lo escribe
+   * la interfaz al editar. Sirve para no presentar como generado por IA algo
+   * que escribió el profesional, y al revés — la contrapartida del invariante 2
+   * para el sentido inverso.
+   */
+  secciones_editadas: string[];
 }
 
 /**
@@ -314,6 +322,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "alertas",
   "campos_generados",
   "meta",
+  "secciones_editadas",
 ] as const satisfies readonly (keyof AnalisisFuncional)[];
 
 type _TodasLasClavesCubiertas =

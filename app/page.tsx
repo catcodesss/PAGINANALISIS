@@ -8,6 +8,8 @@ import {
   enmascararDatosIdentificables,
 } from "@/lib/pii";
 import { formatearInformeTexto } from "@/lib/formatearInforme";
+import { revalidarTrasEdicion } from "@/lib/validadores";
+import { descargarDocx } from "@/lib/exportarDocx";
 import ReportView from "@/components/ReportView";
 import Historial from "@/components/Historial";
 import GuiaRapida from "@/components/GuiaRapida";
@@ -151,25 +153,31 @@ export default function Home() {
     }
   }
 
-  /**
-   * Exportación estructurada: el mismo AnalisisFuncional que consume la
-   * interfaz, para quien quiera procesarlo con otra herramienta. Se genera en
-   * el navegador; la nota nunca vuelve a tocar el servidor para esto.
-   */
-  function manejarDescargarJSON() {
+  function manejarDescargarDocx() {
     if (!analisis) return;
-    const nombreBase = referenciaCaso.trim()
-      ? referenciaCaso.trim().replace(/[^a-zA-Z0-9-_]+/g, "_")
-      : "analisis";
-    const blob = new Blob([JSON.stringify(analisis, null, 2)], {
-      type: "application/json",
+    descargarDocx(analisis, referenciaCaso, fechaGeneracion);
+  }
+
+  /**
+   * Edición manual de una sección. Trabaja sobre una copia (el informe es
+   * estado de React) y vuelve a pasar las comprobaciones deterministas sobre
+   * el resultado: son sin IA y sin red, así que revalidar no cuesta nada.
+   * Ver lib/validadores.ts#revalidarTrasEdicion — avisa, nunca corrige.
+   */
+  function manejarEditarSeccion(
+    seccionId: string,
+    mutar: (copia: AnalisisFuncional) => void
+  ) {
+    setAnalisis((previo) => {
+      if (!previo) return previo;
+      const copia = structuredClone(previo);
+      mutar(copia);
+      copia.secciones_editadas = previo.secciones_editadas.includes(seccionId)
+        ? previo.secciones_editadas
+        : [...previo.secciones_editadas, seccionId];
+      copia.alertas = revalidarTrasEdicion(copia, ultimoTextoEnviado);
+      return copia;
     });
-    const url = URL.createObjectURL(blob);
-    const enlace = document.createElement("a");
-    enlace.href = url;
-    enlace.download = `${nombreBase}.json`;
-    enlace.click();
-    URL.revokeObjectURL(url);
   }
 
   // En la guía se ocultan tanto el formulario como el informe: comparten el
@@ -417,10 +425,10 @@ export default function Home() {
                   </button>
                   <button
                     type="button"
-                    onClick={manejarDescargarJSON}
+                    onClick={manejarDescargarDocx}
                     className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                   >
-                    Descargar JSON
+                    Descargar Word
                   </button>
                   <button
                     type="button"
@@ -447,6 +455,7 @@ export default function Home() {
                 onAnalisisActualizado={(fragmento) =>
                   setAnalisis((previo) => (previo ? { ...previo, ...fragmento } : previo))
                 }
+                onEditarSeccion={manejarEditarSeccion}
               />
             </div>
           )}

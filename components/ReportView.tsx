@@ -24,6 +24,15 @@ import {
   contieneDatosIdentificables,
   enmascararDatosIdentificables,
 } from "@/lib/pii";
+import {
+  BotonAgregar,
+  BotonBorrar,
+  MarcaEditado,
+  ProveedorEdicion,
+  TextoEditable,
+  useEdicion,
+} from "./edicionManual";
+import { construirReporteFallo } from "@/lib/reporteFallo";
 
 interface ReportViewProps {
   analisis: AnalisisFuncional;
@@ -32,6 +41,12 @@ interface ReportViewProps {
   fecha: string;
   notaOriginal: string;
   onAnalisisActualizado: (fragmento: Partial<AnalisisFuncional>) => void;
+  /**
+   * Edición manual: recibe una función que muta una copia del análisis. La
+   * página es la dueña del estado y quien decide revalidar (ver
+   * lib/validadores.ts#revalidarTrasEdicion).
+   */
+  onEditarSeccion: (seccionId: string, mutar: (copia: AnalisisFuncional) => void) => void;
 }
 
 interface SeccionIndice {
@@ -214,14 +229,23 @@ function BloqueReanalisis({
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmandoSobrescritura, setConfirmandoSobrescritura] = useState(false);
 
   if (!contexto) return null;
   const { notaOriginal, analisis, onAnalisisActualizado } = contexto;
 
   const contieneDatos = texto.trim().length > 0 && contieneDatosIdentificables(texto);
+  // El reanálisis reemplaza los campos que devuelve la IA: si el clínico ya
+  // escribió aquí, su texto se perdería sin avisar.
+  const tieneEdiciones = analisis.secciones_editadas.includes(seccionId);
 
   async function reanalizar() {
     if (!texto.trim() || enviando) return;
+    if (tieneEdiciones && !confirmandoSobrescritura) {
+      setConfirmandoSobrescritura(true);
+      return;
+    }
+    setConfirmandoSobrescritura(false);
     setEnviando(true);
     setError(null);
 
@@ -298,6 +322,13 @@ function BloqueReanalisis({
               {error}
             </p>
           )}
+          {confirmandoSobrescritura && (
+            <p role="alert" className="rounded border border-warn/40 bg-canvas p-2 text-xs text-warn">
+              Has editado esta sección a mano. Si reanalizas, la IA reescribirá
+              tus cambios y no se podrán recuperar. Pulsa otra vez
+              &quot;Reanalizar&quot; para continuar, o cancela.
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -305,7 +336,11 @@ function BloqueReanalisis({
               disabled={enviando || !texto.trim()}
               className="rounded bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {enviando ? "Reanalizando…" : "Reanalizar esta sección"}
+              {enviando
+                ? "Reanalizando…"
+                : confirmandoSobrescritura
+                  ? "Sí, reescribir mis cambios"
+                  : "Reanalizar esta sección"}
             </button>
             <button
               type="button"
@@ -313,6 +348,7 @@ function BloqueReanalisis({
                 setAbierto(false);
                 setTexto("");
                 setError(null);
+                setConfirmandoSobrescritura(false);
               }}
               disabled={enviando}
               className="rounded border border-divider px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
@@ -340,26 +376,214 @@ function Seccion({
   camposReanalisis?: (keyof AnalisisFuncional)[];
 }) {
   const contexto = useContext(ReanalisisContext);
+  const edicion = useEdicion();
   // En un análisis parcial, las secciones no pedidas no se pintan vacías.
   if (contexto && !seccionVisible(contexto.analisis, id)) return null;
+
+  const editada = edicion?.seccionesEditadas.includes(id) ?? false;
 
   return (
     <section
       id={id}
-      className="scroll-mt-24 border-b border-divider py-6 last:border-b-0"
+      className={`scroll-mt-24 border-b border-divider py-6 last:border-b-0 ${
+        editada ? "seccion-editada border-l-2 border-l-accent pl-4" : ""
+      }`}
     >
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="section-title flex items-center gap-3 font-serif text-lg font-semibold text-ink sm:text-xl">
           <span aria-hidden="true" className="h-5 w-1 rounded-full bg-accent" />
           {titulo}
+          {editada && <MarcaEditado />}
         </h2>
         {extra}
       </div>
       {children}
+      <ReportarFallo seccionId={id} />
       {camposReanalisis && (
         <BloqueReanalisis campos={camposReanalisis} seccionId={id} />
       )}
     </section>
+  );
+}
+
+/**
+ * Reporta un fallo del modelo. Copia al portapapeles un informe técnico que
+ * NO incluye la nota clínica (ver lib/reporteFallo.ts): el clínico decide a
+ * quién se lo manda.
+ */
+function ReportarFallo({ seccionId }: { seccionId: string }) {
+  const contexto = useContext(ReanalisisContext);
+  const [abierto, setAbierto] = useState(false);
+  const [borrador, setBorrador] = useState("");
+  const [copiado, setCopiado] = useState(false);
+
+  if (!contexto) return null;
+
+  function abrir() {
+    setBorrador(
+      construirReporteFallo(
+        contexto!.analisis,
+        seccionId,
+        JSON.stringify(seccionParaReporte(contexto!.analisis, seccionId), null, 2),
+        ""
+      )
+    );
+    setAbierto(true);
+  }
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(borrador);
+      setCopiado(true);
+      setTimeout(() => {
+        setCopiado(false);
+        setAbierto(false);
+      }, 1800);
+    } catch {
+      setCopiado(false);
+    }
+  }
+
+  if (!abierto) {
+    return (
+      <button
+        type="button"
+        onClick={abrir}
+        className="mt-3 font-mono text-[10px] uppercase tracking-wide text-ink-muted/60 transition-colors hover:text-warn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 print:hidden"
+      >
+        Reportar fallo de la IA en esta sección
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded border border-divider bg-canvas p-3 print:hidden">
+      {/*
+        Se muestra el reporte entero y editable ANTES de copiarlo. No basta con
+        prometer que no viaja la nota: se ha quitado la nota y sus citas
+        literales, pero el texto que escribió la IA describe el caso igualmente.
+        Que el clínico lea y recorte lo que salga de su dispositivo es la única
+        garantía real.
+      */}
+      <p className="mb-2 text-sm text-ink-muted">
+        Esto es exactamente lo que se copiará. No lleva tu nota ni sus citas
+        literales, pero lo que la IA escribió describe el caso:{" "}
+        <span className="text-ink">revísalo y borra lo que no quieras compartir.</span>
+      </p>
+      <textarea
+        value={borrador}
+        onChange={(e) => setBorrador(e.target.value)}
+        rows={10}
+        aria-label="Contenido del reporte, editable antes de copiar"
+        className="w-full rounded border border-divider bg-surface p-2 font-mono text-xs leading-relaxed text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      />
+      <div className="mt-2 flex gap-3">
+        <button
+          type="button"
+          onClick={copiar}
+          className="rounded border border-divider bg-surface px-3 py-1 text-xs font-medium text-ink transition-colors hover:bg-canvas"
+        >
+          {copiado ? "Copiado" : "Copiar reporte"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setAbierto(false)}
+          className="rounded px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * El trozo del análisis que corresponde a una sección, sin las citas: son
+ * recortes literales de la nota y saldrían del dispositivo con el reporte.
+ */
+function seccionParaReporte(
+  analisis: AnalisisFuncional,
+  seccionId: string
+): unknown {
+  const campo = BLOQUE_DE_SECCION[seccionId];
+  const porSeccion: Record<string, unknown> = {
+    resumen: analisis.resumen_clinico,
+    conductas: analisis.conductas_problema,
+    "variables-moduladoras": analisis.variables_moduladoras,
+    situaciones: analisis.situaciones,
+    "hipotesis-mantenimiento": analisis.hipotesis_mantenimiento,
+    formulacion: analisis.formulacion,
+    "conductas-alternativas": analisis.conductas_alternativas,
+    "hipotesis-alternativas": analisis.hipotesis_alternativas,
+    preguntas: analisis.preguntas_para_sesion,
+    intervencion: analisis.lineas_de_intervencion_tentativas,
+    riesgo: analisis.riesgo,
+    "datos-faltantes": analisis.datos_faltantes,
+  };
+  const valor = porSeccion[seccionId] ?? campo ?? seccionId;
+  // Las claves "evidencia" contienen texto recortado de la nota: se eliminan.
+  return JSON.parse(
+    JSON.stringify(valor, (clave, v) => (clave === "evidencia" ? undefined : v))
+  );
+}
+
+/**
+ * Lista de textos sueltos (datos faltantes, preguntas, líneas de intervención,
+ * valores, reforzadores perdidos, indicadores de riesgo). Todas se editan
+ * igual: reescribir una entrada, borrarla o añadir otra.
+ */
+function ListaEditable({
+  items,
+  seccionId,
+  etiqueta,
+  onCambiar,
+  claseItem = "text-[15px] leading-relaxed text-ink",
+  vacio,
+}: {
+  items: string[];
+  seccionId: string;
+  /** En singular: se usa en "+ Agregar {etiqueta}". */
+  etiqueta: string;
+  onCambiar: (nuevos: string[]) => void;
+  claseItem?: string;
+  vacio?: ReactNode;
+}) {
+  const edicion = useEdicion();
+
+  if (items.length === 0 && !edicion) return <>{vacio ?? <SinHallazgos />}</>;
+
+  return (
+    <>
+      {items.length === 0 ? (
+        vacio ?? <SinHallazgos />
+      ) : (
+        <ul className="list-disc space-y-2 pl-5">
+          {items.map((item, i) => (
+            <li key={i} className={claseItem}>
+              <span className="flex flex-wrap items-baseline gap-x-2">
+                <TextoEditable
+                  valor={item}
+                  seccionId={seccionId}
+                  etiqueta={`${etiqueta} ${i + 1}`}
+                  className={claseItem}
+                  onCambio={(v) =>
+                    onCambiar(items.map((x, j) => (j === i ? v : x)))
+                  }
+                />
+                <BotonBorrar
+                  etiqueta={`${etiqueta} ${i + 1}`}
+                  onBorrar={() => onCambiar(items.filter((_, j) => j !== i))}
+                />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <BotonAgregar
+        etiqueta={etiqueta}
+        onAgregar={(texto) => onCambiar([...items, texto])}
+      />
+    </>
   );
 }
 
@@ -1196,6 +1420,7 @@ export default function ReportView({
   fecha,
   notaOriginal,
   onAnalisisActualizado,
+  onEditarSeccion,
 }: ReportViewProps) {
   const seccionesVisibles = useMemo(
     () => SECCIONES.filter((s) => seccionVisible(analisis, s.id)),
@@ -1232,10 +1457,16 @@ export default function ReportView({
     return porConducta ?? analisis.hipotesis_mantenimiento[0] ?? null;
   }, [analisis.conductas_problema, analisis.hipotesis_mantenimiento]);
 
+  const valorEdicion = useMemo(
+    () => ({ seccionesEditadas: analisis.secciones_editadas }),
+    [analisis.secciones_editadas]
+  );
+
   return (
     <ReanalisisContext.Provider
       value={{ notaOriginal, analisis, onAnalisisActualizado }}
     >
+    <ProveedorEdicion valor={valorEdicion}>
     <div className="rounded-md border border-divider bg-surface px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-12 lg:py-10 print:rounded-none print:border-none print:px-0 print:py-0 print:shadow-none">
       <PrintOnlyHeader referenciaCaso={referenciaCaso} fecha={fecha} meta={analisis.meta} />
       <PrintOnlyFooter />
@@ -1300,17 +1531,17 @@ export default function ReportView({
               Revisa esto antes que el resto del informe: es la información que la
               nota no incluyó y que conviene confirmar o completar en sesión.
             </p>
-            {analisis.datos_faltantes.length === 0 ? (
-              <SinHallazgos />
-            ) : (
-              <ul className="list-disc space-y-2 pl-5">
-                {analisis.datos_faltantes.map((d, i) => (
-                  <li key={i} className="text-[15px] leading-relaxed text-ink">
-                    {d}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ListaEditable
+              items={analisis.datos_faltantes}
+              seccionId="datos-faltantes"
+              etiqueta="dato faltante"
+              onCambiar={(nuevos) =>
+                onEditarSeccion("datos-faltantes", (c) => {
+                  c.datos_faltantes = nuevos;
+                })
+              }
+            />
+            <ReportarFallo seccionId="datos-faltantes" />
             <BloqueReanalisis
               campos={["datos_faltantes", "situaciones"]}
               seccionId="datos-faltantes"
@@ -1331,19 +1562,24 @@ export default function ReportView({
                 pronunciarse sobre escalada de consumo, ideación, riesgo laboral o
                 legal, menores implicados u otros indicadores.
               </p>
-            ) : analisis.riesgo.indicadores.length === 0 ? (
-              <p className="text-sm text-ink-muted">
-                Sin indicadores de riesgo detectados en la nota.
-              </p>
             ) : (
-              <ul className="list-disc space-y-2 pl-5">
-                {analisis.riesgo.indicadores.map((r, i) => (
-                  <li key={i} className="text-[15px] leading-relaxed text-ink">
-                    {r}
-                  </li>
-                ))}
-              </ul>
+              <ListaEditable
+                items={analisis.riesgo.indicadores}
+                seccionId="riesgo"
+                etiqueta="indicador de riesgo"
+                onCambiar={(nuevos) =>
+                  onEditarSeccion("riesgo", (c) => {
+                    c.riesgo = { ...c.riesgo, indicadores: nuevos };
+                  })
+                }
+                vacio={
+                  <p className="text-sm text-ink-muted">
+                    Sin indicadores de riesgo detectados en la nota.
+                  </p>
+                }
+              />
             )}
+            <ReportarFallo seccionId="riesgo" />
             <BloqueReanalisis campos={["riesgo"]} seccionId="riesgo" />
           </section>
 
@@ -1365,8 +1601,8 @@ export default function ReportView({
               <p className="mb-3 text-sm text-ink-muted">
                 Comprobaciones sobre la coherencia del informe. La mayoría las
                 emite el sistema al contrastar el análisis con tu nota, sin IA;
-                las marcadas "revisión con IA" vienen de una segunda lectura
-                opcional y pueden equivocarse igual que la primera.
+                las marcadas &quot;revisión con IA&quot; vienen de una segunda
+                lectura opcional y pueden equivocarse igual que la primera.
               </p>
               <ul className="space-y-3">
                 {analisis.alertas.map((a, i) => (
@@ -1428,9 +1664,16 @@ export default function ReportView({
 
           <Seccion id="resumen" titulo="Resumen clínico" camposReanalisis={["resumen_clinico"]}>
             {analisis.resumen_clinico ? (
-              <p className="text-[15px] leading-relaxed text-ink">
-                {analisis.resumen_clinico}
-              </p>
+              <TextoEditable
+                valor={analisis.resumen_clinico}
+                seccionId="resumen"
+                etiqueta="Resumen clínico"
+                onCambio={(v) =>
+                  onEditarSeccion("resumen", (c) => {
+                    c.resumen_clinico = v;
+                  })
+                }
+              />
             ) : (
               <SinHallazgos />
             )}
@@ -1569,19 +1812,21 @@ export default function ReportView({
               </ul>
             )}
 
-            {analisis.hipotesis_origen.length > 0 && (
-              <div className="mt-6">
-                <SubSeccion titulo="Hipótesis de origen (tentativas)">
-                  <ul className="list-disc space-y-2 pl-5">
-                    {analisis.hipotesis_origen.map((h, i) => (
-                      <li key={i} className="text-sm italic leading-relaxed text-ink-muted">
-                        {h}
-                      </li>
-                    ))}
-                  </ul>
-                </SubSeccion>
-              </div>
-            )}
+            <div className="mt-6">
+              <SubSeccion titulo="Hipótesis de origen (tentativas)">
+                <ListaEditable
+                  items={analisis.hipotesis_origen}
+                  seccionId="hipotesis-mantenimiento"
+                  etiqueta="hipótesis de origen"
+                  claseItem="text-sm italic leading-relaxed text-ink-muted"
+                  onCambiar={(nuevos) =>
+                    onEditarSeccion("hipotesis-mantenimiento", (c) => {
+                      c.hipotesis_origen = nuevos;
+                    })
+                  }
+                />
+              </SubSeccion>
+            </div>
           </Seccion>
 
           <Seccion
@@ -1623,28 +1868,31 @@ export default function ReportView({
                   </ul>
                 )}
               </SubSeccion>
-              {analisis.valores_y_metas.length > 0 && (
-                <SubSeccion titulo="Valores y metas del consultante">
-                  <ul className="list-disc space-y-2 pl-5">
-                    {analisis.valores_y_metas.map((v, i) => (
-                      <li key={i} className="text-[15px] leading-relaxed text-ink">
-                        {v}
-                      </li>
-                    ))}
-                  </ul>
-                </SubSeccion>
-              )}
-              {analisis.perdida_de_reforzadores.length > 0 && (
-                <SubSeccion titulo="Pérdida de reforzadores">
-                  <ul className="list-disc space-y-2 pl-5">
-                    {analisis.perdida_de_reforzadores.map((p, i) => (
-                      <li key={i} className="text-[15px] leading-relaxed text-ink">
-                        {p}
-                      </li>
-                    ))}
-                  </ul>
-                </SubSeccion>
-              )}
+              {/* Se muestran aunque estén vacías: el clínico puede añadir lo que la IA no recogió. */}
+              <SubSeccion titulo="Valores y metas del consultante">
+                <ListaEditable
+                  items={analisis.valores_y_metas}
+                  seccionId="formulacion"
+                  etiqueta="valor o meta"
+                  onCambiar={(nuevos) =>
+                    onEditarSeccion("formulacion", (c) => {
+                      c.valores_y_metas = nuevos;
+                    })
+                  }
+                />
+              </SubSeccion>
+              <SubSeccion titulo="Pérdida de reforzadores">
+                <ListaEditable
+                  items={analisis.perdida_de_reforzadores}
+                  seccionId="formulacion"
+                  etiqueta="reforzador perdido"
+                  onCambiar={(nuevos) =>
+                    onEditarSeccion("formulacion", (c) => {
+                      c.perdida_de_reforzadores = nuevos;
+                    })
+                  }
+                />
+              </SubSeccion>
             </div>
           </Seccion>
 
@@ -1659,18 +1907,53 @@ export default function ReportView({
               <ul className="space-y-4">
                 {analisis.conductas_alternativas.map((c, i) => (
                   <li key={i} className="rounded border border-divider p-4">
-                    <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
-                      {c.situacion}
-                    </p>
-                    <p className="mt-1 text-[15px] leading-relaxed text-ink">
-                      {c.conducta_propuesta}
-                    </p>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
+                        {c.situacion}
+                      </p>
+                      <BotonBorrar
+                        etiqueta={`conducta alternativa: ${c.conducta_propuesta}`}
+                        onBorrar={() =>
+                          onEditarSeccion("conductas-alternativas", (copia) => {
+                            copia.conductas_alternativas =
+                              copia.conductas_alternativas.filter((_, j) => j !== i);
+                          })
+                        }
+                      />
+                    </div>
+                    <TextoEditable
+                      valor={c.conducta_propuesta}
+                      seccionId="conductas-alternativas"
+                      etiqueta="Conducta propuesta"
+                      className="mt-1 text-[15px] leading-relaxed text-ink"
+                      onCambio={(v) =>
+                        onEditarSeccion("conductas-alternativas", (copia) => {
+                          copia.conductas_alternativas[i] = {
+                            ...copia.conductas_alternativas[i],
+                            conducta_propuesta: v,
+                          };
+                        })
+                      }
+                    />
                     <p className="mt-1 text-sm text-ink-muted">
                       <span className="font-medium text-ink">
                         Consecuencia necesaria para mantenerla:
                       </span>{" "}
-                      {c.consecuencia_necesaria}
                     </p>
+                    <TextoEditable
+                      valor={c.consecuencia_necesaria}
+                      seccionId="conductas-alternativas"
+                      etiqueta="Consecuencia necesaria"
+                      className="text-sm text-ink-muted"
+                      onCambio={(v) =>
+                        onEditarSeccion("conductas-alternativas", (copia) => {
+                          copia.conductas_alternativas[i] = {
+                            ...copia.conductas_alternativas[i],
+                            consecuencia_necesaria: v,
+                          };
+                        })
+                      }
+                    />
                   </li>
                 ))}
               </ul>
@@ -1699,12 +1982,45 @@ export default function ReportView({
               <ul className="space-y-4">
                 {analisis.hipotesis_alternativas.map((h, i) => (
                   <li key={i}>
-                    <p className="text-[15px] leading-relaxed text-ink">
-                      {h.enunciado}
-                    </p>
-                    <p className="mt-1 text-sm text-ink-muted">
-                      Cómo descartarla: {h.como_descartarla}
-                    </p>
+                    <span className="flex flex-wrap items-baseline gap-x-2">
+                      <TextoEditable
+                        valor={h.enunciado}
+                        seccionId="hipotesis-alternativas"
+                        etiqueta={`Hipótesis alternativa ${i + 1}`}
+                        onCambio={(v) =>
+                          onEditarSeccion("hipotesis-alternativas", (copia) => {
+                            copia.hipotesis_alternativas[i] = {
+                              ...copia.hipotesis_alternativas[i],
+                              enunciado: v,
+                            };
+                          })
+                        }
+                      />
+                      <BotonBorrar
+                        etiqueta={`hipótesis alternativa ${i + 1}`}
+                        onBorrar={() =>
+                          onEditarSeccion("hipotesis-alternativas", (copia) => {
+                            copia.hipotesis_alternativas =
+                              copia.hipotesis_alternativas.filter((_, j) => j !== i);
+                          })
+                        }
+                      />
+                    </span>
+                    <p className="mt-1 text-sm text-ink-muted">Cómo descartarla:</p>
+                    <TextoEditable
+                      valor={h.como_descartarla}
+                      seccionId="hipotesis-alternativas"
+                      etiqueta={`Cómo descartar la hipótesis ${i + 1}`}
+                      className="text-sm text-ink-muted"
+                      onCambio={(v) =>
+                        onEditarSeccion("hipotesis-alternativas", (copia) => {
+                          copia.hipotesis_alternativas[i] = {
+                            ...copia.hipotesis_alternativas[i],
+                            como_descartarla: v,
+                          };
+                        })
+                      }
+                    />
                   </li>
                 ))}
               </ul>
@@ -1712,17 +2028,16 @@ export default function ReportView({
           </Seccion>
 
           <Seccion id="preguntas" titulo="Preguntas para la próxima sesión" camposReanalisis={["preguntas_para_sesion"]}>
-            {analisis.preguntas_para_sesion.length === 0 ? (
-              <SinHallazgos />
-            ) : (
-              <ul className="list-disc space-y-2 pl-5">
-                {analisis.preguntas_para_sesion.map((p, i) => (
-                  <li key={i} className="text-[15px] leading-relaxed text-ink">
-                    {p}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ListaEditable
+              items={analisis.preguntas_para_sesion}
+              seccionId="preguntas"
+              etiqueta="pregunta"
+              onCambiar={(nuevos) =>
+                onEditarSeccion("preguntas", (c) => {
+                  c.preguntas_para_sesion = nuevos;
+                })
+              }
+            />
           </Seccion>
 
           <Seccion
@@ -1730,17 +2045,16 @@ export default function ReportView({
             titulo="Líneas de intervención tentativas"
             camposReanalisis={["lineas_de_intervencion_tentativas"]}
           >
-            {analisis.lineas_de_intervencion_tentativas.length === 0 ? (
-              <SinHallazgos />
-            ) : (
-              <ul className="list-disc space-y-2 pl-5">
-                {analisis.lineas_de_intervencion_tentativas.map((l, i) => (
-                  <li key={i} className="text-[15px] leading-relaxed text-ink">
-                    {l}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ListaEditable
+              items={analisis.lineas_de_intervencion_tentativas}
+              seccionId="intervencion"
+              etiqueta="línea de intervención"
+              onCambiar={(nuevos) =>
+                onEditarSeccion("intervencion", (c) => {
+                  c.lineas_de_intervencion_tentativas = nuevos;
+                })
+              }
+            />
           </Seccion>
 
         </div>
@@ -1756,6 +2070,7 @@ export default function ReportView({
       <PrintOnlyDisclaimer fecha={fecha} meta={analisis.meta} />
       <LeyendaConfianzaFlotante />
     </div>
+    </ProveedorEdicion>
     </ReanalisisContext.Provider>
   );
 }

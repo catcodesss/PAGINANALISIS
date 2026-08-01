@@ -95,7 +95,32 @@ export function formatearInformeTexto(
   }
   partes.push("");
 
+  if (analisis.meta.modelo) {
+    partes.push(
+      `Generado con: ${analisis.meta.modelo} · prompt v${analisis.meta.version_prompt}`
+    );
+  }
+  // Igual que en pantalla: quien lea este informe debe poder distinguir lo que
+  // escribió el profesional de lo que generó la IA.
+  if (analisis.secciones_editadas.length > 0) {
+    partes.push(
+      `Secciones editadas a mano por el profesional: ${analisis.secciones_editadas.join(", ")}`
+    );
+  }
+  partes.push("");
+
   partes.push(seccion("DATOS FALTANTES", listaOTexto(analisis.datos_faltantes)));
+
+  partes.push(
+    seccion(
+      "RIESGO",
+      analisis.riesgo.evaluado
+        ? listaOTexto(analisis.riesgo.indicadores) === SIN_HALLAZGOS
+          ? "Sin indicadores de riesgo detectados en la nota."
+          : listaOTexto(analisis.riesgo.indicadores)
+        : "No se ha evaluado el riesgo en esta nota: falta información para pronunciarse."
+    )
+  );
 
   // Las revisiones del validador acompañan al informe exportado: si se imprime o
   // se pega en una historia clínica, las advertencias viajan con él.
@@ -145,6 +170,18 @@ export function formatearInformeTexto(
 
   partes.push(
     seccion(
+      "ACOMODACIÓN DEL ENTORNO",
+      analisis.acomodacion_entorno
+        .map(
+          (a) =>
+            `- [${a.quien}] ${a.conducta_acomodacion}${a.funcion ? `\n  Función: ${a.funcion}` : ""}\n  Evidencia: ${textoCita(a.evidencia)}`
+        )
+        .join("\n")
+    )
+  );
+
+  partes.push(
+    seccion(
       "HIPÓTESIS DE MANTENIMIENTO",
       analisis.hipotesis_mantenimiento
         .map(
@@ -170,6 +207,12 @@ export function formatearInformeTexto(
         analisis.formulacion.priorizacion
           .map((p, i) => `${i + 1}. ${p.blanco}: ${p.justificacion}`)
           .join("\n"),
+        "",
+        "Valores y metas del consultante:",
+        listaOTexto(analisis.valores_y_metas),
+        "",
+        "Pérdida de reforzadores:",
+        listaOTexto(analisis.perdida_de_reforzadores),
       ].join("\n")
     )
   );

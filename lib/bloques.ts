@@ -30,6 +30,7 @@ const CAMPOS_SIEMPRE: CampoAnalisis[] = [
   "alertas",
   "campos_generados",
   "meta",
+  "secciones_editadas",
 ];
 
 export interface Bloque {

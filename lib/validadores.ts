@@ -291,14 +291,51 @@ export function validarAnalisis(
     ...validarRiesgoNoDetectado(analisis, nota),
   ];
 
-  // Una misma intervención puede disparar la misma alerta por dos caminos.
+  analisis.alertas = sinDuplicados(alertas);
+  return analisis;
+}
+
+/** Una misma intervención puede disparar la misma alerta por dos caminos. */
+function sinDuplicados(alertas: Alerta[]): Alerta[] {
   const vistas = new Set<string>();
-  analisis.alertas = alertas.filter((a) => {
+  return alertas.filter((a) => {
     const clave = `${a.codigo}|${a.ruta}`;
     if (vistas.has(clave)) return false;
     vistas.add(clave);
     return true;
   });
+}
 
-  return analisis;
+/**
+ * Vuelve a pasar las comprobaciones sobre un informe que el clínico ha editado
+ * a mano. Corre en el navegador: son deterministas, sin IA y sin llamada de
+ * red, así que no cuestan nada.
+ *
+ * Dos diferencias deliberadas con validarAnalisis:
+ *
+ * 1. NO MUTA. La edición manual es criterio profesional; el sistema avisa, no
+ *    corrige. Por eso se omite V1 (degradar confianza alta→media), que además
+ *    es irrelevante aquí: los niveles de confianza no son editables.
+ * 2. CONSERVA las alertas que no puede recalcular — las de V1, ya aplicadas en
+ *    el servidor, y las de la pasada crítica (origen "ia"), que vienen de una
+ *    llamada que no vamos a repetir gratis.
+ *
+ * Que una alerta desaparezca al editar es correcto: significa que el clínico
+ * arregló el problema que la motivaba.
+ */
+export function revalidarTrasEdicion(
+  analisis: AnalisisFuncional,
+  nota: string
+): Alerta[] {
+  const conservadas = analisis.alertas.filter(
+    (a) => a.origen === "ia" || a.codigo === "confianza_sin_cita"
+  );
+
+  return sinDuplicados([
+    ...conservadas,
+    ...validarCobertura(analisis),
+    ...validarConductasSeguridad(analisis, nota),
+    ...validarDependenciaDeDatosFaltantes(analisis),
+    ...validarRiesgoNoDetectado(analisis, nota),
+  ]);
 }

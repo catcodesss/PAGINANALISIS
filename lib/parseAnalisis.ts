@@ -395,6 +395,8 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     campos_generados: [],
     // Lo fija la ruta tras la llamada a OpenAI (ver app/api/analizar/route.ts).
     meta: { modelo: "", version_prompt: "" },
+    // Solo la escribe la interfaz cuando el clínico edita; el modelo nunca.
+    secciones_editadas: [],
   };
 }
 
@@ -456,6 +458,7 @@ const NORMALIZADORES_POR_CAMPO: {
   alertas: () => [],
   campos_generados: () => [],
   meta: () => ({ modelo: "", version_prompt: "" }),
+  secciones_editadas: () => [],
 };
 
 function esCampoDeAnalisis(campo: string): campo is keyof AnalisisFuncional {

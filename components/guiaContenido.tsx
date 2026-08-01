@@ -352,7 +352,7 @@ export function BloqueElInforme() {
           funcionaba como evitación — por ejemplo, sugerir respiración cuando
           la persona ya respiraba en el baño para no exponer. Si tu cuenta
           tiene activada la revisión con IA (opcional, una segunda lectura del
-          informe), esos avisos llevan la etiqueta "revisión con IA" para que
+          informe), esos avisos llevan la etiqueta &quot;revisión con IA&quot; para que
           sepas que pueden equivocarse igual que el análisis original. Si
           aparece cualquiera de los dos, revísalo antes de usar el informe.
         </p>

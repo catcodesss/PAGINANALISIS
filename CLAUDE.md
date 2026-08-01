@@ -44,7 +44,17 @@ razón; si algo obliga a tocarlos, avisa antes.
    puede recibir un informe clínicamente peor. Ver `MONETIZACION.md`.
 
 5. **La nota no se registra en ningún log.** Ni servidor, ni telemetría, ni
-   mensajes de error.
+   mensajes de error. El reporte de fallo del modelo (`lib/reporteFallo.ts`)
+   excluye la nota y sus citas literales, pero el texto que escribió la IA
+   describe el caso igualmente — comprobado en pruebas. Por eso la interfaz
+   enseña el reporte completo y editable antes de copiarlo, en vez de prometer
+   una anonimización que no puede garantizar.
+
+6. **Lo que escribe el clínico no se presenta como generado por la IA.** Es el
+   invariante 2 en el sentido inverso. Editar a mano marca la sección
+   (`secciones_editadas`), y la marca viaja al informe copiado, impreso y
+   exportado a Word. Un reanálisis que fuera a sobrescribir texto propio avisa
+   antes.
 
 ---
 
@@ -58,12 +68,15 @@ lib/bloques.ts                   qué se puede pedir por separado y sus dependen
 lib/citas.ts                     numerar la nota y resolver citas por línea
 lib/validadores.ts               comprobaciones deterministas → alertas
 lib/pasadaCritica.ts             2ª llamada opt-in (gpt-4o-mini) que revisa el informe ya generado
+lib/exportarDocx.ts              informe a Word (HTML con namespace MSO, sin dependencias)
+lib/reporteFallo.ts              reporte de fallo del modelo, sin la nota ni sus citas
 lib/parseAnalisis.ts             normalizadores tolerantes de la respuesta
 lib/types.ts                     tipos + CAMPOS_ANALISIS_FUNCIONAL (chequeo en compilación)
 lib/cifrado.ts / repositorio.ts  historial local cifrado (WebCrypto + IndexedDB)
 lib/pii.ts                       enmascarado de datos identificables
 lib/limitePeticiones.ts          rate limiting (en memoria: ver limitación abajo)
-components/ReportView.tsx        el informe (1500 líneas; el más delicado)
+components/ReportView.tsx        el informe (el más delicado)
+components/edicionManual.tsx     primitivas de edición manual del informe
 components/Historial.tsx         guardar, listar, reabrir, respaldo
 components/SelectorBloques.tsx   elegir qué partes generar
 components/guiaContenido.tsx     contenido compartido por las dos guías
