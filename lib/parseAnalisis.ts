@@ -365,6 +365,8 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     datos_faltantes: comoArregloDeTexto(d.datos_faltantes),
     // Las alertas no vienen del modelo: las produce lib/validadores.ts.
     alertas: [],
+    // Lo fija la ruta según lo que se haya pedido, no el modelo.
+    campos_generados: [],
   };
 }
 
@@ -417,6 +419,7 @@ const NORMALIZADORES_POR_CAMPO: {
     comoArregloDeTexto(d.lineas_de_intervencion_tentativas),
   datos_faltantes: (d) => comoArregloDeTexto(d.datos_faltantes),
   alertas: () => [],
+  campos_generados: () => [],
 };
 
 function esCampoDeAnalisis(campo: string): campo is keyof AnalisisFuncional {

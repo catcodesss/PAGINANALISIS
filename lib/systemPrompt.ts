@@ -85,63 +85,115 @@ const BLOQUE_MC = `CAPA CONDUCTUAL (MODIFICACIÓN DE CONDUCTA).
 Trabaja EXCLUSIVAMENTE con el aparato conceptual operante y respondiente del núcleo. NO uses procesos del hexaflex, ni módulos DBT, ni vocabulario de terapias de tercera ola.
 - PROCEDIMIENTOS SUGERIDOS: a partir de las funciones identificadas, sugiere procedimientos directos de manejo de contingencias: reforzamiento diferencial (de conductas alternativas, incompatibles u otras), extinción (señalando siempre sus precauciones: brote de extinción, necesidad de consistencia), control de estímulos, moldeamiento, encadenamiento, entrenamiento en comunicación funcional, y para cadenas respondientes, procedimientos de exposición. Por cada procedimiento indica sobre qué contingencia concreta actuaría y qué precaución requiere.`;
 
-const FORMATO_BASE = `FORMATO: responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, sin fences de markdown, con exactamente esta estructura. RECORDATORIO SOBRE "evidencia": es SIEMPRE un rango de líneas de la nota numerada ({"linea_inicio": N, "linea_fin": M}) o null. Nunca una cadena de texto.
+/**
+ * Esqueleto JSON troceado por campo. Se arma solo con lo que se pide, para no
+ * gastar tokens describiendo secciones que no se van a generar (ver lib/bloques.ts).
+ */
+const ESQUEMA_POR_CAMPO: Record<string, string> = {
+  "resumen_clinico": "  \"resumen_clinico\": \"string (3-4 frases: quién consulta, motivo, patrón central hipotetizado)\",",
+  "conductas_problema": "  \"conductas_problema\": [{ \"descripcion\": \"string (topografía observable, ver principio 2; sin cuantificadores inventados)\", \"tipo\": \"manifiesta | encubierta\", \"importancia\": \"alta | media | baja\", \"es_conducta_seguridad\": boolean (ver principio 14), \"deficit_o_interferencia\": \"deficit | interferencia | mixto | no_determinable\", \"justificacion_deficit\": \"string (por qué, según el principio 15)\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null }],",
+  "variables_moduladoras": "  \"variables_moduladoras\": [{ \"tipo\": \"biologica | historia_de_aprendizaje | contextual\", \"descripcion\": \"string\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null }],",
+  "situaciones": "  \"situaciones\": [{\n    \"nombre\": \"string (etiqueta funcional breve, p. ej. 'Demandas sociales evaluativas')\",\n    \"cadena_operante\": { \"antecedente\": \"string\", \"operacion_motivacional\": \"string o null\", \"respuesta\": \"string\", \"consecuencia\": \"string\", \"tipo_contingencia\": \"refuerzo positivo | refuerzo negativo | castigo positivo | castigo negativo | extincion\", \"inmediatez\": \"inmediata | demorada\", \"consecuencias_largo_plazo\": \"string o null (efecto a mediano/largo plazo que mantiene o agrava el patrón, distinto de la consecuencia inmediata; null si la nota no da base para inferirlo)\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null } o null,\n    \"cadena_respondiente\": { \"estimulo\": \"string\", \"respuesta_condicionada\": \"string\", \"conexion_con_operante\": \"string o null\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null } o null,\n    \"ciclo_interconductual\": \"string o null (quién refuerza a quién)\",\n    \"funcion_hipotetizada\": \"string\",\n    \"confianza\": \"alta | media | baja\"\n  }],",
+  "hipotesis_mantenimiento": "  \"hipotesis_mantenimiento\": [{ \"conducta\": \"string\", \"enunciado\": \"string (ante X, bajo Y, emite Z, mantenida por W)\", \"funcion\": \"string\", \"confianza\": \"alta | media | baja\" }],",
+  "hipotesis_origen": "  \"hipotesis_origen\": [\"string (tentativas, en condicional)\"],",
+  "formulacion": "  \"formulacion\": {\n    \"relaciones_entre_problemas\": [\"string (qué conducta alimenta o mantiene a cuál)\"],\n    \"priorizacion\": [{ \"blanco\": \"string\", \"justificacion\": \"string (importancia + modificabilidad)\" }]\n  },",
+  "conductas_alternativas": "  \"conductas_alternativas\": [{ \"situacion\": \"string\", \"conducta_propuesta\": \"string\", \"consecuencia_necesaria\": \"string\" }],",
+  "capa_act": "  \"capa_act\": { \"reglas_verbales\": [{ \"regla\": \"string\", \"textual_o_inferida\": \"textual | inferida\", \"clase\": \"pliance | tracking | augmenting\", \"rigidez\": \"alta | media | baja\", \"analisis\": \"string\" }], \"procesos_act\": [{ \"proceso\": \"string\", \"vinculo_con_cadena\": \"string\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null }] },",
+  "capa_dbt": "  \"capa_dbt\": { \"analisis_en_cadena\": { \"conducta_objetivo\": \"string\", \"vulnerabilidades\": [\"string\"], \"evento_precipitante\": \"string\", \"eslabones\": [{ \"tipo\": \"pensamiento | emocion | sensacion | impulso | accion\", \"descripcion\": \"string\" }], \"consecuencias_corto_plazo\": [\"string\"], \"consecuencias_largo_plazo\": [\"string\"] }, \"habilidades_sugeridas\": [{ \"modulo\": \"mindfulness | tolerancia_al_malestar | regulacion_emocional | efectividad_interpersonal\", \"habilidad\": \"string\", \"eslabon_objetivo\": \"string\" }] },",
+  "capa_mc": "  \"capa_mc\": { \"procedimientos_sugeridos\": [{ \"procedimiento\": \"string\", \"contingencia_objetivo\": \"string\", \"precauciones\": \"string\" }] },",
+  "hipotesis_alternativas": "  \"hipotesis_alternativas\": [{ \"enunciado\": \"string\", \"como_descartarla\": \"string\" }],",
+  "preguntas_para_sesion": "  \"preguntas_para_sesion\": [\"string\"],",
+  "lineas_de_intervencion_tentativas": "  \"lineas_de_intervencion_tentativas\": [\"string\"],",
+  "datos_faltantes": "  \"datos_faltantes\": [\"string\"]"
+};
+
+/** La cadena DBT por situación solo se pide si se ha solicitado la capa DBT. */
+const LINEA_CADENA_DBT = "    \"cadena_dbt\": { \"factores_vulnerabilidad\": [\"string\"], \"evento_precipitante\": \"string\", \"eslabones\": [{ \"tipo\": \"pensamiento | emocion | sensacion | impulso | accion\", \"descripcion\": \"string\" }], \"conducta_problema\": \"string\", \"consecuencias\": \"string\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null } o null,";
+
+const CABECERA_FORMATO = "FORMATO: responde ÚNICAMENTE con un objeto JSON válido, sin texto antes ni después, sin fences de markdown, con exactamente esta estructura. RECORDATORIO SOBRE \"evidencia\": es SIEMPRE un rango de líneas de la nota numerada ({\"linea_inicio\": N, \"linea_fin\": M}) o null. Nunca una cadena de texto.";
+
+const COLA_FORMATO = "REGISTRO DE ESCRITURA: todo el análisis está dirigido a un colega psicólogo con formación en análisis de conducta. Usa terminología técnica sin simplificar: \"emite respuesta de evitación\", no \"evita\"; \"mantenida por R− (cese de estimulación aversiva)\", no \"se siente mejor\"; \"ante el Ed de evaluación social\", no \"cuando la gente lo mira\". Las traducciones descriptivas de las cadenas (los enunciados de hipótesis, las descripciones de contingencias) deben leerse como un informe de supervisión clínica, no como una explicación para un paciente. Usa las abreviaturas estándar (Ed, SΔ, OE, OA, RO, R+, R−, C+, C−, EC, RC) naturalmente dentro del texto, como lo haría un analista de conducta escribiendo para otro.\n\nEJEMPLOS DE TRANSFORMACIÓN DE REGISTRO (imita este nivel de tecnicismo en TODOS los campos de texto libre: antecedente, respuesta, consecuencia, enunciado, descripcion, analisis, etc. — no solo en el resumen):\n- Mal (coloquial): \"Evita conducir porque le da miedo tener una crisis.\"\n  Bien (técnico): \"Ante el Ed de aproximación al vehículo, bajo OE de malestar condicionado, emite respuesta de evitación (no conducir), mantenida por R− (cese de la activación fisiológica).\"\n- Mal (coloquial): \"Se calma cuando la pareja la lleva.\"\n  Bien (técnico): \"La conducta de acompañamiento de la pareja produce R− inmediato (cese de la activación autonómica), reforzando la dependencia funcional del acompañante.\"\n- Mal (coloquial): \"Pide teletrabajo porque le preocupa que la vean mal.\"\n  Bien (técnico): \"Ante el Ed de exposición social evaluativa, emite conducta verbal de solicitud de teletrabajo, mantenida por R− (evitación de la evaluación social aversiva).\"\nNo copies estos ejemplos ni sus contenidos: son solo el patrón de registro a imitar, no la conducta ni los eventos de este caso.";
+
+/**
+ * Arma el bloque FORMATO con los campos pedidos, en el orden en que llegan
+ * (que es el canónico de AnalisisFuncional).
+ */
+function construirFormato(campos: string[]): string {
+  const quiereDbt = campos.includes("capa_dbt");
+
+  const cuerpo = campos
+    .map((campo) => {
+      const trozo = ESQUEMA_POR_CAMPO[campo];
+      if (!trozo) return null;
+      if (campo === "situaciones" && quiereDbt) {
+        // Se reinserta la cadena DBT justo después de la operante.
+        return trozo
+          .split("\n")
+          .flatMap((linea) =>
+            linea.includes('"cadena_operante"') ? [linea, LINEA_CADENA_DBT] : [linea]
+          )
+          .join("\n");
+      }
+      return trozo;
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  return `${CABECERA_FORMATO}
 {
-  "resumen_clinico": "string (3-4 frases: quién consulta, motivo, patrón central hipotetizado)",
-  "conductas_problema": [{ "descripcion": "string (topografía observable, ver principio 2; sin cuantificadores inventados)", "tipo": "manifiesta | encubierta", "importancia": "alta | media | baja", "es_conducta_seguridad": boolean (ver principio 14), "deficit_o_interferencia": "deficit | interferencia | mixto | no_determinable", "justificacion_deficit": "string (por qué, según el principio 15)", "evidencia": { "linea_inicio": number, "linea_fin": number } o null }],
-  "variables_moduladoras": [{ "tipo": "biologica | historia_de_aprendizaje | contextual", "descripcion": "string", "evidencia": { "linea_inicio": number, "linea_fin": number } o null }],
-  "situaciones": [{
-    "nombre": "string (etiqueta funcional breve, p. ej. 'Demandas sociales evaluativas')",
-    "cadena_operante": { "antecedente": "string", "operacion_motivacional": "string o null", "respuesta": "string", "consecuencia": "string", "tipo_contingencia": "refuerzo positivo | refuerzo negativo | castigo positivo | castigo negativo | extincion", "inmediatez": "inmediata | demorada", "consecuencias_largo_plazo": "string o null (efecto a mediano/largo plazo que mantiene o agrava el patrón, distinto de la consecuencia inmediata; null si la nota no da base para inferirlo)", "evidencia": { "linea_inicio": number, "linea_fin": number } o null } o null,
-    "cadena_dbt": { "factores_vulnerabilidad": ["string"], "evento_precipitante": "string", "eslabones": [{ "tipo": "pensamiento | emocion | sensacion | impulso | accion", "descripcion": "string" }], "conducta_problema": "string", "consecuencias": "string", "evidencia": { "linea_inicio": number, "linea_fin": number } o null } o null,
-    "cadena_respondiente": { "estimulo": "string", "respuesta_condicionada": "string", "conexion_con_operante": "string o null", "evidencia": { "linea_inicio": number, "linea_fin": number } o null } o null,
-    "ciclo_interconductual": "string o null (quién refuerza a quién)",
-    "funcion_hipotetizada": "string",
-    "confianza": "alta | media | baja"
-  }],
-  "hipotesis_mantenimiento": [{ "conducta": "string", "enunciado": "string (ante X, bajo Y, emite Z, mantenida por W)", "funcion": "string", "confianza": "alta | media | baja" }],
-  "hipotesis_origen": ["string (tentativas, en condicional)"],
-  "formulacion": {
-    "relaciones_entre_problemas": ["string (qué conducta alimenta o mantiene a cuál)"],
-    "priorizacion": [{ "blanco": "string", "justificacion": "string (importancia + modificabilidad)" }]
-  },
-  "conductas_alternativas": [{ "situacion": "string", "conducta_propuesta": "string", "consecuencia_necesaria": "string" }],
-  "capa_act": { "reglas_verbales": [{ "regla": "string", "textual_o_inferida": "textual | inferida", "clase": "pliance | tracking | augmenting", "rigidez": "alta | media | baja", "analisis": "string" }], "procesos_act": [{ "proceso": "string", "vinculo_con_cadena": "string", "evidencia": { "linea_inicio": number, "linea_fin": number } o null }] },
-  "capa_dbt": { "analisis_en_cadena": { "conducta_objetivo": "string", "vulnerabilidades": ["string"], "evento_precipitante": "string", "eslabones": [{ "tipo": "pensamiento | emocion | sensacion | impulso | accion", "descripcion": "string" }], "consecuencias_corto_plazo": ["string"], "consecuencias_largo_plazo": ["string"] }, "habilidades_sugeridas": [{ "modulo": "mindfulness | tolerancia_al_malestar | regulacion_emocional | efectividad_interpersonal", "habilidad": "string", "eslabon_objetivo": "string" }] },
-  "capa_mc": { "procedimientos_sugeridos": [{ "procedimiento": "string", "contingencia_objetivo": "string", "precauciones": "string" }] },
-  "hipotesis_alternativas": [{ "enunciado": "string", "como_descartarla": "string" }],
-  "preguntas_para_sesion": ["string"],
-  "lineas_de_intervencion_tentativas": ["string"],
-  "datos_faltantes": ["string"]
+${cuerpo}
 }
 
-REGISTRO DE ESCRITURA: todo el análisis está dirigido a un colega psicólogo con formación en análisis de conducta. Usa terminología técnica sin simplificar: "emite respuesta de evitación", no "evita"; "mantenida por R− (cese de estimulación aversiva)", no "se siente mejor"; "ante el Ed de evaluación social", no "cuando la gente lo mira". Las traducciones descriptivas de las cadenas (los enunciados de hipótesis, las descripciones de contingencias) deben leerse como un informe de supervisión clínica, no como una explicación para un paciente. Usa las abreviaturas estándar (Ed, SΔ, OE, OA, RO, R+, R−, C+, C−, EC, RC) naturalmente dentro del texto, como lo haría un analista de conducta escribiendo para otro.
+${COLA_FORMATO}`;
+}
 
-EJEMPLOS DE TRANSFORMACIÓN DE REGISTRO (imita este nivel de tecnicismo en TODOS los campos de texto libre: antecedente, respuesta, consecuencia, enunciado, descripcion, analisis, etc. — no solo en el resumen):
-- Mal (coloquial): "Evita conducir porque le da miedo tener una crisis."
-  Bien (técnico): "Ante el Ed de aproximación al vehículo, bajo OE de malestar condicionado, emite respuesta de evitación (no conducir), mantenida por R− (cese de la activación fisiológica)."
-- Mal (coloquial): "Se calma cuando la pareja la lleva."
-  Bien (técnico): "La conducta de acompañamiento de la pareja produce R− inmediato (cese de la activación autonómica), reforzando la dependencia funcional del acompañante."
-- Mal (coloquial): "Pide teletrabajo porque le preocupa que la vean mal."
-  Bien (técnico): "Ante el Ed de exposición social evaluativa, emite conducta verbal de solicitud de teletrabajo, mantenida por R− (evitación de la evaluación social aversiva)."
-No copies estos ejemplos ni sus contenidos: son solo el patrón de registro a imitar, no la conducta ni los eventos de este caso.`;
+/**
+ * Capas de modalidad: solo se describen las que se han pedido. Los bloques ACT,
+ * DBT y MC son largos, así que omitir los dos que no se usan es el mayor ahorro
+ * de tokens de entrada del análisis por partes.
+ */
+function bloquesDeModalidad(campos: string[]): string {
+  const partes: string[] = [];
+  if (campos.includes("capa_act")) partes.push(BLOQUE_ACT);
+  if (campos.includes("capa_dbt")) {
+    partes.push(BLOQUE_DBT);
+    if (campos.includes("situaciones")) partes.push(NOTA_CADENA_DBT_POR_SITUACION);
+  }
+  if (campos.includes("capa_mc")) partes.push(BLOQUE_MC);
+  return partes.join("\n\n");
+}
 
-export function construirSystemPrompt(): string {
+/**
+ * Prompt del análisis. Si no se pasan campos se generan todos, que es el
+ * comportamiento de siempre; si se pasan, el prompt se recorta a lo pedido.
+ */
+export function construirSystemPrompt(campos?: string[]): string {
+  const pedidos = campos?.length ? campos : Object.keys(ESQUEMA_POR_CAMPO);
+  const capas = ["capa_act", "capa_dbt", "capa_mc"].filter((c) => pedidos.includes(c));
+
+  const instruccionCapas =
+    capas.length === 3
+      ? 'Genera SIEMPRE las tres capas de modalidad en la misma respuesta (el usuario podrá alternar entre ellas después sin generar un nuevo análisis): ACT, DBT y Conductual. No omitas ninguna aunque el caso parezca encajar mejor en una.'
+      : capas.length > 0
+        ? `Genera ÚNICAMENTE la(s) capa(s) de modalidad solicitada(s): ${capas.join(", ")}. No incluyas las demás.`
+        : "No se ha solicitado ninguna capa de modalidad: no generes capa_act, capa_dbt ni capa_mc.";
+
+  const notaIntervencion = pedidos.includes("lineas_de_intervencion_tentativas")
+    ? '\n"lineas_de_intervencion_tentativas" es un campo neutral, no ligado a ninguna modalidad: usa vocabulario conductual básico (reforzamiento, extinción, exposición, entrenamiento en habilidades) sin comprometerte con ACT, DBT o MC — las orientaciones específicas de cada modalidad van dentro de su propia capa (capa_act, capa_dbt, capa_mc), no aquí.\n'
+    : "";
+
+  const parcial =
+    pedidos.length < Object.keys(ESQUEMA_POR_CAMPO).length
+      ? '\nANÁLISIS PARCIAL: el clínico ha pedido solo una parte del informe. Genera EXCLUSIVAMENTE las claves que aparecen en el formato de abajo, con la misma calidad y el mismo rigor que si fuera completo. No añadas claves que no se piden ni compenses la ausencia de otras secciones alargando las pedidas.\n'
+      : "";
+
   return `${NUCLEO}
 
-Genera SIEMPRE las tres capas de modalidad en la misma respuesta (el usuario podrá alternar entre ellas después sin generar un nuevo análisis): ACT, DBT y Conductual. No omitas ninguna aunque el caso parezca encajar mejor en una.
+${instruccionCapas}
 
-${BLOQUE_ACT}
-
-${BLOQUE_DBT}
-
-${NOTA_CADENA_DBT_POR_SITUACION}
-
-${BLOQUE_MC}
-
-"lineas_de_intervencion_tentativas" es un campo neutral, no ligado a ninguna modalidad: usa vocabulario conductual básico (reforzamiento, extinción, exposición, entrenamiento en habilidades) sin comprometerte con ACT, DBT o MC — las orientaciones específicas de cada modalidad van dentro de su propia capa (capa_act, capa_dbt, capa_mc), no aquí.
-
-${FORMATO_BASE}`;
+${bloquesDeModalidad(pedidos)}
+${notaIntervencion}${parcial}
+${construirFormato(pedidos)}`;
 }
 
 /**
@@ -154,19 +206,13 @@ export function construirPromptReanalisisSeccion(campos: string[]): string {
   const listaCampos = campos.join(", ");
   return `${NUCLEO}
 
-Genera SIEMPRE las tres capas de modalidad si "capa_act", "capa_dbt" o "capa_mc" están entre los campos solicitados. No omitas ninguna de las solicitadas.
+Genera SIEMPRE las capas de modalidad que estén entre los campos solicitados. No omitas ninguna de las solicitadas.
 
-${BLOQUE_ACT}
+${bloquesDeModalidad(campos)}
 
-${BLOQUE_DBT}
+MODO ACTUALIZACIÓN PARCIAL (no generación desde cero): se te da la nota clínica original, una nota adicional que el clínico quiere incorporar a una sección concreta, y el análisis funcional ya generado (en JSON) como contexto de referencia. Tu tarea es actualizar EXCLUSIVAMENTE estos campos: ${listaCampos}. Incorpora la información de la nota adicional junto con la nota original y el resto del análisis (que se te da solo como contexto de coherencia, no lo reescribas ni lo contradigas). Si un campo solicitado es un array (por ejemplo "situaciones" o "conductas_problema"), devuelve el ARRAY COMPLETO actualizado: conserva los elementos existentes que la nota adicional no modifica, y agrega o corrige lo que corresponda — no devuelvas solo los elementos nuevos.
 
-${NOTA_CADENA_DBT_POR_SITUACION}
-
-${BLOQUE_MC}
-
-MODO ACTUALIZACIÓN PARCIAL (no generación desde cero): se te da la nota clínica original, una nota adicional que el clínico quiere incorporar a una sección concreta, y el análisis funcional COMPLETO ya generado (en JSON) como contexto de referencia. Tu tarea es actualizar EXCLUSIVAMENTE estos campos: ${listaCampos}. Incorpora la información de la nota adicional junto con la nota original y el resto del análisis (que se te da solo como contexto de coherencia, no lo reescribas ni lo contradigas). Si un campo solicitado es un array (por ejemplo "situaciones" o "conductas_problema"), devuelve el ARRAY COMPLETO actualizado: conserva los elementos existentes que la nota adicional no modifica, y agrega o corrige lo que corresponda — no devuelvas solo los elementos nuevos. Cada campo mantiene exactamente la misma forma que en este formato de referencia (ignora las claves que no pediste actualizar):
-
-${FORMATO_BASE}
+${construirFormato(campos)}
 
 FORMATO DE RESPUESTA PARA ESTA ACTUALIZACIÓN PARCIAL: responde ÚNICAMENTE con un objeto JSON que contenga SOLO estas claves: ${listaCampos}. Sin texto antes ni después, sin fences de markdown, sin ninguna otra clave del formato de referencia.`;
 }

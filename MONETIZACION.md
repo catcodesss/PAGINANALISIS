@@ -7,7 +7,7 @@ No soy abogado: los puntos legales son señalamientos de riesgo, no asesoría.
 
 ## 1. Lo primero, porque cambia todo lo demás
 
-Ahora mismo la propiedad más valiosa de ANIA es que **no guarda nada**. Es lo que
+Ahora mismo la propiedad más valiosa de ANCIA es que **no guarda nada**. Es lo que
 permite decir en la interfaz que las notas no se almacenan, y es lo que hace que
 un psicólogo pueda probar la herramienta sin plantearse nada.
 

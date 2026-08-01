@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import type { AnalisisFuncional } from "@/lib/types";
 import {
   repositorio,
@@ -142,7 +143,7 @@ export default function Historial({
       const url = URL.createObjectURL(blob);
       const enlace = document.createElement("a");
       enlace.href = url;
-      enlace.download = `ania-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
+      enlace.download = `ancia-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
       enlace.click();
       URL.revokeObjectURL(url);
     });
@@ -306,6 +307,11 @@ function Marco({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Campo de contraseña con opción de mostrarla. Importa más de lo habitual aquí:
+ * esta contraseña no se puede restablecer, así que el usuario necesita poder
+ * comprobar que ha escrito lo que cree antes de confirmar.
+ */
 function Campo({
   valor,
   onCambio,
@@ -317,15 +323,34 @@ function Campo({
   marcador: string;
   onEnter?: () => void;
 }) {
+  const [visible, setVisible] = useState(false);
+
   return (
-    <input
-      type="password"
-      value={valor}
-      placeholder={marcador}
-      onChange={(e) => onCambio(e.target.value)}
-      onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
-      className="min-w-[14rem] flex-1 rounded border border-divider bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-    />
+    <div className="relative min-w-[14rem] flex-1">
+      <input
+        type={visible ? "text" : "password"}
+        value={valor}
+        placeholder={marcador}
+        onChange={(e) => onCambio(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
+        className="w-full rounded border border-divider bg-canvas py-2 pl-3 pr-10 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+        title={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+        // tabIndex -1: al tabular se pasa del campo al botón de acción, no aquí.
+        tabIndex={-1}
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-ink-muted transition-colors hover:text-ink"
+      >
+        {visible ? (
+          <EyeOff className="h-4 w-4" aria-hidden="true" />
+        ) : (
+          <Eye className="h-4 w-4" aria-hidden="true" />
+        )}
+      </button>
+    </div>
   );
 }
 

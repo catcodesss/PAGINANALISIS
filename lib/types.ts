@@ -220,6 +220,12 @@ export interface AnalisisFuncional {
   datos_faltantes: string[];
   /** Lo rellena el servidor tras validar; el modelo nunca lo envía. */
   alertas: Alerta[];
+  /**
+   * Qué bloques se pidieron en esta generación (ver lib/bloques.ts). Vacío
+   * significa informe completo, para no romper los análisis guardados antes de
+   * que existiera el análisis por partes.
+   */
+  campos_generados: string[];
 }
 
 /**
@@ -247,6 +253,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "lineas_de_intervencion_tentativas",
   "datos_faltantes",
   "alertas",
+  "campos_generados",
 ] as const satisfies readonly (keyof AnalisisFuncional)[];
 
 type _TodasLasClavesCubiertas =

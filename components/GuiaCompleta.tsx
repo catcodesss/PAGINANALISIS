@@ -63,7 +63,11 @@ const PREGUNTAS = [
   ],
   [
     "¿Por qué el análisis tarda tanto?",
-    "Genera las tres capas de modalidad (ACT, DBT y conductual) en una sola pasada, para que puedas alternar entre ellas después sin volver a consultar a la IA.",
+    "Por defecto genera el informe completo, incluidas las tres capas de modalidad (ACT, DBT y conductual), para que puedas alternar entre ellas después sin volver a consultar a la IA. Si solo necesitas una parte, usa la flecha del botón de generar y elige las secciones: es bastante más rápido y más barato.",
+  ],
+  [
+    "¿Puedo pedir solo una parte del informe?",
+    "Sí. La flecha a la derecha del botón de generar abre el selector de secciones. Las dependencias se resuelven solas: si pides la capa ACT, se genera también el análisis por situaciones en el que se apoya, porque sin él la capa saldría hueca. El resumen clínico y los datos faltantes se incluyen siempre.",
   ],
   [
     "¿Qué pasa si la nota es muy corta?",
@@ -120,7 +124,7 @@ export default function GuiaCompleta() {
           <div className="space-y-4">
             <p className="text-sm leading-relaxed text-ink-muted">
               Para generar el análisis, el texto de tus notas se envía a la API de
-              OpenAI. ANIA no lo almacena en ningún servidor propio, pero OpenAI
+              OpenAI. ANCIA no lo almacena en ningún servidor propio, pero OpenAI
               puede conservarlo temporalmente según su política de retención.
             </p>
             <p className="text-sm leading-relaxed text-ink-muted">

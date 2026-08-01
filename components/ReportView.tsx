@@ -56,6 +56,38 @@ const CAMPO_CAPA_POR_MODELO: Record<ModeloTerapeutico, keyof AnalisisFuncional> 
   mc: "capa_mc",
 };
 
+/**
+ * Qué bloque de lib/bloques.ts hace falta para que cada sección tenga contenido.
+ * Sin bloque asociado, la sección se muestra siempre (resumen, datos faltantes,
+ * alertas). Se usa para ocultar lo que no se pidió en un análisis parcial, en
+ * vez de enseñar media docena de apartados vacíos.
+ */
+const BLOQUE_DE_SECCION: Record<string, string> = {
+  conductas: "conductas",
+  "variables-moduladoras": "moduladoras",
+  situaciones: "situaciones",
+  "hipotesis-mantenimiento": "mantenimiento",
+  "hipotesis-principal": "mantenimiento",
+  formulacion: "formulacion",
+  "conductas-alternativas": "alternativas",
+  "hipotesis-alternativas": "hipotesis_alternativas",
+  preguntas: "preguntas",
+  intervencion: "intervencion",
+};
+
+/**
+ * campos_generados vacío = informe completo (y también los análisis guardados
+ * antes de que existiera el análisis por partes).
+ */
+function seccionVisible(analisis: AnalisisFuncional, id: string): boolean {
+  if (analisis.campos_generados.length === 0) return true;
+  if (id === "modalidad") {
+    return ["act", "dbt", "mc"].some((m) => analisis.campos_generados.includes(m));
+  }
+  const bloque = BLOQUE_DE_SECCION[id];
+  return !bloque || analisis.campos_generados.includes(bloque);
+}
+
 const SECCIONES: SeccionIndice[] = [
   { id: "datos-faltantes", titulo: "Datos faltantes" },
   { id: "alertas", titulo: "Revisiones sugeridas" },
@@ -305,6 +337,10 @@ function Seccion({
   children: ReactNode;
   camposReanalisis?: (keyof AnalisisFuncional)[];
 }) {
+  const contexto = useContext(ReanalisisContext);
+  // En un análisis parcial, las secciones no pedidas no se pintan vacías.
+  if (contexto && !seccionVisible(contexto.analisis, id)) return null;
+
   return (
     <section
       id={id}
@@ -711,13 +747,19 @@ const MODELOS: ModeloTerapeutico[] = ["act", "dbt", "mc"];
 function BotonesModalidad({
   activa,
   onChange,
+  modelos = MODELOS,
 }: {
   activa: ModeloTerapeutico;
   onChange: (m: ModeloTerapeutico) => void;
+  /** En un análisis parcial solo se ofrecen las capas que se generaron. */
+  modelos?: ModeloTerapeutico[];
 }) {
+  // Con una sola capa no hay nada que alternar: el selector sobra.
+  if (modelos.length < 2) return null;
+
   return (
     <div className="flex w-full overflow-hidden rounded border border-divider print:hidden sm:inline-flex sm:w-auto">
-      {MODELOS.map((m) => (
+      {modelos.map((m) => (
         <button
           key={m}
           type="button"
@@ -741,15 +783,21 @@ function SelectorCapaModalidad({
   analisis,
   pestanaActiva,
   onCambiarPestana,
+  modelos,
 }: {
   analisis: AnalisisFuncional;
   pestanaActiva: ModeloTerapeutico;
   onCambiarPestana: (m: ModeloTerapeutico) => void;
+  modelos?: ModeloTerapeutico[];
 }) {
   return (
     <div>
       <div className="mb-4">
-        <BotonesModalidad activa={pestanaActiva} onChange={onCambiarPestana} />
+        <BotonesModalidad
+          activa={pestanaActiva}
+          onChange={onCambiarPestana}
+          modelos={modelos}
+        />
       </div>
 
       <div className="print:hidden">
@@ -988,7 +1036,7 @@ function PrintOnlyHeader({
     <div className="print-only-header hidden print:block">
       <div className="print-header-top">
         <div className="print-logo-area">
-          <span className="print-logo-text">ANIA</span>
+          <span className="print-logo-text">ANCIA</span>
           <span className="print-logo-sub">Análisis de conducta asistido por IA</span>
         </div>
         <div className="print-doc-type">EXPEDIENTE · ANÁLISIS FUNCIONAL</div>
@@ -1026,7 +1074,7 @@ function PrintOnlyHeader({
 function PrintOnlyFooter() {
   return (
     <div className="print-only-footer hidden print:flex">
-      <div className="print-footer-left">ANIA — Análisis de conducta asistido por IA</div>
+      <div className="print-footer-left">ANCIA — Análisis de conducta asistido por IA</div>
       <div className="print-footer-center">
         Documento confidencial · Solo para uso clínico
       </div>
@@ -1055,7 +1103,7 @@ function PrintOnlyDisclaimer({ fecha }: { fecha: string }) {
         contenida en este expediente.
       </p>
       <p className="print-disclaimer-tool">
-        Generado con ANIA — Análisis de conducta asistido por IA · {fecha}
+        Generado con ANCIA — Análisis de conducta asistido por IA · {fecha}
       </p>
     </div>
   );
@@ -1132,9 +1180,28 @@ export default function ReportView({
   notaOriginal,
   onAnalisisActualizado,
 }: ReportViewProps) {
-  const ids = useMemo(() => SECCIONES.map((s) => s.id), []);
+  const seccionesVisibles = useMemo(
+    () => SECCIONES.filter((s) => seccionVisible(analisis, s.id)),
+    [analisis]
+  );
+  const ids = useMemo(() => seccionesVisibles.map((s) => s.id), [seccionesVisibles]);
   const activa = useSeccionActiva(ids);
+
+  // Solo se ofrecen las pestañas de modalidad que se hayan generado.
+  const modalidades = useMemo<ModeloTerapeutico[]>(() => {
+    const todas: ModeloTerapeutico[] = ["act", "dbt", "mc"];
+    if (analisis.campos_generados.length === 0) return todas;
+    return todas.filter((m) => analisis.campos_generados.includes(m));
+  }, [analisis]);
+
   const [pestanaActiva, setPestanaActiva] = useState<ModeloTerapeutico>("act");
+
+  // Si la pestaña activa no se generó, se salta a la primera disponible.
+  useEffect(() => {
+    if (modalidades.length > 0 && !modalidades.includes(pestanaActiva)) {
+      setPestanaActiva(modalidades[0]);
+    }
+  }, [modalidades, pestanaActiva]);
 
   const hipotesisDestacada = useMemo(() => {
     const conductaAlta = analisis.conductas_problema.find(
@@ -1161,7 +1228,7 @@ export default function ReportView({
           Expediente · Análisis funcional
         </p>
         <h1 className="mt-1 font-serif text-2xl font-semibold text-ink sm:text-3xl">
-          ANIA — Análisis de conducta asistido por IA
+          ANCIA — Análisis de conducta asistido por IA
         </h1>
         <div className="mt-4 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-ink-muted">
           <p>
@@ -1190,10 +1257,10 @@ export default function ReportView({
         </p>
       </header>
 
-      <IndiceMovil secciones={SECCIONES} activa={activa} />
+      <IndiceMovil secciones={seccionesVisibles} activa={activa} />
 
       <div className="lg:flex lg:items-start lg:gap-10">
-        <IndiceLateral secciones={SECCIONES} activa={activa} />
+        <IndiceLateral secciones={seccionesVisibles} activa={activa} />
 
         <div className="min-w-0 flex-1">
           {/* Datos faltantes: lo primero que debe revisar el terapeuta, antes de confiar en el resto del análisis. */}
@@ -1382,7 +1449,7 @@ export default function ReportView({
             titulo="Análisis por situaciones"
             camposReanalisis={["situaciones"]}
             extra={
-              <BotonesModalidad activa={pestanaActiva} onChange={setPestanaActiva} />
+              <BotonesModalidad activa={pestanaActiva} onChange={setPestanaActiva} modelos={modalidades} />
             }
           >
             {analisis.situaciones.length === 0 ? (
@@ -1514,6 +1581,7 @@ export default function ReportView({
                 analisis={analisis}
                 pestanaActiva={pestanaActiva}
                 onCambiarPestana={setPestanaActiva}
+                modelos={modalidades}
               />
             </DetalleModalidad>
           </Seccion>

@@ -3,7 +3,7 @@
  *
  * Decisión de arquitectura: los análisis guardados se cifran en el navegador con
  * una clave derivada de una contraseña que elige el clínico. El servidor no
- * participa y no puede leerlos. Esto mantiene a ANIA fuera del papel de
+ * participa y no puede leerlos. Esto mantiene a ANCIA fuera del papel de
  * responsable del tratamiento de datos de salud.
  *
  * Consecuencia asumida: si el usuario pierde la contraseña, los datos no se
@@ -20,7 +20,7 @@ const LONGITUD_IV = 12; // AES-GCM
 const ALGORITMO = "AES-GCM";
 
 /** Testigo que se cifra al configurar y se descifra para validar la contraseña. */
-const TESTIGO = "ania-historial-v1";
+const TESTIGO = "ancia-historial-v1";
 
 export interface SobreCifrado {
   iv: number[];

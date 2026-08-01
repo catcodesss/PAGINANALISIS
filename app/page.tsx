@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpenText, Lock, Sparkles, SunMedium } from "lucide-react";
+import { BookOpenText, ChevronDown, Lock, Sparkles, SunMedium } from "lucide-react";
 import type { AnalisisFuncional } from "@/lib/types";
 import {
   contieneDatosIdentificables,
@@ -12,6 +12,8 @@ import ReportView from "@/components/ReportView";
 import Historial from "@/components/Historial";
 import GuiaRapida from "@/components/GuiaRapida";
 import GuiaCompleta from "@/components/GuiaCompleta";
+import SelectorBloques from "@/components/SelectorBloques";
+import { IDS_TODOS } from "@/lib/bloques";
 import EsqueletoInforme from "@/components/EsqueletoInforme";
 import Sidebar, { type Vista } from "@/components/Sidebar";
 import PanelRecomendaciones from "@/components/PanelRecomendaciones";
@@ -25,7 +27,8 @@ const EJEMPLO_NOTA = `Ejemplo:
 type EstadoApp = "inicial" | "cargando" | "resultado" | "error";
 
 const LONGITUD_MINIMA = 100;
-const LONGITUD_MAXIMA = 15000;
+// Debe coincidir con LONGITUD_MAXIMA_NOTA de app/api/analizar/route.ts.
+const LONGITUD_MAXIMA = 40000;
 const MENSAJE_NOTA_BREVE =
   "La nota es demasiado breve para un análisis funcional fiable. Incluye al menos la situación, la conducta y lo que ocurrió después.";
 const MENSAJE_ERROR_GENERICO = "No se pudo completar el análisis. Intenta nuevamente.";
@@ -43,9 +46,13 @@ export default function Home() {
   const [copiado, setCopiado] = useState(false);
   const [guiaAbierta, setGuiaAbierta] = useState(false);
   const [vista, setVista] = useState<Vista>("analisis");
+  const [selectorAbierto, setSelectorAbierto] = useState(false);
+  // Vacío en la práctica significa "todos": se manda la lista completa.
+  const [bloques, setBloques] = useState<string[]>(IDS_TODOS);
 
-  async function ejecutarAnalisis(texto: string) {
+  async function ejecutarAnalisis(texto: string, bloquesPedidos: string[] = bloques) {
     setUltimoTextoEnviado(texto);
+    setSelectorAbierto(false);
     setAvisoPII(false);
     setMensajeValidacion("");
     setMensajeError("");
@@ -55,7 +62,7 @@ export default function Home() {
       const respuesta = await fetch("/api/analizar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nota: texto }),
+        body: JSON.stringify({ nota: texto, bloques: bloquesPedidos }),
       });
 
       const datos = await respuesta.json().catch(() => null);
@@ -164,7 +171,7 @@ export default function Home() {
             <div>
               <h1 className="font-serif text-2xl font-semibold text-ink sm:text-3xl">
                 {enAnalisis
-                  ? "ANIA — Análisis de conducta asistido por IA"
+                  ? "ANCIA — Análisis de conducta asistido por IA"
                   : "Guía de uso"}
               </h1>
               <p className="mt-2 text-sm text-ink-muted sm:text-base">
@@ -248,7 +255,7 @@ export default function Home() {
                       <p className="text-sm font-semibold text-ink">Privacidad</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
                         Para generar el análisis, el texto de tus notas se envía a la
-                        API de OpenAI. ANIA no lo almacena en ningún servidor propio,
+                        API de OpenAI. ANCIA no lo almacena en ningún servidor propio,
                         pero OpenAI puede conservarlo temporalmente según su política
                         de retención. No introduzcas nombres reales ni datos de
                         contacto: usa iniciales o seudónimos.
@@ -307,24 +314,55 @@ export default function Home() {
                     </div>
                   )}
 
+                  {/* Botón partido: la acción principal a la izquierda y, a la
+                      derecha, el desplegable para elegir qué partes generar. */}
                   {!avisoPII && (
-                    <button
-                      type="button"
-                      onClick={manejarGenerarClick}
-                      disabled={formularioDeshabilitado}
-                      className="mt-5 flex w-full items-center gap-3 rounded-xl bg-accent px-5 py-3.5 text-left text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-                    >
-                      <Sparkles className="h-5 w-5 shrink-0" aria-hidden="true" />
-                      <span>
-                        <span className="block text-sm font-semibold">
-                          Generar análisis funcional
+                    <div className="relative mt-5 flex">
+                      <button
+                        type="button"
+                        onClick={manejarGenerarClick}
+                        disabled={formularioDeshabilitado}
+                        className="flex min-w-0 flex-1 items-center gap-3 rounded-l-xl bg-accent px-5 py-3.5 text-left text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                      >
+                        <Sparkles className="h-5 w-5 shrink-0" aria-hidden="true" />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold">
+                            {bloques.length === IDS_TODOS.length
+                              ? "Generar análisis funcional"
+                              : `Generar ${bloques.length} ${bloques.length === 1 ? "sección" : "secciones"}`}
+                          </span>
+                          <span className="block text-xs text-white/75">
+                            {bloques.length === IDS_TODOS.length
+                              ? "La IA analizará tu información y te entregará un análisis estructurado."
+                              : "Solo las partes que has elegido: más rápido y más barato."}
+                          </span>
                         </span>
-                        <span className="block text-xs text-white/75">
-                          La IA analizará tu información y te entregará un análisis
-                          estructurado.
-                        </span>
-                      </span>
-                    </button>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectorAbierto((v) => !v)}
+                        disabled={formularioDeshabilitado}
+                        aria-expanded={selectorAbierto}
+                        aria-label="Elegir qué partes del análisis generar"
+                        title="Elegir qué partes generar"
+                        className="flex w-12 shrink-0 items-center justify-center rounded-r-xl border-l border-white/20 bg-accent text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                      >
+                        <ChevronDown
+                          className={`h-5 w-5 transition-transform ${selectorAbierto ? "rotate-180" : ""}`}
+                          aria-hidden="true"
+                        />
+                      </button>
+
+                      {selectorAbierto && (
+                        <SelectorBloques
+                          seleccion={bloques}
+                          onCambiar={setBloques}
+                          onGenerar={manejarGenerarClick}
+                          onCerrar={() => setSelectorAbierto(false)}
+                          deshabilitado={formularioDeshabilitado}
+                        />
+                      )}
+                    </div>
                   )}
                 </div>
 

@@ -51,8 +51,10 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
           <Leaf className="h-5 w-5 text-accent" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className="font-serif text-lg font-semibold leading-tight">ANIA</p>
-          <p className="truncate text-xs text-white/60">Análisis Funcional</p>
+          <p className="font-serif text-lg font-semibold leading-tight">ANCIA</p>
+          <p className="truncate text-xs text-white/60">
+            Análisis de Conducta con IA
+          </p>
         </div>
       </button>
 
