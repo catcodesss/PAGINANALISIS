@@ -50,8 +50,8 @@ paralelo al canto y no cruzándolo.
 ### Archivos
 
 ```
-public/images/logo-acia.svg      marca completa, recortada al dibujo
-public/images/isotipo-acia.svg   cuadrado, solo la lente: favicon, avatar, barra lateral
+public/images/logo-acia.svg      marca completa, recortada al dibujo: barra lateral
+public/images/isotipo-acia.svg   cuadrado, solo la lente: avatares y usos pequeños
 app/icon.svg                     el isotipo, que Next.js sirve como favicon
 ```
 

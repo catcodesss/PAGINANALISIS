@@ -53,15 +53,17 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
         onClick={() => onCambiarVista("analisis")}
         className="flex items-center gap-3 rounded-lg px-2 text-left transition-opacity hover:opacity-90"
       >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white">
+        {/* La marca completa es apaisada (494×354): el recuadro la acompaña en
+            vez de forzarla a un cuadrado, que la dejaría diminuta o cortada. */}
+        <span className="flex h-10 shrink-0 items-center justify-center rounded-xl bg-white px-2">
           {/* Marca en SVG estático: <img> en vez de next/image porque no hay que
               optimizar nada y así no arrastra el runtime del componente. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/isotipo-acia.svg"
+            src="/images/logo-acia.svg"
             alt=""
             aria-hidden="true"
-            className="h-7 w-7"
+            className="h-6 w-auto"
           />
         </span>
         <div className="min-w-0">
