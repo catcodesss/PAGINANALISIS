@@ -11,7 +11,6 @@ import { formatearInformeTexto } from "@/lib/formatearInforme";
 import { revalidarTrasEdicion } from "@/lib/validadores";
 import { descargarDocx } from "@/lib/exportarDocx";
 import ReportView from "@/components/ReportView";
-import Historial from "@/components/Historial";
 import GuiaCompleta from "@/components/GuiaCompleta";
 import SelectorBloques from "@/components/SelectorBloques";
 import { IDS_TODOS } from "@/lib/bloques";
@@ -460,28 +459,6 @@ export default function Home() {
             </div>
           )}
 
-          {enAnalisis && (
-            <Historial
-              analisisActual={analisis}
-              notaActual={ultimoTextoEnviado}
-              referenciaActual={referenciaCaso}
-              onAbrir={(registro) => {
-                setAnalisis(registro.analisis);
-                setNota(registro.nota);
-                setUltimoTextoEnviado(registro.nota);
-                setReferenciaCaso(registro.referencia);
-                setFechaGeneracion(
-                  new Date(registro.fecha).toLocaleString("es", {
-                    dateStyle: "long",
-                    timeStyle: "short",
-                  })
-                );
-                setEstado("resultado");
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-            />
-          )}
-
           {!enAnalisis && <GuiaCompleta />}
 
           <footer className="mt-10 border-t border-divider pt-6 text-center text-xs text-ink-muted print:hidden">
@@ -496,7 +473,7 @@ export default function Home() {
                 CatCodes
               </a>
             </p>
-            <p className="mt-1 font-mono text-[11px] text-ink-muted/70">v0.1.2</p>
+            <p className="mt-1 font-mono text-[11px] text-ink-muted/70">v1.4.0</p>
           </footer>
         </main>
       </div>
