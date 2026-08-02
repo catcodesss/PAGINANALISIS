@@ -50,13 +50,18 @@ paralelo al canto y no cruzándolo.
 ### Archivos
 
 ```
-public/images/logo-acia.svg      marca completa, recortada al dibujo: barra lateral
-public/images/isotipo-acia.svg   cuadrado, solo la lente: avatares y usos pequeños
-app/icon.svg                     el isotipo, que Next.js sirve como favicon
+public/images/logo-acia.svg         marca completa en verde, para fondo claro
+public/images/logo-acia-blanco.svg  la misma en blanco, para fondo oscuro: barra lateral
+public/images/isotipo-acia.svg      cuadrado, solo la lente: avatares y usos pequeños
+app/icon.svg                        el isotipo, que Next.js sirve como favicon
 ```
 
-Fondo transparente en los dos: la marca va igual sobre la barra lateral oscura
-que sobre papel.
+Fondo transparente en todos.
+
+**En la variante blanca el brillo no se pinta: se recorta.** Un brillo blanco
+sobre una lente blanca no se vería, y pintarlo del color de la barra ataría el
+archivo a ese fondo concreto. Va como hueco real —una máscara— así que la marca
+funciona igual sobre el verde oscuro, sobre el verde de acento o sobre negro.
 
 ### Normas de uso
 
