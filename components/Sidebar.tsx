@@ -7,7 +7,6 @@ import {
   Heart,
   Layers,
   LayoutTemplate,
-  Leaf,
   Library,
   Settings,
 } from "lucide-react";
@@ -55,7 +54,15 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
         className="flex items-center gap-3 rounded-lg px-2 text-left transition-opacity hover:opacity-90"
       >
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white">
-          <Leaf className="h-5 w-5 text-accent" aria-hidden="true" />
+          {/* Marca en SVG estático: <img> en vez de next/image porque no hay que
+              optimizar nada y así no arrastra el runtime del componente. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/isotipo-acia.svg"
+            alt=""
+            aria-hidden="true"
+            className="h-7 w-7"
+          />
         </span>
         <div className="min-w-0">
           <p className="font-serif text-lg font-semibold leading-tight">ACIA</p>

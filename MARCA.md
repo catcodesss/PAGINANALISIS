@@ -38,39 +38,41 @@ lectura hacia la sigla y neutraliza el eco; por eso no es opcional.
 
 ## 2. El símbolo
 
-Un corchete que encierra tres líneas de texto, la del medio marcada.
+Una lupa que examina una cadena funcional: dos anillos —antecedente y
+consecuencia— unidos a la lente por sus conectores. La lupa ocupa el lugar de la
+conducta, que es el término focal del análisis: el que se explica. Los otros dos
+son lo que se mira alrededor.
 
-Es lo que ACIA hace y ningún competidor puede decir: **recortar la línea exacta
-de la nota**. No es una metáfora del bienestar ni del cerebro — es la operación
-del producto. Por eso reemplaza a la hoja del logo anterior, que decía
-*mindfulness* y no *rigor*.
+Dentro de la lente, un arco de brillo concéntrico con el borde. Concéntrico
+importa: la luz rebota siguiendo la curvatura del cristal, así que el destello va
+paralelo al canto y no cruzándolo.
 
 ### Archivos
 
 ```
-public/images/logo-acia.svg             lockup completo (símbolo + logotipo)
-public/images/isotipo-acia.svg          solo el símbolo, tres líneas
-public/images/isotipo-acia-minimo.svg   una sola línea, para 24 px o menos
+public/images/logo-acia.svg      marca completa, recortada al dibujo
+public/images/isotipo-acia.svg   cuadrado, solo la lente: favicon, avatar, barra lateral
+app/icon.svg                     el isotipo, que Next.js sirve como favicon
 ```
 
-Los tres usan `stroke="currentColor"`, así que heredan el color del contexto: se
-tiñen con CSS sin duplicar archivos.
+Fondo transparente en los dos: la marca va igual sobre la barra lateral oscura
+que sobre papel.
 
 ### Normas de uso
 
-- El símbolo va **a la izquierda** del logotipo, nunca encima ni debajo.
-- Espacio libre alrededor: el ancho de un corchete por cada lado.
-- Tamaño mínimo del lockup completo: 90 px de ancho. Por debajo, solo el símbolo.
-- Por debajo de 24 px, la versión mínima: las líneas finas se empastan.
-- No lo encierres en un círculo, no le añadas sombra, no lo inclines.
-- Sobre fondo oscuro, el mismo archivo en blanco. No hay versión invertida aparte.
+- La marca completa es horizontal. Para contenedores cuadrados —avatares de
+  redes, icono de aplicación— se usa **siempre el isotipo**, nunca la completa
+  reducida: a esos tamaños los anillos y los conectores se convierten en manchas.
+- Espacio libre alrededor: el radio de un anillo por cada lado.
+- Tamaño mínimo de la marca completa: 120 px de ancho. Por debajo, el isotipo.
+- No la encierres en un círculo, no le añadas sombra, no la inclines.
+- El brillo va siempre en blanco sobre la lente verde. No se recolorea.
 
-### La regla que ata la marca al producto
+### Geometría, por si hay que redibujarla
 
-**El corchete es verde cuando lo que encierra está verificado.** En la interfaz,
-una cita resuelta se muestra en verde y una inferencia en gris; el logotipo
-comparte esa lógica. Es lo que hace que la marca signifique algo en vez de
-decorar.
+Lente de radio 119 centrada en el origen. Anillos de radio exterior 41 y grosor
+17,5, a 178 unidades a los lados y 100 por debajo del centro. Conectores y mango
+de 18 de ancho. Brillo: arco de radio 78 y grosor 34, de 300° a 345°.
 
 ---
 
@@ -207,5 +209,4 @@ Esa es la frase de portada:
 - [ ] Búsqueda de marca registrada: INDECOPI para Perú, EUIPO para España. ACIA
       es una sigla usada por otras entidades; suele haber convivencia en clases
       distintas, pero hay que mirarlo antes de imprimir nada.
-- [ ] Convertir el texto del logotipo a trazados.
-- [ ] Sustituir el icono de la hoja por el isotipo en `components/Sidebar.tsx`.
+- [ ] Convertir a trazados el texto ACIA cuando se monte el lockup para imprenta.
