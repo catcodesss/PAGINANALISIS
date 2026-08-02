@@ -19,11 +19,11 @@ import EsqueletoInforme from "@/components/EsqueletoInforme";
 import Sidebar, { type Vista } from "@/components/Sidebar";
 import PanelRecomendaciones from "@/components/PanelRecomendaciones";
 
-const EJEMPLO_NOTA = `Ejemplo:
-– Durante la tarea de matemáticas, el paciente se levanta de su silla.
-– Dice: "no puedo" y empuja el cuaderno.
-– La terapeuta le pide que vuelva a su lugar.
-– El paciente se calma y retoma la actividad.`;
+// El marcador de posición se mantiene corto a propósito. El ejemplo largo que
+// había antes iba en viñetas telegráficas, justo lo que la guía desaconseja, y
+// el cómo escribir la nota ya lo explican el texto de arriba y el panel de
+// recomendaciones de al lado.
+const MARCADOR_NOTA = "Pega aquí tu caso…";
 
 type EstadoApp = "inicial" | "cargando" | "resultado" | "error";
 
@@ -265,7 +265,7 @@ export default function Home() {
                     }}
                     maxLength={LONGITUD_MAXIMA}
                     rows={11}
-                    placeholder={EJEMPLO_NOTA}
+                    placeholder={MARCADOR_NOTA}
                     className="mt-4 w-full resize-y rounded-lg border border-divider bg-white px-3 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
