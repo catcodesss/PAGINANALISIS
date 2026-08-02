@@ -135,10 +135,13 @@ nadie se la explique, y a partir de ahí sabe de un vistazo qué puede verificar
 lo que lo hace leer como sigla; sin él, se lee como palabra y aparece el eco de
 *Asia*.
 
-El archivo SVG usa `<text>` con la fuente por nombre. **Antes de imprimir o
-mandar el logo a terceros, hay que convertir el texto a trazados** — si no, en un
-equipo sin Source Serif 4 instalada se sustituye por Georgia y cambia el
-logotipo. Cualquier diseñador lo hace en un minuto.
+Los SVG de `public/images/` son solo el símbolo: no llevan texto. En la
+aplicación el nombre lo pone la interfaz con la fuente ya cargada, así que ahí no
+hay nada que resolver. **El día que se monte un lockup —símbolo + palabra en un
+único archivo— hay que convertir el texto a trazados antes de mandarlo a
+imprenta o a terceros**: en un equipo sin Source Serif 4 instalada, el navegador
+sustituye por Georgia y el logotipo cambia. Cualquier diseñador lo hace en un
+minuto.
 
 ---
 
