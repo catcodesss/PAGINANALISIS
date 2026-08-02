@@ -12,7 +12,6 @@ import { revalidarTrasEdicion } from "@/lib/validadores";
 import { descargarDocx } from "@/lib/exportarDocx";
 import ReportView from "@/components/ReportView";
 import Historial from "@/components/Historial";
-import GuiaRapida from "@/components/GuiaRapida";
 import GuiaCompleta from "@/components/GuiaCompleta";
 import SelectorBloques from "@/components/SelectorBloques";
 import { IDS_TODOS } from "@/lib/bloques";
@@ -46,7 +45,6 @@ export default function Home() {
   const [fechaGeneracion, setFechaGeneracion] = useState("");
   const [ultimoTextoEnviado, setUltimoTextoEnviado] = useState("");
   const [copiado, setCopiado] = useState(false);
-  const [guiaAbierta, setGuiaAbierta] = useState(false);
   const [vista, setVista] = useState<Vista>("analisis");
   const [selectorAbierto, setSelectorAbierto] = useState(false);
   // Vacío en la práctica significa "todos": se manda la lista completa.
@@ -210,16 +208,18 @@ export default function Home() {
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  enAnalisis ? setGuiaAbierta(true) : setVista("analisis")
-                }
-                className="flex items-center gap-2 rounded-lg border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas"
-              >
-                <BookOpenText className="h-4 w-4 text-accent" aria-hidden="true" />
-                {enAnalisis ? "Guía rápida" : "Volver al análisis"}
-              </button>
+              {/* La guía se abre desde la barra lateral ("Guía de uso"). Aquí
+                  solo queda la vuelta, cuando ya estás dentro de ella. */}
+              {!enAnalisis && (
+                <button
+                  type="button"
+                  onClick={() => setVista("analisis")}
+                  className="flex items-center gap-2 rounded-lg border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas"
+                >
+                  <BookOpenText className="h-4 w-4 text-accent" aria-hidden="true" />
+                  Volver al análisis
+                </button>
+              )}
               <button
                 type="button"
                 title="Próximamente"
@@ -500,16 +500,6 @@ export default function Home() {
           </footer>
         </main>
       </div>
-      {guiaAbierta && (
-        <GuiaRapida
-          onCerrar={() => setGuiaAbierta(false)}
-          onVerCompleta={() => {
-            setGuiaAbierta(false);
-            setVista("guia");
-            window.scrollTo({ top: 0 });
-          }}
-        />
-      )}
     </div>
   );
 }

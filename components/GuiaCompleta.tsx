@@ -7,12 +7,14 @@ import {
   Layers,
   Lock,
   MessageCircleQuestion,
+  PencilLine,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
 import {
   Aviso,
   BloqueComoSeLee,
+  BloqueCorregir,
   BloqueElInforme,
   BloqueLosLimites,
   BloqueQueEscribir,
@@ -21,16 +23,17 @@ import {
 /**
  * Guía de uso: versión larga, en pantalla completa.
  *
- * Reutiliza los cuatro bloques de la guía rápida y añade glosario, privacidad y
- * preguntas frecuentes. La estructura visual es deliberadamente la misma que la
- * pantalla de análisis —tarjeta principal con cabecera de icono más columna
- * lateral— para que la aplicación se lea como una sola pieza.
+ * Única guía de la aplicación, abierta desde la barra lateral. La estructura
+ * visual es deliberadamente la misma que la pantalla de análisis —tarjeta
+ * principal con cabecera de icono más columna lateral— para que la aplicación
+ * se lea como una sola pieza.
  */
 
 const SECCIONES = [
   { id: "escribir", titulo: "Qué escribir", icono: FileText },
   { id: "cadena", titulo: "Cómo se lee tu nota", icono: GitBranch },
   { id: "informe", titulo: "Cómo leer el informe", icono: Layers },
+  { id: "corregir", titulo: "Corregir el informe", icono: PencilLine },
   { id: "limites", titulo: "Qué es y qué no es", icono: ShieldCheck },
   { id: "glosario", titulo: "Glosario", icono: BookOpenCheck },
   { id: "privacidad", titulo: "Privacidad", icono: Lock },
@@ -59,7 +62,7 @@ const PREGUNTAS = [
   ],
   [
     "El informe propone algo que no me convence. ¿Qué hago?",
-    "Es lo esperable: son hipótesis para contrastar, no indicaciones. Puedes añadir una nota y reanalizar solo esa sección con el botón que aparece al final de cada apartado.",
+    "Es lo esperable: son hipótesis para contrastar, no indicaciones. Corrígelo tú directamente o, si prefieres que lo rehaga la IA, añade una nota y reanaliza solo esa sección. Ver «Corregir el informe».",
   ],
   [
     "¿Por qué el análisis tarda tanto?",
@@ -93,6 +96,10 @@ export default function GuiaCompleta() {
 
         <Tarjeta id="informe" titulo="Cómo leer el informe" icono={Layers}>
           <BloqueElInforme />
+        </Tarjeta>
+
+        <Tarjeta id="corregir" titulo="Corregir el informe" icono={PencilLine}>
+          <BloqueCorregir />
         </Tarjeta>
 
         <Tarjeta id="limites" titulo="Qué es y qué no es" icono={ShieldCheck}>

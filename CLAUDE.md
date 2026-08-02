@@ -86,7 +86,7 @@ components/ReportView.tsx        el informe (el más delicado)
 components/edicionManual.tsx     primitivas de edición manual del informe
 components/Historial.tsx         guardar, listar, reabrir, respaldo
 components/SelectorBloques.tsx   elegir qué partes generar
-components/guiaContenido.tsx     contenido compartido por las dos guías
+components/guiaContenido.tsx     bloques de contenido de la guía de uso
 evals/                           casos de prueba y pruebas que no gastan API
 ```
 

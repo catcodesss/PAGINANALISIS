@@ -361,6 +361,63 @@ export function BloqueElInforme() {
   );
 }
 
+export function BloqueCorregir() {
+  return (
+    <div className="space-y-5">
+      <Intro
+        titulo="El informe es tuyo, no de la IA"
+        texto="Ninguna hipótesis es definitiva. Puedes reescribir, borrar lo que sobra y añadir lo que la IA no vio, sin volver a consultarla."
+      />
+
+      <Marca titulo="Corregir a mano">
+        <p className="text-sm leading-relaxed text-ink-muted">
+          Pasa el ratón sobre cualquier texto del informe y aparece{" "}
+          <span className="font-mono text-[11px] uppercase tracking-wide text-accent">
+            editar
+          </span>
+          . En las listas tienes además <em>borrar</em> —para una conducta que la
+          IA no debería haber producido— y <em>+ agregar</em>, para lo que
+          faltaba. Se editan los textos; las clasificaciones (manifiesta,
+          importancia, confianza) no, porque dejarían de concordar con el resto
+          del análisis.
+        </p>
+      </Marca>
+
+      <Marca titulo="Lo tuyo queda marcado como tuyo">
+        <div className="space-y-3">
+          <span className="inline-flex items-center gap-1.5 rounded border border-accent/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-accent">
+            <span aria-hidden="true">✎</span> Editado por ti
+          </span>
+          <p className="text-sm leading-relaxed text-ink-muted">
+            La sección que tocas queda señalada, y la marca viaja al informe
+            copiado, impreso y exportado a Word. Quien lo lea después podrá
+            distinguir tu criterio del de la IA — que es la misma razón por la
+            que la IA no entrecomilla lo que no está en tu nota.
+          </p>
+        </div>
+      </Marca>
+
+      <Aviso>
+        Si reanalizas una sección que ya editaste, la IA reescribiría tu texto.
+        Antes de hacerlo se te avisa y hay que confirmarlo.
+      </Aviso>
+
+      <Marca titulo="Cuando la IA se equivoca de forma llamativa">
+        <p className="text-sm leading-relaxed text-ink-muted">
+          Al final de cada sección hay un enlace para reportar el fallo. Copia un
+          informe técnico —modelo, versión del prompt y sección— que{" "}
+          <span className="text-ink">
+            no incluye tu nota ni el análisis generado
+          </span>
+          , porque el análisis describe el caso. Si para explicar el fallo hace
+          falta el texto, escríbelo tú con datos ficticios. Lo ves entero y
+          editable antes de copiarlo.
+        </p>
+      </Marca>
+    </div>
+  );
+}
+
 export function BloqueLosLimites() {
   return (
     <div className="space-y-5">
