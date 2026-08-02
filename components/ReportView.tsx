@@ -33,6 +33,12 @@ import {
   useEdicion,
 } from "./edicionManual";
 import { construirReporteFallo } from "@/lib/reporteFallo";
+import {
+  BloqueOrdenable,
+  BotonRestaurarOrden,
+  ProveedorOrden,
+  useOrden,
+} from "./ordenBloques";
 
 interface ReportViewProps {
   analisis: AnalisisFuncional;
@@ -121,6 +127,9 @@ const SECCIONES: SeccionIndice[] = [
   { id: "preguntas", titulo: "Preguntas para la próxima sesión" },
   { id: "intervencion", titulo: "Líneas de intervención" },
 ];
+
+/** Orden de fábrica, el punto de partida antes de que el clínico mueva nada. */
+const IDS_SECCIONES = SECCIONES.map((s) => s.id);
 
 function SinHallazgos() {
   return (
@@ -383,26 +392,28 @@ function Seccion({
   const editada = edicion?.seccionesEditadas.includes(id) ?? false;
 
   return (
-    <section
-      id={id}
-      className={`scroll-mt-24 border-b border-divider py-6 last:border-b-0 ${
-        editada ? "seccion-editada border-l-2 border-l-accent pl-4" : ""
-      }`}
-    >
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="section-title flex items-center gap-3 font-serif text-lg font-semibold text-ink sm:text-xl">
-          <span aria-hidden="true" className="h-5 w-1 rounded-full bg-accent" />
-          {titulo}
-          {editada && <MarcaEditado />}
-        </h2>
-        {extra}
-      </div>
-      {children}
-      <ReportarFallo seccionId={id} />
-      {camposReanalisis && (
-        <BloqueReanalisis campos={camposReanalisis} seccionId={id} />
-      )}
-    </section>
+    <BloqueOrdenable id={id} titulo={titulo}>
+      <section
+        id={id}
+        className={`scroll-mt-24 border-b border-divider py-6 last:border-b-0 ${
+          editada ? "seccion-editada border-l-2 border-l-accent pl-4" : ""
+        }`}
+      >
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h2 className="section-title flex items-center gap-3 font-serif text-lg font-semibold text-ink sm:text-xl">
+            <span aria-hidden="true" className="h-5 w-1 rounded-full bg-accent" />
+            {titulo}
+            {editada && <MarcaEditado />}
+          </h2>
+          {extra}
+        </div>
+        {children}
+        <ReportarFallo seccionId={id} />
+        {camposReanalisis && (
+          <BloqueReanalisis campos={camposReanalisis} seccionId={id} />
+        )}
+      </section>
+    </BloqueOrdenable>
   );
 }
 
@@ -1378,7 +1389,20 @@ function LeyendaConfianzaFlotante() {
   );
 }
 
-export default function ReportView({
+/**
+ * El proveedor va fuera del cuerpo del informe para que tanto los bloques como
+ * el índice lean el mismo orden: el índice lo necesita desde arriba, y un
+ * componente no puede consumir un contexto que él mismo abre.
+ */
+export default function ReportView(props: ReportViewProps) {
+  return (
+    <ProveedorOrden idsPorDefecto={IDS_SECCIONES}>
+      <InformeOrdenable {...props} />
+    </ProveedorOrden>
+  );
+}
+
+function InformeOrdenable({
   analisis,
   referenciaCaso,
   onReferenciaCasoChange,
@@ -1387,10 +1411,18 @@ export default function ReportView({
   onAnalisisActualizado,
   onEditarSeccion,
 }: ReportViewProps) {
-  const seccionesVisibles = useMemo(
-    () => SECCIONES.filter((s) => seccionVisible(analisis, s.id)),
-    [analisis]
-  );
+  const orden = useOrden();
+
+  // El índice enseña los bloques en el orden en que están en pantalla, no en el
+  // de fábrica: si el clínico sube «Riesgo», también sube en el índice.
+  const seccionesVisibles = useMemo(() => {
+    const visibles = SECCIONES.filter((s) => seccionVisible(analisis, s.id));
+    if (!orden) return visibles;
+    return orden
+      .ordenar(visibles.map((s) => s.id))
+      .map((id) => visibles.find((s) => s.id === id))
+      .filter((s): s is SeccionIndice => s !== undefined);
+  }, [analisis, orden]);
   const ids = useMemo(() => seccionesVisibles.map((s) => s.id), [seccionesVisibles]);
   const activa = useSeccionActiva(ids);
 
@@ -1472,10 +1504,14 @@ export default function ReportView({
             </p>
           )}
         </div>
-        <p className="mt-3 text-xs text-ink-muted">
-          Los niveles de confianza indican qué tan respaldada está cada
-          hipótesis por evidencia explícita en la nota (alta, media o baja).
-        </p>
+        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <p className="text-xs text-ink-muted">
+            Los niveles de confianza indican qué tan respaldada está cada
+            hipótesis por evidencia explícita en la nota (alta, media o baja).
+            Puedes arrastrar los bloques para ordenarlos a tu gusto.
+          </p>
+          <BotonRestaurarOrden />
+        </div>
       </header>
 
       <IndiceMovil secciones={seccionesVisibles} activa={activa} />
@@ -1483,8 +1519,12 @@ export default function ReportView({
       <div className="lg:flex lg:items-start lg:gap-10">
         <IndiceLateral secciones={seccionesVisibles} activa={activa} />
 
-        <div className="min-w-0 flex-1">
-          {/* Datos faltantes: lo primero que debe revisar el terapeuta, antes de confiar en el resto del análisis. */}
+        {/* flex-col: los bloques se reordenan con `order` de CSS, sin moverse
+            del árbol de React. Ver components/ordenBloques.tsx. */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Datos faltantes va primero de fábrica —es lo que hay que revisar antes
+              de confiar en el resto—, pero el clínico puede recolocarlo. */}
+          <BloqueOrdenable id="datos-faltantes" titulo="Datos faltantes">
           <section id="datos-faltantes" className="scroll-mt-24 mb-8">
             <div className="mb-3 flex items-center gap-3">
               <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
@@ -1512,8 +1552,10 @@ export default function ReportView({
               seccionId="datos-faltantes"
             />
           </section>
+          </BloqueOrdenable>
 
           {/* Riesgo: misma prioridad que datos faltantes, por su relevancia de seguridad clínica. */}
+          <BloqueOrdenable id="riesgo" titulo="Riesgo">
           <section id="riesgo" className="scroll-mt-24 mb-8">
             <div className="mb-3 flex items-center gap-3">
               <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
@@ -1547,6 +1589,7 @@ export default function ReportView({
             <ReportarFallo seccionId="riesgo" />
             <BloqueReanalisis campos={["riesgo"]} seccionId="riesgo" />
           </section>
+          </BloqueOrdenable>
 
           {/*
             Avisos metodológicos del validador del servidor, no del modelo.
@@ -1556,6 +1599,7 @@ export default function ReportView({
             para revisar, no errores.
           */}
           {analisis.alertas.length > 0 && (
+            <BloqueOrdenable id="alertas" titulo="Revisiones sugeridas">
             <section id="alertas" className="scroll-mt-24 mb-8">
               <div className="mb-3 flex items-center gap-3">
                 <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
@@ -1581,9 +1625,11 @@ export default function ReportView({
                 ))}
               </ul>
             </section>
+            </BloqueOrdenable>
           )}
 
           {/* Formulación funcional destacada — el titular del informe. */}
+          <BloqueOrdenable id="hipotesis-principal" titulo="Formulación destacada">
           <section id="hipotesis-principal" className="scroll-mt-24 mb-8">
             {hipotesisDestacada && hipotesisDestacada.enunciado ? (
               <div
@@ -1626,6 +1672,7 @@ export default function ReportView({
               <SinHallazgos />
             )}
           </section>
+          </BloqueOrdenable>
 
           <Seccion id="resumen" titulo="Resumen clínico" camposReanalisis={["resumen_clinico"]}>
             {analisis.resumen_clinico ? (
