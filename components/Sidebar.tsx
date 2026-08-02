@@ -6,7 +6,6 @@ import {
   FolderOpen,
   Heart,
   Layers,
-  LayoutTemplate,
   Library,
   Settings,
 } from "lucide-react";
@@ -23,7 +22,6 @@ interface ItemNav {
 const ITEMS_NAV: ItemNav[] = [
   { icono: FilePenLine, etiqueta: "Nuevo análisis", vista: "analisis" },
   { icono: FolderOpen, etiqueta: "Mis análisis" },
-  { icono: LayoutTemplate, etiqueta: "Plantillas" },
   { icono: Library, etiqueta: "Biblioteca clínica" },
   { icono: BookOpenCheck, etiqueta: "Guía de uso", vista: "guia" },
   { icono: Settings, etiqueta: "Configuración" },
