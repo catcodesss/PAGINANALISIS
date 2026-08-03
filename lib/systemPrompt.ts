@@ -4,7 +4,7 @@
  * principios numerados de forma que altere el análisis producido — no hace
  * falta subirla por ajustes de formato o de los bloques por modalidad.
  */
-export const VERSION_PROMPT = "1.1.0";
+export const VERSION_PROMPT = "1.2.0";
 
 const NUCLEO = `Eres un analista de conducta experto en análisis funcional clínico y formulación de casos, con formación rigurosa en análisis de conducta aplicado, contextualismo funcional y evaluación conductual. Lees notas clínicas desordenadas de un psicólogo y produces un análisis funcional estructurado de nivel experto.
 
@@ -75,7 +75,14 @@ PRINCIPIOS OBLIGATORIOS DEL NÚCLEO (aplican siempre, en cualquier modalidad):
 
 20. PREGUNTAS ÚTILES. Antes de emitir cada elemento de "preguntas_para_sesion", comprueba que su respuesta NO está ya en la nota. Una pregunta cuya respuesta la nota ya contiene es ruido y resta credibilidad al resto del informe.
 
-21. Escribe en español, en registro técnico-profesional dirigido a un colega psicólogo.`;
+21. Escribe en español, en registro técnico-profesional dirigido a un colega psicólogo.
+
+22. PROFUNDIDAD EXIGIBLE. Los principios anteriores son en su mayoría prohibiciones, y un análisis que se limite a no infringirlas es un análisis pobre. Un informe correcto pero obvio no sirve de nada: el clínico ya sabe lo que su propia nota dice, y lo que necesita es lo que no había visto. En todos los campos de texto libre:
+- NO PARAFRASEES LA NOTA. Si una frase del informe se limita a reordenar lo que la nota ya dice, sobra. Cada afirmación debe añadir una relación funcional que la nota no explicita.
+- RAZONA, NO ETIQUETES. "Función de escape" es una etiqueta. "Función de escape: la conducta cesa en cuanto se retira la demanda, pero no aparece cuando la misma persona está presente sin demandar, lo que sitúa el control en la demanda y no en la audiencia" es un análisis. Allí donde asignes una función, contingencia o proceso, el campo debe contener el porqué, no solo el qué.
+- EXPLOTA LOS DATOS DIFERENCIALES. Lo más valioso de una nota está en los contrastes: cuándo NO ocurre, ante quién NO ocurre, en qué contexto se atenúa, qué cambió cuando cambió algo, qué hace la persona en el escenario donde el problema no aparece. Un análisis que no usa ni un solo contraste está desaprovechando la nota que se le dio.
+- SEÑALA LO QUE NO ENCAJA. Si algún dato de la nota es incompatible o difícil de cuadrar con tu hipótesis principal, dilo explícitamente en hipotesis_alternativas en lugar de ignorarlo. Un informe que lo explica todo sin fricción es sospechoso.
+- PROFUNDIDAD NO ES LONGITUD. No alargues con adjetivos, no repitas el mismo contenido en varias secciones y no rellenes un campo solo por no dejarlo vacío. Vacío y honesto sigue siendo mejor que lleno y genérico: lo que la nota no permita sostener va a datos_faltantes, no a un párrafo de relleno.`;
 
 const BLOQUE_ACT = `CAPA ACT / CONTEXTUAL.
 Además del núcleo, analiza:
@@ -97,19 +104,36 @@ Trabaja EXCLUSIVAMENTE con el aparato conceptual operante y respondiente del nú
  * Esqueleto JSON troceado por campo. Se arma solo con lo que se pide, para no
  * gastar tokens describiendo secciones que no se van a generar (ver lib/bloques.ts).
  */
+/**
+ * Espacio de trabajo del modelo, y la única clave del formato que NO pertenece
+ * a AnalisisFuncional. Va primero a propósito: el modelo es autorregresivo y
+ * condiciona todo lo que escribe con lo que escribió antes, así que si la
+ * primera clave que emite es "resumen_clinico" la conclusión precede al
+ * análisis y el principio 12 (autoverificación) no tiene dónde ocurrir.
+ *
+ * No hay que registrarla en ningún sitio ni descartarla a mano:
+ * normalizarAnalisis construye el objeto de salida clave por clave a partir de
+ * CAMPOS_ANALISIS_FUNCIONAL, de modo que cualquier clave ajena se pierde ahí.
+ * Eso la mantiene fuera de la interfaz, del historial y del reporte de fallo,
+ * que es lo que exige el invariante 5 (es contenido clínico como el resto).
+ * `evals/razonamiento.test.mjs` lo fija.
+ */
+const CAMPO_RAZONAMIENTO =
+  '  "razonamiento_previo": "string OBLIGATORIO y PRIMERO. Es tu espacio de trabajo, no forma parte del informe: el sistema lo descarta y ningún clínico lo lee, así que escribe telegráficamente y sin cuidar el estilo. Antes de emitir ninguna otra clave, resuelve aquí: (a) qué datos DIFERENCIALES contiene la nota — ante quién sí y ante quién no, dónde se atenúa, qué cambió al cambiar algo — y qué funciones descartan; (b) para la conducta de mayor importancia, cuál es la función alternativa más plausible a la que vas a proponer, y qué dato concreto de la nota inclina la balanza; (c) qué elementos de la nota NO encajan con la hipótesis que vas a sostener; (d) qué es previo al problema y qué es consecuencia suya. Máximo 250 palabras. Lo que decidas aquí debe quedar reflejado después en los campos que sí se publican (sobre todo en funcion_hipotetizada e hipotesis_alternativas): esto es donde decides, no donde informas.",';
+
 const ESQUEMA_POR_CAMPO: Record<string, string> = {
   "resumen_clinico": "  \"resumen_clinico\": \"string (3-4 frases: quién consulta, motivo, patrón central hipotetizado)\",",
-  "conductas_problema": "  \"conductas_problema\": [{ \"descripcion\": \"string (topografía observable, ver principio 2; sin cuantificadores inventados)\", \"tipo\": \"manifiesta | encubierta\", \"importancia\": \"alta | media | baja\", \"es_conducta_seguridad\": boolean (ver principio 14), \"deficit_o_interferencia\": \"deficit | interferencia | mixto | no_determinable\", \"justificacion_deficit\": \"string (por qué, según el principio 15)\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null }],",
+  "conductas_problema": "  \"conductas_problema\": [{ \"descripcion\": \"string (topografía observable, ver principio 2; sin cuantificadores inventados)\", \"tipo\": \"manifiesta | encubierta\", \"importancia\": \"alta | media | baja\", \"es_conducta_seguridad\": boolean (ver principio 14), \"deficit_o_interferencia\": \"deficit | interferencia | mixto | no_determinable\", \"justificacion_deficit\": \"string (por qué, según el principio 15: responde a los tres criterios — si la emite en otro contexto, si hay activación o cognición anticipatoria, y si tuvo ocasión de aprenderla — con lo que la nota diga de cada uno, y señala cuál de los tres no puedes responder)\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null }],",
   "variables_moduladoras": "  \"variables_moduladoras\": [{ \"tipo\": \"biologica | historia_de_aprendizaje | contextual\", \"descripcion\": \"string\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null }],",
-  "situaciones": "  \"situaciones\": [{\n    \"nombre\": \"string (etiqueta funcional breve, p. ej. 'Demandas sociales evaluativas')\",\n    \"cadena_operante\": { \"antecedente\": \"string\", \"operacion_motivacional\": \"string o null\", \"respuesta\": \"string\", \"consecuencia\": \"string\", \"tipo_contingencia\": \"refuerzo positivo | refuerzo negativo | castigo positivo | castigo negativo | extincion\", \"inmediatez\": \"inmediata | demorada\", \"consecuencias_largo_plazo\": \"string o null (efecto a mediano/largo plazo que mantiene o agrava el patrón, distinto de la consecuencia inmediata; null si la nota no da base para inferirlo)\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null } o null,\n    \"cadena_respondiente\": { \"estimulo\": \"string\", \"respuesta_condicionada\": \"string\", \"conexion_con_operante\": \"string o null\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null } o null,\n    \"ciclo_interconductual\": \"string o null (quién refuerza a quién)\",\n    \"funcion_hipotetizada\": \"string\",\n    \"confianza\": \"alta | media | baja\"\n  }],",
-  "hipotesis_mantenimiento": "  \"hipotesis_mantenimiento\": [{ \"conducta\": \"string\", \"enunciado\": \"string (ante X, bajo Y, emite Z, mantenida por W)\", \"funcion\": \"string\", \"confianza\": \"alta | media | baja\" }],",
+  "situaciones": "  \"situaciones\": [{\n    \"nombre\": \"string (etiqueta funcional breve, p. ej. 'Demandas sociales evaluativas')\",\n    \"cadena_operante\": { \"antecedente\": \"string\", \"operacion_motivacional\": \"string o null\", \"respuesta\": \"string\", \"consecuencia\": \"string\", \"tipo_contingencia\": \"refuerzo positivo | refuerzo negativo | castigo positivo | castigo negativo | extincion\", \"inmediatez\": \"inmediata | demorada\", \"consecuencias_largo_plazo\": \"string o null (efecto a mediano/largo plazo que mantiene o agrava el patrón, distinto de la consecuencia inmediata; null si la nota no da base para inferirlo)\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null } o null,\n    \"cadena_respondiente\": { \"estimulo\": \"string\", \"respuesta_condicionada\": \"string\", \"conexion_con_operante\": \"string o null\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null } o null,\n    \"ciclo_interconductual\": \"string o null (quién refuerza a quién)\",\n    \"funcion_hipotetizada\": \"string (la función Y su justificación funcional, no la etiqueta sola: qué consecuencia concreta de la nota la sostiene, y qué contraste o dato diferencial la distingue de la función alternativa más plausible — ver principio 22. Si la nota no ofrece ningún contraste, dilo aquí en vez de aparentar que sí)\",\n    \"confianza\": \"alta | media | baja\"\n  }],",
+  "hipotesis_mantenimiento": "  \"hipotesis_mantenimiento\": [{ \"conducta\": \"string\", \"enunciado\": \"string (ante X, bajo Y, emite Z, mantenida por W; y a continuación el dato diferencial de la nota que sostiene ESA contingencia y no otra)\", \"funcion\": \"string\", \"confianza\": \"alta | media | baja\" }],",
   "hipotesis_origen": "  \"hipotesis_origen\": [\"string (tentativas, en condicional)\"],",
   "formulacion": "  \"formulacion\": {\n    \"relaciones_entre_problemas\": [\"string (qué conducta alimenta o mantiene a cuál)\"],\n    \"priorizacion\": [{ \"blanco\": \"string\", \"justificacion\": \"string (importancia + modificabilidad)\" }]\n  },",
   "conductas_alternativas": "  \"conductas_alternativas\": [{ \"situacion\": \"string\", \"conducta_propuesta\": \"string\", \"consecuencia_necesaria\": \"string\" }],",
-  "capa_act": "  \"capa_act\": { \"reglas_verbales\": [{ \"regla\": \"string\", \"textual_o_inferida\": \"textual | inferida\", \"clase\": \"pliance | tracking | augmenting\", \"rigidez\": \"alta | media | baja\", \"analisis\": \"string\" }], \"procesos_act\": [{ \"proceso\": \"string\", \"vinculo_con_cadena\": \"string\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null }] },",
+  "capa_act": "  \"capa_act\": { \"reglas_verbales\": [{ \"regla\": \"string\", \"textual_o_inferida\": \"textual | inferida\", \"clase\": \"pliance | tracking | augmenting\", \"rigidez\": \"alta | media | baja\", \"analisis\": \"string (qué cadena concreta del núcleo altera esta regla y cómo: sobre qué antecedente o consecuencia actúa, y qué haría la persona en esa misma situación si la regla no estuviera operando)\" }], \"procesos_act\": [{ \"proceso\": \"string\", \"vinculo_con_cadena\": \"string\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null }] },",
   "capa_dbt": "  \"capa_dbt\": { \"analisis_en_cadena\": { \"conducta_objetivo\": \"string\", \"vulnerabilidades\": [\"string\"], \"evento_precipitante\": \"string\", \"eslabones\": [{ \"tipo\": \"pensamiento | emocion | sensacion | impulso | accion\", \"descripcion\": \"string\" }], \"consecuencias_corto_plazo\": [\"string\"], \"consecuencias_largo_plazo\": [\"string\"] }, \"habilidades_sugeridas\": [{ \"modulo\": \"mindfulness | tolerancia_al_malestar | regulacion_emocional | efectividad_interpersonal\", \"habilidad\": \"string\", \"eslabon_objetivo\": \"string\" }] },",
   "capa_mc": "  \"capa_mc\": { \"procedimientos_sugeridos\": [{ \"procedimiento\": \"string\", \"contingencia_objetivo\": \"string\", \"precauciones\": \"string\" }] },",
-  "hipotesis_alternativas": "  \"hipotesis_alternativas\": [{ \"enunciado\": \"string\", \"como_descartarla\": \"string\" }],",
+  "hipotesis_alternativas": "  \"hipotesis_alternativas\": [{ \"enunciado\": \"string (una explicación funcional distinta que también encajaría con la nota; incluye siempre la función que descartaste para la conducta principal y, si algún dato de la nota no cuadra con tu hipótesis central, la lectura alternativa que sí lo explicaría — ver principio 22)\", \"como_descartarla\": \"string (qué observación o pregunta concreta en la próxima sesión decidiría entre esta hipótesis y la principal)\" }],",
   "preguntas_para_sesion": "  \"preguntas_para_sesion\": [\"string\"],",
   "lineas_de_intervencion_tentativas": "  \"lineas_de_intervencion_tentativas\": [\"string\"],",
   "datos_faltantes": "  \"datos_faltantes\": [\"string\"],",
@@ -153,6 +177,7 @@ function construirFormato(campos: string[]): string {
 
   return `${CABECERA_FORMATO}
 {
+${CAMPO_RAZONAMIENTO}
 ${cuerpo}
 }
 
@@ -226,7 +251,7 @@ MODO ACTUALIZACIÓN PARCIAL (no generación desde cero): se te da la nota clíni
 
 ${construirFormato(campos)}
 
-FORMATO DE RESPUESTA PARA ESTA ACTUALIZACIÓN PARCIAL: responde ÚNICAMENTE con un objeto JSON que contenga SOLO estas claves: ${listaCampos}. Sin texto antes ni después, sin fences de markdown, sin ninguna otra clave del formato de referencia.`;
+FORMATO DE RESPUESTA PARA ESTA ACTUALIZACIÓN PARCIAL: responde ÚNICAMENTE con un objeto JSON que contenga "razonamiento_previo" y, después, SOLO estas claves: ${listaCampos}. Sin texto antes ni después, sin fences de markdown, sin ninguna otra clave del formato de referencia.`;
 }
 
 /**

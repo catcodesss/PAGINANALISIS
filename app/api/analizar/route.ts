@@ -25,11 +25,25 @@ const LONGITUD_MINIMA = 100;
 const LONGITUD_MAXIMA = Number(process.env.LONGITUD_MAXIMA_NOTA ?? 40000);
 
 /**
+ * A 0.2 el modelo toma siempre el camino más típico, y típico sale genérico:
+ * es la calibración correcta para que las evals sean comparables entre
+ * ejecuciones, y la equivocada para la profundidad del informe (ver principio
+ * 22 del prompt). Por eso producción va más alta y las evals fijan la suya:
+ * córrelas con OPENAI_TEMPERATURA=0.2 o los números no se podrán comparar con
+ * las marcas anteriores.
+ */
+const TEMPERATURA = Number(process.env.OPENAI_TEMPERATURA ?? 0.5);
+
+/**
  * Techo de salida proporcional a lo que se pide. No cambia el precio por token,
  * pero evita que una respuesta se descontrole y corta antes si algo va mal.
+ *
+ * El tope global es el máximo real de gpt-4o (16 384). Antes estaba en 12 000 y
+ * mordía: el informe completo con las tres capas pide 23 campos, y ahora además
+ * gasta el razonamiento previo antes de empezar a escribirlo.
  */
 function techoDeSalida(numeroDeCampos: number): number {
-  return Math.min(12000, 1500 + numeroDeCampos * 900);
+  return Math.min(16000, 2000 + numeroDeCampos * 1100);
 }
 
 function respuestaError(error: string, message: string, status: number) {
@@ -110,7 +124,7 @@ export async function POST(request: Request) {
     const respuesta = await openai.chat.completions.create({
       model: MODELO,
       max_tokens: techoDeSalida(campos.length),
-      temperature: 0.2,
+      temperature: TEMPERATURA,
       seed: SEED,
       messages: [
         { role: "system", content: construirSystemPrompt(campos) },

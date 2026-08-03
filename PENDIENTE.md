@@ -1,10 +1,11 @@
 # Pendiente
 
-Estado a 01/08/2026. Ordenado por lo que más importa.
+Estado a 03/08/2026. Ordenado por lo que más importa.
 
-Línea base actual (`node evals/run.mjs --endpoint=http://localhost:3000/api/analizar`):
-9 casos, 42/47 comprobaciones, integridad de citas 75/77 (97%). Ver la marca
-detallada por caso en CLAUDE.md.
+Línea base actual (`npm run dev:evals` + `node evals/run.mjs --endpoint=http://localhost:3000/api/analizar`):
+9 casos, 43/47 comprobaciones, integridad de citas 61/61 (100%), con el prompt
+v1.2.0 a temperatura 0.2. La anterior, con la v1.1.0: 42/47 y 75/77 (97%).
+Ver la marca detallada por caso en CLAUDE.md.
 
 ---
 
@@ -22,6 +23,51 @@ tiene un problema de base legal, no técnico.
 - [ ] **Valorar residencia de datos en Europa** si los usuarios son europeos.
 - [ ] **Revisar que el texto de privacidad de `app/page.tsx`** siga describiendo
       la configuración real de la cuenta una vez hechos los puntos anteriores.
+
+## 1 bis. Profundidad del análisis
+
+Usuarios reportan (30/07/2026) que los informes se quedan básicos. Diagnóstico:
+el prompt es casi todo prohibiciones — resultado de la auditoría de citas — y
+ante una lista de prohibiciones la forma más segura de no violar ninguna es
+decir poco. Hecho en la v1.2.0 del prompt: espacio de razonamiento previo,
+principio 22 (profundidad exigible), exigencias de razonamiento en
+`funcion_hipotetizada`, `enunciado`, `justificacion_deficit`,
+`hipotesis_alternativas` y `reglas_verbales.analisis`, temperatura de producción
+a 0.5 y techo de salida de 12 000 a 16 000. Queda:
+
+- [x] **Medir si sirvió.** Hecho el 03/08/2026 con `npm run dev:evals` (fija la
+      temperatura a 0.2). **No hay regresión: 43/47 frente a 42/47, y las citas
+      pasan de 75/77 (97%) a 61/61 (100%).** Como estaba previsto, estas evals
+      miden ausencia de fallos y no profundidad, así que el número no acredita
+      que el informe sea mejor; lo que sí descarta es que la v1.2.0 rompiera algo.
+      En el caso 09 el modelo pasó a detectar la ideación y la escalada de
+      consumo, que era el fallo intermitente documentado.
+- [ ] **Confirmar si la v1.2.0 perdió cobertura.** Efecto secundario detectado al
+      medir: la v1.2.0 produce **61 entradas de evidencia frente a 77 (−21%)**, y
+      los dos fallos nuevos de la corrida (`urgencias-palpitaciones` en el caso 01,
+      `cita-mueble` en el 05) son de contenido que desaparece, no de contenido
+      erróneo. En el caso 01 se comprobó en vivo que las visitas a urgencias no
+      figuran en ninguna parte del informe. Hipótesis: el principio 22 pide
+      profundidad y el modelo la paga en amplitud. `cita-mueble` ya se verificó
+      intermitente —pasa al repetir la llamada—, así que hace falta `--reps=3`
+      para separar varianza de efecto real antes de tocar el prompt. Si se
+      confirma, el arreglo probable no es bajar la exigencia de profundidad sino
+      hacer explícito en el principio 22 que la profundidad se añade a la
+      cobertura y no la sustituye: ninguna conducta de la nota puede quedar fuera.
+- [ ] **Conseguir informes reales que los usuarios calificaran de básicos.**
+      Sin ellos se está optimizando a ciegas: "básico" puede ser obvio,
+      genérico o corto, y cada causa tiene arreglo distinto.
+- [ ] **Escribir a mano un análisis funcional patrón de oro** sobre un caso
+      ficticio, del nivel objetivo. Sirve a la vez de ejemplo few-shot en el
+      prompt y de rúbrica para una eval de profundidad. Hoy ninguna prueba mide
+      si el informe es clínicamente profundo, y lo que no se mide no mejora.
+      Solo lo puede escribir el autor.
+- [ ] **Evaluar el cambio de modelo.** `gpt-4o` es de 2024, no razona antes de
+      responder, y desde 2026 es además de los caros ($2,50/1M de entrada frente
+      a $1,25 de GPT-5 o $0,20 de GPT-5.6 Luna). El análisis funcional es
+      inferencia causal multipaso: es lo que hacen bien los modelos de
+      razonamiento. Probablemente la palanca mayor y la más barata; requiere
+      correr las evals con los dos modelos antes de decidir.
 
 ## 2. Robustez técnica
 

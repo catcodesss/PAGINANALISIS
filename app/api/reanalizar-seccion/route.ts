@@ -9,6 +9,8 @@ import { CAMPOS_ANALISIS_FUNCIONAL, type AnalisisFuncional } from "@/lib/types";
 const MODELO = "gpt-4o";
 // Misma semilla que app/api/analizar/route.ts: mejor esfuerzo de determinismo.
 const SEED = Number(process.env.OPENAI_SEED ?? 42);
+// Y la misma temperatura, por la misma razón (ver el comentario de esa ruta).
+const TEMPERATURA = Number(process.env.OPENAI_TEMPERATURA ?? 0.5);
 const RUTA = "reanalizar";
 const LIMITE_PETICIONES = Number(process.env.LIMITE_REANALISIS_POR_VENTANA ?? 20);
 const VENTANA_MS = Number(process.env.LIMITE_VENTANA_MS ?? 10 * 60 * 1000);
@@ -131,8 +133,10 @@ export async function POST(request: Request) {
     const openai = new OpenAI({ apiKey });
     const respuesta = await openai.chat.completions.create({
       model: MODELO,
-      max_tokens: 6000,
-      temperature: 0.2,
+      // Mismo criterio que en /api/analizar: la temperatura baja se reserva
+      // para las evals, y el techo deja sitio al razonamiento previo.
+      max_tokens: 8000,
+      temperature: TEMPERATURA,
       seed: SEED,
       messages: [
         {

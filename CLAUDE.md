@@ -57,6 +57,19 @@ razón; si algo obliga a tocarlos, avisa antes.
    clínico lo escribe el profesional a mano, con datos ficticios, y lo ve antes
    de copiar. `evals/reporteFallo.test.mjs` lo fija.
 
+   **El razonamiento previo del modelo es lo mismo, y más crudo.** El formato
+   pide `razonamiento_previo` como PRIMERA clave del JSON: es donde el modelo
+   resuelve los diferenciales y descarta funciones antes de escribir el informe
+   (sin ese espacio, el principio 12 pide una autoverificación que no tiene
+   dónde ocurrir, porque el primer token emitido ya es la conclusión). Ese
+   borrador nombra a la persona y describe el caso sin las cautelas del informe
+   final, así que no sale del servidor. No se descarta con una línea: se cae
+   solo, porque `normalizarAnalisis` construye la salida clave por clave desde
+   `CAMPOS_ANALISIS_FUNCIONAL` y cualquier clave ajena se pierde ahí. No añadas
+   `razonamiento_previo` a `AnalisisFuncional` ni hagas el normalizador
+   permisivo con un `...json`: es justo lo que lo publicaría.
+   `evals/razonamiento.test.mjs` lo fija.
+
 6. **Lo que escribe el clínico no se presenta como generado por la IA.** Es el
    invariante 2 en el sentido inverso. Editar a mano marca la sección
    (`secciones_editadas`), y la marca viaja al informe copiado, impreso y
@@ -117,20 +130,45 @@ node --experimental-strip-types evals/citas.test.mjs    # 10 pruebas
 node --experimental-strip-types evals/pii.test.mjs      # 11 pruebas
 node evals/validadores.test.mjs                         # 9 pruebas
 node evals/reporteFallo.test.mjs                        # 7 pruebas
+node --experimental-strip-types evals/razonamiento.test.mjs  # 10 pruebas
 ```
 
 Las evals completas sí gastan (9 llamadas, una por caso). Ejecuta antes y
 después de tocar el prompt, y anota los dos números en el commit:
 
+Son **dos consolas**: la primera se queda ocupada con el servidor.
+
 ```bash
-npm run dev
-node evals/run.mjs --endpoint=http://localhost:3000/api/analizar
+npm run dev:evals                                          # consola 1
+node evals/run.mjs --endpoint=http://localhost:3000/api/analizar   # consola 2
 ```
 
-**Marca actual (01/08/2026): 9 casos, 42/47 comprobaciones (1 rep),
-integridad de citas 75/77 (97%).** Si baja, algo se rompió. Con `--reps=3`
-sobre los 6 primeros casos: 86/90, citas 100%. Fallos conocidos, no
-regresiones — las tres son fallos reales del modelo, intermitentes,
+**La temperatura hay que fijarla o los números no se comparan.** Producción va
+a 0.5 desde la v1.2.0 del prompt: a 0.2 el modelo toma siempre el camino más
+típico y el informe salía correcto pero obvio, que es la queja real de los
+usuarios. Las marcas de abajo se midieron a 0.2, así que `dev:evals` la fija
+ahí (`evals/dev-evals.mjs`). **No uses `npm run dev` para medir**: arranca a
+0.5 y los números salen incomparables sin avisar de nada.
+
+No escribas `OPENAI_TEMPERATURA=0.2 npm run dev`: eso es sintaxis de bash, y en
+PowerShell —que es la consola de este proyecto— falla la asignación pero el
+resto de la línea se ejecuta igual, así que las evals corren a la temperatura
+que no era y el resultado parece bueno. Ya pasó una vez.
+
+**Marca actual (03/08/2026, prompt v1.2.0): 9 casos, 43/47 comprobaciones
+(1 rep), integridad de citas 61/61 (100%).** Si baja, algo se rompió.
+Marca anterior, con el prompt v1.1.0 (01/08/2026): 42/47 y 75/77 (97%).
+Con `--reps=3` sobre los 6 primeros casos, en la v1.1.0: 86/90, citas 100%.
+
+**Vigilar la cobertura, que no la mide ninguna comprobación.** La v1.2.0
+subió el acierto pero produjo menos material: 61 entradas de evidencia frente
+a 77 (−21%), y en el caso 01 tres conductas problema donde antes se recogían
+más. Los dos fallos nuevos de esta corrida son de ese tipo — contenido que
+desaparece, no contenido erróneo. Es coherente con el cambio: el principio 22
+pide profundidad y el modelo parece pagarla en amplitud. Antes de tocar nada
+hace falta separar varianza de efecto real con `--reps=3`.
+
+Fallos conocidos, no regresiones — fallos reales del modelo, intermitentes,
 verificados en vivo, no fallos de calibración del test:
 - `respiracion-no-como-intervencion` (caso 01): el modelo a veces sugiere
   "Respiración consciente/profunda" en `capa_dbt.habilidades_sugeridas`,
@@ -143,7 +181,16 @@ verificados en vivo, no fallos de calibración del test:
   devolvió `riesgo.evaluado: true` con `indicadores: []` pese a que la nota
   describía ideación explícita. Por eso existe el validador 5 de
   `lib/validadores.ts` (`riesgo_posible_no_detectado`): no depende de que el
-  modelo acierte, escanea la nota directamente.
+  modelo acierte, escanea la nota directamente. En la corrida de la v1.2.0
+  este acertó: detectó ideación y escalada de consumo, y falló en cambio
+  `no-omite-derivacion`.
+- `cita-mueble` (caso 05): intermitente. Falló en la corrida y pasó en una
+  llamada idéntica inmediatamente después — el modelo elige a veces un rango
+  de líneas que deja fuera la expresión textual del paciente. La comprobación
+  exige que esté dentro de `evidencia`, no en cualquier parte del informe.
+- `urgencias-palpitaciones` (caso 01): las visitas a urgencias desaparecieron
+  del informe entero. Verificado en vivo sobre la respuesta real. Es el fallo
+  de cobertura descrito arriba, no un problema de la comprobación.
 
 Lo que no cubre ninguna prueba: que el informe sea *clínicamente útil*. Eso solo
 lo juzga el autor, que es psicólogo.
