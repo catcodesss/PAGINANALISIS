@@ -56,6 +56,27 @@ function leerCrudoEnServidor(): string {
   return "";
 }
 
+/**
+ * El orden guardado, sin hooks: lo necesita la exportación, que se dispara
+ * desde un manejador de evento y no desde un render. Reconcilia igual que el
+ * proveedor — descarta ids desconocidos y añade al final los que falten — para
+ * que un orden viejo nunca haga desaparecer un bloque del documento.
+ */
+export function leerOrdenGuardado(idsPorDefecto: string[]): string[] {
+  let guardado: unknown = null;
+  try {
+    const crudo = leerCrudo();
+    guardado = crudo ? JSON.parse(crudo) : null;
+  } catch {
+    return idsPorDefecto;
+  }
+  if (!Array.isArray(guardado)) return idsPorDefecto;
+  const conocidos = guardado.filter(
+    (id): id is string => typeof id === "string" && idsPorDefecto.includes(id)
+  );
+  return [...conocidos, ...idsPorDefecto.filter((id) => !conocidos.includes(id))];
+}
+
 function escribirCrudo(valor: string) {
   try {
     localStorage.setItem(CLAVE_ALMACEN, valor);

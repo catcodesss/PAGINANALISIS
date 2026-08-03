@@ -81,11 +81,42 @@ function formatearSituacion(s: Situacion): string {
   return lineas.join("\n");
 }
 
-/** Texto plano formateado para copiar al portapapeles, en el mismo orden que el informe visual. */
+/** Separador entre dos apartados que comparten un mismo bloque reordenable. */
+const SALTO = "\n";
+
+/**
+ * Orden de fábrica de los bloques. Usa los mismos ids que
+ * components/ReportView.tsx#SECCIONES: es lo que permite que el informe
+ * exportado salga en el orden que el clínico dejó en pantalla.
+ *
+ * Algunos bloques agrupan varios apartados del texto —«situaciones» arrastra
+ * la acomodación del entorno, «modalidad» las tres capas— porque en pantalla
+ * también se mueven juntos.
+ */
+export const ORDEN_BLOQUES_POR_DEFECTO = [
+  "datos-faltantes",
+  "riesgo",
+  "alertas",
+  "hipotesis-principal",
+  "resumen",
+  "conductas",
+  "variables-moduladoras",
+  "situaciones",
+  "hipotesis-mantenimiento",
+  "formulacion",
+  "conductas-alternativas",
+  "modalidad",
+  "hipotesis-alternativas",
+  "preguntas",
+  "intervencion",
+];
+
 export function formatearInformeTexto(
   analisis: AnalisisFuncional,
   referenciaCaso: string,
-  fecha: string
+  fecha: string,
+  /** Orden elegido por el clínico. Sin él, el de fábrica. */
+  orden: string[] = ORDEN_BLOQUES_POR_DEFECTO
 ): string {
   const partes: string[] = [];
   partes.push("ACIA — ANÁLISIS DE CONDUCTA ASISTIDO POR IA");
@@ -109,9 +140,13 @@ export function formatearInformeTexto(
   }
   partes.push("");
 
-  partes.push(seccion("DATOS FALTANTES", listaOTexto(analisis.datos_faltantes)));
+  // Cada bloque se indexa por su id de seccion; se emiten al final en el
+  // orden que pida el clinico (ver ORDEN_BLOQUES_POR_DEFECTO).
+  const bloques: Record<string, string> = {};
 
-  partes.push(
+  bloques["datos-faltantes"] = (seccion("DATOS FALTANTES", listaOTexto(analisis.datos_faltantes)));
+
+  bloques["riesgo"] = (
     seccion(
       "RIESGO",
       analisis.riesgo.evaluado
@@ -125,7 +160,7 @@ export function formatearInformeTexto(
   // Las revisiones del validador acompañan al informe exportado: si se imprime o
   // se pega en una historia clínica, las advertencias viajan con él.
   if (analisis.alertas.length > 0) {
-    partes.push(
+    bloques["alertas"] = (
       seccion(
         "REVISIONES SUGERIDAS",
         analisis.alertas
@@ -138,9 +173,9 @@ export function formatearInformeTexto(
     );
   }
 
-  partes.push(seccion("RESUMEN CLÍNICO", analisis.resumen_clinico));
+  bloques["resumen"] = seccion("RESUMEN CLÍNICO", analisis.resumen_clinico);
 
-  partes.push(
+  bloques["conductas"] = (
     seccion(
       "CONDUCTAS PROBLEMA",
       analisis.conductas_problema
@@ -152,7 +187,7 @@ export function formatearInformeTexto(
     )
   );
 
-  partes.push(
+  bloques["variables-moduladoras"] = (
     seccion(
       "VARIABLES MODULADORAS",
       analisis.variables_moduladoras
@@ -161,14 +196,14 @@ export function formatearInformeTexto(
     )
   );
 
-  partes.push(
+  bloques["situaciones"] = (
     seccion(
       "ANÁLISIS POR SITUACIONES",
       analisis.situaciones.map(formatearSituacion).join("\n\n")
     )
   );
 
-  partes.push(
+  bloques["situaciones"] += SALTO + (
     seccion(
       "ACOMODACIÓN DEL ENTORNO",
       analisis.acomodacion_entorno
@@ -180,7 +215,7 @@ export function formatearInformeTexto(
     )
   );
 
-  partes.push(
+  bloques["hipotesis-mantenimiento"] = (
     seccion(
       "HIPÓTESIS DE MANTENIMIENTO",
       analisis.hipotesis_mantenimiento
@@ -192,11 +227,11 @@ export function formatearInformeTexto(
     )
   );
 
-  partes.push(
+  bloques["hipotesis-mantenimiento"] += SALTO + (
     seccion("HIPÓTESIS DE ORIGEN (TENTATIVAS)", listaOTexto(analisis.hipotesis_origen))
   );
 
-  partes.push(
+  bloques["formulacion"] = (
     seccion(
       "FORMULACIÓN DEL CASO",
       [
@@ -217,7 +252,7 @@ export function formatearInformeTexto(
     )
   );
 
-  partes.push(
+  bloques["conductas-alternativas"] = (
     seccion(
       "CONDUCTAS ALTERNATIVAS PROPUESTAS",
       analisis.conductas_alternativas
@@ -229,7 +264,7 @@ export function formatearInformeTexto(
     )
   );
 
-  partes.push(
+  bloques["modalidad"] = (
     seccion(
       "CAPA ACT — REGLAS VERBALES",
       analisis.capa_act.reglas_verbales
@@ -240,7 +275,7 @@ export function formatearInformeTexto(
         .join("\n")
     )
   );
-  partes.push(
+  bloques["modalidad"] += SALTO + (
     seccion(
       "CAPA ACT — PROCESOS DE INFLEXIBILIDAD",
       analisis.capa_act.procesos_act
@@ -253,7 +288,7 @@ export function formatearInformeTexto(
   );
 
   const cadenaDbt = analisis.capa_dbt.analisis_en_cadena;
-  partes.push(
+  bloques["modalidad"] += SALTO + (
     seccion(
       "CAPA DBT — ANÁLISIS EN CADENA",
       [
@@ -272,7 +307,7 @@ export function formatearInformeTexto(
       ].join("\n")
     )
   );
-  partes.push(
+  bloques["modalidad"] += SALTO + (
     seccion(
       "CAPA DBT — HABILIDADES SUGERIDAS",
       analisis.capa_dbt.habilidades_sugeridas
@@ -284,7 +319,7 @@ export function formatearInformeTexto(
     )
   );
 
-  partes.push(
+  bloques["modalidad"] += SALTO + (
     seccion(
       "CAPA CONDUCTUAL — PROCEDIMIENTOS SUGERIDOS",
       analisis.capa_mc.procedimientos_sugeridos
@@ -296,7 +331,7 @@ export function formatearInformeTexto(
     )
   );
 
-  partes.push(
+  bloques["hipotesis-alternativas"] = (
     seccion(
       "HIPÓTESIS ALTERNATIVAS",
       analisis.hipotesis_alternativas
@@ -305,10 +340,19 @@ export function formatearInformeTexto(
     )
   );
 
-  partes.push(seccion("PREGUNTAS PARA LA PRÓXIMA SESIÓN", listaOTexto(analisis.preguntas_para_sesion)));
-  partes.push(
+  bloques["preguntas"] = seccion("PREGUNTAS PARA LA PRÓXIMA SESIÓN", listaOTexto(analisis.preguntas_para_sesion));
+  bloques["intervencion"] = (
     seccion("LÍNEAS DE INTERVENCIÓN TENTATIVAS", listaOTexto(analisis.lineas_de_intervencion_tentativas))
   );
+
+  for (const id of orden) {
+    if (bloques[id]) partes.push(bloques[id]);
+  }
+  // Un bloque que el orden guardado no mencione —porque se añadió después de
+  // guardarlo— no puede desaparecer del informe: se emite al final.
+  for (const [id, texto] of Object.entries(bloques)) {
+    if (!orden.includes(id) && texto) partes.push(texto);
+  }
 
   partes.push(DESCARGO);
 

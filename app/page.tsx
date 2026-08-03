@@ -7,7 +7,11 @@ import {
   contieneDatosIdentificables,
   enmascararDatosIdentificables,
 } from "@/lib/pii";
-import { formatearInformeTexto } from "@/lib/formatearInforme";
+import {
+  formatearInformeTexto,
+  ORDEN_BLOQUES_POR_DEFECTO,
+} from "@/lib/formatearInforme";
+import { leerOrdenGuardado } from "@/components/ordenBloques";
 import { revalidarTrasEdicion } from "@/lib/validadores";
 import { descargarDocx } from "@/lib/exportarDocx";
 import ReportView from "@/components/ReportView";
@@ -138,7 +142,12 @@ export default function Home() {
 
   async function manejarCopiarInforme() {
     if (!analisis) return;
-    const texto = formatearInformeTexto(analisis, referenciaCaso, fechaGeneracion);
+    const texto = formatearInformeTexto(
+      analisis,
+      referenciaCaso,
+      fechaGeneracion,
+      leerOrdenGuardado(ORDEN_BLOQUES_POR_DEFECTO)
+    );
     try {
       await navigator.clipboard.writeText(texto);
       setCopiado(true);
@@ -152,7 +161,12 @@ export default function Home() {
 
   function manejarDescargarDocx() {
     if (!analisis) return;
-    descargarDocx(analisis, referenciaCaso, fechaGeneracion);
+    descargarDocx(
+      analisis,
+      referenciaCaso,
+      fechaGeneracion,
+      leerOrdenGuardado(ORDEN_BLOQUES_POR_DEFECTO)
+    );
   }
 
   /**

@@ -1,5 +1,5 @@
 import type { AnalisisFuncional } from "./types";
-import { formatearInformeTexto } from "./formatearInforme";
+import { formatearInformeTexto, ORDEN_BLOQUES_POR_DEFECTO } from "./formatearInforme";
 
 /**
  * Exportación a Word sin dependencias.
@@ -111,9 +111,11 @@ ${cuerpo}
 export function descargarDocx(
   analisis: AnalisisFuncional,
   referenciaCaso: string,
-  fecha: string
+  fecha: string,
+  /** El orden de bloques que el clínico dejó en pantalla. */
+  orden: string[] = ORDEN_BLOQUES_POR_DEFECTO
 ): void {
-  const texto = formatearInformeTexto(analisis, referenciaCaso, fecha);
+  const texto = formatearInformeTexto(analisis, referenciaCaso, fecha, orden);
   const html = documentoWord(
     `ACIA — ${referenciaCaso.trim() || "Análisis funcional"}`,
     cuerpoHtml(texto)
