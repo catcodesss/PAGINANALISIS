@@ -16,6 +16,7 @@ import { revalidarTrasEdicion } from "@/lib/validadores";
 import { descargarDocx } from "@/lib/exportarDocx";
 import ReportView from "@/components/ReportView";
 import GuiaCompleta from "@/components/GuiaCompleta";
+import Configuracion from "@/components/Configuracion";
 import SelectorBloques from "@/components/SelectorBloques";
 import { IDS_TODOS } from "@/lib/bloques";
 import EsqueletoInforme from "@/components/EsqueletoInforme";
@@ -191,14 +192,32 @@ export default function Home() {
     });
   }
 
-  // En la guía se ocultan tanto el formulario como el informe: comparten el
-  // mismo contenedor y la misma cabecera, solo cambia el cuerpo.
+  // Guía y configuración ocultan el formulario y el informe: las tres vistas
+  // comparten contenedor y cabecera, solo cambia el cuerpo.
   const enAnalisis = vista === "analisis";
+  const TITULOS: Record<typeof vista, { titulo: string; bajada: string }> = {
+    analisis: {
+      titulo: "ACIA — análisis conductual asistido por IA",
+      bajada:
+        "Herramienta clínica para formular casos con claridad, precisión y enfoque funcional.",
+    },
+    guia: {
+      titulo: "Guía de uso",
+      bajada:
+        "Cómo escribir la nota, cómo se convierte en análisis funcional y cómo leer el informe sin darle más crédito del que tiene.",
+    },
+    configuracion: {
+      titulo: "Configuración",
+      bajada:
+        "Cómo se ve la herramienta. Nada de lo que hay aquí cambia cómo analiza.",
+    },
+  };
+  const cabecera = TITULOS[vista];
   const formularioVisible = enAnalisis && estado !== "resultado";
   const formularioDeshabilitado = estado === "cargando";
 
   return (
-    <div className="flex min-h-screen bg-canvas print:block">
+    <div className="min-h-screen bg-canvas lg:flex print:block">
       <Sidebar vista={vista} onCambiarVista={setVista} />
 
       <div className="min-w-0 flex-1">
@@ -210,14 +229,10 @@ export default function Home() {
           <header className="mb-6 flex flex-wrap items-start justify-between gap-4 print:hidden">
             <div>
               <h1 className="font-serif text-2xl font-semibold text-ink sm:text-3xl">
-                {enAnalisis
-                  ? "ACIA — análisis conductual asistido por IA"
-                  : "Guía de uso"}
+{cabecera.titulo}
               </h1>
               <p className="mt-2 text-sm text-ink-muted sm:text-base">
-                {enAnalisis
-                  ? "Herramienta clínica para formular casos con claridad, precisión y enfoque funcional."
-                  : "Cómo escribir la nota, cómo se convierte en análisis funcional y cómo leer el informe sin darle más crédito del que tiene."}
+{cabecera.bajada}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -341,7 +356,7 @@ export default function Home() {
                         <button
                           type="button"
                           onClick={manejarEnmascararYAnalizar}
-                          className="rounded bg-accent px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                          className="rounded bg-accent px-4 py-1.5 text-sm font-medium texto-sobre-acento transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                         >
                           Enmascarar y analizar
                         </button>
@@ -364,7 +379,7 @@ export default function Home() {
                         type="button"
                         onClick={manejarGenerarClick}
                         disabled={formularioDeshabilitado}
-                        className="flex min-w-0 flex-1 items-center gap-3 rounded-l-xl bg-accent px-5 py-3.5 text-left text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                        className="flex min-w-0 flex-1 items-center gap-3 rounded-l-xl bg-accent px-5 py-3.5 text-left texto-sobre-acento transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                       >
                         <Sparkles className="h-5 w-5 shrink-0" aria-hidden="true" />
                         <span className="min-w-0">
@@ -387,7 +402,7 @@ export default function Home() {
                         aria-expanded={selectorAbierto}
                         aria-label="Elegir qué partes del análisis generar"
                         title="Elegir qué partes generar"
-                        className="flex w-12 shrink-0 items-center justify-center rounded-r-xl border-l border-white/20 bg-accent text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                        className="flex w-12 shrink-0 items-center justify-center rounded-r-xl border-l border-white/20 bg-accent texto-sobre-acento transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                       >
                         <ChevronDown
                           className={`h-5 w-5 transition-transform ${selectorAbierto ? "rotate-180" : ""}`}
@@ -453,7 +468,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={manejarNuevoAnalisis}
-                    className="rounded bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                    className="rounded bg-accent px-4 py-2 text-sm font-medium texto-sobre-acento transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                   >
                     Nuevo análisis
                   </button>
@@ -473,7 +488,8 @@ export default function Home() {
             </div>
           )}
 
-          {!enAnalisis && <GuiaCompleta />}
+          {vista === "guia" && <GuiaCompleta />}
+          {vista === "configuracion" && <Configuracion />}
 
           <footer className="mt-10 border-t border-divider pt-6 text-center text-xs text-ink-muted print:hidden">
             <p>

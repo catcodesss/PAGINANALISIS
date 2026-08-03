@@ -216,7 +216,12 @@ export function BloqueOrdenable({
         pasar por encima: el informe se lee igual que antes para quien no vaya a
         reordenarlo. Nunca se imprimen.
       */}
-      <div className="absolute -left-1 top-1 z-10 flex -translate-x-full flex-col items-center gap-0.5 opacity-0 transition-opacity group-hover/bloque:opacity-100 focus-within:opacity-100 print:hidden">
+      {/*
+        `controles-bloque` no es decoración: en una pantalla táctil no existe el
+        hover, así que sin la regla de globals.css estos controles se quedarían
+        invisibles para siempre y reordenar sería imposible desde el móvil.
+      */}
+      <div className="controles-bloque absolute -left-1 top-1 z-10 flex -translate-x-full flex-col items-center gap-0.5 opacity-0 transition-opacity group-hover/bloque:opacity-100 focus-within:opacity-100 print:hidden">
         <button
           type="button"
           onClick={() => ctx.desplazar(id, -1)}

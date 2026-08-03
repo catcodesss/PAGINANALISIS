@@ -100,6 +100,9 @@ components/edicionManual.tsx     primitivas de edición manual del informe
 components/Historial.tsx         guardar, listar, reabrir, respaldo
 components/SelectorBloques.tsx   elegir qué partes generar
 components/guiaContenido.tsx     bloques de contenido de la guía de uso
+components/Configuracion.tsx     apariencia, texto, idioma y plan
+components/usePreferencias.ts    lee y escribe las preferencias de presentación
+lib/preferencias.ts              tema, tamaño de texto y acento; se aplican como atributos de <html>
 evals/                           casos de prueba y pruebas que no gastan API
 ```
 

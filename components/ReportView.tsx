@@ -149,7 +149,7 @@ function Chip({ children }: { children: ReactNode }) {
 /** Chip destacado: función hipotetizada o estado que es una conclusión. */
 function ChipDestacado({ children }: { children: ReactNode }) {
   return (
-    <span className="funcion-chip inline-block whitespace-nowrap rounded bg-accent px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-white">
+    <span className="funcion-chip inline-block whitespace-nowrap rounded bg-accent px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide texto-sobre-acento">
       {children}
     </span>
   );
@@ -343,7 +343,7 @@ function BloqueReanalisis({
               type="button"
               onClick={reanalizar}
               disabled={enviando || !texto.trim()}
-              className="rounded bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded bg-accent px-3 py-1.5 text-xs font-medium texto-sobre-acento transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {enviando
                 ? "Reanalizando…"
@@ -969,7 +969,7 @@ function BotonesModalidad({
           aria-pressed={activa === m}
           className={`flex-1 px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:flex-none ${
             activa === m
-              ? "bg-accent text-white"
+              ? "bg-accent texto-sobre-acento"
               : "bg-surface text-ink-muted hover:bg-canvas"
           }`}
         >

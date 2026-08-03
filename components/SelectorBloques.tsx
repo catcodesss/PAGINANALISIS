@@ -124,7 +124,7 @@ export default function SelectorBloques({
           type="button"
           onClick={onGenerar}
           disabled={deshabilitado || seleccion.length === 0}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent/90 disabled:opacity-50"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium texto-sobre-acento transition-colors hover:bg-accent/90 disabled:opacity-50"
         >
           Generar lo seleccionado
         </button>

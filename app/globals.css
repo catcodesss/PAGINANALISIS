@@ -6,15 +6,151 @@
   --color-ink: #1f2a28;
   --color-ink-muted: #5c6b67;
   --color-accent: #2e5e4e;
-  --color-accent-soft: #eef3f0;
+  /* Derivado del acento: así un acento nuevo no obliga a calcular su tinte, y
+     el mismo cálculo da un tinte claro sobre papel y uno oscuro en modo noche,
+     porque --color-surface cambia con el tema. */
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
   --color-sidebar: #1c3830;
-  --color-sidebar-hover: #2a4b41;
+  --color-sidebar-hover: color-mix(in srgb, var(--color-sidebar) 82%, white);
   --color-divider: #e3e7e5;
   --color-warn: #8a6d3b;
 
   --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PREFERENCIAS DE PRESENTACIÓN
+   Las escribe lib/preferencias.ts como atributos de <html>.
+
+   MARCA.md manda sobre lo que aquí NO se toca: el ámbar sigue
+   siendo "hay que revisarlo" y el gris "es inferencia", pase lo
+   que pase con el acento. Cambiar el acento cambia la marca, no
+   el código de colores del informe. Y nada de rojo, en ningún
+   tema: el rojo dice "te equivocaste tú", y las alertas de ACIA
+   son advertencias metodológicas, no errores del clínico.
+   ══════════════════════════════════════════════════════════════ */
+
+/*
+  El acento se usa como fondo de botón con texto blanco, así que no puede ser
+  literalmente pastel: un pastel con texto blanco encima no se lee. Lo pastel
+  es el tinte derivado (--color-accent-soft); el acento se queda en la versión
+  profunda de cada color, que sí pasa contraste AA sobre blanco.
+*/
+html[data-acento="indigo"] {
+  --color-accent: #43508a;
+  --color-sidebar: #262d52;
+}
+html[data-acento="lavanda"] {
+  --color-accent: #6b5b8f;
+  --color-sidebar: #3b3153;
+}
+html[data-acento="teal"] {
+  --color-accent: #2c5f66;
+  --color-sidebar: #1a3a3f;
+}
+html[data-acento="arena"] {
+  --color-accent: #6e5843;
+  --color-sidebar: #3d3125;
+}
+
+/*
+  Color del texto que va ENCIMA del acento. Existe porque el acento tiene dos
+  papeles incompatibles en modo oscuro: como texto sobre el lienzo oscuro tiene
+  que ser claro, y como fondo de botón tiene que ser oscuro para que el blanco
+  encima se lea. No hay un solo tono que cumpla las dos cosas —lo uno pide
+  luminancia ≥ 0,227 y lo otro ≤ 0,183—, así que el acento se aclara y el texto
+  de encima se oscurece con él.
+*/
+html {
+  --color-sobre-acento: #ffffff;
+}
+
+html[data-tema="oscuro"] {
+  --color-sobre-acento: #070a0b;
+  --color-canvas: #12171a;
+  --color-surface: #1a2124;
+  --color-ink: #e8edeb;
+  --color-ink-muted: #9aa8a4;
+  --color-divider: #2b3438;
+  /* El ámbar de papel se apaga sobre fondo oscuro; este mantiene el mismo
+     significado con contraste suficiente. */
+  --color-warn: #d0a94a;
+  /* La barra lateral ya era oscura: en modo noche se funde con el lienzo si
+     no se separa un punto. */
+  --color-sidebar: color-mix(in srgb, var(--color-accent) 35%, #0d1113);
+}
+
+/* El acento profundo se pierde sobre fondo oscuro: se aclara lo justo para
+   seguir leyéndose, manteniendo el texto blanco encima de los botones. */
+html[data-tema="oscuro"][data-acento="verde"] { --color-accent: #4b8b74; }
+html[data-tema="oscuro"][data-acento="indigo"] { --color-accent: #6b78b8; }
+html[data-tema="oscuro"][data-acento="lavanda"] { --color-accent: #9382bd; }
+html[data-tema="oscuro"][data-acento="teal"] { --color-accent: #4a8f97; }
+html[data-tema="oscuro"][data-acento="arena"] { --color-accent: #a08363; }
+
+/*
+  Tamaño de texto. El `font-size` de <html> arrastra todo lo que Tailwind
+  expresa en rem. Lo que no arrastra son los tamaños en px literales del
+  informe, que existen porque el informe es un documento y sus proporciones
+  están medidas: se reescalan aquí, que son cuatro, en vez de tocar los 57
+  sitios donde se usan.
+*/
+html {
+  --escala-texto: 1;
+  font-size: calc(16px * var(--escala-texto));
+}
+html[data-texto="compacto"] { --escala-texto: 0.9; }
+html[data-texto="amplio"] { --escala-texto: 1.15; }
+
+/*
+  Lo que va encima de un fondo de acento usa esta clase en vez de `text-white`.
+  Tiene nombre propio y no de utilidad de Tailwind a propósito: una regla
+  escrita a mano cuyo selector se compone de clases que Tailwind genera
+  (`.bg-accent.text-white`) desaparece del CSS compilado — comprobado.
+
+  La barra lateral queda fuera: es `bg-sidebar`, sigue siendo oscura en los dos
+  temas, y su texto blanco está bien como está.
+*/
+.texto-sobre-acento {
+  color: var(--color-sobre-acento);
+}
+
+/*
+  Sin hover no hay "aparece al pasar por encima": en táctil, un control que solo
+  se revela al pasar el ratón no se revela nunca. Los de reordenar bloques y los
+  de edición manual se muestran siempre en esos dispositivos.
+*/
+@media (hover: none) {
+  .controles-bloque {
+    opacity: 1;
+  }
+  .group\/edit .opacity-0 {
+    opacity: 1;
+  }
+}
+
+.text-\[10px\] { font-size: calc(10px * var(--escala-texto)); }
+.text-\[11px\] { font-size: calc(11px * var(--escala-texto)); }
+.text-\[15px\] { font-size: calc(15px * var(--escala-texto)); }
+.text-\[21px\] { font-size: calc(21px * var(--escala-texto)); }
+
+/* El informe impreso es un documento clínico con medidas propias: ni el tema
+   ni la escala de pantalla deben alterarlo. Imprimir en modo noche saldría con
+   texto claro sobre papel blanco, así que aquí se vuelve a la paleta de papel
+   pase lo que pase. */
+@media print {
+  html,
+  html[data-tema="oscuro"] {
+    --escala-texto: 1;
+    --color-canvas: #ffffff;
+    --color-surface: #ffffff;
+    --color-ink: #1f2a28;
+    --color-ink-muted: #5c6b67;
+    --color-divider: #e3e7e5;
+    --color-warn: #8a6d3b;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
