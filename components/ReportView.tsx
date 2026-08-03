@@ -318,7 +318,7 @@ function BloqueReanalisis({
             disabled={enviando}
             rows={3}
             placeholder="Agrega información nueva u observaciones para esta sección…"
-            className="w-full resize-y rounded border border-divider bg-white px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full resize-y rounded border border-divider bg-surface px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
           />
           {contieneDatos && (
             <p className="text-xs text-warn">
@@ -721,8 +721,7 @@ function CadenaDBTView({ cadena }: { cadena: CadenaDBT }) {
 function CicloInterconductual({ texto }: { texto: string }) {
   return (
     <div
-      className="cycle-box mt-4 rounded-md border border-divider p-4"
-      style={{ backgroundColor: "#FAFAF8" }}
+      className="cycle-box mt-4 rounded-md border border-divider bg-canvas p-4"
     >
       <p className="cycle-label font-mono text-[10px] uppercase tracking-wide text-ink-muted">
         Ciclo interconductual
@@ -1633,8 +1632,7 @@ function InformeOrdenable({
           <section id="hipotesis-principal" className="scroll-mt-24 mb-8">
             {hipotesisDestacada && hipotesisDestacada.enunciado ? (
               <div
-                className="formulacion-destacada rounded-md border-l-4 border-accent p-8"
-                style={{ backgroundColor: "#F0F4F2" }}
+                className="formulacion-destacada rounded-md border-l-4 border-accent bg-accent-soft p-8"
               >
                 <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-accent">
                   Formulación funcional destacada · {hipotesisDestacada.conducta}

@@ -294,7 +294,7 @@ export default function Home() {
                     maxLength={LONGITUD_MAXIMA}
                     rows={11}
                     placeholder={MARCADOR_NOTA}
-                    className="mt-4 w-full resize-y rounded-lg border border-divider bg-white px-3 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-4 w-full resize-y rounded-lg border border-divider bg-surface px-3 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
