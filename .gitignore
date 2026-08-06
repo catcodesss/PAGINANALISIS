@@ -44,3 +44,6 @@ next-env.d.ts
 # evals: artefactos de ejecución (la línea base está documentada en evals/README.md)
 .tmp-evals/
 evals/resultados/
+
+# estado local de las herramientas de IA, no del proyecto
+.claude/

@@ -50,6 +50,60 @@ function respuestaError(error: string, message: string, status: number) {
   return NextResponse.json({ error, message }, { status });
 }
 
+/**
+ * Traduce el fallo a algo que el clínico pueda accionar. "Intenta nuevamente"
+ * es un mal consejo cuando reintentar no puede funcionar: si la cuenta de
+ * OpenAI no tiene saldo o la clave está mal, el usuario reintenta diez veces
+ * sin enterarse de nada. Todos los textos son fijos: no llevan nada de la nota
+ * ni del análisis (invariante 5).
+ */
+function causaDelFallo(error: unknown): { error: string; message: string } {
+  const estado =
+    typeof error === "object" && error !== null && "status" in error
+      ? Number((error as { status?: unknown }).status)
+      : undefined;
+
+  if (estado === 401 || estado === 403) {
+    return {
+      error: "clave_rechazada",
+      message:
+        "OpenAI rechazó la clave de API. Revisa que OPENAI_API_KEY sea válida y tenga permisos sobre el modelo.",
+    };
+  }
+  if (estado === 429) {
+    return {
+      error: "cuota_openai",
+      message:
+        "OpenAI está limitando las peticiones o la cuenta se quedó sin saldo. Revisa el saldo y los límites de uso antes de reintentar.",
+    };
+  }
+  if (estado === 400) {
+    return {
+      error: "peticion_rechazada",
+      message:
+        "OpenAI rechazó la petición por un parámetro fuera de rango. Es un fallo de configuración del servidor, no de tu nota.",
+    };
+  }
+  if (estado !== undefined && estado >= 500) {
+    return {
+      error: "openai_caido",
+      message:
+        "OpenAI no respondió correctamente. Suele ser temporal: espera un minuto e intenta de nuevo.",
+    };
+  }
+  if (error instanceof SyntaxError) {
+    return {
+      error: "respuesta_ilegible",
+      message:
+        "El modelo devolvió una respuesta que no se pudo leer como informe. Intenta de nuevo; si se repite, genera el informe por partes.",
+    };
+  }
+  return {
+    error: "error_analisis",
+    message: "No se pudo completar el análisis. Intenta nuevamente.",
+  };
+}
+
 export async function POST(request: Request) {
   // Ruta pública sin autenticación: sin límite, cualquiera puede consumir el
   // saldo de OpenAI del propietario. Ver lib/limitePeticiones.ts.
@@ -135,7 +189,26 @@ export async function POST(request: Request) {
       ],
     });
 
-    const texto = respuesta.choices[0]?.message?.content?.trim() ?? "";
+    const eleccion = respuesta.choices[0];
+    const texto = eleccion?.message?.content?.trim() ?? "";
+
+    // Si el modelo agota el techo de salida, el JSON llega cortado y
+    // JSON.parse falla con un mensaje que no dice nada de la causa real. Se
+    // distingue aquí para que el usuario sepa que puede generar por partes en
+    // lugar de reintentar lo mismo. El motivo de parada es una palabra de
+    // estado del proveedor, no contenido de la nota: se puede registrar.
+    if (eleccion?.finish_reason === "length") {
+      console.error(
+        `Respuesta truncada: el modelo agotó max_tokens=${techoDeSalida(
+          campos.length
+        )} con ${campos.length} campos pedidos.`
+      );
+      return respuestaError(
+        "respuesta_truncada",
+        "El análisis salió más largo de lo que cabe en una sola respuesta. Genera el informe por partes con el selector de secciones, o acorta la nota.",
+        502
+      );
+    }
 
     const analisis = validarAnalisis(
       normalizarAnalisis(JSON.parse(extraerJSON(texto)), lineas),
@@ -172,14 +245,16 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ analisis });
   } catch (error) {
+    // El nombre del error distingue de un vistazo las tres causas que se
+    // confunden bajo el mismo mensaje genérico: SyntaxError es JSON mal
+    // formado (respuesta cortada o con texto alrededor), APIError es un
+    // rechazo de OpenAI (clave, cuota, parámetro fuera de rango) y el resto
+    // es cosa nuestra. Nunca se registra la nota ni el análisis.
     console.error(
       "Error al generar el análisis funcional:",
-      error instanceof Error ? error.message : "error desconocido"
+      error instanceof Error ? `${error.name}: ${error.message}` : "error desconocido"
     );
-    return respuestaError(
-      "error_analisis",
-      "No se pudo completar el análisis. Intenta nuevamente.",
-      502
-    );
+    const causa = causaDelFallo(error);
+    return respuestaError(causa.error, causa.message, 502);
   }
 }

@@ -72,14 +72,19 @@ export default function Home() {
       const datos = await respuesta.json().catch(() => null);
 
       if (!respuesta.ok || !datos?.analisis) {
-        if (datos?.error === "falta_api_key") {
-          setMensajeError(
-            "Falta configurar la clave de API. Revisa el archivo .env.local."
-          );
-        } else if (datos?.error === "nota_muy_breve") {
+        // La ruta ya redacta un mensaje distinto por causa (nota larga, cuota
+        // de OpenAI, respuesta truncada, clave rechazada) y son textos fijos
+        // sin nada de la nota. Se muestran tal cual: antes se descartaban
+        // todos y el usuario veía "intenta nuevamente" pasara lo que pasara,
+        // incluso cuando reintentar no podía funcionar.
+        if (datos?.error === "nota_muy_breve") {
           setMensajeError(MENSAJE_NOTA_BREVE);
         } else {
-          setMensajeError(MENSAJE_ERROR_GENERICO);
+          setMensajeError(
+            typeof datos?.message === "string" && datos.message.trim()
+              ? datos.message
+              : MENSAJE_ERROR_GENERICO
+          );
         }
         setEstado("error");
         return;
