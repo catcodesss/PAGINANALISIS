@@ -136,6 +136,54 @@ html[data-texto="amplio"] { --escala-texto: 1.15; }
 .text-\[15px\] { font-size: calc(15px * var(--escala-texto)); }
 .text-\[21px\] { font-size: calc(21px * var(--escala-texto)); }
 
+/*
+  Hacer arrastrable el bloque entero tiene un efecto secundario que no se ve
+  venir: el navegador deja de permitir seleccionar el texto que hay dentro,
+  porque interpreta cualquier arrastre como el inicio de un movimiento de la
+  pieza. Medido: la selección devolvía 0 caracteres sobre un párrafo de 132.
+
+  En un informe clínico eso no es aceptable — hay que poder marcar una frase y
+  copiarla. Devolver `user-select` al contenido lo arregla sin renunciar al
+  arrastre: se sigue cogiendo la pieza desde cualquier sitio, pero al pasar por
+  encima de un texto el navegador vuelve a seleccionarlo. El manejador de
+  ordenBloques.tsx cancela el arrastre cuando hay algo seleccionado, así que
+  las dos cosas conviven.
+*/
+.bloque-informe p,
+.bloque-informe li,
+.bloque-informe td,
+.bloque-informe dd,
+.bloque-informe dt,
+.bloque-informe blockquote {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-user-drag: none;
+}
+
+/* Las tarjetas son un afordance de pantalla: dicen "esto se puede coger y
+   recolocar". En papel no se coge nada, y quince recuadros seguidos gastan
+   tinta y espacio, así que el informe impreso vuelve a leerse como un
+   documento continuo. */
+@media print {
+  .bloque-informe {
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin-bottom: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Excepto una: el borde que marca lo que reescribió el clínico no es
+     decoración, es el invariante 6, y tiene que llegar al papel junto con la
+     insignia «Editado por ti». Va por clase propia y no por la utilidad
+     `border-l-accent` porque Tailwind v4 poda las reglas escritas a mano cuyo
+     selector es un nombre de utilidad suyo. */
+  .bloque-informe.bloque-editado {
+    border-left: 2px solid var(--color-accent) !important;
+    padding-left: 0.75rem !important;
+  }
+}
+
 /* El informe impreso es un documento clínico con medidas propias: ni el tema
    ni la escala de pantalla deben alterarlo. Imprimir en modo noche saldría con
    texto claro sobre papel blanco, así que aquí se vuelve a la paleta de papel

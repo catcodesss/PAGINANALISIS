@@ -4,11 +4,15 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { useEdicion } from "./edicionManual";
 
 /**
  * Orden de los bloques del informe, a gusto del clínico.
@@ -106,6 +110,57 @@ export function useOrden(): OrdenContextValor | null {
   return useContext(OrdenContext);
 }
 
+/**
+ * Animación del reordenado, por la técnica FLIP.
+ *
+ * Reordenar con `order` de CSS es instantáneo: el bloque aparece de golpe en
+ * su nuevo sitio y cuesta seguir qué se movió y adónde. FLIP resuelve eso sin
+ * renunciar a `order`: se anota dónde estaba cada pieza ANTES del cambio, se
+ * deja que el navegador la recoloque, y justo antes de pintar se la desplaza
+ * de vuelta a su posición vieja para animarla desde ahí hasta la nueva. El
+ * usuario ve el movimiento; el DOM nunca estuvo en un estado intermedio.
+ *
+ * Se usa la API de animaciones del navegador en vez de una transición CSS
+ * porque el elemento no cambia de estilo —cambia de sitio—, y porque así la
+ * animación se limpia sola al terminar.
+ */
+const DURACION_MS = 260;
+
+function medirPosiciones(): Map<string, number> {
+  const posiciones = new Map<string, number>();
+  document.querySelectorAll<HTMLElement>("[data-bloque-id]").forEach((el) => {
+    const id = el.dataset.bloqueId;
+    if (id) posiciones.set(id, el.getBoundingClientRect().top);
+  });
+  return posiciones;
+}
+
+function animarDesde(previas: Map<string, number>) {
+  // Respetar a quien pidió menos movimiento: la regla de globals.css no
+  // alcanza a las animaciones lanzadas desde JavaScript.
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  document.querySelectorAll<HTMLElement>("[data-bloque-id]").forEach((el) => {
+    const id = el.dataset.bloqueId;
+    if (!id) return;
+    const antes = previas.get(id);
+    if (antes === undefined) return;
+    const desplazamiento = antes - el.getBoundingClientRect().top;
+    if (Math.abs(desplazamiento) < 1) return;
+    el.animate(
+      [
+        { transform: `translateY(${desplazamiento}px)` },
+        { transform: "translateY(0)" },
+      ],
+      { duration: DURACION_MS, easing: "cubic-bezier(0.2, 0, 0, 1)" }
+    );
+  });
+}
+
+/** useLayoutEffect avisa en el servidor; aquí solo hay DOM en el cliente. */
+const useEfectoDeDisposicion =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 function mover(lista: string[], origen: string, destino: string): string[] {
   const desde = lista.indexOf(origen);
   const hasta = lista.indexOf(destino);
@@ -143,9 +198,22 @@ export function ProveedorOrden({
     return [...conocidos, ...nuevos];
   }, [crudo, idsPorDefecto]);
 
+  // Dónde estaba cada pieza justo antes del último cambio de orden.
+  const posicionesPrevias = useRef<Map<string, number> | null>(null);
+
   const guardar = useCallback((nuevo: string[]) => {
+    posicionesPrevias.current = medirPosiciones();
     escribirCrudo(JSON.stringify(nuevo));
   }, []);
+
+  // Corre después de recolocar y antes de pintar: es la única ventana en la
+  // que se puede devolver la pieza a su sitio viejo sin que se vea el salto.
+  useEfectoDeDisposicion(() => {
+    const previas = posicionesPrevias.current;
+    if (!previas) return;
+    posicionesPrevias.current = null;
+    animarDesde(previas);
+  }, [orden]);
 
   const valor = useMemo<OrdenContextValor>(() => {
     const posicion = (id: string) => {
@@ -186,14 +254,41 @@ export function BloqueOrdenable({
   children: ReactNode;
 }) {
   const ctx = useOrden();
+  const edicion = useEdicion();
   const [encima, setEncima] = useState(false);
 
   if (!ctx) return <>{children}</>;
 
   const seEstaArrastrando = ctx.arrastrando === id;
+  const editada = edicion?.seccionesEditadas.includes(id) ?? false;
+
+  /**
+   * El bloque entero se arrastra, pero no desde cualquier sitio: si el gesto
+   * empieza sobre un control o sobre texto que el clínico está seleccionando,
+   * se cancela. Sin esto, arrastrar para copiar una cita movería el bloque, y
+   * escribir en un cuadro de texto sería imposible.
+   */
+  function empezarArrastre(e: React.DragEvent) {
+    const destino = e.target as HTMLElement;
+    if (destino.closest?.("input, textarea, select, button, a, [contenteditable='true']")) {
+      e.preventDefault();
+      return;
+    }
+    if (window.getSelection()?.toString()) {
+      e.preventDefault();
+      return;
+    }
+    e.dataTransfer.setData("text/plain", id);
+    e.dataTransfer.effectAllowed = "move";
+    ctx!.setArrastrando(id);
+  }
 
   return (
     <div
+      data-bloque-id={id}
+      draggable
+      onDragStart={empezarArrastre}
+      onDragEnd={() => ctx.setArrastrando(null)}
       style={{ order: ctx.posicion(id) }}
       onDragOver={(e) => {
         if (!ctx.arrastrando || ctx.arrastrando === id) return;
@@ -207,9 +302,25 @@ export function BloqueOrdenable({
         const origen = e.dataTransfer.getData("text/plain") || ctx.arrastrando;
         if (origen && origen !== id) ctx.soltarSobre(origen, id);
       }}
-      className={`group/bloque relative transition-opacity ${
+      /*
+        Cada bloque es una pieza con su propio borde: así se ve que se puede
+        coger y recolocar, en vez de ser un tramo de una lista continua. El
+        borde izquierdo en color de acento marca las que editó el clínico
+        (invariante 6) y vive aquí, en la pieza, no dentro de ella.
+      */
+      /*
+        La transición se limita a lo que se ve, y NUNCA a `order`: es un entero
+        animable, así que `transition-all` lo interpolaba paso a paso. El bloque
+        seguía en su sitio viejo cuando FLIP medía la posición nueva, el
+        desplazamiento salía de cero y la animación no llegaba a lanzarse.
+      */
+      className={`bloque-informe group/bloque relative mb-4 cursor-grab rounded-xl border bg-surface p-5 transition-[border-color,box-shadow,opacity] duration-150 active:cursor-grabbing sm:p-6 ${
         seEstaArrastrando ? "opacity-40" : ""
-      } ${encima ? "before:absolute before:-top-2 before:left-0 before:h-0.5 before:w-full before:rounded before:bg-accent" : ""}`}
+      } ${
+        encima
+          ? "border-accent ring-2 ring-accent/30"
+          : "border-divider hover:border-ink-muted/40"
+      } ${editada ? "bloque-editado border-l-2 border-l-accent" : ""}`}
     >
       {/*
         Los controles viven fuera del flujo, a la izquierda, y solo aparecen al
@@ -230,22 +341,12 @@ export function BloqueOrdenable({
         >
           <span aria-hidden="true" className="text-xs">▲</span>
         </button>
-        <span
-          draggable
-          onDragStart={(e) => {
-            e.dataTransfer.setData("text/plain", id);
-            e.dataTransfer.effectAllowed = "move";
-            ctx.setArrastrando(id);
-          }}
-          onDragEnd={() => ctx.setArrastrando(null)}
-          role="button"
-          tabIndex={-1}
-          aria-label={`Arrastrar «${titulo}» para reordenar`}
-          title="Arrastra para mover este bloque"
-          className="cursor-grab select-none rounded px-1 text-ink-muted transition-colors hover:bg-canvas hover:text-accent active:cursor-grabbing"
-        >
-          <span aria-hidden="true" className="text-sm leading-none">⠿</span>
-        </span>
+        {/*
+          Ya no hay asa: se arrastra la pieza entera. Estos dos botones se
+          quedan porque son la única forma de reordenar con el teclado, y
+          porque en una pantalla táctil arrastrar compite con desplazar la
+          página.
+        */}
         <button
           type="button"
           onClick={() => ctx.desplazar(id, 1)}

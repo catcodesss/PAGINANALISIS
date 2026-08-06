@@ -395,9 +395,7 @@ function Seccion({
     <BloqueOrdenable id={id} titulo={titulo}>
       <section
         id={id}
-        className={`scroll-mt-24 border-b border-divider py-6 last:border-b-0 ${
-          editada ? "seccion-editada border-l-2 border-l-accent pl-4" : ""
-        }`}
+        className={`scroll-mt-24 ${editada ? "seccion-editada" : ""}`}
       >
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h2 className="section-title flex items-center gap-3 font-serif text-lg font-semibold text-ink sm:text-xl">
@@ -1524,7 +1522,7 @@ function InformeOrdenable({
           {/* Datos faltantes va primero de fábrica —es lo que hay que revisar antes
               de confiar en el resto—, pero el clínico puede recolocarlo. */}
           <BloqueOrdenable id="datos-faltantes" titulo="Datos faltantes">
-          <section id="datos-faltantes" className="scroll-mt-24 mb-8">
+          <section id="datos-faltantes" className="scroll-mt-24">
             <div className="mb-3 flex items-center gap-3">
               <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
               <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
@@ -1555,7 +1553,7 @@ function InformeOrdenable({
 
           {/* Riesgo: misma prioridad que datos faltantes, por su relevancia de seguridad clínica. */}
           <BloqueOrdenable id="riesgo" titulo="Riesgo">
-          <section id="riesgo" className="scroll-mt-24 mb-8">
+          <section id="riesgo" className="scroll-mt-24">
             <div className="mb-3 flex items-center gap-3">
               <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
               <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
@@ -1599,7 +1597,7 @@ function InformeOrdenable({
           */}
           {analisis.alertas.length > 0 && (
             <BloqueOrdenable id="alertas" titulo="Revisiones sugeridas">
-            <section id="alertas" className="scroll-mt-24 mb-8">
+            <section id="alertas" className="scroll-mt-24">
               <div className="mb-3 flex items-center gap-3">
                 <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
                 <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
@@ -1629,7 +1627,7 @@ function InformeOrdenable({
 
           {/* Formulación funcional destacada — el titular del informe. */}
           <BloqueOrdenable id="hipotesis-principal" titulo="Formulación destacada">
-          <section id="hipotesis-principal" className="scroll-mt-24 mb-8">
+          <section id="hipotesis-principal" className="scroll-mt-24">
             {hipotesisDestacada && hipotesisDestacada.enunciado ? (
               <div
                 className="formulacion-destacada rounded-md border-l-4 border-accent bg-accent-soft p-8"
