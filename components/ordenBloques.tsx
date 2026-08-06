@@ -226,7 +226,7 @@ export function BloqueOrdenable({
           type="button"
           onClick={() => ctx.desplazar(id, -1)}
           aria-label={`Subir «${titulo}»`}
-          className="rounded px-1 text-ink-muted/60 transition-colors hover:bg-canvas hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="rounded px-1 text-ink-muted transition-colors hover:bg-canvas hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         >
           <span aria-hidden="true" className="text-xs">▲</span>
         </button>
@@ -242,7 +242,7 @@ export function BloqueOrdenable({
           tabIndex={-1}
           aria-label={`Arrastrar «${titulo}» para reordenar`}
           title="Arrastra para mover este bloque"
-          className="cursor-grab select-none rounded px-1 text-ink-muted/60 transition-colors hover:bg-canvas hover:text-accent active:cursor-grabbing"
+          className="cursor-grab select-none rounded px-1 text-ink-muted transition-colors hover:bg-canvas hover:text-accent active:cursor-grabbing"
         >
           <span aria-hidden="true" className="text-sm leading-none">⠿</span>
         </span>
@@ -250,7 +250,7 @@ export function BloqueOrdenable({
           type="button"
           onClick={() => ctx.desplazar(id, 1)}
           aria-label={`Bajar «${titulo}»`}
-          className="rounded px-1 text-ink-muted/60 transition-colors hover:bg-canvas hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="rounded px-1 text-ink-muted transition-colors hover:bg-canvas hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         >
           <span aria-hidden="true" className="text-xs">▼</span>
         </button>
@@ -268,7 +268,7 @@ export function BotonRestaurarOrden() {
     <button
       type="button"
       onClick={ctx.restaurar}
-      className="font-mono text-[10px] uppercase tracking-wide text-ink-muted/70 transition-colors hover:text-accent print:hidden"
+      className="font-mono text-[10px] uppercase tracking-wide text-ink-muted transition-colors hover:text-accent print:hidden"
     >
       Restaurar el orden original
     </button>

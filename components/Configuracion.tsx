@@ -165,7 +165,7 @@ export default function Configuracion() {
             >
               Español
             </button>
-            <span className="flex items-center gap-2 rounded-lg border border-dashed border-divider px-3 py-2 text-sm text-ink-muted/70">
+            <span className="flex items-center gap-2 rounded-lg border border-dashed border-divider px-3 py-2 text-sm text-ink-muted">
               English
               <Proximamente />
             </span>
@@ -207,7 +207,7 @@ export default function Configuracion() {
             <ul className="space-y-2">
               {PLAN_PREMIUM.map((t) => (
                 <li key={t} className="flex gap-2 text-sm leading-relaxed text-ink-muted">
-                  <span aria-hidden="true" className="text-ink-muted/50">
+                  <span aria-hidden="true" className="text-ink-muted">
                     ·
                   </span>
                   {t}
@@ -241,7 +241,7 @@ export default function Configuracion() {
 
 function Proximamente() {
   return (
-    <span className="rounded border border-divider px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted/70">
+    <span className="rounded border border-divider px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
       Próximamente
     </span>
   );
@@ -323,7 +323,7 @@ function Opciones({
               {o.etiqueta}
             </span>
             {o.pista && (
-              <span className="block text-xs text-ink-muted/80">{o.pista}</span>
+              <span className="block text-xs text-ink-muted">{o.pista}</span>
             )}
           </button>
         );

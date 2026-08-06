@@ -60,7 +60,7 @@ export function MarcaEditado() {
 }
 
 const CLASE_BOTON_SUTIL =
-  "rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted/70 transition-colors hover:bg-canvas hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+  "rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted transition-colors hover:bg-canvas hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
 
 /**
  * Texto del informe que el clínico puede reescribir. Fuera del modo edición se

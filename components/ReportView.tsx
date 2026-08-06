@@ -194,7 +194,7 @@ function Cita({ children }: { children: CitaVerificada | null | undefined }) {
 
   if (!children.verificada) {
     return (
-      <p className="evidence-prefix mt-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted/70">
+      <p className="evidence-prefix mt-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
         Inferido — sin cita literal en la nota
       </p>
     );
@@ -207,7 +207,7 @@ function Cita({ children }: { children: CitaVerificada | null | undefined }) {
 
   return (
     <blockquote className="evidence-block mt-2 border-l-2 border-divider pl-3">
-      <p className="evidence-prefix font-mono text-[10px] uppercase tracking-wide text-ink-muted/70">
+      <p className="evidence-prefix font-mono text-[10px] uppercase tracking-wide text-ink-muted">
         De la nota · {rango}
       </p>
       <p className="evidence-text text-sm italic leading-relaxed text-ink-muted">
@@ -318,7 +318,7 @@ function BloqueReanalisis({
             disabled={enviando}
             rows={3}
             placeholder="Agrega información nueva u observaciones para esta sección…"
-            className="w-full resize-y rounded border border-divider bg-surface px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-muted/70 focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full resize-y rounded border border-divider bg-surface px-2.5 py-1.5 text-sm text-ink placeholder:text-ink-muted focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
           />
           {contieneDatos && (
             <p className="text-xs text-warn">
@@ -453,7 +453,7 @@ function ReportarFallo({ seccionId }: { seccionId: string }) {
       <button
         type="button"
         onClick={abrir}
-        className="mt-3 font-mono text-[10px] uppercase tracking-wide text-ink-muted/60 transition-colors hover:text-warn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 print:hidden"
+        className="mt-3 font-mono text-[10px] uppercase tracking-wide text-ink-muted transition-colors hover:text-warn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 print:hidden"
       >
         Reportar fallo de la IA en esta sección
       </button>
@@ -1615,7 +1615,7 @@ function InformeOrdenable({
               <ul className="space-y-3">
                 {analisis.alertas.map((a, i) => (
                   <li key={i} className="border-l-2 border-divider pl-3">
-                    <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted/70">
+                    <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
                       {a.gravedad === "alta" ? "Revisar antes de usar" : "Conviene revisar"}
                       {a.origen === "ia" && " · revisión con IA"}
                     </p>
