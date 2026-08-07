@@ -52,15 +52,35 @@ export default function Historial({
   const [guardado, setGuardado] = useState(false);
   const entradaFichero = useRef<HTMLInputElement>(null);
 
+  /*
+    Averiguar si hay historial es consultar un sistema externo (IndexedDB), que
+    es justo para lo que sirve un efecto. Lo que no vale es resolverlo a medias
+    de forma síncrona: el caso "no disponible" se decidía en el cuerpo del
+    efecto y provocaba un render en cascada. Ahora los dos caminos salen por el
+    mismo sitio, ya asíncrono, y la bandera `vivo` evita tocar el estado de un
+    componente que ya se desmontó — que es como aparecen los avisos de fuga.
+  */
   useEffect(() => {
-    if (!repositorio.disponible()) {
-      setFase("no_disponible");
-      return;
-    }
-    repositorio
-      .yaConfigurado()
-      .then((configurado) => setFase(configurado ? "bloqueado" : "sin_configurar"))
-      .catch(() => setFase("no_disponible"));
+    let vivo = true;
+    const fijar = (f: Fase) => {
+      if (vivo) setFase(f);
+    };
+
+    (async () => {
+      if (!repositorio.disponible()) {
+        fijar("no_disponible");
+        return;
+      }
+      try {
+        fijar((await repositorio.yaConfigurado()) ? "bloqueado" : "sin_configurar");
+      } catch {
+        fijar("no_disponible");
+      }
+    })();
+
+    return () => {
+      vivo = false;
+    };
   }, []);
 
   const refrescar = useCallback(async () => {

@@ -1,8 +1,13 @@
 name: Evals sin coste
 
-# Solo las comprobaciones que no gastan API (ver CLAUDE.md > Verificación):
-# tipos, citas, PII y validadores. Las evals completas contra OpenAI se
-# ejecutan a mano (node evals/run.mjs), nunca en CI.
+# Solo las comprobaciones que no gastan API (ver CLAUDE.md > Verificación).
+# Las evals completas contra OpenAI se ejecutan a mano (node evals/run.mjs),
+# nunca en CI.
+#
+# Esta lista tiene que ser la misma que la de CLAUDE.md > Verificación. Si se
+# añade una suite allí y no aquí, deja de ejecutarse en cada push sin que nada
+# lo diga: es justo lo que le pasó a razonamiento.test.mjs, que guarda el
+# invariante 5 y estuvo fuera de CI desde que se escribió.
 on:
   push:
     branches: [main]
@@ -35,3 +40,15 @@ jobs:
 
       - name: Reporte de fallo sin contenido clínico
         run: node evals/reporteFallo.test.mjs
+
+      - name: El razonamiento previo no sale del servidor
+        run: node --experimental-strip-types evals/razonamiento.test.mjs
+
+      - name: Coherencia entre TypeScript, CSS y componentes
+        run: node evals/coherencia.test.mjs
+
+      # El lint atrapa una clase de fallo que las pruebas no ven: estado que se
+      # corrige a sí mismo dentro de un efecto, que produce renders en cascada
+      # y un fotograma con el valor equivocado.
+      - name: Lint
+        run: npx eslint components lib app

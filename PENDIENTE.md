@@ -69,6 +69,40 @@ a 0.5 y techo de salida de 12 000 a 16 000. Queda:
       razonamiento. Probablemente la palanca mayor y la más barata; requiere
       correr las evals con los dos modelos antes de decidir.
 
+## 1 ter. Auditabilidad del código
+
+Pedido por el autor (07/08/2026): que el código se pueda auditar desde fuera y
+que los fallos se prevengan solos, sin cambiar nada visible ni operativo.
+Verificado que no cambia nada: mismo orden de los 15 bloques, mismo índice, sin
+enlaces rotos, mismos encabezados en el informe copiado y mismo comportamiento
+de las pestañas de modalidad.
+
+- [x] **Dos renders en cascada, arreglados.** Eran los dos errores de lint que
+      arrastraba el proyecto, y los dos el mismo patrón: estado que se corrige
+      a sí mismo dentro de un efecto.
+      - `ReportView`: la pestaña de modalidad se deriva ahora durante el render.
+        El efecto obligaba a un segundo render, y entre los dos había un
+        fotograma con una pestaña que no se había generado.
+      - `Historial`: el caso "no disponible" se decidía de forma síncrona en el
+        cuerpo del efecto. Ahora los dos caminos salen ya asíncronos, con una
+        bandera que evita tocar el estado de un componente desmontado.
+- [x] **Una sola lista de secciones** (`lib/secciones.ts`). Los mismos quince
+      identificadores estaban escritos en cuatro sitios sin nada que los
+      comparase: el índice, el orden de fábrica del informe exportado, los
+      títulos del informe copiado y el mapa de bloques. El tipo `IdSeccion` sale
+      de la lista, así que **un identificador inventado ya no compila** — antes
+      habría sido un enlace roto o un bloque que no se imprime. Al aplicarlo, el
+      compilador encontró cuatro sitios que indexaban con un `string` cualquiera.
+- [x] **Suite de coherencia** (`evals/coherencia.test.mjs`, 8 pruebas) para los
+      cruces que salen del sistema de tipos: TypeScript contra CSS y código
+      contra hoja de estilos. **Verificada con mutaciones**: se rompió cada
+      invariante a propósito y las cuatro veces falló la prueba que debía.
+- [x] **`razonamiento.test.mjs` no estaba en CI**, pese a guardar el invariante
+      5. Añadida junto con la de coherencia y el lint. CLAUDE.md y el workflow
+      llevan ahora una nota de que las dos listas tienen que decir lo mismo.
+- [x] **Documentada la trampa de Tailwind v4** en CLAUDE.md, con una tabla de
+      qué nivel atrapa qué fallo. Es lo primero que necesita alguien de fuera.
+
 ## 2. Robustez técnica
 
 - [ ] **Rate limiting con almacén compartido.** El actual (`lib/limitePeticiones.ts`)

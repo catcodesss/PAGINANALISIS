@@ -1,25 +1,6 @@
 import type { AnalisisFuncional, Cita, Situacion } from "./types";
 import { agruparAlertas } from "./validadores";
-
-/**
- * Nombre legible de cada sección, para decir dónde puede haberse reflejado un
- * fallo. Son los mismos rótulos que emite este archivo más abajo en las
- * llamadas a `seccion()`, en minúscula: aquí se leen dentro de una frase, no
- * como encabezado.
- */
-const TITULOS_SECCION: Record<string, string> = {
-  "datos-faltantes": "Datos faltantes",
-  riesgo: "Riesgo",
-  resumen: "Resumen clínico",
-  conductas: "Conductas problema",
-  "variables-moduladoras": "Variables moduladoras",
-  situaciones: "Análisis por situaciones",
-  "conductas-alternativas": "Conductas alternativas",
-  modalidad: "Detalle según modelo terapéutico",
-  "hipotesis-alternativas": "Hipótesis alternativas",
-  preguntas: "Preguntas para la próxima sesión",
-  intervencion: "Líneas de intervención",
-};
+import { ORDEN_SECCIONES_POR_DEFECTO, TITULO_DE_SECCION } from "./secciones";
 
 const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
 const DESCARGO =
@@ -114,23 +95,8 @@ const SALTO = "\n";
  * la acomodación del entorno, «modalidad» las tres capas— porque en pantalla
  * también se mueven juntos.
  */
-export const ORDEN_BLOQUES_POR_DEFECTO = [
-  "datos-faltantes",
-  "riesgo",
-  "alertas",
-  "hipotesis-principal",
-  "resumen",
-  "conductas",
-  "variables-moduladoras",
-  "situaciones",
-  "hipotesis-mantenimiento",
-  "formulacion",
-  "conductas-alternativas",
-  "modalidad",
-  "hipotesis-alternativas",
-  "preguntas",
-  "intervencion",
-];
+/** Se conserva el nombre porque lo importan la exportación a Word y el reordenado. */
+export const ORDEN_BLOQUES_POR_DEFECTO: string[] = ORDEN_SECCIONES_POR_DEFECTO;
 
 export function formatearInformeTexto(
   analisis: AnalisisFuncional,
@@ -192,7 +158,7 @@ export function formatearInformeTexto(
             const cabecera = `- [${g.gravedad === "alta" ? "revisar antes de usar" : "conviene revisar"}] ${g.mensaje}`;
             const elementos = g.elementos.map((e) => `    — ${e}`);
             const secciones = g.secciones
-              .map((id) => TITULOS_SECCION[id])
+              .map((id) => TITULO_DE_SECCION[id])
               .filter(Boolean);
             const donde = secciones.length
               ? [`    Puede haberse reflejado en: ${secciones.join(", ")}.`]

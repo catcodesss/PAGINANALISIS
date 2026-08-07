@@ -92,6 +92,7 @@ lib/exportarDocx.ts              informe a Word (HTML con namespace MSO, sin dep
 lib/reporteFallo.ts              reporte de fallo del modelo, sin la nota ni sus citas
 lib/parseAnalisis.ts             normalizadores tolerantes de la respuesta
 lib/types.ts                     tipos + CAMPOS_ANALISIS_FUNCIONAL (chequeo en compilación)
+lib/secciones.ts                 las secciones del informe: única lista, tipo IdSeccion
 lib/cifrado.ts / repositorio.ts  historial local cifrado (WebCrypto + IndexedDB)
 lib/pii.ts                       enmascarado de datos identificables
 lib/limitePeticiones.ts          rate limiting (en memoria: ver limitación abajo)
@@ -106,9 +107,33 @@ lib/preferencias.ts              tema, tamaño de texto y acento; se aplican com
 evals/                           casos de prueba y pruebas que no gastan API
 ```
 
-`lib/types.ts` tiene un chequeo en tiempo de compilación: si añades un campo a
-`AnalisisFuncional` y olvidas registrarlo en `CAMPOS_ANALISIS_FUNCIONAL` y en el
-normalizador, el build falla. Es deliberado, no lo desactives.
+### Qué vigila qué
+
+Los fallos más caros de este proyecto no han sido errores de lógica, sino
+acuerdos tácitos entre dos ficheros que uno de los dos dejó de cumplir. No dan
+error: dan una preferencia que no hace nada, un enlace roto, un bloque que no se
+imprime. La regla es **subir cada acuerdo al nivel más alto que lo detecte**:
+
+| Nivel | Qué atrapa | Dónde |
+|---|---|---|
+| Compilación | Campo nuevo en `AnalisisFuncional` sin registrar | `CAMPOS_ANALISIS_FUNCIONAL` en `lib/types.ts` |
+| Compilación | Id de sección que no existe, en cualquier sitio que lo use | `IdSeccion` en `lib/secciones.ts` |
+| Lint | Estado que se corrige dentro de un efecto (render en cascada) | `react-hooks/set-state-in-effect` |
+| Prueba | Escala de texto distinta en TypeScript y en CSS | `evals/coherencia.test.mjs` |
+| Prueba | `text-[Npx]` nuevo que no obedece al tamaño elegido | `evals/coherencia.test.mjs` |
+| Prueba | Anulación de tamaño metida en `@layer` (Tailwind la ganaría) | `evals/coherencia.test.mjs` |
+| Prueba | Sección en el índice que nadie pinta, o bloque fuera de la lista | `evals/coherencia.test.mjs` |
+
+Los dos chequeos de compilación son deliberados: **no los desactives**. Si algo
+obliga a ensanchar `IdSeccion` a `string`, es señal de que hay que añadir la
+sección a `lib/secciones.ts`, no de que el tipo estorbe.
+
+**Trampa de Tailwind v4, comprobada dos veces:** una regla escrita a mano cuyo
+selector se compone de nombres de utilidades suyas (`.bg-accent.text-white`)
+desaparece del CSS compilado. Y una que sí sobrevive (`.text-[15px]`) solo gana
+a la utilidad homónima porque está **fuera** de `@layer`. Por eso existe
+`.texto-sobre-acento` con nombre propio, y por eso hay una prueba que comprueba
+que esas anulaciones no acaben dentro de una capa.
 
 ---
 
@@ -134,7 +159,14 @@ node --experimental-strip-types evals/pii.test.mjs      # 11 pruebas
 node evals/validadores.test.mjs                         # 15 pruebas
 node evals/reporteFallo.test.mjs                        # 7 pruebas
 node --experimental-strip-types evals/razonamiento.test.mjs  # 10 pruebas
+node evals/coherencia.test.mjs                          # 8 pruebas
+npx eslint components lib app
 ```
+
+Esta lista y la de `.github/workflows/evals.yml` tienen que decir lo mismo.
+Añadir una suite aquí y olvidarla allí la saca de CI sin que nada avise —
+`razonamiento.test.mjs`, que guarda el invariante 5, estuvo así desde que se
+escribió hasta el 07/08/2026.
 
 Las evals completas sí gastan (9 llamadas, una por caso). Ejecuta antes y
 después de tocar el prompt, y anota los dos números en el commit:

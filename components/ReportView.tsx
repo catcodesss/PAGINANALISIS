@@ -35,6 +35,7 @@ import {
 } from "./edicionManual";
 import { construirReporteFallo } from "@/lib/reporteFallo";
 import { agruparAlertas } from "@/lib/validadores";
+import { SECCIONES_INFORME, type IdSeccion } from "@/lib/secciones";
 import {
   BloqueOrdenable,
   BotonRestaurarOrden,
@@ -58,7 +59,7 @@ interface ReportViewProps {
 }
 
 interface SeccionIndice {
-  id: string;
+  id: IdSeccion;
   titulo: string;
 }
 
@@ -86,7 +87,7 @@ const CAMPO_CAPA_POR_MODELO: Record<ModeloTerapeutico, keyof AnalisisFuncional> 
  * alertas). Se usa para ocultar lo que no se pidió en un análisis parcial, en
  * vez de enseñar media docena de apartados vacíos.
  */
-const BLOQUE_DE_SECCION: Record<string, string> = {
+const BLOQUE_DE_SECCION: Partial<Record<IdSeccion, string>> = {
   conductas: "conductas",
   "variables-moduladoras": "moduladoras",
   situaciones: "situaciones",
@@ -103,7 +104,7 @@ const BLOQUE_DE_SECCION: Record<string, string> = {
  * campos_generados vacío = informe completo (y también los análisis guardados
  * antes de que existiera el análisis por partes).
  */
-function seccionVisible(analisis: AnalisisFuncional, id: string): boolean {
+function seccionVisible(analisis: AnalisisFuncional, id: IdSeccion): boolean {
   if (analisis.campos_generados.length === 0) return true;
   if (id === "modalidad") {
     return ["act", "dbt", "mc"].some((m) => analisis.campos_generados.includes(m));
@@ -112,23 +113,12 @@ function seccionVisible(analisis: AnalisisFuncional, id: string): boolean {
   return !bloque || analisis.campos_generados.includes(bloque);
 }
 
-const SECCIONES: SeccionIndice[] = [
-  { id: "datos-faltantes", titulo: "Datos faltantes" },
-  { id: "riesgo", titulo: "Riesgo" },
-  { id: "alertas", titulo: "Puntos a verificar del análisis" },
-  { id: "hipotesis-principal", titulo: "Formulación destacada" },
-  { id: "resumen", titulo: "Resumen clínico" },
-  { id: "conductas", titulo: "Conductas problema" },
-  { id: "variables-moduladoras", titulo: "Variables moduladoras" },
-  { id: "situaciones", titulo: "Análisis por situaciones" },
-  { id: "hipotesis-mantenimiento", titulo: "Hipótesis de mantenimiento" },
-  { id: "formulacion", titulo: "Formulación del caso" },
-  { id: "conductas-alternativas", titulo: "Conductas alternativas" },
-  { id: "modalidad", titulo: "Detalle según modelo terapéutico" },
-  { id: "hipotesis-alternativas", titulo: "Hipótesis alternativas" },
-  { id: "preguntas", titulo: "Preguntas para la próxima sesión" },
-  { id: "intervencion", titulo: "Líneas de intervención" },
-];
+/**
+ * El índice sale de lib/secciones.ts, que es la única lista: así el orden del
+ * índice, el del informe exportado y el nombre de cada sección no pueden
+ * separarse. Antes eran cuatro listas sueltas y nada las comparaba.
+ */
+const SECCIONES: readonly SeccionIndice[] = SECCIONES_INFORME;
 
 /** Orden de fábrica, el punto de partida antes de que el clínico mueva nada. */
 const IDS_SECCIONES = SECCIONES.map((s) => s.id);
@@ -380,7 +370,9 @@ function Seccion({
   children,
   camposReanalisis,
 }: {
-  id: string;
+  /* No es un `string` cualquiera: cada sección del informe tiene que estar en
+     lib/secciones.ts, o el índice la ignoraría y el orden no la conocería. */
+  id: IdSeccion;
   titulo: string;
   extra?: ReactNode;
   children: ReactNode;
@@ -1612,14 +1604,20 @@ function InformeOrdenable({
     return todas.filter((m) => analisis.campos_generados.includes(m));
   }, [analisis]);
 
-  const [pestanaActiva, setPestanaActiva] = useState<ModeloTerapeutico>("act");
+  const [pestanaElegida, setPestanaActiva] = useState<ModeloTerapeutico>("act");
 
-  // Si la pestaña activa no se generó, se salta a la primera disponible.
-  useEffect(() => {
-    if (modalidades.length > 0 && !modalidades.includes(pestanaActiva)) {
-      setPestanaActiva(modalidades[0]);
-    }
-  }, [modalidades, pestanaActiva]);
+  /*
+    Si la pestaña elegida no se generó, se cae a la primera disponible. Se
+    calcula durante el render y no en un efecto: corregir el estado desde un
+    efecto obliga a un segundo render, y entre los dos hay un fotograma con la
+    pestaña que no existe. Derivarlo aquí lo hace imposible por construcción, y
+    `pestanaElegida` ya no puede quedarse desincronizada de `modalidades`
+    porque no es ella la que se enseña.
+  */
+  const pestanaActiva =
+    modalidades.length > 0 && !modalidades.includes(pestanaElegida)
+      ? modalidades[0]
+      : pestanaElegida;
 
   const hipotesisDestacada = useMemo(() => {
     const conductaAlta = analisis.conductas_problema.find(
