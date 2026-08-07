@@ -103,8 +103,8 @@ te separa de un vistazo en una captura de pantalla compartida entre colegas.
 Los tres colores de estado tienen función semántica y no se usan para nada más:
 
 - **Verde** — lo verificado. Citas resueltas, confianza alta.
-- **Ámbar** — lo que hay que mirar. Datos faltantes, revisiones sugeridas,
-  confianza media.
+- **Ámbar** — lo que hay que mirar. Datos faltantes, puntos a verificar del
+  análisis, confianza media.
 - **Gris** — lo inferido, lo que no se sostiene en la nota.
 
 **Nada de rojo.** El rojo comunica *error del usuario*, y las alertas de ACIA no
@@ -173,7 +173,7 @@ seguro*. Suena a coaching y contradice el producto.
 | No escribe tus notas: analiza las que ya escribiste | Tu asistente inteligente de bienestar |
 | Cada afirmación indica de qué línea sale | Análisis preciso con IA de última generación |
 | Hipótesis para contrastar en sesión | Diagnóstico asistido |
-| Revisiones sugeridas | Errores detectados |
+| Puntos a verificar del análisis | Errores detectados |
 
 ### Cuidado legal
 

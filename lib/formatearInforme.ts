@@ -1,4 +1,25 @@
 import type { AnalisisFuncional, Cita, Situacion } from "./types";
+import { agruparAlertas } from "./validadores";
+
+/**
+ * Nombre legible de cada sección, para decir dónde puede haberse reflejado un
+ * fallo. Son los mismos rótulos que emite este archivo más abajo en las
+ * llamadas a `seccion()`, en minúscula: aquí se leen dentro de una frase, no
+ * como encabezado.
+ */
+const TITULOS_SECCION: Record<string, string> = {
+  "datos-faltantes": "Datos faltantes",
+  riesgo: "Riesgo",
+  resumen: "Resumen clínico",
+  conductas: "Conductas problema",
+  "variables-moduladoras": "Variables moduladoras",
+  situaciones: "Análisis por situaciones",
+  "conductas-alternativas": "Conductas alternativas",
+  modalidad: "Detalle según modelo terapéutico",
+  "hipotesis-alternativas": "Hipótesis alternativas",
+  preguntas: "Preguntas para la próxima sesión",
+  intervencion: "Líneas de intervención",
+};
 
 const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
 const DESCARGO =
@@ -157,17 +178,27 @@ export function formatearInformeTexto(
     )
   );
 
-  // Las revisiones del validador acompañan al informe exportado: si se imprime o
-  // se pega en una historia clínica, las advertencias viajan con él.
+  // Los avisos del validador acompañan al informe exportado: si se imprime o
+  // se pega en una historia clínica, las advertencias viajan con él. Agrupados
+  // igual que en pantalla, y con la sección afectada: quien lea esto en papel
+  // no puede pinchar un enlace, así que el nombre del apartado tiene que estar
+  // escrito.
   if (analisis.alertas.length > 0) {
     bloques["alertas"] = (
       seccion(
-        "REVISIONES SUGERIDAS",
-        analisis.alertas
-          .map(
-            (a) =>
-              `- [${a.gravedad === "alta" ? "revisar antes de usar" : "conviene revisar"}] ${a.mensaje}`
-          )
+        "PUNTOS A VERIFICAR DEL ANÁLISIS",
+        agruparAlertas(analisis.alertas)
+          .map((g) => {
+            const cabecera = `- [${g.gravedad === "alta" ? "revisar antes de usar" : "conviene revisar"}] ${g.mensaje}`;
+            const elementos = g.elementos.map((e) => `    — ${e}`);
+            const secciones = g.secciones
+              .map((id) => TITULOS_SECCION[id])
+              .filter(Boolean);
+            const donde = secciones.length
+              ? [`    Puede haberse reflejado en: ${secciones.join(", ")}.`]
+              : [];
+            return [cabecera, ...elementos, ...donde].join("\n");
+          })
           .join("\n")
       )
     );

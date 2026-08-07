@@ -162,6 +162,31 @@ Lo que separa "generador de hipótesis" de "herramienta de seguimiento".
       Verificado en vivo: editar, borrar, marca en pantalla y en el Word
       exportado, aviso de sobrescritura, y que el reporte copia exactamente lo
       que el clínico dejó en el cuadro.
+- [x] **Los avisos del validador decían qué, no dónde ni de qué.** Señalado por
+      el autor (07/08/2026) sobre un caso de comprobación compulsiva. Dos
+      problemas distintos en el mismo bloque:
+      - El rótulo "Revisiones sugeridas" se leía como si fueran correcciones a
+        la nota que pegó el clínico, cuando hablan del informe que escribió la
+        IA. Renombrado a **"Puntos a verificar del análisis"**, con la primera
+        línea diciéndolo explícitamente. MARCA.md queda actualizado: el
+        contraste normativo sigue siendo frente a "Errores detectados", porque
+        el aviso es tentativo, no un veredicto.
+      - Seis avisos idénticos salvo por la intervención citada. Pasa cuando el
+        núcleo detectado es el propio tema del caso: en comprobación
+        compulsiva, *todas* las intervenciones mencionan comprobación y V3
+        dispara una vez por cada una, así que el aviso real quedaba enterrado
+        bajo su repetición. `Alerta` separa ahora el motivo (`mensaje`) del
+        fragmento señalado (`elemento`), y `agruparAlertas` los junta por
+        motivo. Es presentación, no detección: se emiten y se cuentan las
+        mismas alertas. Medido sobre el caso: 9 avisos sueltos → 3 grupos.
+      - Añadido con ello lo que pidió el autor a continuación: cada grupo dice
+        **en qué sección del informe puede haberse reflejado el fallo**
+        (`seccionDeRuta` traduce `capa_dbt.habilidades_sugeridas[1]` a
+        "Detalle según modelo terapéutico"), enlazada en pantalla y escrita en
+        el informe copiado, impreso y exportado a Word. Sirve para decidir qué
+        apartado reanalizar en vez de desconfiar del informe entero. Sin
+        sección conocida no se señala ninguna: mejor eso que la equivocada.
+      Fijado con 6 pruebas nuevas en `evals/validadores.test.mjs` (9 → 15).
 - [ ] **Persistencia y seguimiento longitudinal.** Guardar análisis por referencia
       de caso y poder compararlos en el tiempo. Un análisis funcional sin línea
       base ni medida de cambio es media herramienta. Cierras la pestaña y se pierde.

@@ -131,7 +131,7 @@ Estas no gastan API y deben pasar siempre. Corren en cada push/PR a `main` vía
 npx tsc --noEmit
 node --experimental-strip-types evals/citas.test.mjs    # 10 pruebas
 node --experimental-strip-types evals/pii.test.mjs      # 11 pruebas
-node evals/validadores.test.mjs                         # 9 pruebas
+node evals/validadores.test.mjs                         # 15 pruebas
 node evals/reporteFallo.test.mjs                        # 7 pruebas
 node --experimental-strip-types evals/razonamiento.test.mjs  # 10 pruebas
 ```

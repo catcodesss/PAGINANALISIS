@@ -194,7 +194,8 @@ function validarConductasSeguridad(a: AnalisisFuncional, nota: string): Alerta[]
         origen: "validador",
         gravedad: "alta",
         ruta: intervencion.ruta,
-        mensaje: `Se propone "${intervencion.texto.trim()}", pero ${nucleo.etiqueta} ya aparece en el caso cumpliendo función de alivio. Revisa si es una conducta de seguridad: de serlo, es blanco de eliminación, no de prescripción.`,
+        mensaje: `${nucleo.etiqueta[0].toUpperCase()}${nucleo.etiqueta.slice(1)} ya aparece en el caso cumpliendo función de alivio. Revisa si es una conducta de seguridad: de serlo, es blanco de eliminación, no de prescripción.`,
+        elemento: intervencion.texto.trim(),
       });
     }
   }
@@ -212,7 +213,8 @@ function validarConductasSeguridad(a: AnalisisFuncional, nota: string): Alerta[]
           origen: "validador",
           gravedad: "alta",
           ruta: intervencion.ruta,
-          mensaje: `"${intervencion.texto.trim()}" se parece a una conducta marcada como de seguridad ("${c.descripcion}").`,
+          mensaje: `Se parece a una conducta que el propio análisis marcó como de seguridad ("${c.descripcion}").`,
+          elemento: intervencion.texto.trim(),
         });
       }
     });
@@ -243,7 +245,8 @@ function validarDependenciaDeDatosFaltantes(a: AnalisisFuncional): Alerta[] {
         origen: "validador",
         gravedad: "media",
         ruta: intervencion.ruta,
-        mensaje: `"${intervencion.texto.trim()}" depende de información que el informe declara faltante: "${falta}". Trátala como condicional hasta confirmarlo.`,
+        mensaje: `Depende de información que el informe declara faltante: "${falta}". Trátalo como condicional hasta confirmarlo.`,
+        elemento: intervencion.texto.trim(),
       });
     }
   }
@@ -293,6 +296,105 @@ export function validarAnalisis(
 
   analisis.alertas = sinDuplicados(alertas);
   return analisis;
+}
+
+/**
+ * De qué parte del informe salió la alerta, traducido a la sección que el
+ * clínico ve. `ruta` apunta al campo del JSON (`capa_dbt.habilidades_sugeridas[1]`);
+ * eso no le dice a nadie qué apartado releer. Saber que el fallo aterriza en
+ * "Conductas problema" y no en "Líneas de intervención" es lo que decide si
+ * hay que reanalizar esa sección o el informe entero.
+ *
+ * Devuelve el id de sección, no su título: los títulos viven en la lista de
+ * SECCIONES de ReportView y duplicarlos aquí los dejaría desincronizados.
+ */
+export function seccionDeRuta(ruta: string): string | null {
+  const campo = ruta.split(/[[.]/)[0];
+  switch (campo) {
+    case "conductas_problema":
+      return "conductas";
+    case "variables_moduladoras":
+      return "variables-moduladoras";
+    case "situaciones":
+      return "situaciones";
+    case "conductas_alternativas":
+      return "conductas-alternativas";
+    case "lineas_de_intervencion_tentativas":
+      return "intervencion";
+    case "capa_act":
+    case "capa_dbt":
+    case "capa_mc":
+      return "modalidad";
+    case "hipotesis_alternativas":
+      return "hipotesis-alternativas";
+    case "preguntas_para_la_proxima_sesion":
+      return "preguntas";
+    case "datos_faltantes":
+      return "datos-faltantes";
+    case "riesgo":
+      return "riesgo";
+    case "resumen_clinico":
+      return "resumen";
+    default:
+      // "general" de la pasada crítica, o un campo que aún no está mapeado: sin
+      // sección es correcto — mejor no señalar ninguna que señalar la que no es.
+      return null;
+  }
+}
+
+/** Un motivo y todos los fragmentos del informe a los que alcanza. */
+export interface GrupoAlertas {
+  codigo: Alerta["codigo"];
+  gravedad: Alerta["gravedad"];
+  origen: Alerta["origen"];
+  mensaje: string;
+  /** Vacío cuando la alerta señala el informe entero y no un fragmento. */
+  elementos: string[];
+  /** Secciones del informe donde puede haberse reflejado el fallo. */
+  secciones: string[];
+}
+
+/**
+ * Junta las alertas que comparten motivo. Es presentación, no detección: se
+ * emiten y se cuentan exactamente las mismas; solo se muestran una vez.
+ *
+ * Sin esto, un caso de comprobación compulsiva producía seis avisos idénticos
+ * salvo por la intervención citada — el aviso real ("estás prescribiendo el
+ * propio mantenedor") quedaba enterrado bajo su repetición y el bloque parecía
+ * ruido. La gravedad del grupo es la peor de las suyas: si una sola pide
+ * revisarse antes de usar, el grupo entero también.
+ */
+export function agruparAlertas(alertas: Alerta[]): GrupoAlertas[] {
+  const grupos = new Map<string, GrupoAlertas>();
+
+  for (const a of alertas) {
+    // El origen entra en la clave: una comprobación determinista y una opinión
+    // de la pasada crítica no pueden presentarse como el mismo aviso aunque
+    // coincida el texto.
+    const clave = `${a.codigo}|${a.origen}|${a.mensaje}`;
+    const seccion = seccionDeRuta(a.ruta);
+    const grupo = grupos.get(clave);
+    if (!grupo) {
+      grupos.set(clave, {
+        codigo: a.codigo,
+        gravedad: a.gravedad,
+        origen: a.origen,
+        mensaje: a.mensaje,
+        elementos: a.elemento ? [a.elemento] : [],
+        secciones: seccion ? [seccion] : [],
+      });
+      continue;
+    }
+    if (a.gravedad === "alta") grupo.gravedad = "alta";
+    if (a.elemento && !grupo.elementos.includes(a.elemento)) {
+      grupo.elementos.push(a.elemento);
+    }
+    if (seccion && !grupo.secciones.includes(seccion)) {
+      grupo.secciones.push(seccion);
+    }
+  }
+
+  return [...grupos.values()];
 }
 
 /** Una misma intervención puede disparar la misma alerta por dos caminos. */

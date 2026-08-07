@@ -227,7 +227,17 @@ export interface Alerta {
     | "pasada_critica";
   gravedad: "alta" | "media";
   ruta: string;
+  /**
+   * El motivo, sin nombrar el fragmento concreto al que apunta. Va aparte de
+   * `elemento` porque una misma causa alcanza a varias propuestas del informe:
+   * en un caso de comprobación compulsiva, "comprobación ya cumple función de
+   * alivio" vale para las seis intervenciones que la mencionan. Repetir el
+   * motivo seis veces entierra el aviso bajo su propia repetición; con el
+   * motivo separado, la interfaz agrupa y lo dice una vez.
+   */
   mensaje: string;
+  /** Fragmento del informe señalado. Ausente cuando la alerta es del informe entero. */
+  elemento?: string;
   /**
    * "validador": lib/validadores.ts, determinista, sin IA, siempre el mismo
    * resultado. "ia": una segunda llamada a un modelo revisando al primero

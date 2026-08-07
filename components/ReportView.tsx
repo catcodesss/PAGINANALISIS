@@ -33,6 +33,7 @@ import {
   useEdicion,
 } from "./edicionManual";
 import { construirReporteFallo } from "@/lib/reporteFallo";
+import { agruparAlertas } from "@/lib/validadores";
 import {
   BloqueOrdenable,
   BotonRestaurarOrden,
@@ -113,7 +114,7 @@ function seccionVisible(analisis: AnalisisFuncional, id: string): boolean {
 const SECCIONES: SeccionIndice[] = [
   { id: "datos-faltantes", titulo: "Datos faltantes" },
   { id: "riesgo", titulo: "Riesgo" },
-  { id: "alertas", titulo: "Revisiones sugeridas" },
+  { id: "alertas", titulo: "Puntos a verificar del análisis" },
   { id: "hipotesis-principal", titulo: "Formulación destacada" },
   { id: "resumen", titulo: "Resumen clínico" },
   { id: "conductas", titulo: "Conductas problema" },
@@ -1596,28 +1597,73 @@ function InformeOrdenable({
             para revisar, no errores.
           */}
           {analisis.alertas.length > 0 && (
-            <BloqueOrdenable id="alertas" titulo="Revisiones sugeridas">
+            <BloqueOrdenable id="alertas" titulo="Puntos a verificar del análisis">
             <section id="alertas" className="scroll-mt-24">
               <div className="mb-3 flex items-center gap-3">
                 <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
                 <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
-                  Revisiones sugeridas
+                  Puntos a verificar del análisis
                 </h2>
               </div>
+              {/*
+                Esto no habla de tu nota: habla de lo que escribió la IA más
+                arriba. Decirlo en la primera línea, porque el rótulo anterior
+                ("Revisiones sugeridas") se leía como si fueran correcciones al
+                texto que pegó el clínico.
+              */}
               <p className="mb-3 text-sm text-ink-muted">
-                Comprobaciones sobre la coherencia del informe. La mayoría las
-                emite el sistema al contrastar el análisis con tu nota, sin IA;
-                las marcadas &quot;revisión con IA&quot; vienen de una segunda
-                lectura opcional y pueden equivocarse igual que la primera.
+                Puntos del análisis de arriba donde la IA puede haberse
+                equivocado. No son observaciones sobre tu nota. La mayoría los
+                detecta el sistema contrastando el informe con ella, sin IA; los
+                marcados &quot;revisión con IA&quot; vienen de una segunda lectura
+                opcional y pueden equivocarse igual que la primera.
               </p>
               <ul className="space-y-3">
-                {analisis.alertas.map((a, i) => (
+                {agruparAlertas(analisis.alertas).map((g, i) => (
                   <li key={i} className="border-l-2 border-divider pl-3">
                     <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                      {a.gravedad === "alta" ? "Revisar antes de usar" : "Conviene revisar"}
-                      {a.origen === "ia" && " · revisión con IA"}
+                      {g.gravedad === "alta" ? "Revisar antes de usar" : "Conviene revisar"}
+                      {g.origen === "ia" && " · revisión con IA"}
+                      {g.elementos.length > 1 && ` · ${g.elementos.length} propuestas`}
                     </p>
-                    <p className="text-[15px] leading-relaxed text-ink">{a.mensaje}</p>
+                    <p className="text-[15px] leading-relaxed text-ink">{g.mensaje}</p>
+                    {/* El motivo va arriba una vez; debajo, a qué alcanza. */}
+                    {g.elementos.length > 0 && (
+                      <ul className="mt-1.5 space-y-1">
+                        {g.elementos.map((e, j) => (
+                          <li
+                            key={j}
+                            className="text-[15px] leading-relaxed text-ink-muted before:mr-1.5 before:content-['—']"
+                          >
+                            {e}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {/*
+                      Dónde aterriza el fallo. Sin esto el aviso dice que algo
+                      puede estar mal pero no qué apartado releer, que es
+                      justo lo que decide si hay que reanalizar una sección.
+                      Va enlazado porque el informe es largo y la sección
+                      señalada puede estar muy lejos.
+                    */}
+                    {g.secciones.length > 0 && (
+                      <p className="mt-2 text-sm text-ink-muted">
+                        Puede haberse reflejado en{" "}
+                        {g.secciones.map((id, j) => (
+                          <span key={id}>
+                            {j > 0 && (j === g.secciones.length - 1 ? " y " : ", ")}
+                            <a
+                              href={`#${id}`}
+                              className="text-accent underline underline-offset-2 print:no-underline"
+                            >
+                              {SECCIONES.find((s) => s.id === id)?.titulo ?? id}
+                            </a>
+                          </span>
+                        ))}
+                        . Reanaliza o corrige ahí si lo das por bueno.
+                      </p>
+                    )}
                   </li>
                 ))}
               </ul>

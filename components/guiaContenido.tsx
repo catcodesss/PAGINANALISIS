@@ -344,17 +344,21 @@ export function BloqueElInforme() {
         </ul>
       </Marca>
 
-      <Marca titulo="Revisiones sugeridas: casi siempre el sistema, no la IA">
+      <Marca titulo="Puntos a verificar: dónde puede haberse equivocado la IA">
         <p className="text-sm leading-relaxed text-ink-muted">
-          Avisos sobre la coherencia del informe. Casi todos son automáticos y
+          No son observaciones sobre tu nota: señalan sitios del análisis donde
+          el informe puede estar mal. Casi todos son automáticos y
           deterministas, sin IA: el más importante detecta que se esté
           proponiendo como intervención una conducta que en tu nota ya
           funcionaba como evitación — por ejemplo, sugerir respiración cuando
-          la persona ya respiraba en el baño para no exponer. Si tu cuenta
-          tiene activada la revisión con IA (opcional, una segunda lectura del
-          informe), esos avisos llevan la etiqueta &quot;revisión con IA&quot; para que
-          sepas que pueden equivocarse igual que el análisis original. Si
-          aparece cualquiera de los dos, revísalo antes de usar el informe.
+          la persona ya respiraba en el baño para no exponer. Cada aviso indica
+          en qué apartado del informe puede haberse reflejado el fallo, para
+          que sepas cuál releer o reanalizar en vez de desconfiar del informe
+          entero. Si tu cuenta tiene activada la revisión con IA (opcional, una
+          segunda lectura del informe), esos avisos llevan la etiqueta
+          &quot;revisión con IA&quot; para que sepas que pueden equivocarse igual
+          que el análisis original. Si aparece cualquiera de los dos, revísalo
+          antes de usar el informe.
         </p>
       </Marca>
     </div>

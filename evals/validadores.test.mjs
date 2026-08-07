@@ -41,7 +41,9 @@ execFileSync(
 const require = createRequire(import.meta.url);
 const { numerarNota } = require(join(RAIZ, ".tmp-evals/citas.js"));
 const { normalizarAnalisis } = require(join(RAIZ, ".tmp-evals/parseAnalisis.js"));
-const { validarAnalisis } = require(join(RAIZ, ".tmp-evals/validadores.js"));
+const { validarAnalisis, agruparAlertas, seccionDeRuta } = require(
+  join(RAIZ, ".tmp-evals/validadores.js")
+);
 
 // Misma nota del caso 01, tal como se le envió al modelo.
 const caso = readFileSync(join(AQUI, "casos/01-ansiedad-social.md"), "utf8");
@@ -172,6 +174,70 @@ prueba("no alerta de riesgo no detectado cuando la nota no tiene lenguaje de rie
   assert.ok(
     !informe.alertas.some((a) => a.codigo === "riesgo_posible_no_detectado"),
     "el caso 01 no debería disparar esta alerta"
+  );
+});
+
+prueba("agrupar no pierde ni inventa ninguna propuesta señalada", () => {
+  const grupos = agruparAlertas(informe.alertas);
+  const conElemento = informe.alertas.filter((a) => a.elemento);
+  const agrupados = grupos.flatMap((g) => g.elementos);
+  assert.equal(
+    new Set(agrupados).size,
+    new Set(conElemento.map((a) => a.elemento)).size,
+    "la agrupación cambió el número de propuestas señaladas"
+  );
+  assert.ok(grupos.length <= informe.alertas.length);
+});
+
+prueba("un mismo motivo se dice una vez, no una por intervención", () => {
+  // El fallo que motivó la agrupación: en el caso 01 el validador emite varias
+  // alertas de conducta de seguridad que solo se diferencian en la propuesta
+  // citada. Repetir el motivo entierra el aviso bajo su propia repetición.
+  const seguridad = con("prescribe_conducta_seguridad");
+  assert.ok(seguridad.length > 1, "el caso 01 debería emitir más de una");
+  const grupos = agruparAlertas(seguridad);
+  assert.ok(
+    grupos.length < seguridad.length,
+    `no agrupó nada: ${grupos.length} grupos para ${seguridad.length} alertas`
+  );
+  assert.ok(
+    grupos.every((g) => g.elementos.length > 0),
+    "un grupo se quedó sin las propuestas a las que alcanza"
+  );
+});
+
+prueba("el grupo se queda con la gravedad peor de las suyas", () => {
+  const grupos = agruparAlertas([
+    { codigo: "pasada_critica", origen: "ia", gravedad: "media", ruta: "situaciones[0]", mensaje: "m", elemento: "a" },
+    { codigo: "pasada_critica", origen: "ia", gravedad: "alta", ruta: "situaciones[1]", mensaje: "m", elemento: "b" },
+  ]);
+  assert.equal(grupos.length, 1);
+  assert.equal(grupos[0].gravedad, "alta");
+});
+
+prueba("no mezcla una comprobación determinista con una opinión de la IA", () => {
+  const grupos = agruparAlertas([
+    { codigo: "pasada_critica", origen: "validador", gravedad: "media", ruta: "riesgo", mensaje: "m" },
+    { codigo: "pasada_critica", origen: "ia", gravedad: "media", ruta: "riesgo", mensaje: "m" },
+  ]);
+  assert.equal(grupos.length, 2, "el origen tiene que separar los grupos");
+});
+
+prueba("cada alerta dice en qué sección del informe puede haberse reflejado", () => {
+  assert.equal(seccionDeRuta("capa_dbt.habilidades_sugeridas[1]"), "modalidad");
+  assert.equal(seccionDeRuta("conductas_problema[0]"), "conductas");
+  assert.equal(seccionDeRuta("lineas_de_intervencion_tentativas[2]"), "intervencion");
+  assert.equal(seccionDeRuta("riesgo"), "riesgo");
+  // Sin sección es mejor que la sección equivocada.
+  assert.equal(seccionDeRuta("general"), null);
+});
+
+prueba("toda alerta del caso 01 aterriza en una sección conocida", () => {
+  const sinSeccion = informe.alertas.filter((a) => seccionDeRuta(a.ruta) === null);
+  assert.deepEqual(
+    sinSeccion.map((a) => a.ruta),
+    [],
+    "hay rutas que no se traducen a ninguna sección del informe"
   );
 });
 
