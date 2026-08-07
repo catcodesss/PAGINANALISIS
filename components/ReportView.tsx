@@ -19,6 +19,7 @@ import type {
   ModeloTerapeutico,
   NivelConfianza,
   Situacion,
+  TipoEslabonDBT,
 } from "@/lib/types";
 import {
   contieneDatosIdentificables,
@@ -676,6 +677,165 @@ function CadenaRespondienteView({ cadena }: { cadena: CadenaRespondiente }) {
   );
 }
 
+/**
+ * La cadena, dibujada: un círculo por eslabón y una flecha al siguiente.
+ *
+ * Por qué existe: leída como tabla, la cadena es una lista de filas y se
+ * pierde justo lo que la hace útil — que es una secuencia, que cada eslabón
+ * lleva al siguiente y que ahí, entre dos círculos, es donde se puede
+ * intervenir. El dibujo lo enseña de un vistazo.
+ *
+ * NO sustituye a la tabla, la precede. La tabla es el texto completo y es lo
+ * que viaja al papel: un gráfico que esconde el detalle hasta que lo pulsas no
+ * sirve impreso, ni para quien lea con lector de pantalla. Por eso cada
+ * círculo lleva su texto entero en `aria-label` y el gráfico no se imprime.
+ *
+ * El color no distingue tipos de eslabón. MARCA.md reserva el ámbar para "hay
+ * que mirarlo" y el gris para "es inferencia"; inventar cinco colores para
+ * pensamiento/emoción/sensación/impulso/acción rompería ese código por una
+ * distinción decorativa. Los tipos se distinguen por la inicial dentro del
+ * círculo, que además sobrevive en blanco y negro y a un daltonismo.
+ */
+const INICIAL_ESLABON: Record<TipoEslabonDBT, string> = {
+  pensamiento: "P",
+  emocion: "E",
+  sensacion: "S",
+  impulso: "I",
+  accion: "A",
+};
+
+interface NodoCadena {
+  rol: string;
+  texto: string;
+  /** Lo que va dentro del círculo. */
+  simbolo: string;
+  /** El eslabón problema se marca en ámbar: es el blanco, no un paso más. */
+  destacado?: boolean;
+}
+
+function CadenaVisual({ nodos }: { nodos: NodoCadena[] }) {
+  const [activo, setActivo] = useState<number | null>(null);
+  const [fijado, setFijado] = useState(false);
+  const pulsadoEn = useRef(0);
+
+  // Mantener pulsado enseña el detalle mientras se mantiene; un toque corto lo
+  // deja fijo. Sin esa distinción, en una pantalla táctil no habría forma de
+  // leer un detalle largo — el dedo tapa justo lo que quieres leer.
+  const MANTENIDO_MS = 300;
+
+  // La marca de tiempo sale del propio evento y no de performance.now(): el
+  // reloj es el mismo, y así no se llama a nada impuro desde el cuerpo del
+  // componente, que es lo que el linter de React prohíbe.
+  function alPulsar(i: number, e: React.PointerEvent) {
+    pulsadoEn.current = e.timeStamp;
+    setActivo(i);
+    setFijado(false);
+  }
+
+  function alSoltar(i: number, e: React.PointerEvent) {
+    if (e.timeStamp - pulsadoEn.current > MANTENIDO_MS) {
+      setActivo(null);
+      return;
+    }
+    setActivo(i);
+    setFijado(true);
+  }
+
+  function cerrarSiNoEstaFijado() {
+    if (!fijado) setActivo(null);
+  }
+
+  const detalle = activo === null ? null : nodos[activo];
+
+  return (
+    <div className="cadena-visual mb-4 print:hidden">
+      <div className="flex items-start gap-1 overflow-x-auto pb-2">
+        {nodos.map((n, i) => (
+          <div key={i} className="flex shrink-0 items-center gap-1">
+            {i > 0 && (
+              <span
+                aria-hidden="true"
+                className="mb-6 h-px w-5 shrink-0 bg-divider after:relative after:-top-[7px] after:left-[14px] after:text-ink-muted after:content-['▸']"
+              />
+            )}
+            <button
+              type="button"
+              // El texto entero va aquí: quien use lector de pantalla no
+              // tiene que mantener pulsado nada para enterarse.
+              aria-label={`${n.rol}: ${n.texto}`}
+              aria-pressed={activo === i && fijado}
+              onPointerDown={(e) => alPulsar(i, e)}
+              onPointerUp={(e) => alSoltar(i, e)}
+              onPointerLeave={cerrarSiNoEstaFijado}
+              onPointerCancel={cerrarSiNoEstaFijado}
+              // Con teclado no hay puntero: el clic sintético (detail 0) es la
+              // única señal de que alguien pulsó Intro o Espacio.
+              onClick={(e) => {
+                if (e.detail === 0) {
+                  setActivo(i);
+                  setFijado(true);
+                }
+              }}
+              onFocus={() => setActivo(i)}
+              onBlur={cerrarSiNoEstaFijado}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setFijado(false);
+                  setActivo(null);
+                }
+              }}
+              className="flex w-20 shrink-0 select-none flex-col items-center gap-1 rounded outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              style={{ touchAction: "manipulation" }}
+            >
+              <span
+                aria-hidden="true"
+                className={`flex h-11 w-11 items-center justify-center rounded-full border-2 font-mono text-sm font-bold transition-all ${
+                  activo === i
+                    ? "texto-sobre-acento scale-110 border-accent bg-accent"
+                    : n.destacado
+                      ? "border-warn bg-canvas text-warn"
+                      : "border-divider bg-canvas text-ink-muted hover:border-accent hover:text-accent"
+                }`}
+              >
+                {n.simbolo}
+              </span>
+              <span
+                aria-hidden="true"
+                className="text-center font-mono text-[10px] uppercase leading-tight tracking-wide text-ink-muted"
+              >
+                {n.rol}
+              </span>
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/*
+        Alto mínimo fijo: sin él, abrir y cerrar el detalle empuja la tabla de
+        abajo y la cadena da saltos al recorrerla.
+      */}
+      <div
+        aria-live="polite"
+        className="min-h-[74px] rounded-md border border-divider bg-canvas p-3"
+      >
+        {detalle ? (
+          <>
+            <p className="font-mono text-[10px] uppercase tracking-wide text-accent">
+              {detalle.rol}
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-ink">{detalle.texto}</p>
+          </>
+        ) : (
+          <p className="text-sm italic leading-relaxed text-ink-muted">
+            Mantén pulsado un círculo para ver ese eslabón, o tócalo para
+            dejarlo fijo. El detalle completo está en la tabla de abajo.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Cadena de eslabones DBT: misma situación que cadena_operante, conceptualizada con vocabulario DBT. */
 function CadenaDBTView({ cadena }: { cadena: CadenaDBT }) {
   const filas: FilaCadena[] = [
@@ -707,6 +867,27 @@ function CadenaDBTView({ cadena }: { cadena: CadenaDBT }) {
           </ul>
         </div>
       )}
+      <CadenaVisual
+        nodos={[
+          {
+            rol: "Precipitante",
+            texto: cadena.evento_precipitante,
+            simbolo: "◆",
+          },
+          ...cadena.eslabones.map((e, i) => ({
+            rol: `${i + 1}. ${e.tipo}`,
+            texto: e.descripcion,
+            simbolo: INICIAL_ESLABON[e.tipo] ?? "·",
+          })),
+          {
+            rol: "Conducta",
+            texto: cadena.conducta_problema,
+            simbolo: "✱",
+            destacado: true,
+          },
+          { rol: "Consecuencias", texto: cadena.consecuencias, simbolo: "▸" },
+        ]}
+      />
       <TablaCadena filas={filas} />
       <NotacionCadena
         formula="Precipitante → Eslabones → Conducta → Consecuencias"

@@ -187,6 +187,32 @@ Lo que separa "generador de hipótesis" de "herramienta de seguimiento".
         apartado reanalizar en vez de desconfiar del informe entero. Sin
         sección conocida no se señala ninguna: mejor eso que la equivocada.
       Fijado con 6 pruebas nuevas en `evals/validadores.test.mjs` (9 → 15).
+- [x] **La cadena, dibujada.** Pedido por el autor (07/08/2026): un círculo por
+      eslabón, flecha al siguiente, y el detalle al mantener pulsado. Leída como
+      tabla la cadena es una lista de filas y se pierde lo que la hace útil —
+      que es una secuencia, y que entre dos eslabones es donde se interviene.
+      - **No sustituye a la tabla, la precede.** Un gráfico que esconde el texto
+        hasta que lo pulsas no sirve impreso ni con lector de pantalla, así que
+        el dibujo no se imprime y cada círculo lleva su texto entero en
+        `aria-label`.
+      - **El color no distingue tipos de eslabón.** MARCA.md reserva el ámbar
+        para "hay que mirarlo"; cinco colores nuevos para pensamiento/emoción/
+        sensación/impulso/acción romperían ese código por una distinción
+        decorativa. Van por inicial dentro del círculo, que además sobrevive en
+        blanco y negro y a un daltonismo. El ámbar sí marca la conducta problema,
+        que es el blanco y no un paso más.
+      - Mantener pulsado enseña el eslabón mientras se mantiene; un toque corto
+        lo deja fijo. La distinción existe por el móvil: sin ella el dedo tapa
+        justo lo que quieres leer. Con teclado, enfocar muestra e Intro fija.
+- [x] **El tamaño de letra pasa de tres pasos a cinco**, del 85% al 130%, con el
+      porcentaje escrito y cada botón dibujado a su propio tamaño. Antes el
+      salto mayor era del 15% y "Amplio" no decía cuánto. Los tres nombres
+      viejos siguen siendo válidos como pasos centrales, así que una preferencia
+      ya guardada no se pierde. **Sin verificar en vivo:** el panel de pruebas
+      devuelve 16px para cualquier `font-size` — un `span` a 10px y a 32px mide
+      lo mismo—, así que ahí no se puede medir el escalado. Sí está comprobado
+      que las cinco reglas compilan y que `--escala-texto` resuelve a
+      .85/.925/1/1.15/1.3.
 - [ ] **Persistencia y seguimiento longitudinal.** Guardar análisis por referencia
       de caso y poder compararlos en el tiempo. Un análisis funcional sin línea
       base ni medida de cambio es media herramienta. Cierras la pestaña y se pierde.

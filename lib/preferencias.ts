@@ -14,7 +14,22 @@
 export const CLAVE_PREFERENCIAS = "acia-preferencias";
 
 export type Tema = "sistema" | "claro" | "oscuro";
-export type TamanoTexto = "compacto" | "normal" | "amplio";
+/**
+ * Cinco pasos, no tres. Con "compacto / normal / amplio" el salto más grande
+ * era del 15% y nadie sabía cuánto estaba cambiando; quien necesita el texto
+ * más grande necesita más margen que eso. Los nombres viejos se conservan como
+ * los tres pasos centrales para que una preferencia ya guardada siga valiendo.
+ */
+export type TamanoTexto = "menor" | "compacto" | "normal" | "amplio" | "mayor";
+
+/** Escala aplicada a la raíz. Es la fuente de la que sale el CSS y el porcentaje que se enseña. */
+export const ESCALA_TEXTO: Record<TamanoTexto, number> = {
+  menor: 0.85,
+  compacto: 0.925,
+  normal: 1,
+  amplio: 1.15,
+  mayor: 1.3,
+};
 export type Acento = "verde" | "indigo" | "lavanda" | "teal" | "arena";
 export type Idioma = "es";
 
@@ -33,7 +48,7 @@ export const PREFERENCIAS_POR_DEFECTO: Preferencias = {
 };
 
 const TEMAS: Tema[] = ["sistema", "claro", "oscuro"];
-const TAMANOS: TamanoTexto[] = ["compacto", "normal", "amplio"];
+const TAMANOS = Object.keys(ESCALA_TEXTO) as TamanoTexto[];
 const ACENTOS: Acento[] = ["verde", "indigo", "lavanda", "teal", "arena"];
 
 /**

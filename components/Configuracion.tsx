@@ -9,6 +9,7 @@ import {
   Type,
 } from "lucide-react";
 import { usePreferencias } from "./usePreferencias";
+import { ESCALA_TEXTO } from "@/lib/preferencias";
 import type { Acento, TamanoTexto, Tema } from "@/lib/preferencias";
 
 /**
@@ -27,10 +28,12 @@ const TEMAS: { valor: Tema; etiqueta: string; pista: string }[] = [
   { valor: "oscuro", etiqueta: "Oscuro", pista: "Para consultas largas" },
 ];
 
-const TAMANOS: { valor: TamanoTexto; etiqueta: string; muestra: string }[] = [
-  { valor: "compacto", etiqueta: "Compacto", muestra: "Aa" },
-  { valor: "normal", etiqueta: "Normal", muestra: "Aa" },
-  { valor: "amplio", etiqueta: "Amplio", muestra: "Aa" },
+const TAMANOS: { valor: TamanoTexto; etiqueta: string }[] = [
+  { valor: "menor", etiqueta: "Menor" },
+  { valor: "compacto", etiqueta: "Compacto" },
+  { valor: "normal", etiqueta: "Normal" },
+  { valor: "amplio", etiqueta: "Amplio" },
+  { valor: "mayor", etiqueta: "Mayor" },
 ];
 
 const ACENTOS: { valor: Acento; etiqueta: string; muestra: string }[] = [
@@ -115,16 +118,23 @@ export default function Configuracion() {
           etiqueta="Tamaño"
           descripcion="Afecta a toda la interfaz y al informe en pantalla. Lo impreso mantiene siempre su tamaño, porque es un documento con medidas propias."
         >
-          <div className="flex flex-wrap gap-2">
+          {/*
+            Cada botón se dibuja a su propio tamaño: la muestra ES el ajuste,
+            no una etiqueta que lo describe. El porcentaje va escrito porque
+            "Amplio" no dice cuánto, y quien busca esto suele necesitar saberlo.
+          */}
+          <div className="flex flex-wrap items-end gap-2">
             {TAMANOS.map((t) => {
               const activo = preferencias.tamanoTexto === t.valor;
+              const escala = ESCALA_TEXTO[t.valor];
               return (
                 <button
                   key={t.valor}
                   type="button"
                   onClick={() => cambiar({ tamanoTexto: t.valor })}
                   aria-pressed={activo}
-                  className={`flex items-baseline gap-2 rounded-lg border px-3 py-2 transition-colors ${
+                  aria-label={`Tamaño de letra ${t.etiqueta}, ${Math.round(escala * 100)} por ciento`}
+                  className={`flex flex-col items-center gap-1 rounded-lg border px-3 py-2 transition-colors ${
                     activo
                       ? "border-accent bg-accent-soft font-medium text-ink"
                       : "border-divider text-ink-muted hover:bg-canvas hover:text-ink"
@@ -132,19 +142,18 @@ export default function Configuracion() {
                 >
                   <span
                     aria-hidden="true"
-                    className="font-serif"
-                    style={{
-                      fontSize:
-                        t.valor === "compacto"
-                          ? "13px"
-                          : t.valor === "amplio"
-                            ? "20px"
-                            : "16px",
-                    }}
+                    className="font-serif leading-none"
+                    style={{ fontSize: `${Math.round(16 * escala)}px` }}
                   >
-                    {t.muestra}
+                    Aa
                   </span>
-                  <span className="text-sm">{t.etiqueta}</span>
+                  <span aria-hidden="true" className="text-xs">{t.etiqueta}</span>
+                  <span
+                    aria-hidden="true"
+                    className="font-mono text-[10px] text-ink-muted"
+                  >
+                    {Math.round(escala * 100)}%
+                  </span>
                 </button>
               );
             })}
