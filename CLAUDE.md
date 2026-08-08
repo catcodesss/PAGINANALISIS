@@ -93,6 +93,7 @@ lib/reporteFallo.ts              reporte de fallo del modelo, sin la nota ni sus
 lib/parseAnalisis.ts             normalizadores tolerantes de la respuesta
 lib/types.ts                     tipos + CAMPOS_ANALISIS_FUNCIONAL (chequeo en compilación)
 lib/secciones.ts                 las secciones del informe: única lista, tipo IdSeccion
+lib/maqueta.ts                   informe guardado para revisar la interfaz sin gastar API
 lib/cifrado.ts / repositorio.ts  historial local cifrado (WebCrypto + IndexedDB)
 lib/pii.ts                       enmascarado de datos identificables
 lib/limitePeticiones.ts          rate limiting (en memoria: ver limitación abajo)
@@ -160,6 +161,7 @@ node evals/validadores.test.mjs                         # 15 pruebas
 node evals/reporteFallo.test.mjs                        # 7 pruebas
 node --experimental-strip-types evals/razonamiento.test.mjs  # 10 pruebas
 node evals/coherencia.test.mjs                          # 8 pruebas
+node evals/maqueta.test.mjs                             # 5 pruebas
 npx eslint components lib app
 ```
 
@@ -167,6 +169,41 @@ Esta lista y la de `.github/workflows/evals.yml` tienen que decir lo mismo.
 Añadir una suite aquí y olvidarla allí la saca de CI sin que nada avise —
 `razonamiento.test.mjs`, que guarda el invariante 5, estuvo así desde que se
 escribió hasta el 07/08/2026.
+
+### Ver la interfaz sin gastar API
+
+Revisar un cambio de apariencia no debería costar una llamada al modelo. Para
+eso está el modo maqueta:
+
+```bash
+npm run dev:maqueta
+```
+
+`/api/analizar` devuelve entonces el informe guardado del caso 01 (unos 110 ms,
+frente a los ~20 s de una llamada real), sin tocar OpenAI y sin contar para el
+límite de peticiones. **No es un JSON pegado a la respuesta**: pasa por
+`numerarNota`, `normalizarAnalisis` y `validarAnalisis`, así que las citas se
+resuelven y los validadores emiten sus alertas de verdad. La línea de
+trazabilidad del informe lo dice: «Generado con: maqueta (sin llamada a la
+API)».
+
+El informe guardado es el de la **v0.1.2**, anterior al arreglo de las citas:
+integridad 57%, con las dos formas de cita en pantalla (entrecomillada e
+«Inferido»), 7 alertas y las tres capas. Es lo que conviene para revisar la
+interfaz, y **no** dice nada de lo que produce el prompt de hoy.
+
+Los tres arranques hacen cosas distintas y es fácil confundirlos:
+
+| Comando | Llama a OpenAI | Para qué |
+|---|---|---|
+| `npm run dev:maqueta` | no | ver la interfaz, iterar sin coste |
+| `npm run dev` | sí, a 0.5 | usar la herramienta de verdad |
+| `npm run dev:evals` | sí, a 0.2 | medir el prompt contra las marcas |
+
+Doble candado en `lib/maqueta.ts`: hace falta que `NODE_ENV` no sea
+`production` **y** que la variable esté puesta. `evals/maqueta.test.mjs` lo fija
+— un informe inventado presentado como análisis de la nota del clínico sería el
+peor fallo posible de esta herramienta.
 
 Las evals completas sí gastan (9 llamadas, una por caso). Ejecuta antes y
 después de tocar el prompt, y anota los dos números en el commit:

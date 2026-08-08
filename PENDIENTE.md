@@ -103,6 +103,30 @@ de las pestañas de modalidad.
 - [x] **Documentada la trampa de Tailwind v4** en CLAUDE.md, con una tabla de
       qué nivel atrapa qué fallo. Es lo primero que necesita alguien de fuera.
 
+- [x] **Ver la interfaz sin gastar API** (`npm run dev:maqueta`, 07/08/2026).
+      Señalado por el autor: revisar un cambio de apariencia costaba una llamada
+      al modelo, y trabajar así empuja a mirar menos — lo contrario de lo que
+      conviene aquí. Ahora `/api/analizar` puede devolver el informe guardado
+      del caso 01 en ~110 ms (frente a ~20 s), sin tocar OpenAI y sin contar
+      para el límite de peticiones.
+      - **No es un JSON pegado a la respuesta**: pasa por `numerarNota`,
+        `normalizarAnalisis` y `validarAnalisis`, así que las citas se resuelven
+        y los validadores emiten sus alertas de verdad. Una maqueta que se
+        saltara eso enseñaría una interfaz que no es la que ve el clínico.
+      - Usa la nota que acompaña al informe guardado, no la que se escriba en el
+        cuadro: las citas apuntan a líneas de ESA nota y con cualquier otra todo
+        aparecería como «Inferido».
+      - El informe es el de la v0.1.2, anterior al arreglo de las citas
+        (integridad 57%). Eso lo hace **mejor** para revisar la interfaz —se ven
+        las dos formas de cita y el bloque de alertas lleno— y **inútil** para
+        decir nada del prompt de hoy.
+      - **Doble candado**: `NODE_ENV !== "production"` Y la variable puesta.
+        Fijado con `evals/maqueta.test.mjs` (5 pruebas, en CI). Un informe
+        inventado presentado como análisis de la nota del clínico sería el peor
+        fallo posible de esta herramienta.
+      - Verificado: 7 peticiones seguidas (el límite son 5) sin clave de API,
+        todas correctas, y el informe completo en pantalla con sus 15 bloques.
+
 ## 2. Robustez técnica
 
 - [ ] **Rate limiting con almacén compartido.** El actual (`lib/limitePeticiones.ts`)

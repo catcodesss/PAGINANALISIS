@@ -8,6 +8,7 @@ import { ejecutarPasadaCritica } from "@/lib/pasadaCritica";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
 import { camposParaBloques, IDS_TODOS } from "@/lib/bloques";
 import { CAMPOS_ANALISIS_FUNCIONAL } from "@/lib/types";
+import { informeDeMaqueta, maquetaActivada } from "@/lib/maqueta";
 
 const MODELO = "gpt-4o";
 // Fija para que las evals sean comparables entre ejecuciones. El modelo lo
@@ -105,6 +106,16 @@ function causaDelFallo(error: unknown): { error: string; message: string } {
 }
 
 export async function POST(request: Request) {
+  /*
+    Modo maqueta: devuelve un informe guardado, sin llamar a OpenAI. Va lo
+    primero de todo, antes incluso del límite de peticiones, porque no consume
+    nada y revisar la interfaz no debería tener cupo. Solo funciona fuera de
+    producción y con la variable puesta (ver lib/maqueta.ts).
+  */
+  if (maquetaActivada()) {
+    return NextResponse.json({ analisis: informeDeMaqueta().analisis });
+  }
+
   // Ruta pública sin autenticación: sin límite, cualquiera puede consumir el
   // saldo de OpenAI del propietario. Ver lib/limitePeticiones.ts.
   const limite = comprobarLimite(

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:evals": "node evals/dev-evals.mjs",
+    "dev:maqueta": "node evals/dev-maqueta.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

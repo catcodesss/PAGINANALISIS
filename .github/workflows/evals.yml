@@ -47,6 +47,9 @@ jobs:
       - name: Coherencia entre TypeScript, CSS y componentes
         run: node evals/coherencia.test.mjs
 
+      - name: El informe de maqueta no puede llegar a producción
+        run: node evals/maqueta.test.mjs
+
       # El lint atrapa una clase de fallo que las pruebas no ven: estado que se
       # corrige a sí mismo dentro de un efecto, que produce renders en cascada
       # y un fotograma con el valor equivocado.
