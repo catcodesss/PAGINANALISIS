@@ -1,6 +1,7 @@
 import type { AnalisisFuncional, Cita, Situacion } from "./types";
 import { agruparAlertas } from "./validadores";
 import { ORDEN_SECCIONES_POR_DEFECTO, TITULO_DE_SECCION } from "./secciones";
+import { AVISO_EJEMPLO } from "./maqueta";
 
 const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
 const DESCARGO =
@@ -103,9 +104,18 @@ export function formatearInformeTexto(
   referenciaCaso: string,
   fecha: string,
   /** Orden elegido por el clínico. Sin él, el de fábrica. */
-  orden: string[] = ORDEN_BLOQUES_POR_DEFECTO
+  orden: string[] = ORDEN_BLOQUES_POR_DEFECTO,
+  /** Informe de demostración: lo marca antes que nada. Ver lib/maqueta.ts. */
+  esEjemplo = false
 ): string {
   const partes: string[] = [];
+  // Lo primero de todo y separado: un documento exportado se lee fuera de
+  // contexto, y esto tiene que verse antes que el contenido clínico.
+  if (esEjemplo) {
+    partes.push(AVISO_EJEMPLO);
+    partes.push("=".repeat(72));
+    partes.push("");
+  }
   partes.push("ACIA — ANÁLISIS DE CONDUCTA ASISTIDO POR IA");
   partes.push(`Fecha de generación: ${fecha}`);
   if (referenciaCaso.trim()) {

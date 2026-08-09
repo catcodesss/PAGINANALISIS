@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   BookOpenCheck,
+  Eye,
   FilePenLine,
   FolderOpen,
   Heart,
@@ -173,6 +175,26 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
               </button>
             );
           })}
+
+          {/*
+            PROVISIONAL — enlace a la página de ejemplo. Existe para poder
+            revisar el formato del informe desde el móvil sin gastar una llamada
+            al modelo. Va aparte de ITEMS_NAV y no en la lista porque no es una
+            función del producto: cuando deje de hacer falta, se borra este
+            bloque y la carpeta app/maqueta y no queda rastro.
+          */}
+          <Link
+            href="/maqueta"
+            className="mt-2 flex items-center gap-3 rounded-lg border border-dashed border-white/25 px-3 py-2.5 text-left text-sm text-white/65 transition-colors hover:bg-white/5 hover:text-white/90"
+          >
+            <Eye className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+            <span className="min-w-0">
+              Ver informe de ejemplo
+              <span className="block text-xs text-white/45">
+                Sin gastar análisis
+              </span>
+            </span>
+          </Link>
         </nav>
 
         <div className="relative mt-6 overflow-hidden rounded-2xl bg-white/10 p-4">

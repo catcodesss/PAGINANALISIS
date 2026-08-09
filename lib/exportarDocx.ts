@@ -113,9 +113,17 @@ export function descargarDocx(
   referenciaCaso: string,
   fecha: string,
   /** El orden de bloques que el clínico dejó en pantalla. */
-  orden: string[] = ORDEN_BLOQUES_POR_DEFECTO
+  orden: string[] = ORDEN_BLOQUES_POR_DEFECTO,
+  /** Informe de demostración: el aviso viaja dentro del documento. */
+  esEjemplo = false
 ): void {
-  const texto = formatearInformeTexto(analisis, referenciaCaso, fecha, orden);
+  const texto = formatearInformeTexto(
+    analisis,
+    referenciaCaso,
+    fecha,
+    orden,
+    esEjemplo
+  );
   const html = documentoWord(
     `ACIA — ${referenciaCaso.trim() || "Análisis funcional"}`,
     cuerpoHtml(texto)

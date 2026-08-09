@@ -8,7 +8,8 @@ import { ejecutarPasadaCritica } from "@/lib/pasadaCritica";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
 import { camposParaBloques, IDS_TODOS } from "@/lib/bloques";
 import { CAMPOS_ANALISIS_FUNCIONAL } from "@/lib/types";
-import { informeDeMaqueta, maquetaActivada } from "@/lib/maqueta";
+import { maquetaActivada } from "@/lib/maqueta";
+import { informeDeMaqueta } from "@/lib/maquetaInforme";
 
 const MODELO = "gpt-4o";
 // Fija para que las evals sean comparables entre ejecuciones. El modelo lo

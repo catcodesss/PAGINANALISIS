@@ -126,6 +126,29 @@ de las pestañas de modalidad.
         fallo posible de esta herramienta.
       - Verificado: 7 peticiones seguidas (el límite son 5) sin clave de API,
         todas correctas, y el informe completo en pantalla con sus 15 bloques.
+- [x] **Página `/maqueta`, para revisar el formato desde el móvil**
+      (07/08/2026). **PROVISIONAL, a petición del autor**: lo de arriba solo
+      funcionaba en local, y revisar el informe desde un teléfono seguía
+      costando una llamada. Enlazada en la barra lateral («Ver informe de
+      ejemplo»). Para retirarla: borrar `app/maqueta/`,
+      `components/VistaEjemplo.tsx` y el bloque marcado en `Sidebar.tsx`.
+      - **No reactiva el modo maqueta en producción.** `/api/analizar` se queda
+        igual, con su doble candado. La página no acepta ninguna nota y no llama
+        a la API, así que su informe no puede presentarse como el análisis de
+        nadie — que es el fallo que había que evitar.
+      - Se prerenderiza en el build (`force-static`): el informe se arma una vez,
+        con el repositorio entero delante, y lo desplegado es HTML. Así no hace
+        falta que `evals/` llegue al servidor ni leer del disco al servir.
+        Confirmado en la salida de `next build`: `○ /maqueta` (Static).
+      - El aviso viaja **dentro del documento**, no solo en pantalla: primera
+        línea del texto copiado y del Word. Dos pruebas nuevas en
+        `evals/maqueta.test.mjs` (5 → 7) fijan las dos direcciones.
+- [x] **Desbordamiento lateral en móvil, encontrado al probar la página nueva.**
+      Es un fallo del informe de siempre, no de la página: los chips de función
+      y clasificación llevaban `whitespace-nowrap` y con una función larga
+      («Escape/evitación de evaluación social…») no cabían. Medido: 409 px de
+      contenido en una pantalla de 375, con desplazamiento lateral en todo el
+      informe. Ahora parten de línea; tras el arreglo, 375/375.
 
 ## 2. Robustez técnica
 

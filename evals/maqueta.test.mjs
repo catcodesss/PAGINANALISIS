@@ -29,6 +29,8 @@ execFileSync(
   [
     join(RAIZ, "node_modules/typescript/bin/tsc"),
     "lib/maqueta.ts",
+    "lib/formatearInforme.ts",
+    "lib/parseAnalisis.ts",
     "--outDir", ".tmp-evals",
     "--rootDir", "lib",
     "--module", "commonjs",
@@ -40,9 +42,13 @@ execFileSync(
 );
 
 const require = createRequire(import.meta.url);
-const { CLAVE_MAQUETA, maquetaActivada } = require(
+const { CLAVE_MAQUETA, AVISO_EJEMPLO, maquetaActivada } = require(
   join(RAIZ, ".tmp-evals/maqueta.js")
 );
+const { formatearInformeTexto } = require(
+  join(RAIZ, ".tmp-evals/formatearInforme.js")
+);
+const { readFileSync } = await import("node:fs");
 
 let pasadas = 0;
 function prueba(nombre, fn) {
@@ -98,6 +104,40 @@ prueba("en desarrollo y pedida explícitamente, se activa", () => {
 
 prueba("en la fase de pruebas también, que es donde se revisa la interfaz", () => {
   assert.equal(con("test", "true", maquetaActivada), true);
+});
+
+/* ── El aviso viaja dentro del documento ─────────────────────────────────── */
+
+const { normalizarAnalisis } = require(join(RAIZ, ".tmp-evals/parseAnalisis.js"));
+
+// Normalizado, como cualquier informe que llega a la interfaz: el JSON crudo
+// del fixture no trae `meta` ni los campos que el normalizador rellena.
+const ANALISIS_MINIMO = normalizarAnalisis(
+  JSON.parse(readFileSync(join(AQUI, "fixtures/01-v0.1.2.json"), "utf8")).analisis,
+  []
+);
+
+prueba("el informe de ejemplo se marca en la primera línea del texto", () => {
+  // Un Word descargado desde la página de ejemplo se lee fuera de contexto: si
+  // no lo dice él mismo, pasa por un informe real.
+  const texto = formatearInformeTexto(
+    ANALISIS_MINIMO,
+    "",
+    "fecha de ejemplo",
+    undefined,
+    true
+  );
+  assert.ok(
+    texto.startsWith(AVISO_EJEMPLO),
+    `el texto no empieza con el aviso: ${texto.slice(0, 80)}`
+  );
+});
+
+prueba("un informe normal no lleva el aviso por ninguna parte", () => {
+  // El fallo simétrico y peor: marcar como ejemplo el análisis de un paciente.
+  const texto = formatearInformeTexto(ANALISIS_MINIMO, "", "fecha");
+  assert.ok(!texto.includes("INFORME DE EJEMPLO"), "se coló el aviso");
+  assert.ok(!texto.includes(AVISO_EJEMPLO));
 });
 
 console.log(`\n${pasadas} pruebas correctas\n`);

@@ -93,7 +93,9 @@ lib/reporteFallo.ts              reporte de fallo del modelo, sin la nota ni sus
 lib/parseAnalisis.ts             normalizadores tolerantes de la respuesta
 lib/types.ts                     tipos + CAMPOS_ANALISIS_FUNCIONAL (chequeo en compilación)
 lib/secciones.ts                 las secciones del informe: única lista, tipo IdSeccion
-lib/maqueta.ts                   informe guardado para revisar la interfaz sin gastar API
+lib/maqueta.ts                   constantes del ejemplo (sin fs: lo importa el cliente)
+lib/maquetaInforme.ts            arma el informe de ejemplo desde evals/ (solo servidor)
+app/maqueta/                     PROVISIONAL — página de ejemplo, estática, para el móvil
 lib/cifrado.ts / repositorio.ts  historial local cifrado (WebCrypto + IndexedDB)
 lib/pii.ts                       enmascarado de datos identificables
 lib/limitePeticiones.ts          rate limiting (en memoria: ver limitación abajo)
@@ -161,7 +163,7 @@ node evals/validadores.test.mjs                         # 15 pruebas
 node evals/reporteFallo.test.mjs                        # 7 pruebas
 node --experimental-strip-types evals/razonamiento.test.mjs  # 10 pruebas
 node evals/coherencia.test.mjs                          # 8 pruebas
-node evals/maqueta.test.mjs                             # 5 pruebas
+node evals/maqueta.test.mjs                             # 7 pruebas
 npx eslint components lib app
 ```
 
@@ -172,8 +174,24 @@ escribió hasta el 07/08/2026.
 
 ### Ver la interfaz sin gastar API
 
-Revisar un cambio de apariencia no debería costar una llamada al modelo. Para
-eso está el modo maqueta:
+Hay dos caminos, y sirven para cosas distintas.
+
+**Desde cualquier dispositivo, también el móvil: la página `/maqueta`.** Enlazada
+en la barra lateral («Ver informe de ejemplo»). Se prerenderiza en el build
+(`force-static`), así que funciona en el sitio desplegado sin leer del disco en
+producción y sin tocar OpenAI. **PROVISIONAL**: existe para revisar el formato
+del informe; cuando deje de hacer falta se borran `app/maqueta/`,
+`components/VistaEjemplo.tsx` y el bloque marcado en `Sidebar.tsx`.
+
+No pasa por `/api/analizar` ni acepta ninguna nota, así que ese informe no puede
+presentarse nunca como el análisis de nadie. El aviso de que es un ejemplo va en
+la franja de arriba **y en la primera línea del texto copiado y del Word
+exportado** (`AVISO_EJEMPLO`, parámetro `esEjemplo` de `formatearInformeTexto`):
+un documento se lee fuera de contexto y tiene que decir por sí mismo lo que es.
+`evals/maqueta.test.mjs` comprueba las dos direcciones — que el ejemplo lleve el
+aviso y que un informe normal no lo lleve.
+
+**En local, sobre el flujo real: el modo maqueta.**
 
 ```bash
 npm run dev:maqueta

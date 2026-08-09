@@ -132,7 +132,7 @@ function SinHallazgos() {
 /** Chip de clasificación técnica: informativo, discreto. */
 function Chip({ children }: { children: ReactNode }) {
   return (
-    <span className="clasificacion-chip inline-block whitespace-nowrap rounded border border-accent/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-accent">
+    <span className="clasificacion-chip inline-block max-w-full break-words rounded border border-accent/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-accent">
       {children}
     </span>
   );
@@ -141,7 +141,12 @@ function Chip({ children }: { children: ReactNode }) {
 /** Chip destacado: función hipotetizada o estado que es una conclusión. */
 function ChipDestacado({ children }: { children: ReactNode }) {
   return (
-    <span className="funcion-chip inline-block whitespace-nowrap rounded bg-accent px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide texto-sobre-acento">
+    /* Sin `whitespace-nowrap`: la función hipotetizada puede ser una frase
+       entera («Escape/evitación de evaluación social…») y en un móvil no cabía,
+       así que la página entera se desplazaba de lado. Medido: 409 px de
+       contenido en una pantalla de 375. Los chips cortos siguen en una línea
+       solos; los largos ahora parten. */
+    <span className="funcion-chip inline-block max-w-full break-words rounded bg-accent px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide texto-sobre-acento">
       {children}
     </span>
   );
