@@ -1242,6 +1242,20 @@ function useSeccionActiva(ids: string[]) {
   return activa;
 }
 
+/**
+ * El índice consume el mismo OrdenContext que las tarjetas (ver
+ * components/ordenBloques.tsx#BloqueOrdenable): arrastrar un título aquí
+ * llama a la misma `soltarSobre` que arrastrar una tarjeta, así que reordena
+ * exactamente lo mismo y desde cualquiera de los dos sitios se ve el mismo
+ * resultado. A diferencia de las tarjetas, aquí no hace falta la animación
+ * FLIP ni el truco de `order` de CSS: `secciones` ya llega reordenado (ver
+ * seccionesVisibles en InformeOrdenable), así que basta con dejar que la
+ * lista se vuelva a pintar en su nuevo orden.
+ *
+ * `draggable={false}` en el enlace es necesario: un <a> es arrastrable de
+ * fábrica en el navegador (arrastra el enlace, no reordena nada), y eso
+ * gana al `draggable` del <li> si no se desactiva explícitamente.
+ */
 function IndiceLateral({
   secciones,
   activa,
@@ -1249,6 +1263,9 @@ function IndiceLateral({
   secciones: SeccionIndice[];
   activa: string;
 }) {
+  const ctx = useOrden();
+  const [encimaDe, setEncimaDe] = useState<string | null>(null);
+
   return (
     <nav
       aria-label="Índice del informe"
@@ -1256,14 +1273,42 @@ function IndiceLateral({
     >
       <ul className="space-y-3.5 text-sm">
         {secciones.map(({ id, titulo }) => (
-          <li key={id}>
+          <li
+            key={id}
+            draggable={Boolean(ctx)}
+            onDragStart={(e) => {
+              if (!ctx) return;
+              e.dataTransfer.setData("text/plain", id);
+              e.dataTransfer.effectAllowed = "move";
+              ctx.setArrastrando(id);
+            }}
+            onDragEnd={() => ctx?.setArrastrando(null)}
+            onDragOver={(e) => {
+              if (!ctx?.arrastrando || ctx.arrastrando === id) return;
+              e.preventDefault();
+              setEncimaDe(id);
+            }}
+            onDragLeave={() => setEncimaDe((actual) => (actual === id ? null : actual))}
+            onDrop={(e) => {
+              e.preventDefault();
+              setEncimaDe(null);
+              const origen = e.dataTransfer.getData("text/plain") || ctx?.arrastrando;
+              if (ctx && origen && origen !== id) ctx.soltarSobre(origen, id);
+            }}
+            className={ctx ? "cursor-grab active:cursor-grabbing" : ""}
+          >
             <a
               href={`#${id}`}
+              draggable={false}
               aria-current={activa === id ? "true" : undefined}
-              className={`block border-l-2 py-0.5 pl-3 transition-colors ${
-                activa === id
-                  ? "border-accent font-semibold text-accent"
-                  : "border-divider text-ink-muted hover:border-ink-muted hover:text-ink"
+              className={`block rounded-r border-l-2 py-0.5 pl-3 transition-colors ${
+                ctx?.arrastrando === id ? "opacity-40" : ""
+              } ${
+                encimaDe === id
+                  ? "border-accent bg-accent-soft ring-1 ring-accent/30"
+                  : activa === id
+                    ? "border-accent font-semibold text-accent"
+                    : "border-divider text-ink-muted hover:border-ink-muted hover:text-ink"
               }`}
             >
               {titulo}
