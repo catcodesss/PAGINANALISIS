@@ -1707,54 +1707,93 @@ function InformeOrdenable({
                 las marcadas &quot;Revisar antes de usar&quot; antes de dar el
                 informe por bueno.
               </p>
-              <ul className="space-y-3">
-                {agruparAlertas(analisis.alertas).map((g, i) => (
-                  <li key={i} className="border-l-2 border-divider pl-3">
-                    <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                      {g.gravedad === "alta" ? "Revisar antes de usar" : "Conviene revisar"}
-                      {g.origen === "ia" && " · revisión con IA"}
-                      {g.elementos.length > 1 && ` · ${g.elementos.length} propuestas`}
-                    </p>
-                    <p className="text-[15px] leading-relaxed text-ink">{g.mensaje}</p>
-                    {/* El motivo va arriba una vez; debajo, a qué alcanza. */}
-                    {g.elementos.length > 0 && (
-                      <ul className="mt-1.5 space-y-1">
-                        {g.elementos.map((e, j) => (
-                          <li
-                            key={j}
-                            className="text-[15px] leading-relaxed text-ink-muted before:mr-1.5 before:content-['—']"
-                          >
-                            {e}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {/*
-                      Dónde aterriza el fallo. Sin esto el aviso dice que algo
-                      puede estar mal pero no qué apartado releer, que es
-                      justo lo que decide si hay que reanalizar una sección.
-                      Va enlazado porque el informe es largo y la sección
-                      señalada puede estar muy lejos.
-                    */}
-                    {g.secciones.length > 0 && (
-                      <p className="mt-2 text-sm text-ink-muted">
-                        Puede haberse reflejado en{" "}
-                        {g.secciones.map((id, j) => (
-                          <span key={id}>
-                            {j > 0 && (j === g.secciones.length - 1 ? " y " : ", ")}
-                            <a
-                              href={`#${id}`}
-                              className="text-accent underline underline-offset-2 print:no-underline"
-                            >
-                              {SECCIONES.find((s) => s.id === id)?.titulo ?? id}
-                            </a>
+              <ul className="space-y-5">
+                {agruparAlertas(analisis.alertas).map((g, i) => {
+                  const alta = g.gravedad === "alta";
+                  return (
+                    <li
+                      key={i}
+                      className={`rounded-r-md border-l-[3px] py-1.5 pl-4 ${
+                        alta ? "border-warn bg-warn/5" : "border-divider"
+                      }`}
+                    >
+                      {/*
+                        La etiqueta de gravedad era el mismo gris apagado que
+                        todo lo demás: una insignia (con su punto de color) la
+                        separa de un vistazo de las etiquetas secundarias
+                        (origen, número de propuestas), que van aparte y sin
+                        el mismo peso. Ámbar solo para "alta": es el color que
+                        MARCA.md reserva para "hay que mirarlo", no uno nuevo.
+                      */}
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide ${
+                            alta ? "bg-warn/15 text-warn" : "bg-ink-muted/10 text-ink-muted"
+                          }`}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={`h-1.5 w-1.5 rounded-full ${alta ? "bg-warn" : "bg-ink-muted/50"}`}
+                          />
+                          {alta ? "Revisar antes de usar" : "Conviene revisar"}
+                        </span>
+                        {g.origen === "ia" && (
+                          <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                            Revisión con IA
                           </span>
-                        ))}
-                        . Reanaliza o corrige ahí si lo das por bueno.
+                        )}
+                        {g.elementos.length > 1 && (
+                          <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                            {g.elementos.length} propuestas
+                          </span>
+                        )}
+                      </div>
+                      {/* El mensaje es el titular del aviso: en negrita para
+                          que se lea antes que las propuestas y el enlace de
+                          abajo, que son apoyo, no la conclusión. */}
+                      <p className="mt-2 text-[15px] font-medium leading-relaxed text-ink">
+                        {g.mensaje}
                       </p>
-                    )}
-                  </li>
-                ))}
+                      {/* El motivo va arriba una vez; debajo, a qué alcanza. */}
+                      {g.elementos.length > 0 && (
+                        <ul className="mt-2 space-y-1">
+                          {g.elementos.map((e, j) => (
+                            <li
+                              key={j}
+                              className="text-[15px] leading-relaxed text-ink-muted before:mr-1.5 before:content-['—']"
+                            >
+                              {e}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {/*
+                        Dónde aterriza el fallo. Sin esto el aviso dice que algo
+                        puede estar mal pero no qué apartado releer, que es
+                        justo lo que decide si hay que reanalizar una sección.
+                        Va enlazado porque el informe es largo y la sección
+                        señalada puede estar muy lejos.
+                      */}
+                      {g.secciones.length > 0 && (
+                        <p className="mt-2 text-sm text-ink-muted">
+                          Puede haberse reflejado en{" "}
+                          {g.secciones.map((id, j) => (
+                            <span key={id}>
+                              {j > 0 && (j === g.secciones.length - 1 ? " y " : ", ")}
+                              <a
+                                href={`#${id}`}
+                                className="text-accent underline underline-offset-2 print:no-underline"
+                              >
+                                {SECCIONES.find((s) => s.id === id)?.titulo ?? id}
+                              </a>
+                            </span>
+                          ))}
+                          . Reanaliza o corrige ahí si lo das por bueno.
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
             </BloqueOrdenable>
