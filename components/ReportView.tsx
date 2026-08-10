@@ -1256,6 +1256,22 @@ function useSeccionActiva(ids: string[]) {
  * fábrica en el navegador (arrastra el enlace, no reordena nada), y eso
  * gana al `draggable` del <li> si no se desactiva explícitamente.
  */
+
+/**
+ * Reabrir una tarjeta oculta desde cualquiera de los dos índices (el lateral
+ * y el desplegable móvil). La tarjeta sigue en el DOM (display:none, ver
+ * BloqueOrdenable en components/ordenBloques.tsx), así que basta con
+ * quitarle la marca; no ocupa espacio hasta que React repinta, y eso pasa un
+ * frame después de esta llamada — de ahí el requestAnimationFrame antes de
+ * desplazarse.
+ */
+function reabrirSeccion(ctx: ReturnType<typeof useOrden>, id: string) {
+  ctx?.mostrar(id);
+  requestAnimationFrame(() => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 function IndiceLateral({
   secciones,
   activa,
@@ -1272,49 +1288,74 @@ function IndiceLateral({
       className="hidden shrink-0 print:hidden lg:sticky lg:top-24 lg:block lg:h-fit lg:w-[210px]"
     >
       <ul className="space-y-3.5 text-sm">
-        {secciones.map(({ id, titulo }) => (
-          <li
-            key={id}
-            draggable={Boolean(ctx)}
-            onDragStart={(e) => {
-              if (!ctx) return;
-              e.dataTransfer.setData("text/plain", id);
-              e.dataTransfer.effectAllowed = "move";
-              ctx.setArrastrando(id);
-            }}
-            onDragEnd={() => ctx?.setArrastrando(null)}
-            onDragOver={(e) => {
-              if (!ctx?.arrastrando || ctx.arrastrando === id) return;
-              e.preventDefault();
-              setEncimaDe(id);
-            }}
-            onDragLeave={() => setEncimaDe((actual) => (actual === id ? null : actual))}
-            onDrop={(e) => {
-              e.preventDefault();
-              setEncimaDe(null);
-              const origen = e.dataTransfer.getData("text/plain") || ctx?.arrastrando;
-              if (ctx && origen && origen !== id) ctx.soltarSobre(origen, id);
-            }}
-            className={ctx ? "cursor-grab active:cursor-grabbing" : ""}
-          >
-            <a
-              href={`#${id}`}
-              draggable={false}
-              aria-current={activa === id ? "true" : undefined}
-              className={`block rounded-r border-l-2 py-0.5 pl-3 transition-colors ${
-                ctx?.arrastrando === id ? "opacity-40" : ""
-              } ${
-                encimaDe === id
-                  ? "border-accent bg-accent-soft ring-1 ring-accent/30"
-                  : activa === id
-                    ? "border-accent font-semibold text-accent"
-                    : "border-divider text-ink-muted hover:border-ink-muted hover:text-ink"
-              }`}
+        {secciones.map(({ id, titulo }) => {
+          const oculto = ctx?.oculta(id) ?? false;
+          const claseComun = `block w-full rounded-r border-l-2 py-0.5 pl-3 text-left transition-colors ${
+            ctx?.arrastrando === id ? "opacity-40" : ""
+          } ${
+            encimaDe === id
+              ? "border-accent bg-accent-soft ring-1 ring-accent/30"
+              : oculto
+                ? "border-divider text-ink-muted/60 hover:text-ink-muted"
+                : activa === id
+                  ? "border-accent font-semibold text-accent"
+                  : "border-divider text-ink-muted hover:border-ink-muted hover:text-ink"
+          }`;
+
+          return (
+            <li
+              key={id}
+              draggable={Boolean(ctx)}
+              onDragStart={(e) => {
+                if (!ctx) return;
+                e.dataTransfer.setData("text/plain", id);
+                e.dataTransfer.effectAllowed = "move";
+                ctx.setArrastrando(id);
+              }}
+              onDragEnd={() => ctx?.setArrastrando(null)}
+              onDragOver={(e) => {
+                if (!ctx?.arrastrando || ctx.arrastrando === id) return;
+                e.preventDefault();
+                setEncimaDe(id);
+              }}
+              onDragLeave={() => setEncimaDe((actual) => (actual === id ? null : actual))}
+              onDrop={(e) => {
+                e.preventDefault();
+                setEncimaDe(null);
+                const origen = e.dataTransfer.getData("text/plain") || ctx?.arrastrando;
+                if (ctx && origen && origen !== id) ctx.soltarSobre(origen, id);
+              }}
+              className={ctx ? "cursor-grab active:cursor-grabbing" : ""}
             >
-              {titulo}
-            </a>
-          </li>
-        ))}
+              {/*
+                Oculta: no hay nada a donde saltar (la tarjeta no ocupa
+                espacio), así que en vez de un enlace es un botón que la
+                reabre. Visible: el mismo enlace de siempre. El prefijo "+"
+                repite el idioma que ya usan los "+ Agregar…" del informe.
+              */}
+              {oculto ? (
+                <button
+                  type="button"
+                  draggable={false}
+                  onClick={() => reabrirSeccion(ctx, id)}
+                  aria-label={`Mostrar «${titulo}», oculta actualmente`}
+                  className={claseComun}
+                >
+                  + {titulo}
+                </button>
+              ) : (
+                <a
+                  href={`#${id}`}
+                  draggable={false}
+                  aria-current={activa === id ? "true" : undefined}
+                  className={claseComun}
+                >
+                  {titulo}
+                </a>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );
@@ -1327,6 +1368,7 @@ function IndiceMovil({
   secciones: SeccionIndice[];
   activa: string;
 }) {
+  const ctx = useOrden();
   const [abierto, setAbierto] = useState(false);
   const contenedorRef = useRef<HTMLDivElement>(null);
 
@@ -1363,19 +1405,35 @@ function IndiceMovil({
       </button>
       {abierto && (
         <ul className="absolute z-10 mt-1 w-full rounded border border-divider bg-surface py-1 shadow-md">
-          {secciones.map(({ id, titulo }) => (
-            <li key={id}>
-              <a
-                href={`#${id}`}
-                onClick={() => setAbierto(false)}
-                className={`block px-3 py-2 text-sm ${
-                  activa === id ? "font-medium text-accent" : "text-ink"
-                }`}
-              >
-                {titulo}
-              </a>
-            </li>
-          ))}
+          {secciones.map(({ id, titulo }) => {
+            const oculto = ctx?.oculta(id) ?? false;
+            return (
+              <li key={id}>
+                {oculto ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      reabrirSeccion(ctx, id);
+                      setAbierto(false);
+                    }}
+                    className="block w-full px-3 py-2 text-left text-sm text-ink-muted"
+                  >
+                    + {titulo}
+                  </button>
+                ) : (
+                  <a
+                    href={`#${id}`}
+                    onClick={() => setAbierto(false)}
+                    className={`block px-3 py-2 text-sm ${
+                      activa === id ? "font-medium text-accent" : "text-ink"
+                    }`}
+                  >
+                    {titulo}
+                  </a>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

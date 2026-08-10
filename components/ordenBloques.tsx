@@ -102,6 +102,17 @@ interface OrdenContextValor {
   setArrastrando: (id: string | null) => void;
   restaurar: () => void;
   esPersonalizado: boolean;
+  /**
+   * Si el bloque está oculto de la lectura en pantalla. A diferencia del
+   * orden, NO se guarda en localStorage: es una forma de despejar ESTE
+   * informe, no una preferencia para todos los casos futuros — ocultar
+   * "Riesgo" sin querer en un caso y que se quede oculto en el siguiente,
+   * silenciosamente, sería justo el tipo de fallo que este proyecto evita.
+   * Se reinicia solo con generar un análisis nuevo.
+   */
+  oculta: (id: string) => boolean;
+  ocultar: (id: string) => void;
+  mostrar: (id: string) => void;
 }
 
 const OrdenContext = createContext<OrdenContextValor | null>(null);
@@ -179,6 +190,9 @@ export function ProveedorOrden({
   children: ReactNode;
 }) {
   const [arrastrando, setArrastrando] = useState<string | null>(null);
+  // En memoria, no en localStorage: ver el comentario de "oculta" en
+  // OrdenContextValor sobre por qué esto no debe sobrevivir a un análisis nuevo.
+  const [ocultas, setOcultas] = useState<Set<string>>(() => new Set());
   const crudo = useSyncExternalStore(suscribir, leerCrudo, leerCrudoEnServidor);
 
   const orden = useMemo(() => {
@@ -232,8 +246,23 @@ export function ProveedorOrden({
       setArrastrando,
       restaurar: () => guardar(idsPorDefecto),
       esPersonalizado: orden.join() !== idsPorDefecto.join(),
+      oculta: (id) => ocultas.has(id),
+      ocultar: (id) =>
+        setOcultas((previas) => {
+          if (previas.has(id)) return previas;
+          const siguientes = new Set(previas);
+          siguientes.add(id);
+          return siguientes;
+        }),
+      mostrar: (id) =>
+        setOcultas((previas) => {
+          if (!previas.has(id)) return previas;
+          const siguientes = new Set(previas);
+          siguientes.delete(id);
+          return siguientes;
+        }),
     };
-  }, [orden, arrastrando, guardar, idsPorDefecto]);
+  }, [orden, arrastrando, guardar, idsPorDefecto, ocultas]);
 
   return <OrdenContext.Provider value={valor}>{children}</OrdenContext.Provider>;
 }
@@ -261,6 +290,7 @@ export function BloqueOrdenable({
 
   const seEstaArrastrando = ctx.arrastrando === id;
   const editada = edicion?.seccionesEditadas.includes(id) ?? false;
+  const oculto = ctx.oculta(id);
 
   /**
    * El bloque entero se arrastra, pero no desde cualquier sitio: si el gesto
@@ -314,9 +344,16 @@ export function BloqueOrdenable({
         seguía en su sitio viejo cuando FLIP medía la posición nueva, el
         desplazamiento salía de cero y la animación no llegaba a lanzarse.
       */
+      /*
+        Oculto en pantalla (display:none, no ocupa espacio ni recibe foco) pero
+        NO en el documento: `print:block` lo devuelve al imprimir o exportar a
+        PDF, para que ocultar una tarjeta para leer no borre nada del registro
+        que se entrega o se archiva. El texto copiado y el Word no pasan por
+        aquí — leen `analisis` directamente — así que tampoco pierden nada.
+      */
       className={`bloque-informe group/bloque relative mb-4 cursor-grab rounded-xl border bg-surface p-5 transition-[border-color,box-shadow,opacity] duration-150 active:cursor-grabbing sm:p-6 ${
-        seEstaArrastrando ? "opacity-40" : ""
-      } ${
+        oculto ? "hidden print:block" : ""
+      } ${seEstaArrastrando ? "opacity-40" : ""} ${
         encima
           ? "border-accent ring-2 ring-accent/30"
           : "border-divider hover:border-ink-muted/40"
@@ -354,6 +391,20 @@ export function BloqueOrdenable({
           className="rounded px-1 text-ink-muted transition-colors hover:bg-canvas hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         >
           <span aria-hidden="true" className="text-xs">▼</span>
+        </button>
+        {/*
+          Ocultar es una acción distinta de reordenar (quita la tarjeta de la
+          vista, no la mueve), así que lleva su propio espacio y su propio
+          color de foco al pasar el ratón, para no leerse como un tercer botón
+          de la misma familia que subir/bajar.
+        */}
+        <button
+          type="button"
+          onClick={() => ctx.ocultar(id)}
+          aria-label={`Ocultar «${titulo}» (queda su título en el índice para volver a abrirla)`}
+          className="mt-1 rounded px-1 text-ink-muted transition-colors hover:bg-canvas hover:text-warn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        >
+          <span aria-hidden="true" className="text-xs">✕</span>
         </button>
       </div>
       {children}
