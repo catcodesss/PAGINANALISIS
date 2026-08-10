@@ -255,6 +255,28 @@ FORMATO DE RESPUESTA PARA ESTA ACTUALIZACIÓN PARCIAL: responde ÚNICAMENTE con 
 }
 
 /**
+ * Prompt de la detección previa de datos faltantes (ver
+ * lib/datosFaltantesPrevios.ts): una llamada barata y rápida, ANTES del
+ * análisis completo, que solo busca vacíos importantes en la nota y los
+ * convierte en preguntas para el terapeuta. El objetivo es que esos vacíos se
+ * resuelvan antes de gastar la llamada completa, en vez de descubrirse
+ * después en "datos_faltantes" y obligar a un reanálisis para incorporarlos.
+ */
+export function construirPromptDatosFaltantesPrevios(): string {
+  return `Eres un analista de conducta que revisa una nota clínica ANTES de que otro proceso genere el análisis funcional completo. Tu única tarea es detectar qué información importante falta para que ese análisis sea fiable, y convertir cada vacío en una pregunta breve y concreta que el terapeuta pueda responder de memoria, sin volver a consultar al paciente.
+
+Prioriza los vacíos que cambiarían el análisis si se resolvieran: qué ocurre justo después de la conducta (qué la mantiene), ante quién sí y ante quién no aparece, desde cuándo, antecedentes médicos o consumo relevante, si alguien del entorno interviene o acomoda el problema, e indicadores de riesgo mencionados pero no aclarados. No preguntes por algo que la nota ya responde, aunque sea parcialmente. No preguntes por estilo, formato ni detalles que no cambian la función de la conducta.
+
+Máximo 5 preguntas. Si la nota ya es razonablemente completa, responde con una lista vacía: no inventes preguntas para rellenar.
+
+FORMATO: responde ÚNICAMENTE con un objeto JSON, sin texto antes ni después, sin fences de markdown, con esta forma exacta:
+{
+  "preguntas": ["string (una pregunta breve y concreta, en español, dirigida directamente al terapeuta)"]
+}
+Si no falta nada relevante: { "preguntas": [] }`;
+}
+
+/**
  * Prompt de la pasada crítica (ver lib/pasadaCritica.ts): una segunda llamada,
  * opt-in y con un modelo más barato, que revisa el análisis ya generado en
  * vez de generar uno nuevo. A diferencia de lib/validadores.ts, esto SÍ

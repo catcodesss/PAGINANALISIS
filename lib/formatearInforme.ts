@@ -141,7 +141,15 @@ export function formatearInformeTexto(
   // orden que pida el clinico (ver ORDEN_BLOQUES_POR_DEFECTO).
   const bloques: Record<string, string> = {};
 
-  bloques["datos-faltantes"] = (seccion("DATOS FALTANTES", listaOTexto(analisis.datos_faltantes)));
+  // Igual que en pantalla (ReportView.tsx): ya no es el primer bloque ni uno
+  // que se muestre siempre. Solo viaja con el informe exportado si hay algo
+  // que de verdad quedó sin saber.
+  if (analisis.datos_faltantes.length > 0) {
+    bloques["datos-faltantes"] = seccion(
+      "DATOS FALTANTES",
+      listaOTexto(analisis.datos_faltantes)
+    );
+  }
 
   bloques["riesgo"] = (
     seccion(

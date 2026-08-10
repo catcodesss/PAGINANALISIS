@@ -12,7 +12,7 @@ import {
   ORDEN_BLOQUES_POR_DEFECTO,
 } from "@/lib/formatearInforme";
 import { leerOrdenGuardado } from "@/components/ordenBloques";
-import { revalidarTrasEdicion } from "@/lib/validadores";
+import { revalidarTrasEdicion, revalidarTrasReanalisis } from "@/lib/validadores";
 import { descargarDocx } from "@/lib/exportarDocx";
 import ReportView from "@/components/ReportView";
 import GuiaCompleta from "@/components/GuiaCompleta";
@@ -22,6 +22,9 @@ import { IDS_TODOS } from "@/lib/bloques";
 import EsqueletoInforme from "@/components/EsqueletoInforme";
 import Sidebar, { type Vista } from "@/components/Sidebar";
 import PanelRecomendaciones from "@/components/PanelRecomendaciones";
+import PreguntasDatosFaltantes, {
+  type ResultadoPreguntas,
+} from "@/components/PreguntasDatosFaltantes";
 
 // El marcador de posición se mantiene corto a propósito. El ejemplo largo que
 // había antes iba en viñetas telegráficas, justo lo que la guía desaconseja, y
@@ -29,7 +32,13 @@ import PanelRecomendaciones from "@/components/PanelRecomendaciones";
 // recomendaciones de al lado.
 const MARCADOR_NOTA = "Pega aquí tu caso…";
 
-type EstadoApp = "inicial" | "cargando" | "resultado" | "error";
+type EstadoApp =
+  | "inicial"
+  | "detectando"
+  | "preguntando"
+  | "cargando"
+  | "resultado"
+  | "error";
 
 const LONGITUD_MINIMA = 100;
 // Debe coincidir con LONGITUD_MAXIMA_NOTA de app/api/analizar/route.ts.
@@ -53,8 +62,19 @@ export default function Home() {
   const [selectorAbierto, setSelectorAbierto] = useState(false);
   // Vacío en la práctica significa "todos": se manda la lista completa.
   const [bloques, setBloques] = useState<string[]>(IDS_TODOS);
+  // Preguntas del paso previo (ver lib/datosFaltantesPrevios.ts). null = no se
+  // está preguntando nada; array = mostrando PreguntasDatosFaltantes.
+  const [preguntas, setPreguntas] = useState<string[] | null>(null);
+  // El texto tal como se decidió enviar (ya con PII resuelto), guardado
+  // mientras dura el paso de preguntas para poder anexarle las respuestas
+  // confirmadas al terminar.
+  const [textoPendiente, setTextoPendiente] = useState("");
 
-  async function ejecutarAnalisis(texto: string, bloquesPedidos: string[] = bloques) {
+  async function ejecutarAnalisis(
+    texto: string,
+    bloquesPedidos: string[] = bloques,
+    datosFaltantesDeclarados: string[] = []
+  ) {
     setUltimoTextoEnviado(texto);
     setSelectorAbierto(false);
     setAvisoPII(false);
@@ -66,7 +86,11 @@ export default function Home() {
       const respuesta = await fetch("/api/analizar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nota: texto, bloques: bloquesPedidos }),
+        body: JSON.stringify({
+          nota: texto,
+          bloques: bloquesPedidos,
+          datosFaltantesDeclarados,
+        }),
       });
 
       const datos = await respuesta.json().catch(() => null);
@@ -104,6 +128,67 @@ export default function Home() {
     }
   }
 
+  /**
+   * Paso previo a ejecutarAnalisis: una llamada barata (ver
+   * lib/datosFaltantesPrevios.ts) que revisa la nota antes de gastar la
+   * llamada completa. Si encuentra vacíos importantes, los muestra como
+   * preguntas antes de analizar; si no encuentra nada o la llamada falla, pasa
+   * directo al análisis, exactamente como si este paso no existiera — nunca
+   * bloquea por su cuenta.
+   */
+  async function iniciarFlujo(texto: string) {
+    setSelectorAbierto(false);
+    setAvisoPII(false);
+    setMensajeValidacion("");
+    setMensajeError("");
+    setTextoPendiente(texto);
+    setEstado("detectando");
+
+    let detectadas: string[] = [];
+    try {
+      const respuesta = await fetch("/api/detectar-datos-faltantes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nota: texto }),
+      });
+      const datos = await respuesta.json().catch(() => null);
+      if (Array.isArray(datos?.preguntas)) {
+        detectadas = datos.preguntas.filter(
+          (p: unknown): p is string => typeof p === "string" && p.trim().length > 0
+        );
+      }
+    } catch {
+      detectadas = [];
+    }
+
+    if (detectadas.length === 0) {
+      void ejecutarAnalisis(texto);
+      return;
+    }
+
+    setPreguntas(detectadas);
+    setEstado("preguntando");
+  }
+
+  /**
+   * Lo confirmado se suma a la nota como un apéndice, antes de analizar: así
+   * el análisis completo ya lo tiene y no vuelve a marcarlo como faltante. Lo
+   * omitido ("No sé") viaja aparte, para que el servidor lo declare en
+   * datos_faltantes sin depender de que el modelo lo repita (ver
+   * app/api/analizar/route.ts).
+   */
+  function manejarCompletarPreguntas({ confirmadas, omitidas }: ResultadoPreguntas) {
+    let textoFinal = textoPendiente;
+    if (confirmadas.length > 0) {
+      const apendice = confirmadas
+        .map((c) => `- ${c.pregunta}\n  Respuesta: ${c.respuesta}`)
+        .join("\n");
+      textoFinal = `${textoFinal}\n\n--- Información adicional confirmada por el terapeuta ---\n${apendice}`;
+    }
+    setPreguntas(null);
+    void ejecutarAnalisis(textoFinal, bloques, omitidas);
+  }
+
   function manejarGenerarClick() {
     if (nota.trim().length < LONGITUD_MINIMA) {
       setMensajeValidacion(MENSAJE_NOTA_BREVE);
@@ -116,17 +201,17 @@ export default function Home() {
       return;
     }
 
-    void ejecutarAnalisis(nota);
+    void iniciarFlujo(nota);
   }
 
   function manejarEnmascararYAnalizar() {
     const enmascarada = enmascararDatosIdentificables(nota);
     setNota(enmascarada);
-    void ejecutarAnalisis(enmascarada);
+    void iniciarFlujo(enmascarada);
   }
 
   function manejarAnalizarSinCambios() {
-    void ejecutarAnalisis(nota);
+    void iniciarFlujo(nota);
   }
 
   function manejarReintentar() {
@@ -144,6 +229,8 @@ export default function Home() {
     setFechaGeneracion("");
     setUltimoTextoEnviado("");
     setCopiado(false);
+    setPreguntas(null);
+    setTextoPendiente("");
   }
 
   async function manejarCopiarInforme() {
@@ -197,6 +284,25 @@ export default function Home() {
     });
   }
 
+  /**
+   * Resultado de "+ Agregar nota y reanalizar esta sección" (BloqueReanalisis
+   * en ReportView.tsx): el fragmento lo escribió la IA de nuevo, así que puede
+   * traer el mismo tipo de error que el informe original (p. ej. prescribir de
+   * nuevo una conducta de seguridad). Antes este fragmento se fusionaba sin
+   * revisar; ahora se revalida igual que una edición manual, pero con
+   * revalidarTrasReanalisis, que sí recalcula la confianza (ver
+   * lib/validadores.ts) porque este contenido es tan nuevo como el original.
+   */
+  function manejarAnalisisActualizado(fragmento: Partial<AnalisisFuncional>) {
+    setAnalisis((previo) => {
+      if (!previo) return previo;
+      const actualizado = structuredClone(previo);
+      Object.assign(actualizado, fragmento);
+      actualizado.alertas = revalidarTrasReanalisis(actualizado, ultimoTextoEnviado);
+      return actualizado;
+    });
+  }
+
   // Guía y configuración ocultan el formulario y el informe: las tres vistas
   // comparten contenedor y cabecera, solo cambia el cuerpo.
   const enAnalisis = vista === "analisis";
@@ -219,7 +325,8 @@ export default function Home() {
   };
   const cabecera = TITULOS[vista];
   const formularioVisible = enAnalisis && estado !== "resultado";
-  const formularioDeshabilitado = estado === "cargando";
+  const formularioDeshabilitado =
+    estado === "cargando" || estado === "detectando" || estado === "preguntando";
 
   return (
     <div className="min-h-screen bg-canvas lg:flex print:block">
@@ -227,8 +334,12 @@ export default function Home() {
 
       <div className="min-w-0 flex-1">
         <main
+          // El informe ya generado necesita más aire que el formulario: es
+          // donde viven la cadena dibujada, las tablas y el resto del
+          // análisis, y max-w-6xl las apretaba a todas por igual, no solo a
+          // la cadena.
           className={`mx-auto px-4 py-8 sm:px-6 sm:py-10 lg:px-10 print:max-w-none print:px-0 print:py-0 ${
-            estado === "resultado" ? "max-w-6xl" : "max-w-6xl"
+            estado === "resultado" ? "max-w-[96rem]" : "max-w-6xl"
           }`}
         >
           <header className="mb-6 flex flex-wrap items-start justify-between gap-4 print:hidden">
@@ -428,6 +539,27 @@ export default function Home() {
                   )}
                 </div>
 
+                {estado === "detectando" && (
+                  <div className="mt-8 flex items-center gap-3 rounded-2xl border border-divider bg-surface p-5 shadow-sm sm:p-6">
+                    <span
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-accent border-t-transparent"
+                    />
+                    <p className="text-sm text-ink-muted">
+                      Revisando la nota antes de generar el análisis…
+                    </p>
+                  </div>
+                )}
+
+                {estado === "preguntando" && preguntas && (
+                  <div className="mt-8">
+                    <PreguntasDatosFaltantes
+                      preguntas={preguntas}
+                      onCompletar={manejarCompletarPreguntas}
+                    />
+                  </div>
+                )}
+
                 {estado === "cargando" && (
                   <div className="mt-8">
                     <EsqueletoInforme />
@@ -485,9 +617,7 @@ export default function Home() {
                 onReferenciaCasoChange={setReferenciaCaso}
                 fecha={fechaGeneracion}
                 notaOriginal={ultimoTextoEnviado}
-                onAnalisisActualizado={(fragmento) =>
-                  setAnalisis((previo) => (previo ? { ...previo, ...fragmento } : previo))
-                }
+                onAnalisisActualizado={manejarAnalisisActualizado}
                 onEditarSeccion={manejarEditarSeccion}
               />
             </div>

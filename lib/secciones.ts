@@ -17,10 +17,16 @@
  * El orden de esta lista ES el orden de fábrica del informe. Cambiarlo cambia
  * cómo se lee un informe recién generado; el clínico puede reordenarlo después
  * (ver components/ordenBloques.tsx).
+ *
+ * "datos-faltantes" va al final, no al principio: desde que existe el paso de
+ * preguntas previo (ver lib/datosFaltantesPrevios.ts y
+ * components/PreguntasDatosFaltantes.tsx), lo que aquí aparece no es lo
+ * primero que hay que revisar, sino lo que el propio terapeuta ya reconoció
+ * como no disponible al responder "No sé". Ya no hace falta leerlo antes que
+ * el resto: arriba va lo que el análisis sí pudo decir.
  */
 
 export const SECCIONES_INFORME = [
-  { id: "datos-faltantes", titulo: "Datos faltantes" },
   { id: "riesgo", titulo: "Riesgo" },
   { id: "alertas", titulo: "Puntos a verificar del análisis" },
   { id: "hipotesis-principal", titulo: "Formulación destacada" },
@@ -35,6 +41,7 @@ export const SECCIONES_INFORME = [
   { id: "hipotesis-alternativas", titulo: "Hipótesis alternativas" },
   { id: "preguntas", titulo: "Preguntas para la próxima sesión" },
   { id: "intervencion", titulo: "Líneas de intervención" },
+  { id: "datos-faltantes", titulo: "Datos faltantes" },
 ] as const satisfies readonly { id: string; titulo: string }[];
 
 export type IdSeccion = (typeof SECCIONES_INFORME)[number]["id"];

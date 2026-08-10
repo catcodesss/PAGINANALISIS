@@ -204,6 +204,29 @@ html[data-texto="mayor"] { --escala-texto: 1.3; }
   }
 }
 
+/*
+  Transición entre preguntas del paso previo de datos faltantes (ver
+  components/PreguntasDatosFaltantes.tsx). Se dispara remontando el nodo con
+  `key={indice}`: cada pregunta nueva entra con esta animación en vez de
+  aparecer de golpe. Al ser CSS declarativo (no una llamada a `.animate()`
+  como en ordenBloques.tsx), la regla de prefers-reduced-motion de abajo sí
+  la alcanza sin nada más que hacer.
+*/
+@keyframes entrarPregunta {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pregunta-entra {
+  animation: entrarPregunta 280ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

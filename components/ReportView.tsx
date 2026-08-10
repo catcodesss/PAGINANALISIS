@@ -711,125 +711,60 @@ interface NodoCadena {
 }
 
 function CadenaVisual({ nodos }: { nodos: NodoCadena[] }) {
+  // Antes solo el eslabón activo mostraba su texto (había que mantener
+  // pulsado cada círculo, uno por uno, para leerlos todos) y la cadena
+  // corría en horizontal con scroll, así que nunca se veía entera. Ahora se
+  // lee de arriba abajo, con el texto de cada eslabón siempre a la vista:
+  // "activo" ya no decide qué se muestra, solo cuál queda resaltado.
   const [activo, setActivo] = useState<number | null>(null);
-  const [fijado, setFijado] = useState(false);
-  const pulsadoEn = useRef(0);
-
-  // Mantener pulsado enseña el detalle mientras se mantiene; un toque corto lo
-  // deja fijo. Sin esa distinción, en una pantalla táctil no habría forma de
-  // leer un detalle largo — el dedo tapa justo lo que quieres leer.
-  const MANTENIDO_MS = 300;
-
-  // La marca de tiempo sale del propio evento y no de performance.now(): el
-  // reloj es el mismo, y así no se llama a nada impuro desde el cuerpo del
-  // componente, que es lo que el linter de React prohíbe.
-  function alPulsar(i: number, e: React.PointerEvent) {
-    pulsadoEn.current = e.timeStamp;
-    setActivo(i);
-    setFijado(false);
-  }
-
-  function alSoltar(i: number, e: React.PointerEvent) {
-    if (e.timeStamp - pulsadoEn.current > MANTENIDO_MS) {
-      setActivo(null);
-      return;
-    }
-    setActivo(i);
-    setFijado(true);
-  }
-
-  function cerrarSiNoEstaFijado() {
-    if (!fijado) setActivo(null);
-  }
-
-  const detalle = activo === null ? null : nodos[activo];
 
   return (
-    <div className="cadena-visual mb-4 print:hidden">
-      <div className="flex items-start gap-1 overflow-x-auto pb-2">
-        {nodos.map((n, i) => (
-          <div key={i} className="flex shrink-0 items-center gap-1">
-            {i > 0 && (
-              <span
-                aria-hidden="true"
-                className="mb-6 h-px w-5 shrink-0 bg-divider after:relative after:-top-[7px] after:left-[14px] after:text-ink-muted after:content-['▸']"
-              />
-            )}
+    <ol className="cadena-visual mb-4 flex flex-col print:hidden">
+      {nodos.map((n, i) => (
+        <li key={i} className="flex gap-3">
+          <div className="flex flex-col items-center">
             <button
               type="button"
-              // El texto entero va aquí: quien use lector de pantalla no
-              // tiene que mantener pulsado nada para enterarse.
-              aria-label={`${n.rol}: ${n.texto}`}
-              aria-pressed={activo === i && fijado}
-              onPointerDown={(e) => alPulsar(i, e)}
-              onPointerUp={(e) => alSoltar(i, e)}
-              onPointerLeave={cerrarSiNoEstaFijado}
-              onPointerCancel={cerrarSiNoEstaFijado}
-              // Con teclado no hay puntero: el clic sintético (detail 0) es la
-              // única señal de que alguien pulsó Intro o Espacio.
-              onClick={(e) => {
-                if (e.detail === 0) {
-                  setActivo(i);
-                  setFijado(true);
-                }
-              }}
-              onFocus={() => setActivo(i)}
-              onBlur={cerrarSiNoEstaFijado}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setFijado(false);
-                  setActivo(null);
-                }
-              }}
-              className="flex w-20 shrink-0 select-none flex-col items-center gap-1 rounded outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-              style={{ touchAction: "manipulation" }}
+              // El nombre accesible es solo el rol: el texto ya está en el
+              // párrafo de al lado, en el orden natural de lectura, así que
+              // repetirlo aquí duplicaría todo para quien use lector de
+              // pantalla.
+              aria-label={`Resaltar «${n.rol}»`}
+              aria-pressed={activo === i}
+              onClick={() => setActivo((a) => (a === i ? null : i))}
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 font-mono text-sm font-bold outline-none transition-all focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                activo === i
+                  ? "texto-sobre-acento scale-110 border-accent bg-accent"
+                  : n.destacado
+                    ? "border-warn bg-canvas text-warn"
+                    : "border-divider bg-canvas text-ink-muted hover:border-accent hover:text-accent"
+              }`}
             >
-              <span
-                aria-hidden="true"
-                className={`flex h-11 w-11 items-center justify-center rounded-full border-2 font-mono text-sm font-bold transition-all ${
-                  activo === i
-                    ? "texto-sobre-acento scale-110 border-accent bg-accent"
-                    : n.destacado
-                      ? "border-warn bg-canvas text-warn"
-                      : "border-divider bg-canvas text-ink-muted hover:border-accent hover:text-accent"
-                }`}
-              >
-                {n.simbolo}
-              </span>
-              <span
-                aria-hidden="true"
-                className="text-center font-mono text-[10px] uppercase leading-tight tracking-wide text-ink-muted"
-              >
-                {n.rol}
-              </span>
+              {n.simbolo}
             </button>
+            {/* La línea se estira con flex (el <li> es la fila que la
+                iguala a la altura del texto de al lado) y lleva su propia
+                flecha hacia abajo, como antes la llevaba hacia la derecha. */}
+            {i < nodos.length - 1 && (
+              <span
+                aria-hidden="true"
+                className="relative w-px flex-1 bg-divider after:absolute after:left-1/2 after:top-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:text-ink-muted after:content-['▾']"
+              />
+            )}
           </div>
-        ))}
-      </div>
-
-      {/*
-        Alto mínimo fijo: sin él, abrir y cerrar el detalle empuja la tabla de
-        abajo y la cadena da saltos al recorrerla.
-      */}
-      <div
-        aria-live="polite"
-        className="min-h-[74px] rounded-md border border-divider bg-canvas p-3"
-      >
-        {detalle ? (
-          <>
-            <p className="font-mono text-[10px] uppercase tracking-wide text-accent">
-              {detalle.rol}
+          <div className={`min-w-0 flex-1 ${i < nodos.length - 1 ? "pb-6" : ""}`}>
+            <p
+              className={`pt-2 font-mono text-[10px] uppercase tracking-wide ${
+                activo === i ? "text-accent" : "text-ink-muted"
+              }`}
+            >
+              {n.rol}
             </p>
-            <p className="mt-1 text-sm leading-relaxed text-ink">{detalle.texto}</p>
-          </>
-        ) : (
-          <p className="text-sm italic leading-relaxed text-ink-muted">
-            Mantén pulsado un círculo para ver ese eslabón, o tócalo para
-            dejarlo fijo. El detalle completo está en la tabla de abajo.
-          </p>
-        )}
-      </div>
-    </div>
+            <p className="mt-0.5 text-sm leading-relaxed text-ink">{n.texto}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -1704,39 +1639,7 @@ function InformeOrdenable({
         {/* flex-col: los bloques se reordenan con `order` de CSS, sin moverse
             del árbol de React. Ver components/ordenBloques.tsx. */}
         <div className="flex min-w-0 flex-1 flex-col">
-          {/* Datos faltantes va primero de fábrica —es lo que hay que revisar antes
-              de confiar en el resto—, pero el clínico puede recolocarlo. */}
-          <BloqueOrdenable id="datos-faltantes" titulo="Datos faltantes">
-          <section id="datos-faltantes" className="scroll-mt-24">
-            <div className="mb-3 flex items-center gap-3">
-              <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
-              <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
-                Datos faltantes
-              </h2>
-            </div>
-            <p className="mb-3 text-sm text-ink-muted">
-              Revisa esto antes que el resto del informe: es la información que la
-              nota no incluyó y que conviene confirmar o completar en sesión.
-            </p>
-            <ListaEditable
-              items={analisis.datos_faltantes}
-              seccionId="datos-faltantes"
-              etiqueta="dato faltante"
-              onCambiar={(nuevos) =>
-                onEditarSeccion("datos-faltantes", (c) => {
-                  c.datos_faltantes = nuevos;
-                })
-              }
-            />
-            <ReportarFallo seccionId="datos-faltantes" />
-            <BloqueReanalisis
-              campos={["datos_faltantes", "situaciones"]}
-              seccionId="datos-faltantes"
-            />
-          </section>
-          </BloqueOrdenable>
-
-          {/* Riesgo: misma prioridad que datos faltantes, por su relevancia de seguridad clínica. */}
+          {/* Riesgo: lo primero de fábrica, por su relevancia de seguridad clínica. */}
           <BloqueOrdenable id="riesgo" titulo="Riesgo">
           <section id="riesgo" className="scroll-mt-24">
             <div className="mb-3 flex items-center gap-3">
@@ -1793,14 +1696,16 @@ function InformeOrdenable({
                 Esto no habla de tu nota: habla de lo que escribió la IA más
                 arriba. Decirlo en la primera línea, porque el rótulo anterior
                 ("Revisiones sugeridas") se leía como si fueran correcciones al
-                texto que pegó el clínico.
+                texto que pegó el clínico. Reescrito para no exigir entender
+                cómo funciona el análisis por dentro (qué es un validador, qué
+                es la pasada crítica): solo qué hacer con cada aviso.
               */}
               <p className="mb-3 text-sm text-ink-muted">
-                Puntos del análisis de arriba donde la IA puede haberse
-                equivocado. No son observaciones sobre tu nota. La mayoría los
-                detecta el sistema contrastando el informe con ella, sin IA; los
-                marcados &quot;revisión con IA&quot; vienen de una segunda lectura
-                opcional y pueden equivocarse igual que la primera.
+                Avisos sobre el informe de arriba, no sobre lo que tú
+                escribiste: partes donde la IA pudo interpretar mal la nota o
+                afirmar algo con más seguridad de la que tiene. Revisa primero
+                las marcadas &quot;Revisar antes de usar&quot; antes de dar el
+                informe por bueno.
               </p>
               <ul className="space-y-3">
                 {agruparAlertas(analisis.alertas).map((g, i) => (
@@ -2294,6 +2199,49 @@ function InformeOrdenable({
               }
             />
           </Seccion>
+
+          {/*
+            Ya no es el primer bloque del informe: desde que existen las
+            preguntas previas (ver components/PreguntasDatosFaltantes.tsx),
+            esto son datos que el propio terapeuta reconoció como no
+            disponibles al responder "No sé" — no una advertencia que haya que
+            leer antes que el resto. Por eso va al final y solo aparece si de
+            verdad hay algo declarado (o algo que el modelo, aparte de eso,
+            haya marcado como faltante).
+          */}
+          {analisis.datos_faltantes.length > 0 && (
+            <BloqueOrdenable id="datos-faltantes" titulo="Datos faltantes">
+            <section id="datos-faltantes" className="scroll-mt-24">
+              <div className="mb-3 flex items-center gap-3">
+                <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
+                <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
+                  Datos faltantes
+                </h2>
+              </div>
+              <p className="mb-3 text-sm text-ink-muted">
+                Lo que quedó sin saber antes de generar este informe: lo que
+                marcaste como &quot;No sé&quot; al empezar, más cualquier otro
+                vacío que el análisis haya detectado por su cuenta. Confírmalo
+                en la próxima sesión.
+              </p>
+              <ListaEditable
+                items={analisis.datos_faltantes}
+                seccionId="datos-faltantes"
+                etiqueta="dato faltante"
+                onCambiar={(nuevos) =>
+                  onEditarSeccion("datos-faltantes", (c) => {
+                    c.datos_faltantes = nuevos;
+                  })
+                }
+              />
+              <ReportarFallo seccionId="datos-faltantes" />
+              <BloqueReanalisis
+                campos={["datos_faltantes", "situaciones"]}
+                seccionId="datos-faltantes"
+              />
+            </section>
+            </BloqueOrdenable>
+          )}
 
         </div>
       </div>

@@ -454,17 +454,32 @@ export function BloqueLosLimites() {
 
       <div className="rounded-xl border-l-4 border-warn bg-canvas p-5">
         <h3 className="mb-2 font-serif text-base font-semibold text-ink">
-          Empieza siempre por &quot;Datos faltantes&quot; y &quot;Riesgo&quot;
+          Empieza siempre por &quot;Riesgo&quot;
         </h3>
         <p className="text-sm leading-relaxed text-ink-muted">
-          Son las dos primeras secciones del informe a propósito. Datos
-          faltantes recoge lo que tu nota no incluía. Riesgo señala si se
+          Es la primera sección del informe a propósito. Señala si se
           detectaron indicadores (escalada de consumo, ideación, riesgo
           laboral o legal, menores implicados) o si la nota no daba
           información suficiente para evaluarlo — en ese caso lo dice
-          explícitamente, no lo deja en blanco. Léelas antes que las
+          explícitamente, no lo deja en blanco. Léela antes que las
           conclusiones: evita tomar por establecido algo que solo era una
           inferencia sobre información incompleta.
+        </p>
+      </div>
+
+      <div className="rounded-xl border-l-4 border-warn bg-canvas p-5">
+        <h3 className="mb-2 font-serif text-base font-semibold text-ink">
+          Los datos faltantes se preguntan antes, no después
+        </h3>
+        <p className="text-sm leading-relaxed text-ink-muted">
+          Antes de generar el informe, ACIA revisa tu nota y —si encuentra
+          vacíos importantes— te los muestra como preguntas breves. Lo que
+          respondes se suma a la nota antes de analizar, así el informe ya
+          cuenta con ello. Si respondes &quot;No sé&quot; a alguna, el análisis
+          sigue igual y esa pregunta aparece al final del informe, en
+          &quot;Datos faltantes&quot;, como recordatorio para confirmarla en
+          sesión. Por eso esa sección ya no encabeza el informe: solo aparece
+          cuando de verdad queda algo sin saber.
         </p>
       </div>
     </div>

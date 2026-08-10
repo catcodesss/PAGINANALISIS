@@ -445,3 +445,39 @@ export function revalidarTrasEdicion(
     ...validarRiesgoNoDetectado(analisis, nota),
   ]);
 }
+
+/**
+ * Vuelve a pasar las comprobaciones tras un reanálisis con IA (ver
+ * BloqueReanalisis en components/ReportView.tsx y app/api/reanalizar-seccion):
+ * el clínico pidió que el modelo rehiciera una sección, y ese resultado nuevo
+ * puede introducir el mismo tipo de error que el informe original — nada lo
+ * garantiza libre de eso solo por ser una respuesta más reciente.
+ *
+ * A diferencia de revalidarTrasEdicion, aquí SÍ se recalcula V1 (confianza sin
+ * cita) y SÍ se muta la confianza si hace falta: el contenido reanalizado es
+ * tan nuevo como el de la primera generación —lo escribió el modelo, no el
+ * clínico—, así que su confianza debe revisarse igual que entonces, no
+ * conservarse como en una edición manual (donde la confianza no se toca).
+ *
+ * Se conservan las alertas de la pasada crítica (origen "ia"): vienen de una
+ * llamada que no se repite gratis, y perderlas al reanalizar una sola sección
+ * descartaría hallazgos válidos sobre el resto del informe, que no cambió.
+ *
+ * Corre en el navegador, sin coste: son las mismas cinco comprobaciones
+ * deterministas de siempre, no una llamada nueva.
+ */
+export function revalidarTrasReanalisis(
+  analisis: AnalisisFuncional,
+  nota: string
+): Alerta[] {
+  const conservadas = analisis.alertas.filter((a) => a.origen === "ia");
+
+  return sinDuplicados([
+    ...conservadas,
+    ...validarConfianzaSinCita(analisis),
+    ...validarCobertura(analisis),
+    ...validarConductasSeguridad(analisis, nota),
+    ...validarDependenciaDeDatosFaltantes(analisis),
+    ...validarRiesgoNoDetectado(analisis, nota),
+  ]);
+}

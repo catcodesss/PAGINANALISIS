@@ -41,7 +41,7 @@ execFileSync(
 const require = createRequire(import.meta.url);
 const { numerarNota } = require(join(RAIZ, ".tmp-evals/citas.js"));
 const { normalizarAnalisis } = require(join(RAIZ, ".tmp-evals/parseAnalisis.js"));
-const { validarAnalisis, agruparAlertas, seccionDeRuta } = require(
+const { validarAnalisis, agruparAlertas, seccionDeRuta, revalidarTrasReanalisis } = require(
   join(RAIZ, ".tmp-evals/validadores.js")
 );
 
@@ -230,6 +230,39 @@ prueba("cada alerta dice en qué sección del informe puede haberse reflejado", 
   assert.equal(seccionDeRuta("riesgo"), "riesgo");
   // Sin sección es mejor que la sección equivocada.
   assert.equal(seccionDeRuta("general"), null);
+});
+
+prueba("revalidarTrasReanalisis conserva las alertas de la pasada crítica", () => {
+  // Un reanálisis de sección no repite la pasada crítica (cuesta dinero), así
+  // que perder sus hallazgos al reanalizar sería descartar algo válido sobre
+  // el resto del informe, que no cambió.
+  const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+  const reanalizado = normalizarAnalisis(crudo, lineas);
+  reanalizado.alertas = [
+    { codigo: "pasada_critica", origen: "ia", gravedad: "media", ruta: "general", mensaje: "hallazgo de la pasada crítica" },
+  ];
+  const alertas = revalidarTrasReanalisis(reanalizado, nota);
+  assert.ok(
+    alertas.some((a) => a.origen === "ia" && a.mensaje === "hallazgo de la pasada crítica"),
+    "perdió la alerta de la pasada crítica al reanalizar"
+  );
+});
+
+prueba("revalidarTrasReanalisis sí degrada la confianza, a diferencia de una edición manual", () => {
+  // El contenido reanalizado lo escribió la IA de nuevo, no el clínico: su
+  // confianza debe revisarse igual que en la primera generación.
+  const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+  crudo.situaciones[1].confianza = "alta";
+  crudo.situaciones[1].cadena_operante.evidencia =
+    "El cliente se molestó y ella acabó cediendo.";
+  const reanalizado = normalizarAnalisis(crudo, lineas);
+  reanalizado.alertas = [];
+  const alertas = revalidarTrasReanalisis(reanalizado, nota);
+  assert.equal(reanalizado.situaciones[1].confianza, "media");
+  assert.ok(
+    alertas.some((a) => a.codigo === "confianza_sin_cita"),
+    "no se emitió la alerta de confianza sin cita"
+  );
 });
 
 prueba("toda alerta del caso 01 aterriza en una sección conocida", () => {

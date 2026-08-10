@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { construirSystemPrompt, VERSION_PROMPT } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarAnalisis } from "@/lib/parseAnalisis";
-import { numerarNota } from "@/lib/citas";
+import { numerarNota, normalizarTexto } from "@/lib/citas";
 import { validarAnalisis } from "@/lib/validadores";
 import { ejecutarPasadaCritica } from "@/lib/pasadaCritica";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
@@ -137,10 +137,14 @@ export async function POST(request: Request) {
 
   let nota: unknown;
   let bloques: unknown;
+  let datosFaltantesDeclarados: unknown;
   try {
     const cuerpo = await request.json();
     nota = (cuerpo as { nota?: unknown } | null)?.nota;
     bloques = (cuerpo as { bloques?: unknown } | null)?.bloques;
+    datosFaltantesDeclarados = (
+      cuerpo as { datosFaltantesDeclarados?: unknown } | null
+    )?.datosFaltantesDeclarados;
   } catch {
     return respuestaError(
       "solicitud_invalida",
@@ -222,10 +226,34 @@ export async function POST(request: Request) {
       );
     }
 
-    const analisis = validarAnalisis(
-      normalizarAnalisis(JSON.parse(extraerJSON(texto)), lineas),
-      nota
+    const analisisSinValidar = normalizarAnalisis(
+      JSON.parse(extraerJSON(texto)),
+      lineas
     );
+
+    // Datos que el terapeuta ya declaró como "no sé" en las preguntas previas
+    // (ver lib/datosFaltantesPrevios.ts y app/page.tsx). Se añaden ANTES de
+    // validar, no después: así el validador V4 (intervencion_depende_de_dato_faltante)
+    // también los tiene en cuenta si el modelo propuso algo que depende de uno
+    // de ellos. No dependen de que el modelo los repita: si el terapeuta dijo
+    // que no lo sabe, tienen que aparecer, obedezca o no el prompt. Deduplicado
+    // contra lo que el propio modelo ya haya detectado, para no mostrar el
+    // mismo vacío dos veces con palabras distintas.
+    if (Array.isArray(datosFaltantesDeclarados)) {
+      const yaPresentes = new Set(
+        analisisSinValidar.datos_faltantes.map((d) => normalizarTexto(d))
+      );
+      for (const item of datosFaltantesDeclarados) {
+        if (typeof item !== "string" || !item.trim()) continue;
+        const clave = normalizarTexto(item);
+        if (yaPresentes.has(clave)) continue;
+        yaPresentes.add(clave);
+        analisisSinValidar.datos_faltantes.push(item.trim());
+      }
+    }
+
+    const analisis = validarAnalisis(analisisSinValidar, nota);
+
     // Qué se pidió, para que la interfaz sepa qué secciones tiene sentido mostrar.
     analisis.campos_generados =
       bloquesPedidos.length === IDS_TODOS.length ? [] : bloquesPedidos;
