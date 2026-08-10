@@ -86,7 +86,13 @@ export default function VistaEjemplo({
     <div className="min-h-screen bg-canvas">
       <FranjaEjemplo />
 
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+      {/*
+        max-w-4xl apretaba esto en cualquier pantalla ancha: en el móvil no
+        cambia nada (el viewport ya es más angosto que cualquiera de los dos
+        límites), así que no hay contrapartida por ensancharlo aquí también,
+        igual que en app/page.tsx.
+      */}
+      <div className="mx-auto max-w-[96rem] px-4 py-8 sm:px-6">
         <div className="mb-6 flex flex-wrap gap-2 print:hidden">
           <button
             type="button"
