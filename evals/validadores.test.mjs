@@ -223,6 +223,31 @@ prueba("no mezcla una comprobación determinista con una opinión de la IA", () 
   assert.equal(grupos.length, 2, "el origen tiene que separar los grupos");
 });
 
+prueba("agrupar ordena por gravedad: alta primero", () => {
+  // El caso 01 real emite las alertas mezcladas (media, alta, alta, media...);
+  // sin ordenar, lo más urgente podía salir enterrado entre lo opcional.
+  const grupos = agruparAlertas(informe.alertas);
+  const gravedades = grupos.map((g) => g.gravedad);
+  const primerMedia = gravedades.indexOf("media");
+  const ultimaAlta = gravedades.lastIndexOf("alta");
+  assert.ok(
+    primerMedia === -1 || ultimaAlta === -1 || ultimaAlta < primerMedia,
+    `una "media" quedó antes que una "alta": ${gravedades.join(", ")}`
+  );
+});
+
+prueba("agrupar conserva el orden relativo dentro de la misma gravedad", () => {
+  const grupos = agruparAlertas([
+    { codigo: "conducta_sin_analisis", origen: "validador", gravedad: "media", ruta: "a", mensaje: "primera" },
+    { codigo: "riesgo_posible_no_detectado", origen: "validador", gravedad: "media", ruta: "b", mensaje: "segunda" },
+  ]);
+  assert.deepEqual(
+    grupos.map((g) => g.mensaje),
+    ["primera", "segunda"],
+    "el sort por gravedad reordenó alertas de la misma gravedad sin motivo"
+  );
+});
+
 prueba("cada alerta dice en qué sección del informe puede haberse reflejado", () => {
   assert.equal(seccionDeRuta("capa_dbt.habilidades_sugeridas[1]"), "modalidad");
   assert.equal(seccionDeRuta("conductas_problema[0]"), "conductas");

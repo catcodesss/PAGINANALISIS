@@ -367,6 +367,12 @@ export interface GrupoAlertas {
  * propio mantenedor") quedaba enterrado bajo su repetición y el bloque parecía
  * ruido. La gravedad del grupo es la peor de las suyas: si una sola pide
  * revisarse antes de usar, el grupo entero también.
+ *
+ * El orden de salida es por gravedad, "alta" primero: es el mismo orden en
+ * pantalla, en el informe copiado y en el exportado a Word, porque los tres
+ * llaman a esta función en vez de ordenar cada uno por su cuenta. Dentro de
+ * cada gravedad se conserva el orden en que llegaron las alertas (Array.sort
+ * es estable), así que dos alertas "media" no se reordenan entre sí sin razón.
  */
 export function agruparAlertas(alertas: Alerta[]): GrupoAlertas[] {
   const grupos = new Map<string, GrupoAlertas>();
@@ -398,7 +404,10 @@ export function agruparAlertas(alertas: Alerta[]): GrupoAlertas[] {
     }
   }
 
-  return [...grupos.values()];
+  const PESO_GRAVEDAD: Record<GrupoAlertas["gravedad"], number> = { alta: 0, media: 1 };
+  return [...grupos.values()].sort(
+    (a, b) => PESO_GRAVEDAD[a.gravedad] - PESO_GRAVEDAD[b.gravedad]
+  );
 }
 
 /** Una misma intervención puede disparar la misma alerta por dos caminos. */
