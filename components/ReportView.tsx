@@ -922,76 +922,80 @@ function DetalleACT({ capa }: { capa: AnalisisFuncional["capa_act"] }) {
 /** Análisis en cadena + habilidades sugeridas (capa DBT). */
 function DetalleDBT({ capa }: { capa: AnalisisFuncional["capa_dbt"] }) {
   const cadena = capa.analisis_en_cadena;
+  // Mismo dibujo vertical que la cadena por situación (CadenaDBTView): un
+  // círculo por eslabón, precedido por las vulnerabilidades como contexto
+  // (no son un paso más de la secuencia) y seguido de la tabla completa, que
+  // es lo que llega al papel y a un lector de pantalla — ver el comentario de
+  // CadenaVisual sobre por qué el dibujo nunca sustituye a la tabla.
+  const filasCadena: FilaCadena[] = [
+    { elemento: "Precipitante", valor: cadena.evento_precipitante || "—" },
+    ...cadena.eslabones.map((e, i) => ({
+      elemento: `Eslabón ${i + 1}`,
+      valor: `[${e.tipo}] ${e.descripcion}`,
+    })),
+    { elemento: "Conducta objetivo", valor: cadena.conducta_objetivo || "—" },
+    {
+      elemento: "Consecuencias corto plazo",
+      valor: cadena.consecuencias_corto_plazo.join("; ") || "—",
+    },
+    {
+      elemento: "Consecuencias largo plazo",
+      valor: cadena.consecuencias_largo_plazo.join("; ") || "—",
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <SubSeccion titulo="Análisis en cadena">
         <div className="rounded border border-divider p-4">
-          <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
-            Conducta objetivo
-          </p>
-          <p className="mt-1 text-[15px] leading-relaxed text-ink">
-            {cadena.conducta_objetivo || "—"}
-          </p>
-
-          <ol className="mt-4 space-y-3 border-l-2 border-divider pl-4">
-            <li>
-              <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+          {cadena.vulnerabilidades.length > 0 && (
+            <div className="mb-4">
+              <p className="mb-1 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
                 Vulnerabilidades
               </p>
-              {cadena.vulnerabilidades.length === 0 ? (
-                <SinHallazgos />
-              ) : (
-                <ul className="list-disc space-y-1 pl-5">
-                  {cadena.vulnerabilidades.map((v, i) => (
-                    <li key={i} className="text-sm text-ink">
-                      {v}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-            <li>
-              <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                Evento precipitante
-              </p>
-              <p className="text-sm text-ink">
-                {cadena.evento_precipitante || "—"}
-              </p>
-            </li>
-            {cadena.eslabones.map((e, i) => (
-              <li key={i}>
-                <Chip>{e.tipo}</Chip>
-                <p className="mt-1 text-sm text-ink">{e.descripcion}</p>
-              </li>
-            ))}
-          </ol>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                Consecuencias corto plazo
-              </p>
-              <ul className="mt-1 list-disc space-y-1 pl-5">
-                {cadena.consecuencias_corto_plazo.map((c, i) => (
+              <ul className="list-disc space-y-1 pl-5">
+                {cadena.vulnerabilidades.map((v, i) => (
                   <li key={i} className="text-sm text-ink">
-                    {c}
+                    {v}
                   </li>
                 ))}
               </ul>
             </div>
-            <div>
-              <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                Consecuencias largo plazo
-              </p>
-              <ul className="mt-1 list-disc space-y-1 pl-5">
-                {cadena.consecuencias_largo_plazo.map((c, i) => (
-                  <li key={i} className="text-sm text-ink">
-                    {c}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          )}
+          <CadenaVisual
+            nodos={[
+              { rol: "Precipitante", texto: cadena.evento_precipitante || "—", simbolo: "◆" },
+              ...cadena.eslabones.map((e, i) => ({
+                rol: `${i + 1}. ${e.tipo}`,
+                texto: e.descripcion,
+                simbolo: INICIAL_ESLABON[e.tipo] ?? "·",
+              })),
+              {
+                rol: "Conducta objetivo",
+                texto: cadena.conducta_objetivo || "—",
+                simbolo: "✱",
+                destacado: true,
+              },
+              {
+                rol: "Consecuencias a corto plazo",
+                texto: cadena.consecuencias_corto_plazo.join("; ") || "—",
+                simbolo: "▸",
+              },
+              {
+                rol: "Consecuencias a largo plazo",
+                texto: cadena.consecuencias_largo_plazo.join("; ") || "—",
+                simbolo: "▹",
+              },
+            ]}
+          />
+          <TablaCadena filas={filasCadena} />
+          <NotacionCadena
+            formula="Precipitante → Eslabones → Conducta → Consecuencias"
+            natural={`${cadena.evento_precipitante} → ${cadena.conducta_objetivo} → ${[
+              ...cadena.consecuencias_corto_plazo,
+              ...cadena.consecuencias_largo_plazo,
+            ].join("; ")}`}
+          />
         </div>
       </SubSeccion>
 
