@@ -406,21 +406,25 @@ export function BloqueOrdenable({
         >
           <span aria-hidden="true" className="text-xs">▼</span>
         </button>
-        {/*
-          Ocultar es una acción distinta de reordenar (quita la tarjeta de la
-          vista, no la mueve), así que lleva su propio espacio y su propio
-          color de foco al pasar el ratón, para no leerse como un tercer botón
-          de la misma familia que subir/bajar.
-        */}
-        <button
-          type="button"
-          onClick={() => ctx.ocultar(id)}
-          aria-label={`Ocultar «${titulo}» (queda su título en el índice para volver a abrirla)`}
-          className="mt-1 rounded px-1 text-ink-muted transition-colors hover:bg-canvas hover:text-warn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-        >
-          <span aria-hidden="true" className="text-xs">✕</span>
-        </button>
       </div>
+      {/*
+        Ocultar vive en la esquina opuesta a subir/bajar, arriba a la derecha
+        de la propia tarjeta (no fuera de ella, como el resto de controles):
+        es una acción distinta de reordenar — quita la tarjeta de la vista, no
+        la mueve — y una esquina propia evita que se lea como un tercer botón
+        de la misma familia. Comparte la clase `controles-bloque` con el
+        cluster de la izquierda solo para heredar su regla de
+        siempre-visible en pantallas táctiles (ver globals.css); la posición
+        es suya.
+      */}
+      <button
+        type="button"
+        onClick={() => ctx.ocultar(id)}
+        aria-label={`Ocultar «${titulo}» (queda su título en el índice para volver a abrirla)`}
+        className="controles-bloque absolute right-2 top-2 z-10 rounded px-1.5 py-1 text-ink-muted opacity-0 transition-opacity hover:bg-canvas hover:text-warn focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 group-hover/bloque:opacity-100 focus-within:opacity-100 print:hidden"
+      >
+        <span aria-hidden="true" className="text-sm">✕</span>
+      </button>
       {children}
     </div>
   );

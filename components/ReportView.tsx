@@ -1290,6 +1290,10 @@ function IndiceLateral({
       <ul className="space-y-3.5 text-sm">
         {secciones.map(({ id, titulo }) => {
           const oculto = ctx?.oculta(id) ?? false;
+          // El tono ámbar al pasar el ratón solo va en las visibles: es la
+          // misma pista que el botón "✕" de la tarjeta (hover:text-warn), y
+          // aquí avisa de que el clic va a ocultarla, no a saltar a leerla.
+          // En las ocultas el clic reabre — una acción neutra, no de aviso.
           const claseComun = `block w-full rounded-r border-l-2 py-0.5 pl-3 text-left transition-colors ${
             ctx?.arrastrando === id ? "opacity-40" : ""
           } ${
@@ -1298,8 +1302,8 @@ function IndiceLateral({
               : oculto
                 ? "border-divider text-ink-muted/60 hover:text-ink-muted"
                 : activa === id
-                  ? "border-accent font-semibold text-accent"
-                  : "border-divider text-ink-muted hover:border-ink-muted hover:text-ink"
+                  ? "border-accent font-semibold text-accent hover:text-warn"
+                  : "border-divider text-ink-muted hover:border-warn/50 hover:text-warn"
           }`;
 
           return (
@@ -1328,10 +1332,12 @@ function IndiceLateral({
               className={ctx ? "cursor-grab active:cursor-grabbing" : ""}
             >
               {/*
-                Oculta: no hay nada a donde saltar (la tarjeta no ocupa
-                espacio), así que en vez de un enlace es un botón que la
-                reabre. Visible: el mismo enlace de siempre. El prefijo "+"
-                repite el idioma que ya usan los "+ Agregar…" del informe.
+                El índice es el interruptor de cada tarjeta: oculta, un clic la
+                reabre y salta a ella (no hay nada a donde saltar mientras está
+                oculta, así que es un botón, no un enlace). Visible, un clic la
+                oculta — más rápido que bajar a buscar la tarjeta y pasar el
+                ratón por su "✕". El prefijo "+" repite el idioma que ya usan
+                los "+ Agregar…" del informe.
               */}
               {oculto ? (
                 <button
@@ -1348,6 +1354,11 @@ function IndiceLateral({
                   href={`#${id}`}
                   draggable={false}
                   aria-current={activa === id ? "true" : undefined}
+                  aria-label={`Ocultar «${titulo}»`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    ctx?.ocultar(id);
+                  }}
                   className={claseComun}
                 >
                   {titulo}
@@ -1423,7 +1434,12 @@ function IndiceMovil({
                 ) : (
                   <a
                     href={`#${id}`}
-                    onClick={() => setAbierto(false)}
+                    aria-label={`Ocultar «${titulo}»`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      ctx?.ocultar(id);
+                      setAbierto(false);
+                    }}
                     className={`block px-3 py-2 text-sm ${
                       activa === id ? "font-medium text-accent" : "text-ink"
                     }`}
