@@ -1693,19 +1693,14 @@ function InformeOrdenable({
                 </h2>
               </div>
               {/*
-                Esto no habla de tu nota: habla de lo que escribió la IA más
-                arriba. Decirlo en la primera línea, porque el rótulo anterior
-                ("Revisiones sugeridas") se leía como si fueran correcciones al
-                texto que pegó el clínico. Reescrito para no exigir entender
-                cómo funciona el análisis por dentro (qué es un validador, qué
-                es la pasada crítica): solo qué hacer con cada aviso.
+                Reescrito para no exigir entender cómo funciona el análisis
+                por dentro (qué es un validador, qué es la pasada crítica):
+                solo qué hay en esta sección y qué hacer con ello.
               */}
               <p className="mb-3 text-sm text-ink-muted">
-                Avisos sobre el informe de arriba, no sobre lo que tú
-                escribiste: partes donde la IA pudo interpretar mal la nota o
-                afirmar algo con más seguridad de la que tiene. Revisa primero
-                las marcadas &quot;Revisar antes de usar&quot; antes de dar el
-                informe por bueno.
+                En esta sección encontrarás los posibles errores o resultados
+                no del todo precisos de la IA, que conviene revisar a mano
+                antes de dar el análisis por bueno.
               </p>
               <ul className="space-y-5">
                 {agruparAlertas(analisis.alertas).map((g, i) => {
