@@ -1286,6 +1286,51 @@ function IndiceLateral({
   const ctx = useOrden();
   const [encimaDe, setEncimaDe] = useState<string | null>(null);
 
+  // Un clic navega, como siempre; ocultar necesita una intención más clara
+  // (doble clic, o mantener pulsado) para no confundir "quiero leer esto" con
+  // "quiero quitarlo de en medio". Solo puede haber una pulsación mantenida a
+  // la vez, así que un único ref alcanza para toda la lista.
+  const PULSACION_MS = 3000;
+  const pulsacionRef = useRef<{
+    id: string;
+    timer: ReturnType<typeof setTimeout>;
+    disparada: boolean;
+  } | null>(null);
+
+  function iniciarPulsacion(id: string) {
+    const timer = setTimeout(() => {
+      ctx?.ocultar(id);
+      if (pulsacionRef.current?.id === id) pulsacionRef.current.disparada = true;
+    }, PULSACION_MS);
+    pulsacionRef.current = { id, timer, disparada: false };
+  }
+
+  /** Al soltar antes de tiempo, o si el ratón se va, se cancela el temporizador. */
+  function soltarPulsacion() {
+    if (pulsacionRef.current) clearTimeout(pulsacionRef.current.timer);
+  }
+
+  /**
+   * El clic llega SIEMPRE después del mousedown/mouseup que lo originan, así
+   * que si la pulsación mantenida ya ocultó la tarjeta, `disparada` ya está en
+   * true para cuando esto se ejecuta: se ignora, porque ya hizo su trabajo.
+   * Si no está disparada y la sección está oculta, es un clic normal sobre
+   * "+ Título": reabre. Si está visible, es un clic normal: navega (el <a>
+   * ya tiene su href, no hace falta nada más).
+   */
+  function alHacerClic(ctx: ReturnType<typeof useOrden>, id: string, oculto: boolean, e: React.MouseEvent) {
+    const yaDisparada = pulsacionRef.current?.id === id && pulsacionRef.current.disparada;
+    pulsacionRef.current = null;
+    if (yaDisparada) {
+      e.preventDefault();
+      return;
+    }
+    if (oculto) {
+      e.preventDefault();
+      reabrirSeccion(ctx, id);
+    }
+  }
+
   return (
     <nav
       aria-label="Índice del informe"
@@ -1294,10 +1339,11 @@ function IndiceLateral({
       <ul className="space-y-3.5 text-sm">
         {secciones.map(({ id, titulo }) => {
           const oculto = ctx?.oculta(id) ?? false;
-          // El tono ámbar al pasar el ratón solo va en las visibles: es la
-          // misma pista que el botón "✕" de la tarjeta (hover:text-warn), y
-          // aquí avisa de que el clic va a ocultarla, no a saltar a leerla.
-          // En las ocultas el clic reabre — una acción neutra, no de aviso.
+          // Un solo clic vuelve a ser navegación pura, así que el hover
+          // vuelve a su tono neutro de siempre: el ámbar de "esto oculta" ya
+          // no pertenece al primer pase del ratón, solo al doble clic o a
+          // mantener pulsado (sin hover propio: no hay forma de anticiparlo
+          // con un pase de ratón, tiene que descubrirse o enseñarse aparte).
           const claseComun = `block w-full rounded-r border-l-2 py-0.5 pl-3 text-left transition-colors ${
             ctx?.arrastrando === id ? "opacity-40" : ""
           } ${
@@ -1306,8 +1352,8 @@ function IndiceLateral({
               : oculto
                 ? "border-divider text-ink-muted/60 hover:text-ink-muted"
                 : activa === id
-                  ? "border-accent font-semibold text-accent hover:text-warn"
-                  : "border-divider text-ink-muted hover:border-warn/50 hover:text-warn"
+                  ? "border-accent font-semibold text-accent"
+                  : "border-divider text-ink-muted hover:border-ink-muted hover:text-ink"
           }`;
 
           return (
@@ -1316,6 +1362,9 @@ function IndiceLateral({
               draggable={Boolean(ctx)}
               onDragStart={(e) => {
                 if (!ctx) return;
+                // Si el arrastre empieza durante los 3 segundos de pulsación
+                // mantenida, es que la intención era reordenar, no ocultar.
+                soltarPulsacion();
                 e.dataTransfer.setData("text/plain", id);
                 e.dataTransfer.effectAllowed = "move";
                 ctx.setArrastrando(id);
@@ -1336,38 +1385,47 @@ function IndiceLateral({
               className={ctx ? "cursor-grab active:cursor-grabbing" : ""}
             >
               {/*
-                El índice es el interruptor de cada tarjeta: oculta, un clic la
-                reabre y salta a ella (no hay nada a donde saltar mientras está
-                oculta, así que es un botón, no un enlace). Visible, un clic la
-                oculta — más rápido que bajar a buscar la tarjeta y pasar el
-                ratón por su "✕". El prefijo "+" repite el idioma que ya usan
-                los "+ Agregar…" del informe.
+                Siempre el mismo <a>, oculta o no — nunca un <button> que la
+                sustituya. Si el elemento cambiara de tipo justo cuando la
+                pulsación mantenida dispara el ocultado, React lo desmonta y
+                monta uno nuevo en su lugar; el mouseup que sigue (el usuario
+                todavía no soltó) cae entonces sobre ESE elemento nuevo — el
+                "+ Título" que acaba de aparecer — y su clic la reabriría en
+                el acto, deshaciendo lo que la pulsación logró. Con un único
+                nodo estable, el clic que cierra el gesto siempre golpea el
+                mismo elemento cuyo estado (disparada) ya se conoce.
+
+                Oculta: un clic navega a un href que ya no lleva a ningún
+                sitio visible, así que se intercepta y reabre. Visible: un
+                clic navega de verdad; ocultarla pide una intención más clara
+                (doble clic o mantener pulsado 3 segundos), para no confundir
+                "quiero leerla" con "quiero quitarla de en medio". El prefijo
+                "+" repite el idioma que ya usan los "+ Agregar…" del informe.
               */}
-              {oculto ? (
-                <button
-                  type="button"
-                  draggable={false}
-                  onClick={() => reabrirSeccion(ctx, id)}
-                  aria-label={`Mostrar «${titulo}», oculta actualmente`}
-                  className={claseComun}
-                >
-                  + {titulo}
-                </button>
-              ) : (
-                <a
-                  href={`#${id}`}
-                  draggable={false}
-                  aria-current={activa === id ? "true" : undefined}
-                  aria-label={`Ocultar «${titulo}»`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    ctx?.ocultar(id);
-                  }}
-                  className={claseComun}
-                >
-                  {titulo}
-                </a>
-              )}
+              <a
+                href={`#${id}`}
+                draggable={false}
+                aria-current={!oculto && activa === id ? "true" : undefined}
+                aria-label={
+                  oculto
+                    ? `Mostrar «${titulo}», oculta actualmente`
+                    : `${titulo} — doble clic o mantener pulsado para ocultar`
+                }
+                onMouseDown={() => {
+                  if (!oculto) iniciarPulsacion(id);
+                }}
+                onMouseUp={soltarPulsacion}
+                onMouseLeave={soltarPulsacion}
+                onDoubleClick={(e) => {
+                  if (oculto) return;
+                  e.preventDefault();
+                  ctx?.ocultar(id);
+                }}
+                onClick={(e) => alHacerClic(ctx, id, oculto, e)}
+                className={claseComun}
+              >
+                {oculto ? `+ ${titulo}` : titulo}
+              </a>
             </li>
           );
         })}
@@ -1436,14 +1494,15 @@ function IndiceMovil({
                     + {titulo}
                   </button>
                 ) : (
+                  // Aquí el clic vuelve a ser solo navegación: el doble
+                  // clic / mantener pulsado del índice lateral no tiene un
+                  // equivalente táctil fiable, y en móvil el "✕" de la
+                  // tarjeta ya está siempre visible (ver globals.css,
+                  // @media (hover: none)), así que no hace falta un atajo
+                  // más aquí.
                   <a
                     href={`#${id}`}
-                    aria-label={`Ocultar «${titulo}»`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      ctx?.ocultar(id);
-                      setAbierto(false);
-                    }}
+                    onClick={() => setAbierto(false)}
                     className={`block px-3 py-2 text-sm ${
                       activa === id ? "font-medium text-accent" : "text-ink"
                     }`}
