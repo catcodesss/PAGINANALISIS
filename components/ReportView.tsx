@@ -1897,13 +1897,20 @@ function InformeOrdenable({
             </BloqueOrdenable>
           )}
 
-          {/* Formulación funcional destacada — el titular del informe. */}
-          <BloqueOrdenable id="hipotesis-principal" titulo="Formulación destacada">
+          {/*
+            Formulación funcional destacada — el titular del informe. El verde
+            va en la tarjeta entera (prop `destacado` de BloqueOrdenable), no
+            en una caja aparte metida dentro de una blanca: esa doble caja
+            dejaba un marco blanco visible alrededor del color.
+          */}
+          <BloqueOrdenable
+            id="hipotesis-principal"
+            titulo="Formulación destacada"
+            destacado={Boolean(hipotesisDestacada?.enunciado)}
+          >
           <section id="hipotesis-principal" className="scroll-mt-24">
             {hipotesisDestacada && hipotesisDestacada.enunciado ? (
-              <div
-                className="formulacion-destacada rounded-md border-l-4 border-accent bg-accent-soft p-8"
-              >
+              <div className="formulacion-destacada">
                 <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-accent">
                   Formulación funcional destacada · {hipotesisDestacada.conducta}
                 </p>

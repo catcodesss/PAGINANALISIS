@@ -275,11 +275,19 @@ export function ProveedorOrden({
 export function BloqueOrdenable({
   id,
   titulo,
+  destacado = false,
   children,
 }: {
   id: string;
   /** Para el lector de pantalla y el texto de los botones. */
   titulo: string;
+  /**
+   * Para la formulación funcional destacada: toda la tarjeta pasa a verde en
+   * vez de llevar una caja verde metida dentro de una blanca. Esa doble caja
+   * era justo el "marco raro" — un margen blanco visible alrededor del color,
+   * en vez del callout de un solo color que se buscaba.
+   */
+  destacado?: boolean;
   children: ReactNode;
 }) {
   const ctx = useOrden();
@@ -351,12 +359,18 @@ export function BloqueOrdenable({
         que se entrega o se archiva. El texto copiado y el Word no pasan por
         aquí — leen `analisis` directamente — así que tampoco pierden nada.
       */
-      className={`bloque-informe group/bloque relative mb-4 cursor-grab rounded-xl border bg-surface p-5 transition-[border-color,box-shadow,opacity] duration-150 active:cursor-grabbing sm:p-6 ${
+      className={`bloque-informe group/bloque relative mb-4 cursor-grab rounded-xl border p-5 transition-[border-color,box-shadow,opacity] duration-150 active:cursor-grabbing sm:p-6 ${
         oculto ? "hidden print:block" : ""
       } ${seEstaArrastrando ? "opacity-40" : ""} ${
-        encima
-          ? "border-accent ring-2 ring-accent/30"
-          : "border-divider hover:border-ink-muted/40"
+        destacado
+          ? `bloque-destacado border-l-4 border-l-accent bg-accent-soft ${
+              encima ? "border-accent ring-2 ring-accent/30" : "border-accent/25"
+            }`
+          : `bg-surface ${
+              encima
+                ? "border-accent ring-2 ring-accent/30"
+                : "border-divider hover:border-ink-muted/40"
+            }`
       } ${editada ? "bloque-editado border-l-2 border-l-accent" : ""}`}
     >
       {/*
