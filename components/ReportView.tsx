@@ -742,13 +742,19 @@ function CadenaVisual({ nodos }: { nodos: NodoCadena[] }) {
             >
               {n.simbolo}
             </button>
-            {/* La línea se estira con flex (el <li> es la fila que la
-                iguala a la altura del texto de al lado) y lleva su propia
-                flecha hacia abajo, como antes la llevaba hacia la derecha. */}
+            {/*
+              El "eslabón" entre dos círculos: una barra ancha y redondeada,
+              no una línea fina con una flecha encima. Se mete un poco por
+              detrás del círculo de arriba y del de abajo (-mt-1/-mb-1) para
+              que parezca ensartada en el aro, no solo pegada a su borde —
+              el mismo efecto de "encaje" que en la referencia, sin sombras
+              ni degradados. La flecha ya no hace falta: el orden lo da la
+              lectura de arriba abajo y el número delante de cada rol.
+            */}
             {i < nodos.length - 1 && (
               <span
                 aria-hidden="true"
-                className="relative w-px flex-1 bg-divider after:absolute after:left-1/2 after:top-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:text-ink-muted after:content-['▾']"
+                className="-mt-1 -mb-1 w-1.5 flex-1 rounded-full bg-divider"
               />
             )}
           </div>
