@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import ReportView from "./ReportView";
+import FranjaDocumento from "./FranjaDocumento";
 import { AVISO_EJEMPLO } from "@/lib/maqueta";
 import {
   formatearInformeTexto,
@@ -141,16 +142,17 @@ export default function VistaEjemplo({
   );
 }
 
-/** Franja fija, sin botón de cerrar, visible también al imprimir. */
+/**
+ * Franja fija, sin botón de cerrar, visible también al imprimir.
+ *
+ * Va apilada encima del descargo de IA que ReportView pinta siempre: primero
+ * qué documento es esto (un ejemplo), después qué es cualquier informe de
+ * ACIA. Esta desaparece con la maqueta; la otra se queda.
+ */
 function FranjaEjemplo() {
   return (
-    <div className="border-b-2 border-warn bg-warn/15 px-4 py-3 text-center">
-      <p className="mx-auto max-w-4xl text-sm font-medium leading-relaxed text-ink">
-        <span className="font-mono text-xs uppercase tracking-wide text-warn">
-          Informe de ejemplo ·{" "}
-        </span>
-        {AVISO_EJEMPLO.replace("INFORME DE EJEMPLO — ", "")}
-      </p>
-    </div>
+    <FranjaDocumento rotulo="Informe de ejemplo">
+      {AVISO_EJEMPLO.replace("INFORME DE EJEMPLO — ", "")}
+    </FranjaDocumento>
   );
 }

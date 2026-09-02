@@ -61,10 +61,44 @@ function leerCrudoEnServidor(): string {
 }
 
 /**
+ * Concilia un orden guardado con los ids que existen hoy.
+ *
+ * Dos cosas que puede traer un orden guardado con otra versión de la app:
+ * bloques que ya no existen —se descartan— y bloques nuevos que no menciona.
+ *
+ * Los nuevos NO van al final. Iban, y eso convertía "no desaparece del
+ * documento" en "aparece donde nadie lo lee": una sección añadida arriba del
+ * informe caía debajo de "Datos faltantes" para cualquiera que hubiera
+ * arrastrado un bloque alguna vez, sin dar ningún error. Cada id que falta se
+ * coloca detrás de su vecino de fábrica más cercano que sí esté presente, así
+ * que el orden que eligió el clínico se respeta entero y el bloque nuevo
+ * aterriza donde su lista dice que va.
+ */
+function reconciliar(guardado: unknown[], idsPorDefecto: string[]): string[] {
+  const orden = guardado.filter(
+    (id): id is string => typeof id === "string" && idsPorDefecto.includes(id)
+  );
+  idsPorDefecto.forEach((id, i) => {
+    if (orden.includes(id)) return;
+    // Hacia atrás desde su posición de fábrica: el primer vecino que ya esté
+    // colocado marca el sitio. Si no hay ninguno, es que va el primero.
+    let destino = 0;
+    for (let j = i - 1; j >= 0; j -= 1) {
+      const posicion = orden.indexOf(idsPorDefecto[j]);
+      if (posicion !== -1) {
+        destino = posicion + 1;
+        break;
+      }
+    }
+    orden.splice(destino, 0, id);
+  });
+  return orden;
+}
+
+/**
  * El orden guardado, sin hooks: lo necesita la exportación, que se dispara
  * desde un manejador de evento y no desde un render. Reconcilia igual que el
- * proveedor — descarta ids desconocidos y añade al final los que falten — para
- * que un orden viejo nunca haga desaparecer un bloque del documento.
+ * proveedor, para que el documento exportado salga como la pantalla.
  */
 export function leerOrdenGuardado(idsPorDefecto: string[]): string[] {
   let guardado: unknown = null;
@@ -75,10 +109,7 @@ export function leerOrdenGuardado(idsPorDefecto: string[]): string[] {
     return idsPorDefecto;
   }
   if (!Array.isArray(guardado)) return idsPorDefecto;
-  const conocidos = guardado.filter(
-    (id): id is string => typeof id === "string" && idsPorDefecto.includes(id)
-  );
-  return [...conocidos, ...idsPorDefecto.filter((id) => !conocidos.includes(id))];
+  return reconciliar(guardado, idsPorDefecto);
 }
 
 function escribirCrudo(valor: string) {
@@ -203,13 +234,7 @@ export function ProveedorOrden({
       return idsPorDefecto;
     }
     if (!Array.isArray(guardado)) return idsPorDefecto;
-    // Un orden guardado con otra versión de la app puede traer bloques que ya
-    // no existen, o no traer los nuevos. Se reconcilia con los ids actuales.
-    const conocidos = guardado.filter(
-      (id): id is string => typeof id === "string" && idsPorDefecto.includes(id)
-    );
-    const nuevos = idsPorDefecto.filter((id) => !conocidos.includes(id));
-    return [...conocidos, ...nuevos];
+    return reconciliar(guardado, idsPorDefecto);
   }, [crudo, idsPorDefecto]);
 
   // Dónde estaba cada pieza justo antes del último cambio de orden.

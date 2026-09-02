@@ -33,10 +33,22 @@ const CAMPOS_SIEMPRE: CampoAnalisis[] = [
   "secciones_editadas",
 ];
 
+/**
+ * Agrupación puramente visual para el selector: no cambia campos ni
+ * dependencias, solo evita que 11 tarjetas se lean como una lista plana de
+ * nombres sin relación entre sí.
+ */
+export type CategoriaBloque =
+  | "Descripción"
+  | "Análisis funcional"
+  | "Formulación y plan"
+  | "Capas de modalidad";
+
 export interface Bloque {
   id: string;
   etiqueta: string;
   descripcion: string;
+  categoria: CategoriaBloque;
   /** Todo lo que hay que generar para que este bloque tenga sentido. */
   campos: CampoAnalisis[];
   /** Peso relativo, solo para estimar el coste en la interfaz. */
@@ -45,37 +57,43 @@ export interface Bloque {
 
 export const BLOQUES: Bloque[] = [
   {
-    id: "conductas",
-    etiqueta: "Conductas problema",
-    descripcion: "Topografía, tipo, importancia y si es déficit o interferencia.",
-    campos: ["conductas_problema"],
-    peso: 1,
-  },
-  {
-    id: "moduladoras",
-    etiqueta: "Variables moduladoras",
-    descripcion: "Biológicas, historia de aprendizaje y contextuales.",
-    campos: ["variables_moduladoras"],
-    peso: 1,
+    id: "base",
+    etiqueta: "Conductas y variables moduladoras",
+    descripcion:
+      "Qué se hace, con qué frecuencia e intensidad, y el contexto biológico y de aprendizaje que lo modula.",
+    categoria: "Descripción",
+    campos: ["conductas_problema", "variables_moduladoras"],
+    peso: 2,
   },
   {
     id: "situaciones",
     etiqueta: "Análisis por situaciones",
-    descripcion: "Las cadenas operante y respondiente de cada situación funcional.",
+    descripcion: "Encadena estímulo, respuesta y consecuencia en cada situación concreta.",
+    categoria: "Análisis funcional",
     campos: ["conductas_problema", "situaciones", "acomodacion_entorno"],
     peso: 3,
   },
   {
     id: "mantenimiento",
     etiqueta: "Hipótesis de mantenimiento",
-    descripcion: "Qué mantiene hoy cada conducta, y las hipótesis de origen.",
+    descripcion: "Qué refuerzo sostiene la conducta hoy, y de dónde pudo originarse.",
+    categoria: "Análisis funcional",
     campos: ["conductas_problema", "situaciones", "hipotesis_mantenimiento", "hipotesis_origen"],
+    peso: 4,
+  },
+  {
+    id: "hipotesis_alternativas",
+    etiqueta: "Hipótesis alternativas",
+    descripcion: "Otras lecturas funcionales posibles, y cómo distinguirlas de la principal.",
+    categoria: "Análisis funcional",
+    campos: ["situaciones", "hipotesis_mantenimiento", "hipotesis_alternativas"],
     peso: 4,
   },
   {
     id: "formulacion",
     etiqueta: "Formulación del caso",
-    descripcion: "Relaciones entre problemas y priorización de blancos.",
+    descripcion: "Cómo se relacionan los problemas entre sí, y cuáles priorizar.",
+    categoria: "Formulación y plan",
     campos: [
       "conductas_problema",
       "situaciones",
@@ -89,7 +107,8 @@ export const BLOQUES: Bloque[] = [
   {
     id: "alternativas",
     etiqueta: "Conductas alternativas",
-    descripcion: "Qué podría hacer en su lugar y qué consecuencia la mantendría.",
+    descripcion: "Qué podría ocupar el mismo lugar funcional, y qué consecuencia lo sostendría.",
+    categoria: "Formulación y plan",
     campos: [
       "conductas_problema",
       "situaciones",
@@ -99,44 +118,10 @@ export const BLOQUES: Bloque[] = [
     peso: 5,
   },
   {
-    id: "act",
-    etiqueta: "Capa ACT",
-    descripcion: "Reglas verbales y procesos de inflexibilidad.",
-    campos: ["conductas_problema", "situaciones", "capa_act"],
-    peso: 4,
-  },
-  {
-    id: "dbt",
-    etiqueta: "Capa DBT",
-    descripcion: "Análisis en cadena y habilidades por eslabón.",
-    campos: ["conductas_problema", "situaciones", "capa_dbt"],
-    peso: 4,
-  },
-  {
-    id: "mc",
-    etiqueta: "Capa conductual (MC)",
-    descripcion: "Procedimientos de manejo de contingencias.",
-    campos: ["conductas_problema", "situaciones", "capa_mc"],
-    peso: 4,
-  },
-  {
-    id: "hipotesis_alternativas",
-    etiqueta: "Hipótesis alternativas",
-    descripcion: "Otras lecturas posibles y cómo descartarlas.",
-    campos: ["situaciones", "hipotesis_mantenimiento", "hipotesis_alternativas"],
-    peso: 4,
-  },
-  {
-    id: "preguntas",
-    etiqueta: "Preguntas para la sesión",
-    descripcion: "Qué preguntar para confirmar o descartar las hipótesis.",
-    campos: ["preguntas_para_sesion"],
-    peso: 1,
-  },
-  {
     id: "intervencion",
     etiqueta: "Líneas de intervención",
-    descripcion: "Orientaciones tentativas, sin comprometerse con una modalidad.",
+    descripcion: "Orientaciones de tratamiento tentativas, sin comprometerse con una modalidad.",
+    categoria: "Formulación y plan",
     campos: [
       "conductas_problema",
       "situaciones",
@@ -144,6 +129,38 @@ export const BLOQUES: Bloque[] = [
       "lineas_de_intervencion_tentativas",
     ],
     peso: 5,
+  },
+  {
+    id: "preguntas",
+    etiqueta: "Preguntas para la sesión",
+    descripcion: "Qué preguntar para confirmar o descartar cada hipótesis.",
+    categoria: "Formulación y plan",
+    campos: ["preguntas_para_sesion"],
+    peso: 1,
+  },
+  {
+    id: "act",
+    etiqueta: "Capa ACT",
+    descripcion: "Reglas verbales y procesos de inflexibilidad psicológica.",
+    categoria: "Capas de modalidad",
+    campos: ["conductas_problema", "situaciones", "capa_act"],
+    peso: 4,
+  },
+  {
+    id: "dbt",
+    etiqueta: "Capa DBT",
+    descripcion: "Análisis en cadena con habilidades sugeridas en cada eslabón.",
+    categoria: "Capas de modalidad",
+    campos: ["conductas_problema", "situaciones", "capa_dbt"],
+    peso: 4,
+  },
+  {
+    id: "mc",
+    etiqueta: "Capa conductual (MC)",
+    descripcion: "Procedimientos de manejo de contingencias.",
+    categoria: "Capas de modalidad",
+    campos: ["conductas_problema", "situaciones", "capa_mc"],
+    peso: 4,
   },
 ];
 

@@ -2,7 +2,15 @@
 
 import { useEffect, useRef } from "react";
 import { Check } from "lucide-react";
-import { BLOQUES, IDS_TODOS, pesoDe } from "@/lib/bloques";
+import { BLOQUES, IDS_TODOS, pesoDe, type CategoriaBloque } from "@/lib/bloques";
+
+/** Orden fijo de categorías en el panel; no depende del orden de BLOQUES. */
+const ORDEN_CATEGORIAS: CategoriaBloque[] = [
+  "Descripción",
+  "Análisis funcional",
+  "Formulación y plan",
+  "Capas de modalidad",
+];
 
 /**
  * Panel para elegir qué partes del informe generar.
@@ -77,42 +85,55 @@ export default function SelectorBloques({
         los datos faltantes se incluyen siempre.
       </p>
 
-      <ul className="mb-4 grid max-h-[45vh] gap-1 overflow-y-auto sm:grid-cols-2">
-        {BLOQUES.map((bloque) => {
-          const marcado = seleccion.includes(bloque.id);
+      <div className="mb-4 max-h-[50vh] space-y-3 overflow-y-auto">
+        {ORDEN_CATEGORIAS.map((categoria) => {
+          const bloquesCategoria = BLOQUES.filter((b) => b.categoria === categoria);
+          if (bloquesCategoria.length === 0) return null;
           return (
-            <li key={bloque.id}>
-              <button
-                type="button"
-                onClick={() => alternar(bloque.id)}
-                aria-pressed={marcado}
-                className={`flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors ${
-                  marcado
-                    ? "border-accent/40 bg-accent-soft"
-                    : "border-transparent hover:bg-canvas"
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                    marcado ? "border-accent bg-accent" : "border-divider bg-canvas"
-                  }`}
-                >
-                  {marcado && <Check className="h-3 w-3 text-white" />}
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium text-ink">
-                    {bloque.etiqueta}
-                  </span>
-                  <span className="block text-xs leading-snug text-ink-muted">
-                    {bloque.descripcion}
-                  </span>
-                </span>
-              </button>
-            </li>
+            <div key={categoria}>
+              <h4 className="mb-1 font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+                {categoria}
+              </h4>
+              <ul className="grid gap-1 sm:grid-cols-2">
+                {bloquesCategoria.map((bloque) => {
+                  const marcado = seleccion.includes(bloque.id);
+                  return (
+                    <li key={bloque.id}>
+                      <button
+                        type="button"
+                        onClick={() => alternar(bloque.id)}
+                        aria-pressed={marcado}
+                        className={`flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors ${
+                          marcado
+                            ? "border-accent/40 bg-accent-soft"
+                            : "border-transparent hover:bg-canvas"
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                            marcado ? "border-accent bg-accent" : "border-divider bg-canvas"
+                          }`}
+                        >
+                          {marcado && <Check className="h-3 w-3 text-white" />}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-ink">
+                            {bloque.etiqueta}
+                          </span>
+                          <span className="block text-xs leading-snug text-ink-muted">
+                            {bloque.descripcion}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           );
         })}
-      </ul>
+      </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-divider pt-4">
         <p className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">

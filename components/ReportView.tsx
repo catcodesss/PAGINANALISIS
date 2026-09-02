@@ -37,6 +37,14 @@ import { construirReporteFallo } from "@/lib/reporteFallo";
 import { agruparAlertas } from "@/lib/validadores";
 import { SECCIONES_INFORME, type IdSeccion } from "@/lib/secciones";
 import {
+  NIVELES_CONFIANZA,
+  INTRO_NIVELES_CONFIANZA,
+  NOTA_PIE_NIVELES_CONFIANZA,
+  claseColorConfianza,
+  tooltipConfianza,
+} from "@/lib/nivelesConfianza";
+import FranjaDocumento from "./FranjaDocumento";
+import {
   BloqueOrdenable,
   BotonRestaurarOrden,
   ProveedorOrden,
@@ -82,22 +90,27 @@ const CAMPO_CAPA_POR_MODELO: Record<ModeloTerapeutico, keyof AnalisisFuncional> 
 };
 
 /**
- * Qué bloque de lib/bloques.ts hace falta para que cada sección tenga contenido.
- * Sin bloque asociado, la sección se muestra siempre (resumen, datos faltantes,
- * alertas). Se usa para ocultar lo que no se pidió en un análisis parcial, en
- * vez de enseñar media docena de apartados vacíos.
+ * Qué bloque(s) de lib/bloques.ts hacen falta para que cada sección tenga
+ * contenido. Sin bloque asociado, la sección se muestra siempre (resumen,
+ * datos faltantes, alertas). Se usa para ocultar lo que no se pidió en un
+ * análisis parcial, en vez de enseñar media docena de apartados vacíos.
+ *
+ * "conductas" y "variables-moduladoras" listan dos ids porque "conductas" y
+ * "moduladoras" se fusionaron en el bloque "base": un análisis guardado antes
+ * de la fusión todavía trae el id viejo en campos_generados, y sin el alias
+ * esa sección se ocultaría en un informe que sí la generó.
  */
-const BLOQUE_DE_SECCION: Partial<Record<IdSeccion, string>> = {
-  conductas: "conductas",
-  "variables-moduladoras": "moduladoras",
-  situaciones: "situaciones",
-  "hipotesis-mantenimiento": "mantenimiento",
-  "hipotesis-principal": "mantenimiento",
-  formulacion: "formulacion",
-  "conductas-alternativas": "alternativas",
-  "hipotesis-alternativas": "hipotesis_alternativas",
-  preguntas: "preguntas",
-  intervencion: "intervencion",
+const BLOQUE_DE_SECCION: Partial<Record<IdSeccion, string[]>> = {
+  conductas: ["base", "conductas"],
+  "variables-moduladoras": ["base", "moduladoras"],
+  situaciones: ["situaciones"],
+  "hipotesis-mantenimiento": ["mantenimiento"],
+  "hipotesis-principal": ["mantenimiento"],
+  formulacion: ["formulacion"],
+  "conductas-alternativas": ["alternativas"],
+  "hipotesis-alternativas": ["hipotesis_alternativas"],
+  preguntas: ["preguntas"],
+  intervencion: ["intervencion"],
 };
 
 /**
@@ -109,8 +122,8 @@ function seccionVisible(analisis: AnalisisFuncional, id: IdSeccion): boolean {
   if (id === "modalidad") {
     return ["act", "dbt", "mc"].some((m) => analisis.campos_generados.includes(m));
   }
-  const bloque = BLOQUE_DE_SECCION[id];
-  return !bloque || analisis.campos_generados.includes(bloque);
+  const bloques = BLOQUE_DE_SECCION[id];
+  return !bloques || bloques.some((b) => analisis.campos_generados.includes(b));
 }
 
 /**
@@ -152,27 +165,15 @@ function ChipDestacado({ children }: { children: ReactNode }) {
   );
 }
 
-function colorConfianza(nivel: string): string {
-  if (nivel === "alta") return "bg-accent";
-  if (nivel === "media") return "bg-warn";
-  return "bg-ink-muted/50";
-}
-
-const EXPLICACION_CONFIANZA: Record<string, string> = {
-  alta: "Alta: la evidencia está explícita y clara en la nota.",
-  media: "Media: hay evidencia parcial, o se infiere con relativa seguridad.",
-  baja: "Baja: la evidencia es escasa; se apoya principalmente en inferencia clínica.",
-};
-
 function Confianza({ nivel }: { nivel: NivelConfianza | string }) {
   return (
     <span
-      title={EXPLICACION_CONFIANZA[nivel] ?? undefined}
+      title={tooltipConfianza(nivel)}
       className="conf-chip inline-flex cursor-help items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-ink-muted"
     >
       <span
         aria-hidden="true"
-        className={`conf-dot h-1.5 w-1.5 rounded-full ${colorConfianza(nivel)}`}
+        className={`conf-dot h-1.5 w-1.5 rounded-full ${claseColorConfianza(nivel)}`}
       />
       Confianza: {nivel}
     </span>
@@ -1625,16 +1626,14 @@ function PrintOnlyDisclaimer({
   );
 }
 
-const NIVELES_CONFIANZA: { nivel: string; etiqueta: string }[] = [
-  { nivel: "alta", etiqueta: "Alta" },
-  { nivel: "media", etiqueta: "Media" },
-  { nivel: "baja", etiqueta: "Baja" },
-];
-
 /**
  * Leyenda de confianza flotante: se queda fija en pantalla mientras el
- * usuario scrollea el informe, para que siempre pueda consultar qué
- * significa cada nivel. Se puede minimizar/reabrir con el ícono.
+ * usuario scrollea el informe. Se puede minimizar/reabrir con el ícono.
+ *
+ * Es un recordatorio, no la definición: una línea por nivel y un enlace a la
+ * tarjeta «Niveles de confianza», que es donde vive el texto completo. Antes
+ * repetía las definiciones largas aquí, y un panel flotante con tres párrafos
+ * tapa el informe justo cuando se está leyendo.
  */
 function LeyendaConfianzaFlotante() {
   const [abierta, setAbierta] = useState(true);
@@ -1656,20 +1655,34 @@ function LeyendaConfianzaFlotante() {
               ✕
             </button>
           </div>
-          <ul className="space-y-2">
-            {NIVELES_CONFIANZA.map(({ nivel, etiqueta }) => (
-              <li key={nivel} className="flex items-start gap-2">
+          <ul className="space-y-1.5">
+            {NIVELES_CONFIANZA.map(({ nivel, etiqueta, clase, corta }) => (
+              <li key={nivel} className="flex items-baseline gap-2">
                 <span
                   aria-hidden="true"
-                  className={`mt-1 h-2 w-2 shrink-0 rounded-full ${colorConfianza(nivel)}`}
+                  className={`h-2 w-2 shrink-0 translate-y-[-1px] rounded-full ${clase}`}
                 />
                 <p className="text-xs leading-relaxed text-ink-muted">
-                  <span className="font-medium text-ink">{etiqueta}: </span>
-                  {EXPLICACION_CONFIANZA[nivel]?.replace(/^\w+:\s*/, "")}
+                  <span className="font-semibold text-ink">{etiqueta}: </span>
+                  {corta}
                 </p>
               </li>
             ))}
           </ul>
+          <div className="mt-3 border-t border-divider pt-2">
+            <a
+              href="#niveles-confianza"
+              onClick={(evento) => {
+                evento.preventDefault();
+                document
+                  .getElementById("niveles-confianza")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="text-xs text-accent transition-colors hover:underline"
+            >
+              Ver definición completa →
+            </a>
+          </div>
         </div>
       ) : (
         <button
@@ -1773,6 +1786,20 @@ function InformeOrdenable({
       <PrintOnlyHeader referenciaCaso={referenciaCaso} fecha={fecha} meta={analisis.meta} />
       <PrintOnlyFooter />
 
+      {/* Va dentro del informe y no en la página que lo envuelve para que
+          acompañe a todo informe, sea el real o el de ejemplo, sin depender de
+          que quien monte una pantalla nueva se acuerde de ponerlo. Los
+          márgenes negativos lo sacan del acolchado de la tarjeta: la franja
+          llega de borde a borde, como la de ejemplo. */}
+      <div className="-mx-5 -mt-6 mb-6 sm:-mx-8 sm:-mt-8 lg:-mx-12 lg:-mt-10 print:mx-0 print:mt-0">
+        <FranjaDocumento rotulo="ACIA — documento generado con IA">
+          Documento de apoyo a la formulación clínica, generado con asistencia
+          de IA a partir de la información registrada por el profesional. No
+          constituye un diagnóstico ni sustituye el juicio clínico: requiere
+          validación profesional antes de cualquier uso terapéutico.
+        </FranjaDocumento>
+      </div>
+
       <header className="mb-6 border-b border-divider pb-5 print:hidden">
         <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
           Expediente · Análisis funcional
@@ -1811,8 +1838,6 @@ function InformeOrdenable({
         </div>
         <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <p className="text-xs text-ink-muted">
-            Los niveles de confianza indican qué tan respaldada está cada
-            hipótesis por evidencia explícita en la nota (alta, media o baja).
             Puedes arrastrar los bloques para ordenarlos a tu gusto.
           </p>
           <BotonRestaurarOrden />
@@ -2031,6 +2056,51 @@ function InformeOrdenable({
             ) : (
               <SinHallazgos />
             )}
+          </section>
+          </BloqueOrdenable>
+
+          {/* No usa <Seccion> a propósito: esta tarjeta no sale del análisis,
+              así que no tiene nada que reanalizar ni ningún fallo del modelo
+              que reportar. Solo necesita el envoltorio reordenable para
+              aparecer en el índice y moverse con las demás. */}
+          <BloqueOrdenable id="niveles-confianza" titulo="Niveles de confianza">
+          <section id="niveles-confianza" className="scroll-mt-24">
+            <div className="mb-3 flex items-center gap-3">
+              <span aria-hidden="true" className="h-5 w-1 rounded-full bg-accent" />
+              <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
+                Niveles de confianza
+              </h2>
+            </div>
+            <p className="text-sm leading-relaxed text-ink-muted">
+              {INTRO_NIVELES_CONFIANZA}
+            </p>
+            <ul className="mt-4 space-y-2">
+              {NIVELES_CONFIANZA.map(({ nivel, etiqueta, clase, variable, frase, resto }) => (
+                <li
+                  key={nivel}
+                  style={{ borderLeft: `3px solid ${variable}` }}
+                  className="rounded-sm bg-canvas px-4 py-3"
+                >
+                  {/* Dos columnas en pantalla ancha; apiladas en cuanto no
+                      caben, que en un móvil es siempre. */}
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-4">
+                    <p className="flex shrink-0 items-baseline gap-2 sm:w-24">
+                      <span
+                        aria-hidden="true"
+                        className={`h-2 w-2 shrink-0 translate-y-[-1px] rounded-full ${clase}`}
+                      />
+                      <span className="text-sm font-semibold text-ink">{etiqueta}</span>
+                    </p>
+                    <p className="text-sm leading-relaxed text-ink-muted">
+                      <span className="font-semibold text-ink">{frase}</span> {resto}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 border-t border-divider pt-3 text-sm leading-relaxed text-ink-muted">
+              {NOTA_PIE_NIVELES_CONFIANZA}
+            </p>
           </section>
           </BloqueOrdenable>
 

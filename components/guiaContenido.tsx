@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react";
+import { NIVELES_CONFIANZA } from "@/lib/nivelesConfianza";
 
 /**
  * Contenido y piezas visuales compartidas por la guía rápida (modal) y la guía
@@ -328,17 +329,15 @@ export function BloqueElInforme() {
 
       <Marca titulo="Confianza: cuánto respalda la nota">
         <ul className="space-y-2">
-          {[
-            ["alta", "bg-accent", "La evidencia está explícita en la nota."],
-            ["media", "bg-warn", "Evidencia parcial o inferencia razonable."],
-            ["baja", "bg-ink-muted/50", "Se apoya sobre todo en inferencia clínica."],
-          ].map(([nivel, color, texto]) => (
+          {NIVELES_CONFIANZA.map(({ nivel, clase, frase, resto }) => (
             <li key={nivel} className="flex items-baseline gap-2">
-              <span className={`h-1.5 w-1.5 shrink-0 translate-y-[-2px] rounded-full ${color}`} />
+              <span className={`h-1.5 w-1.5 shrink-0 translate-y-[-2px] rounded-full ${clase}`} />
               <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
                 {nivel}
               </span>
-              <span className="text-sm text-ink-muted">{texto}</span>
+              <span className="text-sm text-ink-muted">
+                {frase} {resto}
+              </span>
             </li>
           ))}
         </ul>

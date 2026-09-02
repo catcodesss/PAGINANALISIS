@@ -2,6 +2,11 @@ import type { AnalisisFuncional, Cita, Situacion } from "./types";
 import { agruparAlertas } from "./validadores";
 import { ORDEN_SECCIONES_POR_DEFECTO, TITULO_DE_SECCION } from "./secciones";
 import { AVISO_EJEMPLO } from "./maqueta";
+import {
+  NIVELES_CONFIANZA,
+  INTRO_NIVELES_CONFIANZA,
+  NOTA_PIE_NIVELES_CONFIANZA,
+} from "./nivelesConfianza";
 
 const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
 const DESCARGO =
@@ -46,7 +51,7 @@ function formatearSituacion(s: Situacion): string {
     if (c.consecuencias_largo_plazo) {
       lineas.push(`  Consecuencias a largo plazo: ${c.consecuencias_largo_plazo}`);
     }
-    lineas.push(`  Evidencia: ${textoCita(c.evidencia)}`);
+    lineas.push(`  De la nota: ${textoCita(c.evidencia)}`);
   }
 
   if (s.cadena_dbt) {
@@ -61,7 +66,7 @@ function formatearSituacion(s: Situacion): string {
     });
     lineas.push(`  Conducta problema: ${c.conducta_problema}`);
     lineas.push(`  Consecuencias: ${c.consecuencias}`);
-    lineas.push(`  Evidencia: ${textoCita(c.evidencia)}`);
+    lineas.push(`  De la nota: ${textoCita(c.evidencia)}`);
   }
 
   if (s.cadena_respondiente) {
@@ -72,7 +77,7 @@ function formatearSituacion(s: Situacion): string {
     if (c.conexion_con_operante) {
       lineas.push(`  Conexión con la cadena operante: ${c.conexion_con_operante}`);
     }
-    lineas.push(`  Evidencia: ${textoCita(c.evidencia)}`);
+    lineas.push(`  De la nota: ${textoCita(c.evidencia)}`);
   }
 
   if (s.ciclo_interconductual) {
@@ -188,6 +193,25 @@ export function formatearInformeTexto(
     );
   }
 
+  // Texto fijo, no salida del modelo: no depende del análisis y por eso se
+  // emite siempre, igual en un informe parcial que en uno completo. Va aquí
+  // porque el documento exportado escribe "(Confianza: alta)" en cada
+  // situación y en cada hipótesis, y sin la leyenda esas palabras llegan al
+  // papel —o a una historia clínica— sin nada que diga qué miden. En pantalla
+  // hay una tarjeta; fuera de la pantalla no había nada.
+  bloques["niveles-confianza"] = seccion(
+    "NIVELES DE CONFIANZA",
+    [
+      INTRO_NIVELES_CONFIANZA,
+      "",
+      ...NIVELES_CONFIANZA.map(
+        ({ etiqueta, frase, resto }) => `- ${etiqueta}: ${frase} ${resto}`
+      ),
+      "",
+      NOTA_PIE_NIVELES_CONFIANZA,
+    ].join("\n")
+  );
+
   bloques["resumen"] = seccion("RESUMEN CLÍNICO", analisis.resumen_clinico);
 
   bloques["conductas"] = (
@@ -196,7 +220,7 @@ export function formatearInformeTexto(
       analisis.conductas_problema
         .map(
           (c) =>
-            `- [${c.tipo}, importancia ${c.importancia}${c.es_conducta_seguridad ? ", CONDUCTA DE SEGURIDAD" : ""}${c.deficit_o_interferencia !== "no_determinable" ? `, ${c.deficit_o_interferencia}` : ""}] ${c.descripcion}${c.justificacion_deficit ? `\n  ${c.justificacion_deficit}` : ""}\n  Evidencia: ${textoCita(c.evidencia)}`
+            `- [${c.tipo}, importancia ${c.importancia}${c.es_conducta_seguridad ? ", CONDUCTA DE SEGURIDAD" : ""}${c.deficit_o_interferencia !== "no_determinable" ? `, ${c.deficit_o_interferencia}` : ""}] ${c.descripcion}${c.justificacion_deficit ? `\n  ${c.justificacion_deficit}` : ""}\n  De la nota: ${textoCita(c.evidencia)}`
         )
         .join("\n")
     )
@@ -206,7 +230,7 @@ export function formatearInformeTexto(
     seccion(
       "VARIABLES MODULADORAS",
       analisis.variables_moduladoras
-        .map((v) => `- [${v.tipo}] ${v.descripcion} — Evidencia: ${textoCita(v.evidencia)}`)
+        .map((v) => `- [${v.tipo}] ${v.descripcion} — De la nota: ${textoCita(v.evidencia)}`)
         .join("\n")
     )
   );
@@ -224,7 +248,7 @@ export function formatearInformeTexto(
       analisis.acomodacion_entorno
         .map(
           (a) =>
-            `- [${a.quien}] ${a.conducta_acomodacion}${a.funcion ? `\n  Función: ${a.funcion}` : ""}\n  Evidencia: ${textoCita(a.evidencia)}`
+            `- [${a.quien}] ${a.conducta_acomodacion}${a.funcion ? `\n  Función: ${a.funcion}` : ""}\n  De la nota: ${textoCita(a.evidencia)}`
         )
         .join("\n")
     )
@@ -296,7 +320,7 @@ export function formatearInformeTexto(
       analisis.capa_act.procesos_act
         .map(
           (p) =>
-            `- ${p.proceso}: ${p.vinculo_con_cadena}\n  Evidencia: ${textoCita(p.evidencia)}`
+            `- ${p.proceso}: ${p.vinculo_con_cadena}\n  De la nota: ${textoCita(p.evidencia)}`
         )
         .join("\n")
     )

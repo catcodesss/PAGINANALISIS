@@ -14,6 +14,11 @@
   --color-sidebar-hover: color-mix(in srgb, var(--color-sidebar) 82%, white);
   --color-divider: #e3e7e5;
   --color-warn: #8a6d3b;
+  /* Confianza baja. Antes era `bg-ink-muted/50`, un gris que no se leía como
+     parte de la escala: parecía "desactivado" en vez de "bajo". El terracota
+     cierra el degradado verde → ocre → terracota dentro de la misma familia
+     apagada de la paleta. */
+  --color-inferido: #c2683f;
 
   --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
@@ -25,8 +30,8 @@
    Las escribe lib/preferencias.ts como atributos de <html>.
 
    MARCA.md manda sobre lo que aquí NO se toca: el ámbar sigue
-   siendo "hay que revisarlo" y el gris "es inferencia", pase lo
-   que pase con el acento. Cambiar el acento cambia la marca, no
+   siendo "hay que revisarlo" y el terracota "es inferencia", pase
+   lo que pase con el acento. Cambiar el acento cambia la marca, no
    el código de colores del informe. Y nada de rojo, en ningún
    tema: el rojo dice "te equivocaste tú", y las alertas de ACIA
    son advertencias metodológicas, no errores del clínico.
@@ -77,6 +82,9 @@ html[data-tema="oscuro"] {
   /* El ámbar de papel se apaga sobre fondo oscuro; este mantiene el mismo
      significado con contraste suficiente. */
   --color-warn: #d0a94a;
+  /* Mismo motivo que el ámbar: el terracota de papel se apaga sobre el lienzo
+     oscuro y deja de distinguirse del ocre. */
+  --color-inferido: #d98058;
   /* La barra lateral ya era oscura: en modo noche se funde con el lienzo si
      no se separa un punto. */
   --color-sidebar: color-mix(in srgb, var(--color-accent) 35%, #0d1113);
@@ -210,6 +218,7 @@ html[data-texto="mayor"] { --escala-texto: 1.3; }
     --color-ink-muted: #5c6b67;
     --color-divider: #e3e7e5;
     --color-warn: #8a6d3b;
+    --color-inferido: #c2683f;
   }
 }
 
