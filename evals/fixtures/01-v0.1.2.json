@@ -31,17 +31,20 @@
       {
         "tipo": "biologica",
         "descripcion": "Sueño deficiente los domingos.",
-        "evidencia": "Duerme mal los domingos."
+        "evidencia": "Duerme mal los domingos.",
+        "modificabilidad": "alta"
       },
       {
         "tipo": "historia_de_aprendizaje",
         "descripcion": "Padre crítico con el rendimiento escolar y burlas en secundaria.",
-        "evidencia": "Describe un padre muy crítico y burlas en secundaria."
+        "evidencia": "Describe un padre muy crítico y burlas en secundaria.",
+        "modificabilidad": "baja"
       },
       {
         "tipo": "contextual",
         "descripcion": "Trabajo en atención al cliente con demandas evaluativas frecuentes.",
-        "evidencia": "Trabaja en atención al cliente desde hace tres años."
+        "evidencia": "Trabaja en atención al cliente desde hace tres años.",
+        "modificabilidad": "media"
       }
     ],
     "situaciones": [
@@ -140,19 +143,28 @@
         "conducta": "Evitar exponer en reuniones.",
         "enunciado": "Ante el Ed de exposición social, bajo OE de malestar condicionado, emite evitación, mantenida por R− (alivio inmediato).",
         "funcion": "Escape/evitación de evaluación social aversiva.",
-        "confianza": "alta"
+        "confianza": "alta",
+        "fuerza": "alta",
+        "direccion": "bidireccional",
+        "tipo_relacion": "causal"
       },
       {
         "conducta": "Ceder ante demandas indebidas de clientes.",
         "enunciado": "Ante el Ed de confrontación, bajo OE de malestar condicionado, cede, mantenida por R− (evitación de confrontación).",
         "funcion": "Escape/evitación de confrontación aversiva.",
-        "confianza": "alta"
+        "confianza": "alta",
+        "fuerza": "media",
+        "direccion": "unidireccional",
+        "tipo_relacion": "mediadora"
       },
       {
         "conducta": "Beber alcohol antes de socializar.",
         "enunciado": "Ante el Ed de interacción social, bajo OE de malestar anticipado, bebe, mantenida por R− (reducción del malestar).",
         "funcion": "Escape/evitación de malestar social anticipado.",
-        "confianza": "media"
+        "confianza": "media",
+        "fuerza": "media",
+        "direccion": "unidireccional",
+        "tipo_relacion": "moderadora"
       }
     ],
     "hipotesis_origen": [

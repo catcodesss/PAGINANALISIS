@@ -23,6 +23,7 @@ import {
   type RepertorioDisponible,
   type Riesgo,
   type Situacion,
+  type TipoRelacion,
   type TipoContingencia,
   type VariableModuladora,
 } from "./types";
@@ -145,6 +146,10 @@ function normalizarVariableModuladora(valor: unknown, lineas: string[]): Variabl
   return {
     tipo,
     descripcion: comoTexto(d.descripcion),
+    // Lo desconocido cae en "baja" por comoConfianza. Suponer modificabilidad
+    // alta inflaría la posición de esta variable en la priorización (ver
+    // lib/priorizacion.ts) apoyándose en una clave que el modelo omitió.
+    modificabilidad: comoConfianza(d.modificabilidad),
     evidencia: resolverCita(lineas, d.evidencia),
   };
 }
@@ -228,6 +233,8 @@ function normalizarSituacion(valor: unknown, indice: number, lineas: string[]): 
   };
 }
 
+const TIPOS_RELACION: TipoRelacion[] = ["causal", "moderadora", "mediadora"];
+
 function normalizarHipotesisMantenimiento(valor: unknown): HipotesisMantenimiento {
   const d = comoObjeto(valor);
   return {
@@ -235,6 +242,18 @@ function normalizarHipotesisMantenimiento(valor: unknown): HipotesisMantenimient
     enunciado: comoTexto(d.enunciado),
     funcion: comoTexto(d.funcion),
     confianza: comoConfianza(d.confianza),
+    fuerza: comoConfianza(d.fuerza),
+    // "unidireccional" por defecto: declarar un bucle es una afirmación más
+    // fuerte que declarar una flecha, y la red funcional resalta los bucles
+    // cerrados (ver RedFuncional en components/ReportView.tsx). Un valor por
+    // defecto "bidireccional" dibujaría bucles que nadie afirmó.
+    direccion: d.direccion === "bidireccional" ? "bidireccional" : "unidireccional",
+    // "causal" por defecto: es la lectura llana de una hipótesis de
+    // mantenimiento. "moderadora" y "mediadora" afirman ADEMÁS algo sobre el
+    // mecanismo, así que no pueden salir de una clave ausente.
+    tipo_relacion: TIPOS_RELACION.includes(d.tipo_relacion as TipoRelacion)
+      ? (d.tipo_relacion as TipoRelacion)
+      : "causal",
   };
 }
 

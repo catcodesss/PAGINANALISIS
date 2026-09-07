@@ -261,6 +261,37 @@ prueba("cada alerta dice en qué sección del informe puede haberse reflejado", 
   assert.equal(seccionDeRuta("general"), null);
 });
 
+prueba("fuerza y confianza son escalas distintas y no se copian entre sí", () => {
+  // La confianza mide cuánto respalda la nota lo afirmado; la fuerza, cuánto
+  // pesa la relación en el mantenimiento. Si el parser rellenara una con la
+  // otra, la red funcional dibujaría grosores que en realidad miden respaldo
+  // documental, y la priorización ordenaría por lo mismo.
+  const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+  crudo.hipotesis_mantenimiento[0].confianza = "alta";
+  crudo.hipotesis_mantenimiento[0].fuerza = "baja";
+  const normalizado = normalizarAnalisis(crudo, lineas);
+  assert.equal(normalizado.hipotesis_mantenimiento[0].confianza, "alta");
+  assert.equal(normalizado.hipotesis_mantenimiento[0].fuerza, "baja");
+});
+
+prueba("los coeficientes ausentes caen del lado que afirma menos", () => {
+  // "bidireccional" declara un bucle y "moderadora"/"mediadora" declaran algo
+  // sobre el mecanismo: ninguna de las tres puede salir de una clave que el
+  // modelo omitió. Y una modificabilidad supuesta alta subiría la posición de
+  // la variable en la priorización sin nada que lo sostenga.
+  const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+  delete crudo.hipotesis_mantenimiento[0].fuerza;
+  delete crudo.hipotesis_mantenimiento[0].direccion;
+  delete crudo.hipotesis_mantenimiento[0].tipo_relacion;
+  delete crudo.variables_moduladoras[0].modificabilidad;
+  const normalizado = normalizarAnalisis(crudo, lineas);
+  const h = normalizado.hipotesis_mantenimiento[0];
+  assert.equal(h.fuerza, "baja");
+  assert.equal(h.direccion, "unidireccional");
+  assert.equal(h.tipo_relacion, "causal");
+  assert.equal(normalizado.variables_moduladoras[0].modificabilidad, "baja");
+});
+
 prueba("un plan de monitorización vacío o ausente es null, no un plan a medias", () => {
   // Un plan inventado sería peor que ninguno: el clínico lo seguiría. El
   // objeto vacío que a veces devuelve el modelo tiene que caer del lado de

@@ -2417,6 +2417,20 @@ function InformeOrdenable({
                             <p className="text-[15px] leading-relaxed text-ink">
                               {v.descripcion}
                             </p>
+                            {/*
+                              Modificabilidad, no importancia: cuánto puede
+                              cambiar esto con intervención. El texto lo dice
+                              entero en el title porque las dos escalas se
+                              confunden con facilidad, y confundirlas lleva a
+                              priorizar lo que más pesa en la explicación en vez
+                              de lo que más puede moverse.
+                            */}
+                            <p
+                              title="Cuánto puede cambiar esta variable con intervención. No mide cuánto importa."
+                              className="mt-1 cursor-help font-mono text-[10px] uppercase tracking-wide text-ink-muted"
+                            >
+                              Modificabilidad: {v.modificabilidad}
+                            </p>
                             <Cita>{v.evidencia}</Cita>
                           </li>
                         ))}
@@ -2491,6 +2505,24 @@ function InformeOrdenable({
                       {h.funcion && <Chip>{h.funcion}</Chip>}
                       <Confianza nivel={h.confianza} />
                     </div>
+                    {/*
+                      Etiquetas discretas, en la línea de metadatos y no como
+                      chips de acento: son coeficientes de la relación, no
+                      conclusiones. La función y la confianza siguen mandando
+                      visualmente porque son lo que se lee primero; esto se
+                      consulta cuando ya se ha entendido la hipótesis.
+
+                      El tipo de relación se escribe entero y no como inicial:
+                      "moderadora" y "mediadora" empiezan igual, y la
+                      diferencia entre atenuar un efecto y cortarlo no puede
+                      depender de leer bien una abreviatura.
+                    */}
+                    <p className="mt-1.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                      Fuerza: {h.fuerza} · {h.tipo_relacion} ·{" "}
+                      {h.direccion === "bidireccional"
+                        ? "bidireccional (bucle)"
+                        : "unidireccional"}
+                    </p>
                   </li>
                 ))}
               </ul>

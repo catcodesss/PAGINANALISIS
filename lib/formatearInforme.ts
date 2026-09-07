@@ -284,7 +284,10 @@ export function formatearInformeTexto(
     seccion(
       "VARIABLES MODULADORAS",
       analisis.variables_moduladoras
-        .map((v) => `- [${v.tipo}] ${v.descripcion} — De la nota: ${textoCita(v.evidencia)}`)
+        .map(
+          (v) =>
+            `- [${v.tipo}, modificabilidad ${v.modificabilidad}] ${v.descripcion} — De la nota: ${textoCita(v.evidencia)}`
+        )
         .join("\n")
     )
   );
@@ -314,7 +317,7 @@ export function formatearInformeTexto(
       analisis.hipotesis_mantenimiento
         .map(
           (h) =>
-            `- [${h.conducta}] (Confianza: ${h.confianza}) ${h.enunciado}\n  Función: ${h.funcion}`
+            `- [${h.conducta}] (Confianza: ${h.confianza}) ${h.enunciado}\n  Función: ${h.funcion}\n  Fuerza: ${h.fuerza} · ${h.tipo_relacion} · ${h.direccion === "bidireccional" ? "bidireccional (bucle)" : "unidireccional"}`
         )
         .join("\n")
     )

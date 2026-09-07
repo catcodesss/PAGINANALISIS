@@ -58,6 +58,15 @@ export interface RepertorioDisponible {
 export interface VariableModuladora {
   tipo: TipoVariableModuladora;
   descripcion: string;
+  /**
+   * Cuánto puede cambiar ESTO con intervención. No es lo mismo que cuánto
+   * importa: la historia de aprendizaje puede ser el factor más determinante
+   * del caso y tener modificabilidad baja, y una rutina de sueño puede ser
+   * secundaria y muy modificable. Confundir las dos escalas lleva a priorizar
+   * lo que más pesa en la explicación en vez de lo que más puede moverse, que
+   * es donde el tratamiento rinde.
+   */
+  modificabilidad: NivelConfianza;
   evidencia: Cita;
 }
 
@@ -163,11 +172,36 @@ export interface Situacion {
   confianza: NivelConfianza;
 }
 
+/**
+ * Qué papel juega una relación dentro de la formulación.
+ *
+ * - "causal": esta variable produce o sostiene el problema.
+ * - "moderadora": altera la FUERZA de otra relación — el efecto existe igual
+ *   sin ella, pero es mayor o menor según su valor ("la evitación aparece
+ *   igual, pero se dispara los días de mal sueño").
+ * - "mediadora": explica el MECANISMO por el que otra relación ocurre — es el
+ *   paso intermedio a través del cual el efecto se produce ("la crítica lleva
+ *   a la anticipación, y es la anticipación la que produce la evitación").
+ *
+ * La distinción decide dónde se interviene: sobre una moderadora se actúa para
+ * atenuar el efecto, sobre una mediadora para cortarlo.
+ */
+export type TipoRelacion = "causal" | "moderadora" | "mediadora";
+
 export interface HipotesisMantenimiento {
   conducta: string;
   enunciado: string;
   funcion: string;
   confianza: NivelConfianza;
+  /**
+   * Cuánto pesa esta relación en el mantenimiento. Distinta de `confianza`,
+   * que mide cuánto respalda la nota lo afirmado: una relación puede estar
+   * bien documentada y pesar poco, o ser una inferencia sobre algo central.
+   */
+  fuerza: NivelConfianza;
+  /** Si el efecto va en un sentido o los dos se alimentan (un bucle). */
+  direccion: "unidireccional" | "bidireccional";
+  tipo_relacion: TipoRelacion;
 }
 
 export interface PriorizacionBlanco {
