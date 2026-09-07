@@ -2,15 +2,47 @@
   "analisis": {
     "resumen_clinico": "M., mujer de 29 años, consulta por episodios de ansiedad intensa en contextos evaluativos. La conducta de evitación y escape parece mantenida por refuerzo negativo. Historia de crítica parental y burlas escolares podría contribuir al patrón actual.",
     "conductas_problema": [
-      { "descripcion": "Evita exponer resultados en reuniones, pidiendo ir al baño.", "tipo": "manifiesta", "importancia": "alta", "evidencia": "Refiere que pidió ir al baño y evitó exponer." },
-      { "descripcion": "Responde disculpándose repetidamente y acepta compensaciones indebidas ante clientes molestos.", "tipo": "manifiesta", "importancia": "alta", "evidencia": "Aceptó una compensación que no le correspondía autorizar." },
-      { "descripcion": "Evita comer con compañeros y asistir a clases de baile.", "tipo": "manifiesta", "importancia": "media", "evidencia": "Evita comer con compañeros, dice que está ocupada." },
-      { "descripcion": "Bebe alcohol antes de socializar con amigos.", "tipo": "manifiesta", "importancia": "media", "evidencia": "Bebe dos o tres copas de vino antes de quedar con amigos." }
+      {
+        "descripcion": "Evita exponer resultados en reuniones, pidiendo ir al baño.",
+        "tipo": "manifiesta",
+        "importancia": "alta",
+        "evidencia": "Refiere que pidió ir al baño y evitó exponer."
+      },
+      {
+        "descripcion": "Responde disculpándose repetidamente y acepta compensaciones indebidas ante clientes molestos.",
+        "tipo": "manifiesta",
+        "importancia": "alta",
+        "evidencia": "Aceptó una compensación que no le correspondía autorizar."
+      },
+      {
+        "descripcion": "Evita comer con compañeros y asistir a clases de baile.",
+        "tipo": "manifiesta",
+        "importancia": "media",
+        "evidencia": "Evita comer con compañeros, dice que está ocupada."
+      },
+      {
+        "descripcion": "Bebe alcohol antes de socializar con amigos.",
+        "tipo": "manifiesta",
+        "importancia": "media",
+        "evidencia": "Bebe dos o tres copas de vino antes de quedar con amigos."
+      }
     ],
     "variables_moduladoras": [
-      { "tipo": "biologica", "descripcion": "Sueño deficiente los domingos.", "evidencia": "Duerme mal los domingos." },
-      { "tipo": "historia_de_aprendizaje", "descripcion": "Padre crítico con el rendimiento escolar y burlas en secundaria.", "evidencia": "Describe un padre muy crítico y burlas en secundaria." },
-      { "tipo": "contextual", "descripcion": "Trabajo en atención al cliente con demandas evaluativas frecuentes.", "evidencia": "Trabaja en atención al cliente desde hace tres años." }
+      {
+        "tipo": "biologica",
+        "descripcion": "Sueño deficiente los domingos.",
+        "evidencia": "Duerme mal los domingos."
+      },
+      {
+        "tipo": "historia_de_aprendizaje",
+        "descripcion": "Padre crítico con el rendimiento escolar y burlas en secundaria.",
+        "evidencia": "Describe un padre muy crítico y burlas en secundaria."
+      },
+      {
+        "tipo": "contextual",
+        "descripcion": "Trabajo en atención al cliente con demandas evaluativas frecuentes.",
+        "evidencia": "Trabaja en atención al cliente desde hace tres años."
+      }
     ],
     "situaciones": [
       {
@@ -26,13 +58,28 @@
           "evidencia": "Sintió un alivio inmediato muy fuerte."
         },
         "cadena_dbt": {
-          "factores_vulnerabilidad": ["Sueño deficiente", "Historia de crítica parental"],
+          "factores_vulnerabilidad": [
+            "Sueño deficiente",
+            "Historia de crítica parental"
+          ],
           "evento_precipitante": "Supervisora pide exponer resultados.",
           "eslabones": [
-            { "tipo": "sensacion", "descripcion": "Taquicardia y sudoración." },
-            { "tipo": "pensamiento", "descripcion": "Voy a quedarme en blanco." },
-            { "tipo": "impulso", "descripcion": "Ir al baño." },
-            { "tipo": "accion", "descripcion": "Pide ir al baño y evita exponer." }
+            {
+              "tipo": "sensacion",
+              "descripcion": "Taquicardia y sudoración."
+            },
+            {
+              "tipo": "pensamiento",
+              "descripcion": "Voy a quedarme en blanco."
+            },
+            {
+              "tipo": "impulso",
+              "descripcion": "Ir al baño."
+            },
+            {
+              "tipo": "accion",
+              "descripcion": "Pide ir al baño y evita exponer."
+            }
           ],
           "conducta_problema": "Evitar exponer en reuniones.",
           "consecuencias": "Alivio inmediato por evitar exposición; a largo plazo, erosión de la confianza en sus habilidades.",
@@ -86,9 +133,24 @@
       }
     ],
     "hipotesis_mantenimiento": [
-      { "conducta": "Evitar exponer en reuniones.", "enunciado": "Ante el Ed de exposición social, bajo OE de malestar condicionado, emite evitación, mantenida por R− (alivio inmediato).", "funcion": "Escape/evitación de evaluación social aversiva.", "confianza": "alta" },
-      { "conducta": "Ceder ante demandas indebidas de clientes.", "enunciado": "Ante el Ed de confrontación, bajo OE de malestar condicionado, cede, mantenida por R− (evitación de confrontación).", "funcion": "Escape/evitación de confrontación aversiva.", "confianza": "alta" },
-      { "conducta": "Beber alcohol antes de socializar.", "enunciado": "Ante el Ed de interacción social, bajo OE de malestar anticipado, bebe, mantenida por R− (reducción del malestar).", "funcion": "Escape/evitación de malestar social anticipado.", "confianza": "media" }
+      {
+        "conducta": "Evitar exponer en reuniones.",
+        "enunciado": "Ante el Ed de exposición social, bajo OE de malestar condicionado, emite evitación, mantenida por R− (alivio inmediato).",
+        "funcion": "Escape/evitación de evaluación social aversiva.",
+        "confianza": "alta"
+      },
+      {
+        "conducta": "Ceder ante demandas indebidas de clientes.",
+        "enunciado": "Ante el Ed de confrontación, bajo OE de malestar condicionado, cede, mantenida por R− (evitación de confrontación).",
+        "funcion": "Escape/evitación de confrontación aversiva.",
+        "confianza": "alta"
+      },
+      {
+        "conducta": "Beber alcohol antes de socializar.",
+        "enunciado": "Ante el Ed de interacción social, bajo OE de malestar anticipado, bebe, mantenida por R− (reducción del malestar).",
+        "funcion": "Escape/evitación de malestar social anticipado.",
+        "confianza": "media"
+      }
     ],
     "hipotesis_origen": [
       "Si la crítica parental y las burlas escolares condicionaron respuestas de ansiedad ante evaluación social, podrían haber originado el patrón actual."
@@ -99,51 +161,123 @@
         "El consumo de alcohol antes de socializar refuerza la dependencia del alcohol para manejar la ansiedad social."
       ],
       "priorizacion": [
-        { "blanco": "Evitar exponer en reuniones.", "justificacion": "Alta interferencia laboral y modificabilidad mediante entrenamiento en habilidades de afrontamiento." },
-        { "blanco": "Ceder ante demandas indebidas de clientes.", "justificacion": "Interferencia laboral significativa y riesgo de consecuencias negativas, modificable mediante entrenamiento en asertividad." }
+        {
+          "blanco": "Evitar exponer en reuniones.",
+          "justificacion": "Alta interferencia laboral y modificabilidad mediante entrenamiento en habilidades de afrontamiento."
+        },
+        {
+          "blanco": "Ceder ante demandas indebidas de clientes.",
+          "justificacion": "Interferencia laboral significativa y riesgo de consecuencias negativas, modificable mediante entrenamiento en asertividad."
+        }
       ]
     },
     "conductas_alternativas": [
-      { "situacion": "Reuniones de equipo", "conducta_propuesta": "Exponer resultados utilizando técnicas de respiración para manejar la ansiedad.", "consecuencia_necesaria": "Refuerzo positivo por parte de la supervisora y compañeros." },
-      { "situacion": "Interacciones con clientes", "conducta_propuesta": "Negociar adecuadamente sin ceder a demandas indebidas.", "consecuencia_necesaria": "Reconocimiento por parte de la supervisora por manejo adecuado de la situación." }
+      {
+        "situacion": "Reuniones de equipo",
+        "conducta_propuesta": "Exponer resultados utilizando técnicas de respiración para manejar la ansiedad.",
+        "consecuencia_necesaria": "Refuerzo positivo por parte de la supervisora y compañeros."
+      },
+      {
+        "situacion": "Interacciones con clientes",
+        "conducta_propuesta": "Negociar adecuadamente sin ceder a demandas indebidas.",
+        "consecuencia_necesaria": "Reconocimiento por parte de la supervisora por manejo adecuado de la situación."
+      }
     ],
     "capa_act": {
       "reglas_verbales": [
-        { "regla": "Debo evitar exponer para no quedar en ridículo.", "textual_o_inferida": "inferida", "clase": "pliance", "rigidez": "alta", "analisis": "La regla parece mantener la evitación de situaciones evaluativas, reforzada por el alivio inmediato." },
-        { "regla": "Si bebo, me sentiré más relajada con mis amigos.", "textual_o_inferida": "inferida", "clase": "augmenting", "rigidez": "media", "analisis": "La regla parece aumentar el valor reforzante del alcohol en situaciones sociales." }
+        {
+          "regla": "Debo evitar exponer para no quedar en ridículo.",
+          "textual_o_inferida": "inferida",
+          "clase": "pliance",
+          "rigidez": "alta",
+          "analisis": "La regla parece mantener la evitación de situaciones evaluativas, reforzada por el alivio inmediato."
+        },
+        {
+          "regla": "Si bebo, me sentiré más relajada con mis amigos.",
+          "textual_o_inferida": "inferida",
+          "clase": "augmenting",
+          "rigidez": "media",
+          "analisis": "La regla parece aumentar el valor reforzante del alcohol en situaciones sociales."
+        }
       ],
       "procesos_act": [
-        { "proceso": "Fusión cognitiva", "vinculo_con_cadena": "Reuniones de equipo", "evidencia": "Pensamiento recurrente de que va a quedarse en blanco." },
-        { "proceso": "Evitación experiencial", "vinculo_con_cadena": "Interacciones con clientes", "evidencia": "Ocultó a su supervisora la compensación indebida." }
+        {
+          "proceso": "Fusión cognitiva",
+          "vinculo_con_cadena": "Reuniones de equipo",
+          "evidencia": "Pensamiento recurrente de que va a quedarse en blanco."
+        },
+        {
+          "proceso": "Evitación experiencial",
+          "vinculo_con_cadena": "Interacciones con clientes",
+          "evidencia": "Ocultó a su supervisora la compensación indebida."
+        }
       ]
     },
     "capa_dbt": {
       "analisis_en_cadena": {
         "conducta_objetivo": "Evitar exponer en reuniones.",
-        "vulnerabilidades": ["Sueño deficiente", "Historia de crítica parental"],
+        "vulnerabilidades": [
+          "Sueño deficiente",
+          "Historia de crítica parental"
+        ],
         "evento_precipitante": "Supervisora pide exponer resultados.",
         "eslabones": [
-          { "tipo": "sensacion", "descripcion": "Taquicardia y sudoración." },
-          { "tipo": "pensamiento", "descripcion": "Voy a quedarme en blanco." },
-          { "tipo": "impulso", "descripcion": "Ir al baño." },
-          { "tipo": "accion", "descripcion": "Pide ir al baño y evita exponer." }
+          {
+            "tipo": "sensacion",
+            "descripcion": "Taquicardia y sudoración."
+          },
+          {
+            "tipo": "pensamiento",
+            "descripcion": "Voy a quedarme en blanco."
+          },
+          {
+            "tipo": "impulso",
+            "descripcion": "Ir al baño."
+          },
+          {
+            "tipo": "accion",
+            "descripcion": "Pide ir al baño y evita exponer."
+          }
         ],
-        "consecuencias_corto_plazo": ["Alivio inmediato por evitar exposición."],
-        "consecuencias_largo_plazo": ["Erosión de la confianza en sus habilidades."]
+        "consecuencias_corto_plazo": [
+          "Alivio inmediato por evitar exposición."
+        ],
+        "consecuencias_largo_plazo": [
+          "Erosión de la confianza en sus habilidades."
+        ]
       },
       "habilidades_sugeridas": [
-        { "modulo": "tolerancia_al_malestar", "habilidad": "Respiración diafragmática", "eslabon_objetivo": "Sensación de taquicardia y sudoración." },
-        { "modulo": "efectividad_interpersonal", "habilidad": "DEAR MAN", "eslabon_objetivo": "Acción de ceder ante demandas indebidas." }
+        {
+          "modulo": "tolerancia_al_malestar",
+          "habilidad": "Respiración diafragmática",
+          "eslabon_objetivo": "Sensación de taquicardia y sudoración."
+        },
+        {
+          "modulo": "efectividad_interpersonal",
+          "habilidad": "DEAR MAN",
+          "eslabon_objetivo": "Acción de ceder ante demandas indebidas."
+        }
       ]
     },
     "capa_mc": {
       "procedimientos_sugeridos": [
-        { "procedimiento": "Reforzamiento diferencial de conductas alternativas", "contingencia_objetivo": "R− que mantiene la evitación en reuniones.", "precauciones": "Requiere consistencia del entorno laboral." },
-        { "procedimiento": "Exposición graduada", "contingencia_objetivo": "Cadena respondiente ante contexto evaluativo.", "precauciones": "Vigilar la aparición de conductas de seguridad durante la exposición." }
+        {
+          "procedimiento": "Reforzamiento diferencial de conductas alternativas",
+          "contingencia_objetivo": "R− que mantiene la evitación en reuniones.",
+          "precauciones": "Requiere consistencia del entorno laboral."
+        },
+        {
+          "procedimiento": "Exposición graduada",
+          "contingencia_objetivo": "Cadena respondiente ante contexto evaluativo.",
+          "precauciones": "Vigilar la aparición de conductas de seguridad durante la exposición."
+        }
       ]
     },
     "hipotesis_alternativas": [
-      { "enunciado": "La evitación podría estar mantenida por reforzamiento positivo (atención de la pareja).", "como_descartarla": "Evaluar si la atención de la pareja aumenta la frecuencia de evitación." }
+      {
+        "enunciado": "La evitación podría estar mantenida por reforzamiento positivo (atención de la pareja).",
+        "como_descartarla": "Evaluar si la atención de la pareja aumenta la frecuencia de evitación."
+      }
     ],
     "preguntas_para_sesion": [
       "¿Qué pensamientos específicos surgen antes de evitar exponer en reuniones?",
@@ -156,9 +290,18 @@
       "Reducción gradual del consumo de alcohol en situaciones sociales."
     ],
     "datos_faltantes": [
-      "Frecuencia exacta de los episodios de ansiedad.",
-      "Impacto del consumo de alcohol en su funcionamiento diario.",
-      "Reacciones de la supervisora ante los errores cometidos."
+      {
+        "dato": "Frecuencia exacta de los episodios de ansiedad.",
+        "por_que_importa": "Sin ella no se puede estimar si la evitacion es puntual o ya es el patron dominante, y la priorizacion de blancos depende de eso."
+      },
+      {
+        "dato": "Impacto del consumo de alcohol en su funcionamiento diario.",
+        "por_que_importa": "Decide si el consumo es una conducta de seguridad mas dentro del mismo patron o un problema con contingencias propias que exige su propio analisis."
+      },
+      {
+        "dato": "Reacciones de la supervisora ante los errores cometidos.",
+        "por_que_importa": "Es la consecuencia social que sostendria la evitacion en reuniones; sin ella la funcion de escape queda sin el dato que la distingue de una funcion de atencion."
+      }
     ]
   }
 }

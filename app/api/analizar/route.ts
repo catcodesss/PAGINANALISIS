@@ -241,14 +241,30 @@ export async function POST(request: Request) {
     // mismo vacío dos veces con palabras distintas.
     if (Array.isArray(datosFaltantesDeclarados)) {
       const yaPresentes = new Set(
-        analisisSinValidar.datos_faltantes.map((d) => normalizarTexto(d))
+        analisisSinValidar.datos_faltantes.map((d) => normalizarTexto(d.dato))
       );
       for (const item of datosFaltantesDeclarados) {
-        if (typeof item !== "string" || !item.trim()) continue;
-        const clave = normalizarTexto(item);
+        // El paso previo manda el hueco con su porqué (ver
+        // components/PreguntasDatosFaltantes.tsx); una cadena suelta es la
+        // forma antigua y se sigue aceptando, sin motivo declarado.
+        const dato =
+          typeof item === "string"
+            ? item
+            : typeof (item as { dato?: unknown })?.dato === "string"
+              ? (item as { dato: string }).dato
+              : "";
+        if (!dato.trim()) continue;
+        const porQue =
+          typeof (item as { por_que_importa?: unknown })?.por_que_importa === "string"
+            ? (item as { por_que_importa: string }).por_que_importa.trim()
+            : "";
+        const clave = normalizarTexto(dato);
         if (yaPresentes.has(clave)) continue;
         yaPresentes.add(clave);
-        analisisSinValidar.datos_faltantes.push(item.trim());
+        analisisSinValidar.datos_faltantes.push({
+          dato: dato.trim(),
+          por_que_importa: porQue,
+        });
       }
     }
 

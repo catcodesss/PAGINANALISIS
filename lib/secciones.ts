@@ -67,8 +67,7 @@ export const SECCIONES_INFORME = [
   { id: "conductas-alternativas", titulo: "Conductas alternativas", grupo: "plan" },
   { id: "intervencion", titulo: "Líneas de intervención", grupo: "plan" },
   { id: "hipotesis-alternativas", titulo: "Hipótesis alternativas", grupo: "pendientes" },
-  { id: "alertas", titulo: "Puntos a verificar del análisis", grupo: "pendientes" },
-  { id: "datos-faltantes", titulo: "Datos faltantes", grupo: "pendientes" },
+  { id: "verificacion", titulo: "Datos faltantes y puntos a verificar", grupo: "pendientes" },
   { id: "preguntas", titulo: "Preguntas para la próxima sesión", grupo: "pendientes" },
   { id: "niveles-confianza", titulo: "Niveles de confianza", grupo: "pendientes" },
 ] as const satisfies readonly { id: string; titulo: string; grupo: IdGrupo }[];

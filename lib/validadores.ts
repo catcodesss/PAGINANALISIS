@@ -233,7 +233,11 @@ function validarDependenciaDeDatosFaltantes(a: AnalisisFuncional): Alerta[] {
   const alertas: Alerta[] = [];
 
   for (const falta of a.datos_faltantes) {
-    const palabrasFalta = palabrasSignificativas(falta, 7);
+    // Solo el hueco entra en la comparación, no el porqué: el porqué habla del
+    // análisis ("deja sin decidir la priorización") y sus palabras coinciden
+    // con las de cualquier intervención, así que emparejar por él dispararía
+    // la alerta en propuestas que no dependen del dato.
+    const palabrasFalta = palabrasSignificativas(falta.dato, 7);
     if (palabrasFalta.size === 0) continue;
 
     for (const intervencion of textosDeIntervencion(a)) {
@@ -247,7 +251,9 @@ function validarDependenciaDeDatosFaltantes(a: AnalisisFuncional): Alerta[] {
         origen: "validador",
         gravedad: "media",
         ruta: intervencion.ruta,
-        mensaje: `Depende de información que el informe declara faltante: "${falta}". Trátalo como condicional hasta confirmarlo.`,
+        mensaje: `Depende de información que el informe declara faltante: "${falta.dato}".${
+          falta.por_que_importa ? ` ${falta.por_que_importa}` : ""
+        } Trátalo como condicional hasta confirmarlo.`,
         elemento: intervencion.texto.trim(),
       });
     }
@@ -335,8 +341,11 @@ export function seccionDeRuta(ruta: string): IdSeccion | null {
       return "hipotesis-alternativas";
     case "preguntas_para_la_proxima_sesion":
       return "preguntas";
+    // Los huecos de la nota y los avisos del validador respondían a la misma
+    // pregunta —qué hay que comprobar antes de dar el informe por bueno— desde
+    // dos secciones distintas. Ahora comparten una.
     case "datos_faltantes":
-      return "datos-faltantes";
+      return "verificacion";
     case "riesgo":
       return "riesgo";
     case "resumen_clinico":

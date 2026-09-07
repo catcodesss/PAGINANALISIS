@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { BookOpenText, ChevronDown, Lock, Sparkles, SunMedium } from "lucide-react";
-import type { AnalisisFuncional } from "@/lib/types";
+import type { AnalisisFuncional, DatoFaltante, PreguntaPrevia } from "@/lib/types";
 import {
   contieneDatosIdentificables,
   enmascararDatosIdentificables,
@@ -64,7 +64,7 @@ export default function Home() {
   const [bloques, setBloques] = useState<string[]>(IDS_TODOS);
   // Preguntas del paso previo (ver lib/datosFaltantesPrevios.ts). null = no se
   // está preguntando nada; array = mostrando PreguntasDatosFaltantes.
-  const [preguntas, setPreguntas] = useState<string[] | null>(null);
+  const [preguntas, setPreguntas] = useState<PreguntaPrevia[] | null>(null);
   // El texto tal como se decidió enviar (ya con PII resuelto), guardado
   // mientras dura el paso de preguntas para poder anexarle las respuestas
   // confirmadas al terminar.
@@ -73,7 +73,7 @@ export default function Home() {
   async function ejecutarAnalisis(
     texto: string,
     bloquesPedidos: string[] = bloques,
-    datosFaltantesDeclarados: string[] = []
+    datosFaltantesDeclarados: DatoFaltante[] = []
   ) {
     setUltimoTextoEnviado(texto);
     setSelectorAbierto(false);
@@ -144,7 +144,7 @@ export default function Home() {
     setTextoPendiente(texto);
     setEstado("detectando");
 
-    let detectadas: string[] = [];
+    let detectadas: PreguntaPrevia[] = [];
     try {
       const respuesta = await fetch("/api/detectar-datos-faltantes", {
         method: "POST",
@@ -153,8 +153,15 @@ export default function Home() {
       });
       const datos = await respuesta.json().catch(() => null);
       if (Array.isArray(datos?.preguntas)) {
-        detectadas = datos.preguntas.filter(
-          (p: unknown): p is string => typeof p === "string" && p.trim().length > 0
+        // La ruta ya normaliza la forma (ver lib/datosFaltantesPrevios.ts);
+        // aquí solo se descarta lo que llegue sin pregunta, que no se podría
+        // ni enseñar.
+        detectadas = (datos.preguntas as unknown[]).filter(
+          (p): p is PreguntaPrevia =>
+            typeof p === "object" &&
+            p !== null &&
+            typeof (p as PreguntaPrevia).pregunta === "string" &&
+            (p as PreguntaPrevia).pregunta.trim().length > 0
         );
       }
     } catch {

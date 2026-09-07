@@ -370,6 +370,108 @@ function BloqueReanalisis({
   );
 }
 
+/**
+ * Los avisos del validador, agrupados por motivo.
+ *
+ * Vive en su propio componente desde que comparte sección con los datos
+ * faltantes: las dos listas responden a la misma pregunta —qué hay que
+ * comprobar antes de dar el informe por bueno— y estaban en dos secciones
+ * distintas del índice, a veces separadas por medio documento. Lo que cambia
+ * es dónde se leen, no qué dicen.
+ */
+function ListaAlertas({ analisis }: { analisis: AnalisisFuncional }) {
+  return (
+      <ul className="space-y-5">
+        {agruparAlertas(analisis.alertas).map((g, i) => {
+          const alta = g.gravedad === "alta";
+          return (
+            <li
+              key={i}
+              className={`rounded-r-md border-l-[3px] py-1.5 pl-4 ${
+                alta ? "border-warn bg-warn/5" : "border-divider"
+              }`}
+            >
+              {/*
+                La etiqueta de gravedad era el mismo gris apagado que
+                todo lo demás: una insignia (con su punto de color) la
+                separa de un vistazo de las etiquetas secundarias
+                (origen, número de propuestas), que van aparte y sin
+                el mismo peso. Ámbar solo para "alta": es el color que
+                MARCA.md reserva para "hay que mirarlo", no uno nuevo.
+              */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide ${
+                    alta ? "bg-warn/15 text-warn" : "bg-ink-muted/10 text-ink-muted"
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`h-1.5 w-1.5 rounded-full ${alta ? "bg-warn" : "bg-ink-muted/50"}`}
+                  />
+                  {alta ? "Revisar antes de usar" : "Conviene revisar"}
+                </span>
+                {g.origen === "ia" && (
+                  <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                    Revisión con IA
+                  </span>
+                )}
+                {g.elementos.length > 1 && (
+                  <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                    {g.elementos.length} propuestas
+                  </span>
+                )}
+              </div>
+              {/* El mensaje es el titular del aviso: en negrita para
+                  que se lea antes que las propuestas y el enlace de
+                  abajo, que son apoyo, no la conclusión. */}
+              <p className="mt-2 text-[15px] font-medium leading-relaxed text-ink">
+                {g.mensaje}
+              </p>
+              {/* El motivo va arriba una vez; debajo, a qué alcanza. */}
+              {g.elementos.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {g.elementos.map((e, j) => (
+                    <li
+                      key={j}
+                      className="text-[15px] leading-relaxed text-ink-muted before:mr-1.5 before:content-['—']"
+                    >
+                      {e}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {/*
+                Dónde aterriza el fallo. Sin esto el aviso dice que algo
+                puede estar mal pero no qué apartado releer, que es
+                justo lo que decide si hay que reanalizar una sección.
+                Va enlazado porque el informe es largo y la sección
+                señalada puede estar muy lejos.
+              */}
+              {g.secciones.length > 0 && (
+                <p className="mt-2 text-sm text-ink-muted">
+                  Puede haberse reflejado en{" "}
+                  {g.secciones.map((id, j) => (
+                    <span key={id}>
+                      {j > 0 && (j === g.secciones.length - 1 ? " y " : ", ")}
+                      <a
+                        href={`#${id}`}
+                        className="text-accent underline underline-offset-2 print:no-underline"
+                      >
+                        {SECCIONES.find((s) => s.id === id)?.titulo ?? id}
+                      </a>
+                    </span>
+                  ))}
+                  . Reanaliza o corrige ahí si lo das por bueno.
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+  );
+}
+
 function Seccion({
   id,
   titulo,
@@ -1916,124 +2018,6 @@ function InformeOrdenable({
           </BloqueOrdenable>
 
           {/*
-            Avisos metodológicos del validador del servidor, no del modelo.
-            Van aquí arriba, junto a los datos faltantes, porque son la misma
-            clase de información: lo que hay que mirar con cautela antes de
-            confiar en el resto. Deliberadamente sobrios: son advertencias
-            para revisar, no errores.
-          */}
-          {analisis.alertas.length > 0 && (
-            <BloqueOrdenable id="alertas" titulo="Puntos a verificar del análisis">
-            <section id="alertas" className="scroll-mt-24">
-              <div className="mb-3 flex items-center gap-3">
-                <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
-                <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
-                  Puntos a verificar del análisis
-                </h2>
-              </div>
-              {/*
-                Reescrito para no exigir entender cómo funciona el análisis
-                por dentro (qué es un validador, qué es la pasada crítica):
-                solo qué hay en esta sección y qué hacer con ello.
-              */}
-              <p className="mb-3 text-sm text-ink-muted">
-                En esta sección encontrarás los posibles errores o resultados
-                no del todo precisos de la IA, que conviene revisar a mano
-                antes de dar el análisis por bueno.
-              </p>
-              <ul className="space-y-5">
-                {agruparAlertas(analisis.alertas).map((g, i) => {
-                  const alta = g.gravedad === "alta";
-                  return (
-                    <li
-                      key={i}
-                      className={`rounded-r-md border-l-[3px] py-1.5 pl-4 ${
-                        alta ? "border-warn bg-warn/5" : "border-divider"
-                      }`}
-                    >
-                      {/*
-                        La etiqueta de gravedad era el mismo gris apagado que
-                        todo lo demás: una insignia (con su punto de color) la
-                        separa de un vistazo de las etiquetas secundarias
-                        (origen, número de propuestas), que van aparte y sin
-                        el mismo peso. Ámbar solo para "alta": es el color que
-                        MARCA.md reserva para "hay que mirarlo", no uno nuevo.
-                      */}
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide ${
-                            alta ? "bg-warn/15 text-warn" : "bg-ink-muted/10 text-ink-muted"
-                          }`}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={`h-1.5 w-1.5 rounded-full ${alta ? "bg-warn" : "bg-ink-muted/50"}`}
-                          />
-                          {alta ? "Revisar antes de usar" : "Conviene revisar"}
-                        </span>
-                        {g.origen === "ia" && (
-                          <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                            Revisión con IA
-                          </span>
-                        )}
-                        {g.elementos.length > 1 && (
-                          <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                            {g.elementos.length} propuestas
-                          </span>
-                        )}
-                      </div>
-                      {/* El mensaje es el titular del aviso: en negrita para
-                          que se lea antes que las propuestas y el enlace de
-                          abajo, que son apoyo, no la conclusión. */}
-                      <p className="mt-2 text-[15px] font-medium leading-relaxed text-ink">
-                        {g.mensaje}
-                      </p>
-                      {/* El motivo va arriba una vez; debajo, a qué alcanza. */}
-                      {g.elementos.length > 0 && (
-                        <ul className="mt-2 space-y-1">
-                          {g.elementos.map((e, j) => (
-                            <li
-                              key={j}
-                              className="text-[15px] leading-relaxed text-ink-muted before:mr-1.5 before:content-['—']"
-                            >
-                              {e}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {/*
-                        Dónde aterriza el fallo. Sin esto el aviso dice que algo
-                        puede estar mal pero no qué apartado releer, que es
-                        justo lo que decide si hay que reanalizar una sección.
-                        Va enlazado porque el informe es largo y la sección
-                        señalada puede estar muy lejos.
-                      */}
-                      {g.secciones.length > 0 && (
-                        <p className="mt-2 text-sm text-ink-muted">
-                          Puede haberse reflejado en{" "}
-                          {g.secciones.map((id, j) => (
-                            <span key={id}>
-                              {j > 0 && (j === g.secciones.length - 1 ? " y " : ", ")}
-                              <a
-                                href={`#${id}`}
-                                className="text-accent underline underline-offset-2 print:no-underline"
-                              >
-                                {SECCIONES.find((s) => s.id === id)?.titulo ?? id}
-                              </a>
-                            </span>
-                          ))}
-                          . Reanaliza o corrige ahí si lo das por bueno.
-                        </p>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-            </BloqueOrdenable>
-          )}
-
-          {/*
             Formulación funcional destacada — el titular del informe. El verde
             va en la tarjeta entera (prop `destacado` de BloqueOrdenable), no
             en una caja aparte metida dentro de una blanca: esa doble caja
@@ -2538,43 +2522,134 @@ function InformeOrdenable({
           </Seccion>
 
           {/*
-            Ya no es el primer bloque del informe: desde que existen las
-            preguntas previas (ver components/PreguntasDatosFaltantes.tsx),
-            esto son datos que el propio terapeuta reconoció como no
-            disponibles al responder "No sé" — no una advertencia que haya que
-            leer antes que el resto. Por eso va al final y solo aparece si de
-            verdad hay algo declarado (o algo que el modelo, aparte de eso,
-            haya marcado como faltante).
+            Una sola sección para las dos listas: los huecos que el terapeuta
+            reconoció al responder "No sé" (más los que el análisis detectó por
+            su cuenta) y los avisos del validador. Estaban separadas y
+            respondían a la misma pregunta —qué hay que comprobar antes de dar
+            esto por bueno—, así que el clínico tenía que acordarse de mirar en
+            dos sitios distintos del índice para saber de qué no fiarse.
+
+            Va al final y no arriba: desde que existen las preguntas previas
+            (ver components/PreguntasDatosFaltantes.tsx), esto no es una
+            advertencia que haya que leer antes que el resto, sino el
+            contrapeso que se lee cuando ya hay una propuesta sobre la mesa.
           */}
-          {analisis.datos_faltantes.length > 0 && (
-            <BloqueOrdenable id="datos-faltantes" titulo="Datos faltantes">
-            <section id="datos-faltantes" className="scroll-mt-24">
+          {(analisis.datos_faltantes.length > 0 || analisis.alertas.length > 0) && (
+            <BloqueOrdenable
+              id="verificacion"
+              titulo="Datos faltantes y puntos a verificar"
+            >
+            <section id="verificacion" className="scroll-mt-24">
               <div className="mb-3 flex items-center gap-3">
                 <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
                 <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
-                  Datos faltantes
+                  Datos faltantes y puntos a verificar
                 </h2>
               </div>
-              <p className="mb-3 text-sm text-ink-muted">
-                Lo que quedó sin saber antes de generar este informe: lo que
-                marcaste como &quot;No sé&quot; al empezar, más cualquier otro
-                vacío que el análisis haya detectado por su cuenta. Confírmalo
-                en la próxima sesión.
+              <p className="mb-5 text-sm text-ink-muted">
+                Lo que hay que comprobar antes de dar este informe por bueno: lo
+                que quedó sin saber de la nota, y lo que el propio análisis
+                puede haber hecho mal.
               </p>
-              <ListaEditable
-                items={analisis.datos_faltantes}
-                seccionId="datos-faltantes"
-                etiqueta="dato faltante"
-                onCambiar={(nuevos) =>
-                  onEditarSeccion("datos-faltantes", (c) => {
-                    c.datos_faltantes = nuevos;
-                  })
-                }
-              />
-              <ReportarFallo seccionId="datos-faltantes" />
+
+              <div className="space-y-8">
+                {analisis.datos_faltantes.length > 0 && (
+                  <SubSeccion titulo="Datos faltantes">
+                    <p className="mb-3 text-sm text-ink-muted">
+                      Lo que marcaste como &quot;No sé&quot; al empezar, más
+                      cualquier otro vacío que el análisis haya detectado por su
+                      cuenta. Confírmalo en la próxima sesión.
+                    </p>
+                    <ul className="space-y-3">
+                      {analisis.datos_faltantes.map((d, i) => (
+                        <li key={i}>
+                          <span className="flex flex-wrap items-baseline gap-x-2">
+                            <TextoEditable
+                              valor={d.dato}
+                              seccionId="verificacion"
+                              etiqueta={`Dato faltante ${i + 1}`}
+                              className="text-[15px] leading-relaxed text-ink"
+                              onCambio={(v) =>
+                                onEditarSeccion("verificacion", (c) => {
+                                  c.datos_faltantes[i] = {
+                                    ...c.datos_faltantes[i],
+                                    dato: v,
+                                  };
+                                })
+                              }
+                            />
+                            <BotonBorrar
+                              etiqueta={`dato faltante ${i + 1}`}
+                              onBorrar={() =>
+                                onEditarSeccion("verificacion", (c) => {
+                                  c.datos_faltantes = c.datos_faltantes.filter(
+                                    (_, j) => j !== i
+                                  );
+                                })
+                              }
+                            />
+                          </span>
+                          {/*
+                            El porqué no es adorno: es lo que distingue un
+                            matiz de un bloqueante. Cuando falta se dice, en vez
+                            de dejar el hueco pareciendo completo — un informe
+                            antiguo o un modelo que no obedeció el esquema
+                            llegan aquí sin motivo declarado.
+                          */}
+                          {d.por_que_importa ? (
+                            <TextoEditable
+                              valor={d.por_que_importa}
+                              seccionId="verificacion"
+                              etiqueta={`Por qué importa el dato faltante ${i + 1}`}
+                              className="mt-0.5 text-sm leading-relaxed text-ink-muted"
+                              onCambio={(v) =>
+                                onEditarSeccion("verificacion", (c) => {
+                                  c.datos_faltantes[i] = {
+                                    ...c.datos_faltantes[i],
+                                    por_que_importa: v,
+                                  };
+                                })
+                              }
+                            />
+                          ) : (
+                            <p className="mt-0.5 text-sm italic text-ink-muted">
+                              Sin motivo declarado: no consta qué parte del
+                              análisis queda en el aire sin este dato.
+                            </p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    <BotonAgregar
+                      etiqueta="dato faltante"
+                      onAgregar={(texto) =>
+                        onEditarSeccion("verificacion", (c) => {
+                          c.datos_faltantes = [
+                            ...c.datos_faltantes,
+                            { dato: texto, por_que_importa: "" },
+                          ];
+                        })
+                      }
+                    />
+                  </SubSeccion>
+                )}
+
+                {analisis.alertas.length > 0 && (
+                  <SubSeccion titulo="Puntos a verificar del análisis">
+                    <p className="mb-3 text-sm text-ink-muted">
+                      Posibles errores o resultados no del todo precisos de la
+                      IA, que conviene revisar a mano antes de dar el análisis
+                      por bueno.
+                    </p>
+                    <ListaAlertas analisis={analisis} />
+                  </SubSeccion>
+                )}
+              </div>
+
+              <ReportarFallo seccionId="verificacion" />
               <BloqueReanalisis
                 campos={["datos_faltantes", "situaciones"]}
-                seccionId="datos-faltantes"
+                seccionId="verificacion"
               />
             </section>
             </BloqueOrdenable>

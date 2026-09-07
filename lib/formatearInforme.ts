@@ -157,13 +157,22 @@ export function formatearInformeTexto(
   // orden que pida el clinico (ver ORDEN_BLOQUES_POR_DEFECTO).
   const bloques: Record<string, string> = {};
 
-  // Igual que en pantalla (ReportView.tsx): ya no es el primer bloque ni uno
-  // que se muestre siempre. Solo viaja con el informe exportado si hay algo
-  // que de verdad quedó sin saber.
+  // Los huecos de la nota y los avisos del validador responden a la misma
+  // pregunta —qué hay que comprobar antes de dar el informe por bueno— y por
+  // eso comparten sección, cada uno con su subtítulo. Se emite si hay
+  // cualquiera de las dos cosas; si no hay ninguna, no hay nada que verificar
+  // y la sección no viaja con el documento.
+  const apartadosVerificacion: string[] = [];
+
   if (analisis.datos_faltantes.length > 0) {
-    bloques["datos-faltantes"] = seccion(
-      "DATOS FALTANTES",
-      listaOTexto(analisis.datos_faltantes)
+    apartadosVerificacion.push(
+      "## Datos faltantes",
+      analisis.datos_faltantes
+        .map(
+          (d) =>
+            `- ${d.dato}${d.por_que_importa ? `\n  Por qué importa: ${d.por_que_importa}` : "\n  Sin motivo declarado."}`
+        )
+        .join("\n")
     );
   }
 
@@ -184,23 +193,28 @@ export function formatearInformeTexto(
   // no puede pinchar un enlace, así que el nombre del apartado tiene que estar
   // escrito.
   if (analisis.alertas.length > 0) {
-    bloques["alertas"] = (
-      seccion(
-        "PUNTOS A VERIFICAR DEL ANÁLISIS",
-        agruparAlertas(analisis.alertas)
-          .map((g) => {
-            const cabecera = `- [${g.gravedad === "alta" ? "revisar antes de usar" : "conviene revisar"}] ${g.mensaje}`;
-            const elementos = g.elementos.map((e) => `    — ${e}`);
-            const secciones = g.secciones
-              .map((id) => TITULO_DE_SECCION[id])
-              .filter(Boolean);
-            const donde = secciones.length
-              ? [`    Puede haberse reflejado en: ${secciones.join(", ")}.`]
-              : [];
-            return [cabecera, ...elementos, ...donde].join("\n");
-          })
-          .join("\n")
-      )
+    apartadosVerificacion.push(
+      "## Puntos a verificar del análisis",
+      agruparAlertas(analisis.alertas)
+        .map((g) => {
+          const cabecera = `- [${g.gravedad === "alta" ? "revisar antes de usar" : "conviene revisar"}] ${g.mensaje}`;
+          const elementos = g.elementos.map((e) => `    — ${e}`);
+          const secciones = g.secciones
+            .map((id) => TITULO_DE_SECCION[id])
+            .filter(Boolean);
+          const donde = secciones.length
+            ? [`    Puede haberse reflejado en: ${secciones.join(", ")}.`]
+            : [];
+          return [cabecera, ...elementos, ...donde].join("\n");
+        })
+        .join("\n")
+    );
+  }
+
+  if (apartadosVerificacion.length > 0) {
+    bloques["verificacion"] = seccion(
+      "DATOS FALTANTES Y PUNTOS A VERIFICAR",
+      apartadosVerificacion.join("\n\n")
     );
   }
 

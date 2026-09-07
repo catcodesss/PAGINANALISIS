@@ -11,6 +11,7 @@ import {
   type CapaModalidadMC,
   type ConductaAlternativa,
   type ConductaProblema,
+  type DatoFaltante,
   type DeficitOInterferencia,
   type Formulacion,
   type HipotesisAlternativa,
@@ -321,6 +322,29 @@ function normalizarAcomodacion(valor: unknown, lineas: string[]): Acomodacion {
   };
 }
 
+/**
+ * COMPATIBILIDAD: hasta que "datos_faltantes" pasó a llevar el porqué, cada
+ * hueco era una cadena suelta. Los informes ya guardados en el historial (ver
+ * lib/repositorio.ts) siguen trayendo esa forma, y un modelo que no obedezca
+ * el esquema puede devolverla otra vez. Una cadena se acepta como el dato, con
+ * el porqué vacío: la interfaz lo muestra como "sin motivo declarado", que es
+ * honesto — mejor eso que perder el hueco entero o inventarle una razón.
+ */
+function normalizarDatoFaltante(valor: unknown): DatoFaltante {
+  if (typeof valor === "string") return { dato: valor, por_que_importa: "" };
+  const d = comoObjeto(valor);
+  return {
+    dato: comoTexto(d.dato),
+    por_que_importa: comoTexto(d.por_que_importa),
+  };
+}
+
+function normalizarDatosFaltantes(valor: unknown): DatoFaltante[] {
+  return comoArreglo<unknown>(valor)
+    .map(normalizarDatoFaltante)
+    .filter((d) => d.dato.trim().length > 0);
+}
+
 function normalizarRiesgo(valor: unknown): Riesgo {
   const d = comoObjeto(valor);
   return {
@@ -382,7 +406,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     lineas_de_intervencion_tentativas: comoArregloDeTexto(
       d.lineas_de_intervencion_tentativas
     ),
-    datos_faltantes: comoArregloDeTexto(d.datos_faltantes),
+    datos_faltantes: normalizarDatosFaltantes(d.datos_faltantes),
     acomodacion_entorno: comoArreglo<unknown>(d.acomodacion_entorno).map((a) =>
       normalizarAcomodacion(a, lineas)
     ),
@@ -447,7 +471,7 @@ const NORMALIZADORES_POR_CAMPO: {
   preguntas_para_sesion: (d) => comoArregloDeTexto(d.preguntas_para_sesion),
   lineas_de_intervencion_tentativas: (d) =>
     comoArregloDeTexto(d.lineas_de_intervencion_tentativas),
-  datos_faltantes: (d) => comoArregloDeTexto(d.datos_faltantes),
+  datos_faltantes: (d) => normalizarDatosFaltantes(d.datos_faltantes),
   acomodacion_entorno: (d, lineas) =>
     comoArreglo<unknown>(d.acomodacion_entorno).map((a) =>
       normalizarAcomodacion(a, lineas)

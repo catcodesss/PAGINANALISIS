@@ -257,6 +257,45 @@ prueba("cada alerta dice en qué sección del informe puede haberse reflejado", 
   assert.equal(seccionDeRuta("general"), null);
 });
 
+prueba("los huecos y los avisos aterrizan en la misma sección de verificación", () => {
+  // Eran dos secciones distintas del índice para la misma pregunta: qué hay
+  // que comprobar antes de dar el informe por bueno.
+  assert.equal(seccionDeRuta("datos_faltantes[0]"), "verificacion");
+});
+
+prueba("un dato faltante sin su porqué se conserva, no se descarta", () => {
+  // COMPATIBILIDAD: los informes guardados antes de que el hueco llevara su
+  // razón traen cadenas sueltas. Perder el hueco sería peor que mostrarlo sin
+  // motivo declarado, que es lo que la interfaz dice explícitamente.
+  const crudo = {
+    ...fixture.analisis,
+    datos_faltantes: ["Frecuencia de los episodios.", { dato: "Otro hueco." }, "", 7],
+  };
+  const antiguo = normalizarAnalisis(crudo, lineas);
+  assert.deepEqual(antiguo.datos_faltantes, [
+    { dato: "Frecuencia de los episodios.", por_que_importa: "" },
+    { dato: "Otro hueco.", por_que_importa: "" },
+  ]);
+});
+
+prueba("el porqué de un dato faltante no dispara la alerta de dependencia por su cuenta", () => {
+  // El porqué habla del análisis ("deja sin decidir la priorización") y sus
+  // palabras coinciden con las de casi cualquier intervención. Si entrara en
+  // la comparación, V4 marcaría como condicional media docena de propuestas
+  // que no dependen del dato.
+  const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+  crudo.datos_faltantes = [
+    { dato: "Zzzzzzzz irrelevante.", por_que_importa: "Deja la exposición sin dosis definida." },
+  ];
+  const informeConPorque = validarAnalisis(normalizarAnalisis(crudo, lineas), nota);
+  assert.deepEqual(
+    informeConPorque.alertas.filter(
+      (a) => a.codigo === "intervencion_depende_de_dato_faltante"
+    ),
+    []
+  );
+});
+
 prueba("el origen aterriza en su propia sección, no en la de mantenimiento", () => {
   // Separar origen de mantenimiento es la defensa contra tratar cómo se
   // adquirió el problema en vez de qué lo sostiene hoy. Si un aviso sobre el

@@ -190,7 +190,7 @@ prueba("el prompt de reanálisis lo pide y no lo contradice", () => {
 
 prueba("el principio de profundidad viaja en el núcleo", () => {
   const prompt = construirSystemPrompt(["resumen_clinico"]);
-  assert.ok(prompt.includes("22. PROFUNDIDAD EXIGIBLE"));
+  assert.ok(prompt.includes("23. PROFUNDIDAD EXIGIBLE"));
   assert.ok(prompt.includes("PROFUNDIDAD NO ES LONGITUD"));
 });
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { HelpCircle } from "lucide-react";
+import type { DatoFaltante, PreguntaPrevia } from "@/lib/types";
 
 export interface RespuestaConfirmada {
   pregunta: string;
@@ -10,8 +11,13 @@ export interface RespuestaConfirmada {
 
 export interface ResultadoPreguntas {
   confirmadas: RespuestaConfirmada[];
-  /** Preguntas a las que el terapeuta respondió "No sé" (o que se omitieron todas de golpe). */
-  omitidas: string[];
+  /**
+   * Lo que el terapeuta respondió "No sé" (o se omitió de golpe), ya con la
+   * forma que tendrá en el informe: el hueco y por qué importa. El porqué
+   * viaja desde la detección y no se reconstruye después — quien encontró el
+   * vacío es quien sabe qué parte del análisis deja en el aire.
+   */
+  omitidas: DatoFaltante[];
 }
 
 /**
@@ -30,19 +36,24 @@ export default function PreguntasDatosFaltantes({
   preguntas,
   onCompletar,
 }: {
-  preguntas: string[];
+  preguntas: PreguntaPrevia[];
   onCompletar: (resultado: ResultadoPreguntas) => void;
 }) {
   const [indice, setIndice] = useState(0);
   const [texto, setTexto] = useState("");
   const [confirmadas, setConfirmadas] = useState<RespuestaConfirmada[]>([]);
-  const [omitidas, setOmitidas] = useState<string[]>([]);
+  const [omitidas, setOmitidas] = useState<DatoFaltante[]>([]);
 
   const preguntaActual = preguntas[indice];
 
+  /** El hueco tal como quedará en el informe si esta pregunta no se responde. */
+  function comoDatoFaltante(p: PreguntaPrevia): DatoFaltante {
+    return { dato: p.pregunta, por_que_importa: p.por_que_importa };
+  }
+
   function avanzar(
     siguientesConfirmadas: RespuestaConfirmada[],
-    siguientesOmitidas: string[]
+    siguientesOmitidas: DatoFaltante[]
   ) {
     if (indice + 1 >= preguntas.length) {
       onCompletar({ confirmadas: siguientesConfirmadas, omitidas: siguientesOmitidas });
@@ -54,19 +65,25 @@ export default function PreguntasDatosFaltantes({
 
   function confirmar() {
     if (!texto.trim()) return;
-    const nuevas = [...confirmadas, { pregunta: preguntaActual, respuesta: texto.trim() }];
+    const nuevas = [
+      ...confirmadas,
+      { pregunta: preguntaActual.pregunta, respuesta: texto.trim() },
+    ];
     setConfirmadas(nuevas);
     avanzar(nuevas, omitidas);
   }
 
   function noSe() {
-    const nuevas = [...omitidas, preguntaActual];
+    const nuevas = [...omitidas, comoDatoFaltante(preguntaActual)];
     setOmitidas(nuevas);
     avanzar(confirmadas, nuevas);
   }
 
   function omitirResto() {
-    onCompletar({ confirmadas, omitidas: [...omitidas, ...preguntas.slice(indice)] });
+    onCompletar({
+      confirmadas,
+      omitidas: [...omitidas, ...preguntas.slice(indice).map(comoDatoFaltante)],
+    });
   }
 
   return (
@@ -100,8 +117,17 @@ export default function PreguntasDatosFaltantes({
           htmlFor="respuesta-dato-faltante"
           className="block font-serif text-[17px] leading-relaxed text-ink"
         >
-          {preguntaActual}
+          {preguntaActual.pregunta}
         </label>
+        {/* Por qué importa, no como adorno: es lo que distingue un matiz de un
+            bloqueante antes de decidir si vale la pena buscar la respuesta, y
+            es el mismo texto que acompañará al hueco en el informe si aquí se
+            responde "No sé". */}
+        {preguntaActual.por_que_importa && (
+          <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+            {preguntaActual.por_que_importa}
+          </p>
+        )}
         <textarea
           id="respuesta-dato-faltante"
           value={texto}

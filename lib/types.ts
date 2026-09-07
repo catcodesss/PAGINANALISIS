@@ -138,6 +138,31 @@ export interface ConductaAlternativa {
   consecuencia_necesaria: string;
 }
 
+/**
+ * Un hueco de la nota y por qué importa.
+ *
+ * Antes era una lista de cadenas sueltas. "Frecuencia de los episodios" no le
+ * dice al terapeuta si eso es un matiz que se puede confirmar cuando toque o
+ * un bloqueante que invalida la priorización del informe entero, y esa
+ * diferencia es justo la que decide qué se pregunta en la próxima sesión.
+ */
+export interface DatoFaltante {
+  dato: string;
+  /** Qué parte del análisis queda en el aire mientras no se sepa. */
+  por_que_importa: string;
+}
+
+/**
+ * Una pregunta del paso previo al análisis (ver lib/datosFaltantesPrevios.ts),
+ * con el porqué que acompañará al hueco si el terapeuta responde "No sé". El
+ * porqué viaja desde aquí y no se inventa después: quien detectó el vacío es
+ * quien sabe qué parte del análisis deja en el aire.
+ */
+export interface PreguntaPrevia {
+  pregunta: string;
+  por_que_importa: string;
+}
+
 export interface HipotesisAlternativa {
   enunciado: string;
   como_descartarla: string;
@@ -272,7 +297,7 @@ export interface AnalisisFuncional {
   hipotesis_alternativas: HipotesisAlternativa[];
   preguntas_para_sesion: string[];
   lineas_de_intervencion_tentativas: string[];
-  datos_faltantes: string[];
+  datos_faltantes: DatoFaltante[];
   /** Principio 7: ciclos de acomodación del entorno, con quién y qué función. */
   acomodacion_entorno: Acomodacion[];
   /** Principio 18: direcciones valiosas o metas que el consultante expresa. */
