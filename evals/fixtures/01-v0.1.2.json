@@ -29,22 +29,28 @@
     ],
     "variables_moduladoras": [
       {
-        "tipo": "biologica",
         "descripcion": "Sueño deficiente los domingos.",
         "evidencia": "Duerme mal los domingos.",
-        "modificabilidad": "alta"
+        "modificabilidad": "alta",
+        "nivel": "biofisiologico",
+        "dimension": "atencion",
+        "momento": "actual"
       },
       {
-        "tipo": "historia_de_aprendizaje",
         "descripcion": "Padre crítico con el rendimiento escolar y burlas en secundaria.",
         "evidencia": "Describe un padre muy crítico y burlas en secundaria.",
-        "modificabilidad": "baja"
+        "modificabilidad": "baja",
+        "nivel": "psicologico",
+        "dimension": "self",
+        "momento": "historico"
       },
       {
-        "tipo": "contextual",
         "descripcion": "Trabajo en atención al cliente con demandas evaluativas frecuentes.",
         "evidencia": "Trabaja en atención al cliente desde hace tres años.",
-        "modificabilidad": "media"
+        "modificabilidad": "media",
+        "nivel": "sociocultural",
+        "dimension": "motivacion",
+        "momento": "actual"
       }
     ],
     "situaciones": [

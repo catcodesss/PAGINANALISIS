@@ -22,6 +22,7 @@ import type {
   NivelConfianza,
   Situacion,
   TipoEslabonDBT,
+  VariableModuladora,
 } from "@/lib/types";
 import { ETIQUETA_ESQUEMA } from "@/lib/types";
 import {
@@ -40,6 +41,13 @@ import { construirReporteFallo } from "@/lib/reporteFallo";
 import { agruparAlertas, yaEnRepertorio } from "@/lib/validadores";
 import { construirRedFuncional } from "@/lib/redFuncional";
 import { priorizarBlancos, RENDIMIENTO_MAXIMO } from "@/lib/priorizacion";
+import {
+  calcularCobertura,
+  DIMENSIONES,
+  ETIQUETA_DIMENSION,
+  ETIQUETA_NIVEL,
+  NIVELES,
+} from "@/lib/cobertura";
 import { SECCIONES_INFORME, type IdSeccion } from "@/lib/secciones";
 import {
   NIVELES_CONFIANZA,
@@ -1052,6 +1060,151 @@ function PriorizacionEstimada({ analisis }: { analisis: AnalisisFuncional }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/**
+ * La rejilla de contexto y procesos: 3 niveles × 6 dimensiones.
+ *
+ * Por qué una rejilla y no una lista agrupada: con la clasificación anterior
+ * —biológica / historia de aprendizaje / contextual— las categorías que el
+ * informe no usaba simplemente no aparecían, y no aparecer se lee como "aquí no
+ * había nada que decir". Cruzando los dos ejes, las 18 combinaciones están
+ * siempre a la vista y una celda vacía se ve como lo que es: una intersección
+ * sobre la que nadie ha registrado nada.
+ *
+ * UNA CELDA VACÍA ES INFORMACIÓN SOBRE LA EVALUACIÓN, NO SOBRE LA PERSONA.
+ * Puede que no haya nada que registrar, o puede que nadie lo haya preguntado, y
+ * esas dos cosas no se distinguen mirando la rejilla: se distinguen
+ * preguntando. Por eso el hueco enlaza con la sección de verificación en vez de
+ * presentarse como un resultado del análisis.
+ *
+ * El indicador de arriba se llama COBERTURA DE DATOS y nunca "confianza": una
+ * rejilla llena de datos malos no vale más que una incompleta con datos buenos.
+ * Ver lib/cobertura.ts.
+ *
+ * El momento (histórico / actual) va como etiqueta dentro de la celda y no como
+ * un tercer eje de la tabla: una rejilla de tres dimensiones no se lee en una
+ * pantalla, y el momento es un matiz de cada variable, no un sitio donde
+ * buscarla.
+ */
+function RejillaContexto({ variables }: { variables: VariableModuladora[] }) {
+  const cobertura = useMemo(() => calcularCobertura(variables), [variables]);
+
+  return (
+    <div>
+      <div className="mb-4 rounded-md border border-divider bg-canvas px-4 py-3 print:border-black">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+          Cobertura de datos · {cobertura.conDato} de {cobertura.totales} celdas
+        </p>
+        <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+          Cuenta casillas con algo escrito, nada más. No mide la calidad del
+          análisis: una rejilla llena de datos flojos no vale más que una
+          incompleta con datos buenos. Una celda vacía dice que en esa
+          intersección no se ha registrado nada — puede que no haya nada, o puede
+          que no se haya preguntado, y eso se resuelve preguntando.
+        </p>
+      </div>
+
+      {/* En un móvil no caben seis columnas: la tabla se desplaza dentro de su
+          propio contenedor, sin arrastrar de lado al resto del informe. */}
+      <div className="w-full overflow-x-auto">
+        <table className="w-full min-w-[720px] border-collapse text-left">
+          <caption className="sr-only">
+            Variables moduladoras cruzadas por nivel (filas) y dimensión de
+            proceso (columnas). Las celdas sin variables se marcan como huecos.
+          </caption>
+          <thead>
+            <tr>
+              <th className="border-b border-divider px-2 py-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                Nivel / Dimensión
+              </th>
+              {DIMENSIONES.map((d) => (
+                <th
+                  key={d}
+                  scope="col"
+                  className="border-b border-divider px-2 py-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted"
+                >
+                  {ETIQUETA_DIMENSION[d]}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {NIVELES.map((nivel) => (
+              <tr key={nivel} className="align-top">
+                <th
+                  scope="row"
+                  className="w-[110px] border-b border-divider px-2 py-3 font-mono text-[10px] uppercase tracking-wide text-ink"
+                >
+                  {ETIQUETA_NIVEL[nivel]}
+                </th>
+                {DIMENSIONES.map((dimension) => {
+                  const celda = cobertura.celdas.find(
+                    (c) => c.nivel === nivel && c.dimension === dimension
+                  );
+                  const vacia = !celda || celda.variables.length === 0;
+                  return (
+                    <td
+                      key={dimension}
+                      className="border-b border-divider px-2 py-3"
+                    >
+                      {vacia ? (
+                        /*
+                          El hueco se marca, no se deja en blanco: una casilla
+                          en blanco se lee como "aquí no hay nada que decir", y
+                          lo que dice de verdad es que nadie ha registrado nada.
+                          La palabra "hueco" lleva el significado, no el color:
+                          en blanco y negro y con lector de pantalla se lee
+                          igual.
+                        */
+                        <a
+                          href="#verificacion"
+                          className="font-mono text-[10px] uppercase tracking-wide text-ink-muted underline decoration-dotted underline-offset-2 transition-colors hover:text-warn print:no-underline"
+                        >
+                          Hueco
+                        </a>
+                      ) : (
+                        <ul className="space-y-2">
+                          {celda.variables.map((v, i) => (
+                            <li key={i}>
+                              <p className="text-sm leading-relaxed text-ink">
+                                {v.descripcion}
+                              </p>
+                              <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                                {v.momento === "historico"
+                                  ? "histórica"
+                                  : "actual"}{" "}
+                                · modificabilidad {v.modificabilidad}
+                              </p>
+                              <Cita>{v.evidencia}</Cita>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {cobertura.huecos.length > 0 && (
+        <p className="mt-3 text-sm leading-relaxed text-ink-muted">
+          Hay {cobertura.huecos.length} celdas sin dato. Si alguna de esas
+          intersecciones importa en este caso, la pregunta va a{" "}
+          <a
+            href="#verificacion"
+            className="text-accent underline underline-offset-2 print:no-underline"
+          >
+            Datos faltantes y puntos a verificar
+          </a>
+          .
+        </p>
+      )}
     </div>
   );
 }
@@ -2695,52 +2848,15 @@ function InformeOrdenable({
             )}
           </Seccion>
 
-          <Seccion id="variables-moduladoras" titulo="Variables moduladoras" camposReanalisis={["variables_moduladoras"]}>
+          <Seccion
+            id="variables-moduladoras"
+            titulo="Contexto y variables moduladoras"
+            camposReanalisis={["variables_moduladoras"]}
+          >
             {analisis.variables_moduladoras.length === 0 ? (
               <SinHallazgos />
             ) : (
-              <div className="space-y-5">
-                {(
-                  [
-                    ["biologica", "Biológicas"],
-                    ["historia_de_aprendizaje", "Historia de aprendizaje"],
-                    ["contextual", "Contextuales"],
-                  ] as const
-                ).map(([tipo, titulo]) => {
-                  const items = analisis.variables_moduladoras.filter(
-                    (v) => v.tipo === tipo
-                  );
-                  if (items.length === 0) return null;
-                  return (
-                    <SubSeccion key={tipo} titulo={titulo}>
-                      <ul className="space-y-3">
-                        {items.map((v, i) => (
-                          <li key={i}>
-                            <p className="text-[15px] leading-relaxed text-ink">
-                              {v.descripcion}
-                            </p>
-                            {/*
-                              Modificabilidad, no importancia: cuánto puede
-                              cambiar esto con intervención. El texto lo dice
-                              entero en el title porque las dos escalas se
-                              confunden con facilidad, y confundirlas lleva a
-                              priorizar lo que más pesa en la explicación en vez
-                              de lo que más puede moverse.
-                            */}
-                            <p
-                              title="Cuánto puede cambiar esta variable con intervención. No mide cuánto importa."
-                              className="mt-1 cursor-help font-mono text-[10px] uppercase tracking-wide text-ink-muted"
-                            >
-                              Modificabilidad: {v.modificabilidad}
-                            </p>
-                            <Cita>{v.evidencia}</Cita>
-                          </li>
-                        ))}
-                      </ul>
-                    </SubSeccion>
-                  );
-                })}
-              </div>
+              <RejillaContexto variables={analisis.variables_moduladoras} />
             )}
           </Seccion>
 

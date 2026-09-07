@@ -5,10 +5,42 @@ export type { Cita };
 export type NivelConfianza = "alta" | "media" | "baja";
 export type ModeloTerapeutico = "act" | "dbt" | "mc";
 export type TipoConducta = "manifiesta" | "encubierta";
-export type TipoVariableModuladora =
-  | "biologica"
-  | "historia_de_aprendizaje"
-  | "contextual";
+/**
+ * Rejilla de contexto y procesos: dos ejes independientes en lugar de una sola
+ * lista de categorías.
+ *
+ * La clasificación anterior —biológica / historia de aprendizaje / contextual—
+ * mezclaba dos preguntas distintas en una. "Biológica" y "contextual" dicen a
+ * QUÉ NIVEL opera la variable; "historia de aprendizaje" dice CUÁNDO se
+ * adquirió, que es una pregunta ortogonal: un patrón aprendido en la infancia
+ * puede operar hoy a nivel psicológico o sociocultural, y con la lista vieja
+ * había que elegir entre decir dónde opera o decir que viene de atrás.
+ *
+ * Separados en `nivel`, `dimension` y `momento`, cada variable responde a las
+ * tres preguntas sin que ninguna desplace a las otras, y las combinaciones que
+ * el informe NO cubre se pueden ver de un vistazo — que es lo que convierte una
+ * celda vacía en información sobre la evaluación.
+ */
+export type NivelVariable = "biofisiologico" | "psicologico" | "sociocultural";
+
+/**
+ * Las seis dimensiones de proceso. No son escuelas ni módulos: son las clases
+ * de proceso que una variable puede modular.
+ */
+export type DimensionVariable =
+  | "afecto"
+  | "cognicion"
+  | "atencion"
+  | "self"
+  | "motivacion"
+  | "conducta";
+
+/**
+ * CUÁNDO se adquirió, no qué es. La historia de aprendizaje dejó de ser una
+ * categoría hermana de "biológica" y "contextual" porque no es un tipo de
+ * variable: es un eje aparte que se cruza con los otros dos.
+ */
+export type MomentoVariable = "historico" | "actual";
 export type TipoContingencia =
   | "refuerzo positivo"
   | "refuerzo negativo"
@@ -56,7 +88,12 @@ export interface RepertorioDisponible {
 }
 
 export interface VariableModuladora {
-  tipo: TipoVariableModuladora;
+  /** A qué nivel opera. Ver NivelVariable. */
+  nivel: NivelVariable;
+  /** Qué clase de proceso modula. Ver DimensionVariable. */
+  dimension: DimensionVariable;
+  /** Cuándo se adquirió. Ver MomentoVariable. */
+  momento: MomentoVariable;
   descripcion: string;
   /**
    * Cuánto puede cambiar ESTO con intervención. No es lo mismo que cuánto

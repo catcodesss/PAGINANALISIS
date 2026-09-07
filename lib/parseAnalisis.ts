@@ -13,11 +13,13 @@ import {
   type ConductaProblema,
   type DatoFaltante,
   type DeficitOInterferencia,
+  type DimensionVariable,
   type EsquemaDeContingencia,
   type Formulacion,
   type HipotesisAlternativa,
   type HipotesisMantenimiento,
   type NivelConfianza,
+  type NivelVariable,
   type PlanDeMonitorizacion,
   type PriorizacionBlanco,
   type RepertorioDisponible,
@@ -137,14 +139,65 @@ function normalizarRepertorioDisponible(
   };
 }
 
+const NIVELES_VARIABLE: NivelVariable[] = [
+  "biofisiologico",
+  "psicologico",
+  "sociocultural",
+];
+
+const DIMENSIONES_VARIABLE: DimensionVariable[] = [
+  "afecto",
+  "cognicion",
+  "atencion",
+  "self",
+  "motivacion",
+  "conducta",
+];
+
+/**
+ * COMPATIBILIDAD con la clasificación anterior.
+ *
+ * Hasta la rejilla de contexto y procesos, cada variable llevaba un solo campo
+ * `tipo` con tres valores. Los informes ya guardados en el historial (ver
+ * lib/repositorio.ts) siguen trayéndolo, y un modelo que no obedezca el esquema
+ * nuevo puede devolverlo otra vez. Sin este mapeo, esos informes pintarían la
+ * rejilla entera vacía: no un fallo visible, sino un informe antiguo que de
+ * pronto parece no haber evaluado nada.
+ *
+ * "historia_de_aprendizaje" es el caso interesante: no era un nivel, era un
+ * momento. Se traduce a nivel psicológico —que es donde opera un patrón
+ * aprendido— y momento histórico, que es lo que la categoría vieja quería decir
+ * de verdad.
+ */
+const NIVEL_DESDE_TIPO_ANTIGUO: Record<string, NivelVariable> = {
+  biologica: "biofisiologico",
+  contextual: "sociocultural",
+  historia_de_aprendizaje: "psicologico",
+};
+
 function normalizarVariableModuladora(valor: unknown, lineas: string[]): VariableModuladora {
   const d = comoObjeto(valor);
-  const tipo =
-    d.tipo === "biologica" || d.tipo === "contextual"
-      ? d.tipo
-      : "historia_de_aprendizaje";
+  const tipoAntiguo = typeof d.tipo === "string" ? d.tipo : "";
+
+  const nivel = NIVELES_VARIABLE.includes(d.nivel as NivelVariable)
+    ? (d.nivel as NivelVariable)
+    : (NIVEL_DESDE_TIPO_ANTIGUO[tipoAntiguo] ?? "psicologico");
+
+  const momento =
+    d.momento === "historico" || d.momento === "actual"
+      ? d.momento
+      : tipoAntiguo === "historia_de_aprendizaje"
+        ? "historico"
+        : "actual";
+
   return {
-    tipo,
+    nivel,
+    // Sin dimensión declarada cae en "conducta": es la dimensión que el resto
+    // del informe siempre describe, así que es la lectura que menos añade.
+    dimension: DIMENSIONES_VARIABLE.includes(d.dimension as DimensionVariable)
+      ? (d.dimension as DimensionVariable)
+      : "conducta",
+    momento,
     descripcion: comoTexto(d.descripcion),
     // Lo desconocido cae en "baja" por comoConfianza. Suponer modificabilidad
     // alta inflaría la posición de esta variable en la priorización (ver

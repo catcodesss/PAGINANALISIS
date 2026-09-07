@@ -30,6 +30,7 @@ execFileSync(
     "lib/validadores.ts",
     "lib/redFuncional.ts",
     "lib/priorizacion.ts",
+    "lib/cobertura.ts",
     "--outDir", ".tmp-evals",
     "--rootDir", "lib",
     "--module", "commonjs",
@@ -51,6 +52,7 @@ const {
   yaEnRepertorio,
 } = require(join(RAIZ, ".tmp-evals/validadores.js"));
 const { construirRedFuncional } = require(join(RAIZ, ".tmp-evals/redFuncional.js"));
+const { calcularCobertura } = require(join(RAIZ, ".tmp-evals/cobertura.js"));
 const { priorizarBlancos, VALOR_CUALITATIVO, RENDIMIENTO_MAXIMO } = require(
   join(RAIZ, ".tmp-evals/priorizacion.js")
 );
@@ -265,6 +267,57 @@ prueba("cada alerta dice en qué sección del informe puede haberse reflejado", 
   assert.equal(seccionDeRuta("riesgo"), "riesgo");
   // Sin sección es mejor que la sección equivocada.
   assert.equal(seccionDeRuta("general"), null);
+});
+
+/* ── Rejilla de contexto y procesos ──────────────────────────────────────── */
+
+prueba("un informe con la clasificación vieja sigue pintándose en la rejilla", () => {
+  // COMPATIBILIDAD: los informes guardados en el historial traen un solo campo
+  // `tipo`. Sin el mapeo, la rejilla saldría entera vacía — no un fallo
+  // visible, sino un informe antiguo que de pronto parece no haber evaluado
+  // nada.
+  const antiguo = normalizarAnalisis(
+    {
+      ...fixture.analisis,
+      variables_moduladoras: [
+        { tipo: "biologica", descripcion: "Hipotiroidismo en tratamiento." },
+        { tipo: "contextual", descripcion: "Turnos rotativos en el trabajo." },
+        { tipo: "historia_de_aprendizaje", descripcion: "Padre crítico." },
+      ],
+    },
+    lineas
+  );
+  const [bio, ctx, hist] = antiguo.variables_moduladoras;
+  assert.equal(bio.nivel, "biofisiologico");
+  assert.equal(ctx.nivel, "sociocultural");
+  // La historia de aprendizaje no era un nivel: era un momento.
+  assert.equal(hist.nivel, "psicologico");
+  assert.equal(hist.momento, "historico");
+  assert.equal(bio.momento, "actual");
+});
+
+prueba("la cobertura cuenta celdas con dato, no calidad", () => {
+  // Se llama cobertura de datos y no confianza a propósito: una rejilla llena
+  // de datos malos no vale más que una incompleta con datos buenos. Lo único
+  // que puede hacer este cálculo es contar casillas.
+  const cobertura = calcularCobertura(informe.variables_moduladoras);
+  assert.equal(cobertura.totales, 18, "3 niveles × 6 dimensiones");
+  assert.equal(cobertura.celdas.length, 18, "la rejilla se emite siempre entera");
+  assert.equal(
+    cobertura.conDato + cobertura.huecos.length,
+    cobertura.totales,
+    "las celdas con dato y los huecos no suman la rejilla"
+  );
+  // Ninguna variable se reparte entre celdas: eso inflaría la cobertura.
+  const repartidas = cobertura.celdas.reduce((n, c) => n + c.variables.length, 0);
+  assert.equal(repartidas, informe.variables_moduladoras.length);
+});
+
+prueba("una rejilla sin variables es 0 de 18, no un error", () => {
+  const vacia = calcularCobertura([]);
+  assert.equal(vacia.conDato, 0);
+  assert.equal(vacia.porcentaje, 0);
+  assert.equal(vacia.huecos.length, 18);
 });
 
 /* ── Priorización estimada ───────────────────────────────────────────────── */

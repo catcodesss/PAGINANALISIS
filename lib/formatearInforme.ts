@@ -1,6 +1,13 @@
 import { ETIQUETA_ESQUEMA, type AnalisisFuncional, type Cita, type Situacion } from "./types";
 import { agruparAlertas } from "./validadores";
 import { priorizarBlancos } from "./priorizacion";
+import {
+  calcularCobertura,
+  DIMENSIONES,
+  ETIQUETA_DIMENSION,
+  ETIQUETA_NIVEL,
+  NIVELES,
+} from "./cobertura";
 import { ORDEN_SECCIONES_POR_DEFECTO, TITULO_DE_SECCION } from "./secciones";
 import { AVISO_EJEMPLO } from "./maqueta";
 import {
@@ -281,15 +288,38 @@ export function formatearInformeTexto(
     )
   );
 
+  // La rejilla de la pantalla, en el papel, recorrida por filas: una tabla de
+  // 3×6 no cabe en un documento de texto plano, pero la información sí — y con
+  // ella los huecos, que son la mitad del sentido de la rejilla. La cobertura
+  // se declara con las mismas palabras que en pantalla ("cobertura de datos",
+  // nunca "confianza"): quien lea esto impreso no tiene el aviso de al lado.
+  const cobertura = calcularCobertura(analisis.variables_moduladoras);
   bloques["variables-moduladoras"] = (
     seccion(
-      "VARIABLES MODULADORAS",
-      analisis.variables_moduladoras
-        .map(
-          (v) =>
-            `- [${v.tipo}, modificabilidad ${v.modificabilidad}] ${v.descripcion} — De la nota: ${textoCita(v.evidencia)}`
-        )
-        .join("\n")
+      "CONTEXTO Y VARIABLES MODULADORAS",
+      [
+        `Cobertura de datos: ${cobertura.conDato} de ${cobertura.totales} celdas de la rejilla (3 niveles × 6 dimensiones).`,
+        "Cuenta casillas con algo escrito, nada más: no mide la calidad del análisis.",
+        "",
+        ...NIVELES.flatMap((nivel) => [
+          `## ${ETIQUETA_NIVEL[nivel]}`,
+          ...DIMENSIONES.map((dimension) => {
+            const celda = cobertura.celdas.find(
+              (c) => c.nivel === nivel && c.dimension === dimension
+            );
+            if (!celda || celda.variables.length === 0) {
+              return `- ${ETIQUETA_DIMENSION[dimension]}: hueco — sin dato registrado.`;
+            }
+            return celda.variables
+              .map(
+                (v) =>
+                  `- ${ETIQUETA_DIMENSION[dimension]}: ${v.descripcion} [${v.momento === "historico" ? "histórica" : "actual"}, modificabilidad ${v.modificabilidad}] — De la nota: ${textoCita(v.evidencia)}`
+              )
+              .join("\n");
+          }),
+          "",
+        ]),
+      ].join("\n")
     )
   );
 
