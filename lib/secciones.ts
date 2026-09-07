@@ -57,7 +57,7 @@ export const SECCIONES_INFORME = [
   { id: "riesgo", titulo: "Riesgo", grupo: "apertura" },
   { id: "resumen", titulo: "Resumen clínico", grupo: "apertura" },
   { id: "hipotesis-principal", titulo: "Formulación destacada", grupo: "apertura" },
-  { id: "conductas", titulo: "Conductas problema", grupo: "descripcion" },
+  { id: "conductas", titulo: "Repertorio conductual", grupo: "descripcion" },
   { id: "variables-moduladoras", titulo: "Variables moduladoras", grupo: "descripcion" },
   { id: "situaciones", titulo: "Análisis por situaciones", grupo: "descripcion" },
   { id: "modalidad", titulo: "Detalle según modelo terapéutico", grupo: "descripcion" },

@@ -306,6 +306,13 @@
     "fortalezas_y_recursos": [
       "Mantiene el empleo en atencion al cliente desde hace tres anos pese al malestar: el repertorio laboral sigue disponible.",
       "Acude a la consulta por iniciativa propia y describe el patron con detalle, lo que facilita el registro entre sesiones."
+    ],
+    "repertorio_disponible": [
+      {
+        "descripcion": "Expone y defiende su criterio en conversaciones con amigos cercanos.",
+        "contexto_en_que_ocurre": "Contextos sociales sin evaluacion de desempeno ni jerarquia: el repertorio verbal esta disponible, falta en el contexto evaluativo.",
+        "evidencia": null
+      }
     ]
   }
 }

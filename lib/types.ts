@@ -38,6 +38,23 @@ export interface ConductaProblema {
   evidencia: Cita;
 }
 
+/**
+ * La conducta adecuada que el consultante SÍ emite, y dónde.
+ *
+ * Es la tercera columna del repertorio, junto a los excesos y los déficits, y
+ * cambia el tratamiento: si la conducta ya está en el repertorio y solo falta
+ * en el contexto problemático, el problema es de generalización y no de
+ * adquisición — lo que descarta el entrenamiento en habilidades como primera
+ * línea y lo sustituye por trabajar el control de estímulos y las
+ * contingencias del contexto donde no aparece.
+ */
+export interface RepertorioDisponible {
+  descripcion: string;
+  /** Dónde, con quién o bajo qué condiciones sí ocurre. Sin esto el dato no sirve. */
+  contexto_en_que_ocurre: string;
+  evidencia: Cita | null;
+}
+
 export interface VariableModuladora {
   tipo: TipoVariableModuladora;
   descripcion: string;
@@ -285,6 +302,8 @@ export interface MetaGeneracion {
 export interface AnalisisFuncional {
   resumen_clinico: string;
   conductas_problema: ConductaProblema[];
+  /** La tercera columna del repertorio. Ver RepertorioDisponible. */
+  repertorio_disponible: RepertorioDisponible[];
   variables_moduladoras: VariableModuladora[];
   situaciones: Situacion[];
   hipotesis_mantenimiento: HipotesisMantenimiento[];
@@ -346,6 +365,7 @@ export interface AnalisisFuncional {
 export const CAMPOS_ANALISIS_FUNCIONAL = [
   "resumen_clinico",
   "conductas_problema",
+  "repertorio_disponible",
   "variables_moduladoras",
   "situaciones",
   "hipotesis_mantenimiento",

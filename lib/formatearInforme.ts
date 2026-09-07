@@ -239,15 +239,39 @@ export function formatearInformeTexto(
 
   bloques["resumen"] = seccion("RESUMEN CLÍNICO", analisis.resumen_clinico);
 
+  // Las tres columnas de la pantalla, en el papel, como tres apartados: los
+  // excesos y los déficits salen del mismo campo (los reparte
+  // deficit_o_interferencia) y los activos de repertorio_disponible. En un
+  // documento no hay columnas que quepan, pero la separación tiene que llegar
+  // igual: es la que distingue un problema de adquisición de uno de
+  // generalización.
+  const conducta = (c: AnalisisFuncional["conductas_problema"][number]) =>
+    `- [${c.tipo}, importancia ${c.importancia}${c.es_conducta_seguridad ? ", CONDUCTA DE SEGURIDAD" : ""}${c.deficit_o_interferencia !== "no_determinable" ? `, ${c.deficit_o_interferencia}` : ""}] ${c.descripcion}${c.justificacion_deficit ? `\n  ${c.justificacion_deficit}` : ""}\n  De la nota: ${textoCita(c.evidencia)}`;
+
+  const esDeficit = (c: AnalisisFuncional["conductas_problema"][number]) =>
+    c.deficit_o_interferencia === "deficit";
+
   bloques["conductas"] = (
     seccion(
-      "CONDUCTAS PROBLEMA",
-      analisis.conductas_problema
-        .map(
-          (c) =>
-            `- [${c.tipo}, importancia ${c.importancia}${c.es_conducta_seguridad ? ", CONDUCTA DE SEGURIDAD" : ""}${c.deficit_o_interferencia !== "no_determinable" ? `, ${c.deficit_o_interferencia}` : ""}] ${c.descripcion}${c.justificacion_deficit ? `\n  ${c.justificacion_deficit}` : ""}\n  De la nota: ${textoCita(c.evidencia)}`
-        )
-        .join("\n")
+      "REPERTORIO CONDUCTUAL",
+      [
+        "## Excesos",
+        analisis.conductas_problema.filter((c) => !esDeficit(c)).map(conducta).join("\n") ||
+          "Ninguna conducta clasificada como exceso.",
+        "",
+        "## Déficits",
+        analisis.conductas_problema.filter(esDeficit).map(conducta).join("\n") ||
+          "Ninguna conducta clasificada como déficit.",
+        "",
+        "## Activos (repertorio disponible)",
+        analisis.repertorio_disponible
+          .map(
+            (r) =>
+              `- ${r.descripcion}${r.contexto_en_que_ocurre ? `\n  Ocurre en: ${r.contexto_en_que_ocurre}` : ""}${r.evidencia ? `\n  De la nota: ${textoCita(r.evidencia)}` : ""}`
+          )
+          .join("\n") ||
+          "La nota no recoge ningún contexto en que la conducta adecuada sí ocurra.",
+      ].join("\n")
     )
   );
 

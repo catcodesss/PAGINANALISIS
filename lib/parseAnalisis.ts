@@ -18,6 +18,7 @@ import {
   type HipotesisMantenimiento,
   type NivelConfianza,
   type PriorizacionBlanco,
+  type RepertorioDisponible,
   type Riesgo,
   type Situacion,
   type TipoContingencia,
@@ -117,6 +118,18 @@ function normalizarConductaProblema(valor: unknown, lineas: string[]): ConductaP
     es_conducta_seguridad: d.es_conducta_seguridad === true,
     deficit_o_interferencia: comoDeficitOInterferencia(d.deficit_o_interferencia),
     justificacion_deficit: comoTexto(d.justificacion_deficit),
+    evidencia: resolverCita(lineas, d.evidencia),
+  };
+}
+
+function normalizarRepertorioDisponible(
+  valor: unknown,
+  lineas: string[]
+): RepertorioDisponible {
+  const d = comoObjeto(valor);
+  return {
+    descripcion: comoTexto(d.descripcion),
+    contexto_en_que_ocurre: comoTexto(d.contexto_en_que_ocurre),
     evidencia: resolverCita(lineas, d.evidencia),
   };
 }
@@ -382,6 +395,9 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     conductas_problema: comoArreglo<unknown>(d.conductas_problema).map((c) =>
       normalizarConductaProblema(c, lineas)
     ),
+    repertorio_disponible: comoArreglo<unknown>(d.repertorio_disponible).map((r) =>
+      normalizarRepertorioDisponible(r, lineas)
+    ),
     variables_moduladoras: comoArreglo<unknown>(d.variables_moduladoras).map((v) =>
       normalizarVariableModuladora(v, lineas)
     ),
@@ -443,6 +459,10 @@ const NORMALIZADORES_POR_CAMPO: {
   conductas_problema: (d, lineas) =>
     comoArreglo<unknown>(d.conductas_problema).map((c) =>
       normalizarConductaProblema(c, lineas)
+    ),
+  repertorio_disponible: (d, lineas) =>
+    comoArreglo<unknown>(d.repertorio_disponible).map((r) =>
+      normalizarRepertorioDisponible(r, lineas)
     ),
   variables_moduladoras: (d, lineas) =>
     comoArreglo<unknown>(d.variables_moduladoras).map((v) =>

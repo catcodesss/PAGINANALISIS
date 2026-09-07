@@ -41,9 +41,13 @@ execFileSync(
 const require = createRequire(import.meta.url);
 const { numerarNota } = require(join(RAIZ, ".tmp-evals/citas.js"));
 const { normalizarAnalisis } = require(join(RAIZ, ".tmp-evals/parseAnalisis.js"));
-const { validarAnalisis, agruparAlertas, seccionDeRuta, revalidarTrasReanalisis } = require(
-  join(RAIZ, ".tmp-evals/validadores.js")
-);
+const {
+  validarAnalisis,
+  agruparAlertas,
+  seccionDeRuta,
+  revalidarTrasReanalisis,
+  yaEnRepertorio,
+} = require(join(RAIZ, ".tmp-evals/validadores.js"));
 
 // Misma nota del caso 01, tal como se le envió al modelo.
 const caso = readFileSync(join(AQUI, "casos/01-ansiedad-social.md"), "utf8");
@@ -255,6 +259,36 @@ prueba("cada alerta dice en qué sección del informe puede haberse reflejado", 
   assert.equal(seccionDeRuta("riesgo"), "riesgo");
   // Sin sección es mejor que la sección equivocada.
   assert.equal(seccionDeRuta("general"), null);
+});
+
+prueba("el repertorio disponible reparte las columnas sin perder ninguna conducta", () => {
+  // Excesos y déficits salen del mismo campo: "deficit" a Déficits, todo lo
+  // demás a Excesos. Si el reparto perdiera una conducta, desaparecería del
+  // informe sin dar ningún error.
+  const conductas = informe.conductas_problema;
+  const deficits = conductas.filter((c) => c.deficit_o_interferencia === "deficit");
+  const excesos = conductas.filter((c) => c.deficit_o_interferencia !== "deficit");
+  assert.equal(deficits.length + excesos.length, conductas.length);
+});
+
+prueba("se detecta que una alternativa propuesta ya está en el repertorio", () => {
+  // Proponer como adquisición algo que la persona ya emite en otro contexto
+  // convierte un problema de generalización en un entrenamiento innecesario.
+  const repertorio = [
+    {
+      descripcion: "Expone y defiende su criterio en conversaciones con amigos cercanos.",
+    },
+  ];
+  assert.equal(
+    yaEnRepertorio("Exponer su criterio en la reunión de equipo.", repertorio),
+    true
+  );
+  assert.equal(
+    yaEnRepertorio("Registrar la frecuencia semanal del consumo.", repertorio),
+    false
+  );
+  // Sin repertorio declarado no hay nada que insinuar.
+  assert.equal(yaEnRepertorio("Exponer su criterio.", []), false);
 });
 
 prueba("una lista de fortalezas vacía es un resultado válido, no un fallo", () => {

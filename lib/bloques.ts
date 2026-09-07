@@ -58,11 +58,11 @@ export interface Bloque {
 export const BLOQUES: Bloque[] = [
   {
     id: "base",
-    etiqueta: "Conductas y variables moduladoras",
+    etiqueta: "Repertorio conductual y variables moduladoras",
     descripcion:
-      "Qué se hace, con qué frecuencia e intensidad, y el contexto biológico y de aprendizaje que lo modula.",
+      "Qué se hace de más, qué falta y qué ya está disponible, y el contexto biológico y de aprendizaje que lo modula.",
     categoria: "Descripción",
-    campos: ["conductas_problema", "variables_moduladoras"],
+    campos: ["conductas_problema", "repertorio_disponible", "variables_moduladoras"],
     peso: 2,
   },
   {

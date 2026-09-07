@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Children,
   createContext,
   useContext,
   useEffect,
@@ -15,6 +16,7 @@ import type {
   CadenaOperante,
   CadenaRespondiente,
   Cita as CitaVerificada,
+  ConductaProblema,
   MetaGeneracion,
   ModeloTerapeutico,
   NivelConfianza,
@@ -34,7 +36,7 @@ import {
   useEdicion,
 } from "./edicionManual";
 import { construirReporteFallo } from "@/lib/reporteFallo";
-import { agruparAlertas } from "@/lib/validadores";
+import { agruparAlertas, yaEnRepertorio } from "@/lib/validadores";
 import { SECCIONES_INFORME, type IdSeccion } from "@/lib/secciones";
 import {
   NIVELES_CONFIANZA,
@@ -686,6 +688,67 @@ function SelloNoModificable() {
         las hipótesis de mantenimiento, no de aquí.
       </p>
     </div>
+  );
+}
+
+/**
+ * Una columna del repertorio conductual. El título va arriba con su definición
+ * en una línea: sin ella, "Excesos / Déficits / Activos" son tres etiquetas que
+ * cada clínico interpreta a su manera, y la distinción que sostiene la columna
+ * —adquisición frente a generalización— se pierde justo donde tenía que
+ * decidirse.
+ *
+ * Una columna vacía dice por qué lo está en vez de quedarse en blanco: que la
+ * nota no recoja ningún activo es un dato sobre la nota, no sobre la persona.
+ */
+function ColumnaRepertorio({
+  titulo,
+  descripcion,
+  vacio,
+  children,
+}: {
+  titulo: string;
+  descripcion: string;
+  vacio: string;
+  children: ReactNode;
+}) {
+  const items = Children.toArray(children);
+  return (
+    <div className="min-w-0">
+      <h3 className="font-mono text-xs uppercase tracking-wide text-ink-muted">
+        {titulo}
+      </h3>
+      <p className="mt-1 border-b border-divider pb-2 text-sm leading-relaxed text-ink-muted">
+        {descripcion}
+      </p>
+      {items.length === 0 ? (
+        <p className="mt-3 text-sm italic text-ink-muted">{vacio}</p>
+      ) : (
+        <ul className="mt-3 space-y-4">{items}</ul>
+      )}
+    </div>
+  );
+}
+
+/** Una conducta problema dentro de su columna (exceso o déficit). */
+function ConductaProblemaItem({ conducta }: { conducta: ConductaProblema }) {
+  return (
+    <li>
+      <div className="flex flex-wrap gap-2">
+        <Chip>{conducta.tipo}</Chip>
+        <Chip>importancia {conducta.importancia}</Chip>
+        {conducta.es_conducta_seguridad && <Chip>conducta de seguridad</Chip>}
+      </div>
+      <p className="mt-1 text-[15px] leading-relaxed text-ink">
+        {conducta.descripcion}
+      </p>
+      {conducta.justificacion_deficit && (
+        <p className="mt-1 text-sm leading-relaxed text-ink-muted">
+          {conducta.justificacion_deficit}
+        </p>
+      )}
+      <Cita>{conducta.evidencia}</Cita>
+    </li>
   );
 }
 
@@ -1888,6 +1951,29 @@ function InformeOrdenable({
       ? modalidades[0]
       : pestanaElegida;
 
+  /*
+    Las dos primeras columnas del repertorio salen del mismo campo:
+    `deficit_o_interferencia` decide en cuál cae cada conducta. "deficit" va a
+    Déficits; todo lo demás —interferencia, mixto y no determinable— va a
+    Excesos, porque es la conducta que está ocurriendo. Se conserva el índice
+    original solo para la clave de React: reordenar la lista no debe remontar
+    las tarjetas.
+  */
+  const { excesos, deficits } = useMemo(() => {
+    const conIndice = analisis.conductas_problema.map((conducta, indice) => ({
+      conducta,
+      indice,
+    }));
+    return {
+      excesos: conIndice.filter(
+        (c) => c.conducta.deficit_o_interferencia !== "deficit"
+      ),
+      deficits: conIndice.filter(
+        (c) => c.conducta.deficit_o_interferencia === "deficit"
+      ),
+    };
+  }, [analisis.conductas_problema]);
+
   const hipotesisDestacada = useMemo(() => {
     const conductaAlta = analisis.conductas_problema.find(
       (c) => c.importancia === "alta"
@@ -2131,33 +2217,69 @@ function InformeOrdenable({
             )}
           </Seccion>
 
-          <Seccion id="conductas" titulo="Conductas problema" camposReanalisis={["conductas_problema"]}>
-            {analisis.conductas_problema.length === 0 ? (
+          <Seccion
+            id="conductas"
+            titulo="Repertorio conductual"
+            camposReanalisis={["conductas_problema", "repertorio_disponible"]}
+          >
+            {/*
+              Tres columnas, no una lista de problemas. Un informe que solo
+              enumera lo que sobra y lo que falta describe a alguien que no
+              hace nada bien, y esconde el dato que más cambia el tratamiento:
+              que la conducta adecuada ya se emite en algún sitio. Los excesos y
+              los déficits salen del mismo campo —los reparte
+              `deficit_o_interferencia`—, así que separarlos no pide nada nuevo
+              al modelo; los activos sí son un campo propio.
+
+              En pantalla estrecha se apilan: tres columnas de una línea cada
+              una no son una rejilla, son tres párrafos mal cortados.
+            */}
+            {analisis.conductas_problema.length === 0 &&
+            analisis.repertorio_disponible.length === 0 ? (
               <SinHallazgos />
             ) : (
-              <ul className="space-y-4">
-                {analisis.conductas_problema.map((c, i) => (
-                  <li key={i}>
-                    <div className="flex flex-wrap gap-2">
-                      <Chip>{c.tipo}</Chip>
-                      <Chip>importancia {c.importancia}</Chip>
-                      {c.es_conducta_seguridad && <Chip>conducta de seguridad</Chip>}
-                      {c.deficit_o_interferencia !== "no_determinable" && (
-                        <Chip>{c.deficit_o_interferencia}</Chip>
-                      )}
-                    </div>
-                    <p className="mt-1 text-[15px] leading-relaxed text-ink">
-                      {c.descripcion}
-                    </p>
-                    {c.justificacion_deficit && (
-                      <p className="mt-1 text-sm leading-relaxed text-ink-muted">
-                        {c.justificacion_deficit}
+              <div className="grid gap-6 md:grid-cols-3">
+                <ColumnaRepertorio
+                  titulo="Excesos"
+                  descripcion="Conducta que sobra: ocurre de más, o donde no toca."
+                  vacio="Ninguna conducta clasificada como exceso."
+                >
+                  {excesos.map((c) => (
+                    <ConductaProblemaItem key={c.indice} conducta={c.conducta} />
+                  ))}
+                </ColumnaRepertorio>
+
+                <ColumnaRepertorio
+                  titulo="Déficits"
+                  descripcion="Conducta que falta: no está en el repertorio, o no se sabe emitir."
+                  vacio="Ninguna conducta clasificada como déficit."
+                >
+                  {deficits.map((c) => (
+                    <ConductaProblemaItem key={c.indice} conducta={c.conducta} />
+                  ))}
+                </ColumnaRepertorio>
+
+                <ColumnaRepertorio
+                  titulo="Activos"
+                  descripcion="Conducta adecuada que sí emite, y dónde. Si ya ocurre en algún contexto, el problema es de generalización y no de adquisición."
+                  vacio="La nota no recoge ningún contexto en que la conducta adecuada sí ocurra. No significa que no lo haya: conviene preguntarlo en sesión."
+                >
+                  {analisis.repertorio_disponible.map((r, i) => (
+                    <li key={i}>
+                      <p className="text-[15px] leading-relaxed text-ink">
+                        {r.descripcion}
                       </p>
-                    )}
-                    <Cita>{c.evidencia}</Cita>
-                  </li>
-                ))}
-              </ul>
+                      {r.contexto_en_que_ocurre && (
+                        <p className="mt-1 text-sm leading-relaxed text-ink-muted">
+                          <span className="font-medium text-ink">Ocurre en:</span>{" "}
+                          {r.contexto_en_que_ocurre}
+                        </p>
+                      )}
+                      <Cita>{r.evidencia}</Cita>
+                    </li>
+                  ))}
+                </ColumnaRepertorio>
+              </div>
             )}
           </Seccion>
 
@@ -2430,6 +2552,31 @@ function InformeOrdenable({
                         })
                       }
                     />
+                    {/*
+                      Si la conducta propuesta ya figura en el repertorio
+                      disponible, el trabajo no es enseñarla: es que ocurra
+                      también aquí. Enseñar lo que la persona ya sabe hacer
+                      gasta sesiones en un entrenamiento innecesario y deja sin
+                      tocar el contexto, que es donde está el problema. El
+                      emparejamiento es aproximado a propósito (ver
+                      lib/validadores.ts#yaEnRepertorio), así que se presenta
+                      como algo que comprobar, no como un hecho del análisis.
+                    */}
+                    {yaEnRepertorio(
+                      c.conducta_propuesta,
+                      analisis.repertorio_disponible
+                    ) && (
+                      <p className="mt-2 rounded border border-divider bg-canvas px-3 py-2 text-sm leading-relaxed text-ink-muted print:border-black">
+                        <span className="font-medium text-ink">
+                          Puede que ya esté en su repertorio.
+                        </span>{" "}
+                        Algo parecido figura entre los activos: compruébalo
+                        antes de plantearlo como adquisición. Si ya la emite en
+                        otro contexto, el trabajo es de generalización —control
+                        de estímulos y contingencias del contexto donde no
+                        aparece—, no de entrenamiento en habilidades.
+                      </p>
+                    )}
                     <p className="mt-1 text-sm text-ink-muted">
                       <span className="font-medium text-ink">
                         Consecuencia necesaria para mantenerla:
