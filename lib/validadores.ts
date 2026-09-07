@@ -387,6 +387,8 @@ export function seccionDeRuta(ruta: string): IdSeccion | null {
       return "conductas-alternativas";
     case "lineas_de_intervencion_tentativas":
       return "intervencion";
+    case "plan_de_monitorizacion":
+      return "monitorizacion";
     case "capa_act":
     case "capa_dbt":
     case "capa_mc":

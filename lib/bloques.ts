@@ -132,6 +132,19 @@ export const BLOQUES: Bloque[] = [
     peso: 5,
   },
   {
+    id: "monitorizacion",
+    etiqueta: "Plan de monitorización",
+    descripcion:
+      "Qué se mide, con qué y cada cuánto — y qué observación desmentiría esta formulación.",
+    categoria: "Formulación y plan",
+    campos: [
+      "conductas_problema",
+      "hipotesis_mantenimiento",
+      "plan_de_monitorizacion",
+    ],
+    peso: 2,
+  },
+  {
     id: "preguntas",
     etiqueta: "Preguntas para la sesión",
     descripcion: "Qué preguntar para confirmar o descartar cada hipótesis.",

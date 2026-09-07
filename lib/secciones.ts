@@ -66,6 +66,7 @@ export const SECCIONES_INFORME = [
   { id: "formulacion", titulo: "Formulación del caso", grupo: "mantenimiento" },
   { id: "conductas-alternativas", titulo: "Conductas alternativas", grupo: "plan" },
   { id: "intervencion", titulo: "Líneas de intervención", grupo: "plan" },
+  { id: "monitorizacion", titulo: "Plan de monitorización", grupo: "plan" },
   { id: "hipotesis-alternativas", titulo: "Hipótesis alternativas", grupo: "pendientes" },
   { id: "verificacion", titulo: "Datos faltantes y puntos a verificar", grupo: "pendientes" },
   { id: "preguntas", titulo: "Preguntas para la próxima sesión", grupo: "pendientes" },

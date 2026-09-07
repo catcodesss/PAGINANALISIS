@@ -333,6 +333,12 @@
         "contexto_en_que_ocurre": "Contextos sociales sin evaluacion de desempeno ni jerarquia: el repertorio verbal esta disponible, falta en el contexto evaluativo.",
         "evidencia": null
       }
-    ]
+    ],
+    "plan_de_monitorizacion": {
+      "que_se_mide": "Numero de reuniones en que expone sin pedir salir, y numero de veces que bebe antes de un evento social.",
+      "con_que": "Autorregistro breve al final de cada jornada laboral, con la situacion y lo emitido.",
+      "cada_cuanto": "Diario durante cuatro semanas; revision conjunta en cada sesion.",
+      "criterio_de_revision": "Si tras seis exposiciones sin conducta de seguridad la evitacion en reuniones no cede, la funcion no seria de escape del malestar condicionado y habria que rehacer el analisis contemplando refuerzo social."
+    }
   }
 }

@@ -18,6 +18,7 @@ import {
   type HipotesisAlternativa,
   type HipotesisMantenimiento,
   type NivelConfianza,
+  type PlanDeMonitorizacion,
   type PriorizacionBlanco,
   type RepertorioDisponible,
   type Riesgo,
@@ -398,6 +399,28 @@ function normalizarDatosFaltantes(valor: unknown): DatoFaltante[] {
     .filter((d) => d.dato.trim().length > 0);
 }
 
+/**
+ * null cuando la nota no da base para un plan de medición. Un plan inventado
+ * sería peor que ninguno: el clínico lo seguiría, y mediría lo que a nadie le
+ * consta que haya que medir. Si el objeto llega pero sin criterio de revisión,
+ * se conserva igual: la interfaz dice en voz alta que falta, que es lo que
+ * convierte la formulación en un documento sin fecha de revisión.
+ */
+function normalizarPlanDeMonitorizacion(
+  valor: unknown
+): PlanDeMonitorizacion | null {
+  const d = comoObjetoONulo(valor);
+  if (!d) return null;
+  const plan = {
+    que_se_mide: comoTexto(d.que_se_mide),
+    con_que: comoTexto(d.con_que),
+    cada_cuanto: comoTexto(d.cada_cuanto),
+    criterio_de_revision: comoTexto(d.criterio_de_revision),
+  };
+  // Un objeto entero vacío es lo mismo que no haber plan.
+  return Object.values(plan).some((v) => v.trim().length > 0) ? plan : null;
+}
+
 function normalizarRiesgo(valor: unknown): Riesgo {
   const d = comoObjeto(valor);
   return {
@@ -463,6 +486,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     lineas_de_intervencion_tentativas: comoArregloDeTexto(
       d.lineas_de_intervencion_tentativas
     ),
+    plan_de_monitorizacion: normalizarPlanDeMonitorizacion(d.plan_de_monitorizacion),
     datos_faltantes: normalizarDatosFaltantes(d.datos_faltantes),
     acomodacion_entorno: comoArreglo<unknown>(d.acomodacion_entorno).map((a) =>
       normalizarAcomodacion(a, lineas)
@@ -533,6 +557,8 @@ const NORMALIZADORES_POR_CAMPO: {
   preguntas_para_sesion: (d) => comoArregloDeTexto(d.preguntas_para_sesion),
   lineas_de_intervencion_tentativas: (d) =>
     comoArregloDeTexto(d.lineas_de_intervencion_tentativas),
+  plan_de_monitorizacion: (d) =>
+    normalizarPlanDeMonitorizacion(d.plan_de_monitorizacion),
   datos_faltantes: (d) => normalizarDatosFaltantes(d.datos_faltantes),
   acomodacion_entorno: (d, lineas) =>
     comoArreglo<unknown>(d.acomodacion_entorno).map((a) =>

@@ -261,6 +261,50 @@ prueba("cada alerta dice en qué sección del informe puede haberse reflejado", 
   assert.equal(seccionDeRuta("general"), null);
 });
 
+prueba("un plan de monitorización vacío o ausente es null, no un plan a medias", () => {
+  // Un plan inventado sería peor que ninguno: el clínico lo seguiría. El
+  // objeto vacío que a veces devuelve el modelo tiene que caer del lado de
+  // "no hay plan", no del de "hay plan con los campos en blanco".
+  const sinPlan = normalizarAnalisis(
+    { ...fixture.analisis, plan_de_monitorizacion: undefined },
+    lineas
+  );
+  assert.equal(sinPlan.plan_de_monitorizacion, null);
+
+  const vacio = normalizarAnalisis(
+    {
+      ...fixture.analisis,
+      plan_de_monitorizacion: {
+        que_se_mide: "",
+        con_que: "  ",
+        cada_cuanto: "",
+        criterio_de_revision: "",
+      },
+    },
+    lineas
+  );
+  assert.equal(vacio.plan_de_monitorizacion, null);
+});
+
+prueba("un plan sin criterio de revisión se conserva, para poder señalar que falta", () => {
+  // Descartarlo escondería el problema. El criterio es lo que convierte la
+  // formulación en una hipótesis con fecha de revisión, así que su ausencia
+  // tiene que llegar a la pantalla, no desaparecer en el parser.
+  const parcial = normalizarAnalisis(
+    {
+      ...fixture.analisis,
+      plan_de_monitorizacion: {
+        que_se_mide: "Episodios de evitación en reuniones.",
+        con_que: "Autorregistro.",
+        cada_cuanto: "Semanal.",
+      },
+    },
+    lineas
+  );
+  assert.ok(parcial.plan_de_monitorizacion);
+  assert.equal(parcial.plan_de_monitorizacion.criterio_de_revision, "");
+});
+
 prueba("el análisis de soluciones pasa por la comprobación de conductas de seguridad", () => {
   // Es una propuesta de intervención como cualquier otra: si sugiere respirar
   // para calmarse en un caso donde respirar ya es el mantenedor, tiene que

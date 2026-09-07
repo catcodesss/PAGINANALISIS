@@ -115,6 +115,7 @@ const BLOQUE_DE_SECCION: Partial<Record<IdSeccion, string[]>> = {
   "hipotesis-alternativas": ["hipotesis_alternativas"],
   preguntas: ["preguntas"],
   intervencion: ["intervencion"],
+  monitorizacion: ["monitorizacion"],
 };
 
 /**
@@ -2806,6 +2807,74 @@ function InformeOrdenable({
                 })
               }
             />
+          </Seccion>
+
+          <Seccion
+            id="monitorizacion"
+            titulo="Plan de monitorización"
+            camposReanalisis={["plan_de_monitorizacion"]}
+          >
+            {analisis.plan_de_monitorizacion ? (
+              <div className="space-y-5">
+                <TablaCadena
+                  filas={[
+                    {
+                      elemento: "Qué se mide",
+                      valor: analisis.plan_de_monitorizacion.que_se_mide || "—",
+                    },
+                    {
+                      elemento: "Con qué",
+                      valor: analisis.plan_de_monitorizacion.con_que || "—",
+                    },
+                    {
+                      elemento: "Cada cuánto",
+                      valor: analisis.plan_de_monitorizacion.cada_cuanto || "—",
+                    },
+                  ]}
+                />
+                {/*
+                  El criterio de revisión va aparte y con más peso que los tres
+                  campos de arriba, no como una cuarta fila de la tabla: es el
+                  que convierte la formulación en una hipótesis con fecha de
+                  revisión en lugar de un documento archivado. Cuando falta, se
+                  dice — callarlo dejaría el plan con aspecto de completo.
+                */}
+                <div className="rounded-md border border-divider bg-canvas p-4 print:border-black">
+                  <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                    Criterio de revisión · qué desmentiría esta formulación
+                  </p>
+                  {analisis.plan_de_monitorizacion.criterio_de_revision ? (
+                    <TextoEditable
+                      valor={analisis.plan_de_monitorizacion.criterio_de_revision}
+                      seccionId="monitorizacion"
+                      etiqueta="Criterio de revisión"
+                      className="mt-2 text-[15px] leading-relaxed text-ink"
+                      onCambio={(v) =>
+                        onEditarSeccion("monitorizacion", (c) => {
+                          if (!c.plan_de_monitorizacion) return;
+                          c.plan_de_monitorizacion = {
+                            ...c.plan_de_monitorizacion,
+                            criterio_de_revision: v,
+                          };
+                        })
+                      }
+                    />
+                  ) : (
+                    <p className="mt-2 text-sm leading-relaxed text-warn">
+                      Sin criterio de revisión. Mientras no lo haya, nada de lo
+                      que se mida puede desmentir esta formulación: es un
+                      documento, no una hipótesis con fecha de revisión.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm leading-relaxed text-ink-muted">
+                La nota no daba base para proponer un plan de medición. Conviene
+                definir uno antes de aplicar el plan de intervención: sin él no
+                hay forma de saber si esta formulación se sostiene.
+              </p>
+            )}
           </Seccion>
 
           {/*

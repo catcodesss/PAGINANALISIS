@@ -211,6 +211,27 @@ export interface PreguntaPrevia {
   por_que_importa: string;
 }
 
+/**
+ * Qué se mide, con qué, cada cuánto — y, sobre todo, qué habría que observar
+ * para concluir que esta formulación estaba equivocada.
+ *
+ * `criterio_de_revision` es el campo que importa. Sin él, una formulación es un
+ * documento: se escribe, se archiva y nada la obliga a rendir cuentas. Con él
+ * es una hipótesis con fecha de revisión, que es lo que dice ser desde el
+ * principio 1. Un criterio que no pueda salir mal ("si mejora, seguimos") no
+ * cumple: tiene que nombrar la observación concreta que obligaría a rehacer el
+ * análisis.
+ *
+ * `null` cuando la nota no da base para proponer ninguno; es preferible a un
+ * plan de medición inventado que el clínico acabaría siguiendo.
+ */
+export interface PlanDeMonitorizacion {
+  que_se_mide: string;
+  con_que: string;
+  cada_cuanto: string;
+  criterio_de_revision: string;
+}
+
 export interface HipotesisAlternativa {
   enunciado: string;
   como_descartarla: string;
@@ -397,6 +418,8 @@ export interface AnalisisFuncional {
    * alternativa —inventar fortalezas que la nota no sostiene— es peor.
    */
   fortalezas_y_recursos: string[];
+  /** Ver PlanDeMonitorizacion: qué desmentiría esta formulación, y cuándo se mira. */
+  plan_de_monitorizacion: PlanDeMonitorizacion | null;
   /** Principio 18: direcciones valiosas o metas que el consultante expresa. */
   valores_y_metas: string[];
   /** Principio 19: actividades reforzantes abandonadas y su papel en el mantenimiento. */
@@ -448,6 +471,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "hipotesis_alternativas",
   "preguntas_para_sesion",
   "lineas_de_intervencion_tentativas",
+  "plan_de_monitorizacion",
   "datos_faltantes",
   "acomodacion_entorno",
   "valores_y_metas",

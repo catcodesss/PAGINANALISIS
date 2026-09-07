@@ -484,6 +484,25 @@ export function formatearInformeTexto(
     )
   );
 
+  // El criterio de revisión es lo que convierte la formulación en una
+  // hipótesis con fecha en vez de un documento: si el plan llega sin él, el
+  // informe lo dice en vez de callarlo.
+  const monitorizacion = analisis.plan_de_monitorizacion;
+  bloques["monitorizacion"] = seccion(
+    "PLAN DE MONITORIZACIÓN",
+    monitorizacion
+      ? [
+          `Qué se mide: ${monitorizacion.que_se_mide || "—"}`,
+          `Con qué: ${monitorizacion.con_que || "—"}`,
+          `Cada cuánto: ${monitorizacion.cada_cuanto || "—"}`,
+          "",
+          "Criterio de revisión (qué desmentiría esta formulación):",
+          monitorizacion.criterio_de_revision ||
+            "Sin criterio de revisión. Mientras no lo haya, esta formulación no se puede desmentir con lo que se mida: es un documento, no una hipótesis con fecha de revisión.",
+        ].join("\n")
+      : "La nota no daba base para proponer un plan de medición. Definir uno antes de aplicar el plan de intervención: sin él no hay forma de saber si la formulación se sostiene."
+  );
+
   bloques["preguntas"] = seccion("PREGUNTAS PARA LA PRÓXIMA SESIÓN", listaOTexto(analisis.preguntas_para_sesion));
   bloques["intervencion"] = (
     seccion("LÍNEAS DE INTERVENCIÓN TENTATIVAS", listaOTexto(analisis.lineas_de_intervencion_tentativas))
