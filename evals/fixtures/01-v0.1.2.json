@@ -141,7 +141,7 @@
     "hipotesis_mantenimiento": [
       {
         "conducta": "Evitar exponer en reuniones.",
-        "enunciado": "Ante el Ed de exposición social, bajo OE de malestar condicionado, emite evitación, mantenida por R− (alivio inmediato).",
+        "enunciado": "Ante el Ed de exposicion social, bajo OE de malestar condicionado agravado por el sueno deficiente de los domingos, emite evitacion, mantenida por R− (alivio inmediato); la evitacion empeora a su vez el sueno deficiente del domingo siguiente.",
         "funcion": "Escape/evitación de evaluación social aversiva.",
         "confianza": "alta",
         "fuerza": "alta",
@@ -150,7 +150,7 @@
       },
       {
         "conducta": "Ceder ante demandas indebidas de clientes.",
-        "enunciado": "Ante el Ed de confrontación, bajo OE de malestar condicionado, cede, mantenida por R− (evitación de confrontación).",
+        "enunciado": "En el trabajo de atencion al cliente con demandas evaluativas frecuentes, ante el Ed de confrontacion, cede, mantenida por R− (evitacion de confrontacion).",
         "funcion": "Escape/evitación de confrontación aversiva.",
         "confianza": "alta",
         "fuerza": "media",
@@ -159,7 +159,7 @@
       },
       {
         "conducta": "Beber alcohol antes de socializar.",
-        "enunciado": "Ante el Ed de interacción social, bajo OE de malestar anticipado, bebe, mantenida por R− (reducción del malestar).",
+        "enunciado": "Al evitar comer con companeros y asistir a clases de baile, llega a los encuentros sociales sin practica reciente, y bebe alcohol antes de socializar, mantenida por R− (reduccion del malestar anticipado).",
         "funcion": "Escape/evitación de malestar social anticipado.",
         "confianza": "media",
         "fuerza": "media",

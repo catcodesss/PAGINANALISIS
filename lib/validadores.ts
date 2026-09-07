@@ -75,26 +75,31 @@ function interseccion(a: Set<string>, b: Set<string>): string[] {
  * la persona ya emite en otro contexto convierte un problema de generalización
  * en un entrenamiento innecesario.
  */
+/**
+ * Raíz de 6 y no de 8 como en `palabrasSignificativas`: aquí se comparan dos
+ * redacciones de la MISMA cosa escritas desde puntos de vista distintos —"expone
+ * su criterio" en el repertorio, "exponer su criterio" en la propuesta—, y a
+ * ocho caracteres esas dos formas no se reconocen. Lo usan también los nodos de
+ * la red funcional (ver lib/redFuncional.ts), que emparejan el enunciado de una
+ * hipótesis con la descripción de una conducta o una variable.
+ */
+export function raicesSignificativas(texto: string): Set<string> {
+  return new Set(
+    normalizarTexto(texto)
+      .split(/[^a-z0-9]+/)
+      .filter((p) => p.length >= 6 && !VACIAS.has(p))
+      .map((p) => p.slice(0, 6))
+  );
+}
+
 export function yaEnRepertorio(
   propuesta: string,
   repertorio: { descripcion: string }[]
 ): boolean {
-  // Raíz de 6 y no de 8 como en el resto del fichero: aquí se comparan dos
-  // redacciones de la MISMA conducta escritas desde puntos de vista distintos
-  // —"expone su criterio" en el repertorio, "exponer su criterio" en la
-  // propuesta—, y a ocho caracteres esas dos formas no se reconocen.
-  const raices = (texto: string) =>
-    new Set(
-      normalizarTexto(texto)
-        .split(/[^a-z0-9]+/)
-        .filter((p) => p.length >= 6 && !VACIAS.has(p))
-        .map((p) => p.slice(0, 6))
-    );
-
-  const palabras = raices(propuesta);
+  const palabras = raicesSignificativas(propuesta);
   if (palabras.size === 0) return false;
   return repertorio.some(
-    (r) => interseccion(palabras, raices(r.descripcion)).length >= 2
+    (r) => interseccion(palabras, raicesSignificativas(r.descripcion)).length >= 2
   );
 }
 

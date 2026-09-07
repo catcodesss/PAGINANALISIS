@@ -28,6 +28,7 @@ execFileSync(
     "lib/citas.ts",
     "lib/parseAnalisis.ts",
     "lib/validadores.ts",
+    "lib/redFuncional.ts",
     "--outDir", ".tmp-evals",
     "--rootDir", "lib",
     "--module", "commonjs",
@@ -48,6 +49,7 @@ const {
   revalidarTrasReanalisis,
   yaEnRepertorio,
 } = require(join(RAIZ, ".tmp-evals/validadores.js"));
+const { construirRedFuncional } = require(join(RAIZ, ".tmp-evals/redFuncional.js"));
 
 // Misma nota del caso 01, tal como se le envió al modelo.
 const caso = readFileSync(join(AQUI, "casos/01-ansiedad-social.md"), "utf8");
@@ -259,6 +261,68 @@ prueba("cada alerta dice en qué sección del informe puede haberse reflejado", 
   assert.equal(seccionDeRuta("riesgo"), "riesgo");
   // Sin sección es mejor que la sección equivocada.
   assert.equal(seccionDeRuta("general"), null);
+});
+
+/* ── Red funcional ───────────────────────────────────────────────────────── */
+
+prueba("la red funcional encuentra el bucle que la prosa esconde", () => {
+  // Es lo único que el dibujo aporta sobre la lista de hipótesis: una relación
+  // bidireccional es un ciclo cerrado, y un ciclo cerrado cambia el plan.
+  const red = construirRedFuncional(informe);
+  assert.equal(red.motivoVacio, null, "no se pudo construir la red");
+  assert.ok(red.bucles.length > 0, "no detectó ningún bucle");
+  assert.ok(
+    red.aristas.some((a) => a.enBucle),
+    "ninguna arista quedó marcada como parte de un bucle"
+  );
+});
+
+prueba("el mismo informe da siempre el mismo dibujo", () => {
+  // Sin esto, dos capturas del mismo caso no se podrían comparar y el
+  // diagrama dejaría de servir como registro.
+  const a = construirRedFuncional(informe);
+  const b = construirRedFuncional(informe);
+  assert.deepEqual(a.nodos, b.nodos);
+  assert.deepEqual(a.aristas, b.aristas);
+  assert.deepEqual(a.bucles, b.bucles);
+});
+
+prueba("sin relaciones suficientes no se dibuja nada, y se dice por qué", () => {
+  // Degradar con dignidad: un hueco sin explicación se lee como un fallo de la
+  // página, cuando lo que pasa es que el informe no declaró bastantes
+  // relaciones.
+  const unaSola = construirRedFuncional({
+    ...informe,
+    hipotesis_mantenimiento: informe.hipotesis_mantenimiento.slice(0, 1),
+  });
+  assert.deepEqual(unaSola.nodos, []);
+  assert.ok(unaSola.motivoVacio && unaSola.motivoVacio.length > 20);
+
+  // Hipótesis que no nombran ningún extremo reconocible: tampoco se inventan
+  // aristas para rellenar el dibujo.
+  const sinExtremos = construirRedFuncional({
+    ...informe,
+    hipotesis_mantenimiento: informe.hipotesis_mantenimiento.map((h) => ({
+      ...h,
+      enunciado: "Mantenida por una contingencia no especificada.",
+    })),
+  });
+  assert.deepEqual(sinExtremos.aristas, []);
+  assert.ok(sinExtremos.motivoVacio);
+});
+
+prueba("el tamaño del nodo sale de la importancia, no del orden", () => {
+  const red = construirRedFuncional(informe);
+  const conductas = red.nodos.filter((n) => n.tipo === "conducta");
+  assert.ok(conductas.length > 0);
+  for (const n of conductas) {
+    const original = informe.conductas_problema.find(
+      (c) => c.descripcion === n.etiqueta
+    );
+    assert.ok(original, `nodo sin conducta de origen: ${n.etiqueta}`);
+    if (original.importancia === "alta") assert.equal(n.radio, 26);
+    if (original.importancia === "baja") assert.equal(n.radio, 15);
+  }
 });
 
 prueba("fuerza y confianza son escalas distintas y no se copian entre sí", () => {
