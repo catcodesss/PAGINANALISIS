@@ -39,6 +39,7 @@ import {
 import { construirReporteFallo } from "@/lib/reporteFallo";
 import { agruparAlertas, yaEnRepertorio } from "@/lib/validadores";
 import { construirRedFuncional } from "@/lib/redFuncional";
+import { priorizarBlancos, RENDIMIENTO_MAXIMO } from "@/lib/priorizacion";
 import { SECCIONES_INFORME, type IdSeccion } from "@/lib/secciones";
 import {
   NIVELES_CONFIANZA,
@@ -964,6 +965,93 @@ function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Los blancos de intervención ordenados por rendimiento esperado, en barras.
+ *
+ * La advertencia de arriba no es un descargo de responsabilidad de trámite: es
+ * la parte más importante del componente. Una barra tiene aspecto de medida, y
+ * esto no mide nada — son "alta/media/baja" dichas por un modelo, convertidas a
+ * números para poder ordenarlas. Sin ese aviso, un dibujo que solo sostiene
+ * "esto probablemente antes que aquello" se leería como una cuantificación del
+ * caso.
+ *
+ * Va junto a `formulacion.priorizacion` y no en su lugar: la priorización
+ * razonada del informe dice POR QUÉ, y esto solo dice en qué orden salen las
+ * variables al cruzar cuánto pesan con cuánto pueden moverse. El porqué manda.
+ */
+function PriorizacionEstimada({ analisis }: { analisis: AnalisisFuncional }) {
+  const blancos = useMemo(() => priorizarBlancos(analisis), [analisis]);
+
+  if (blancos.length === 0) {
+    return (
+      <p className="text-sm leading-relaxed text-ink-muted">
+        Ninguna variable moduladora aparece nombrada en las hipótesis de
+        mantenimiento, así que no hay nada que ordenar. Una variable sin relación
+        declarada es contexto, no un blanco de intervención.
+      </p>
+    );
+  }
+
+  return (
+    <div>
+      {/*
+        Antes de las barras, no después: quien mira un gráfico decide qué está
+        viendo en el primer segundo, y a esas alturas una nota al pie llega
+        tarde.
+      */}
+      <p className="mb-4 rounded-md border border-divider bg-canvas px-4 py-3 text-sm leading-relaxed text-ink-muted print:border-black">
+        <span className="font-medium text-ink">
+          Orientación, no medida.
+        </span>{" "}
+        Estas barras son estimaciones cualitativas —alta, media y baja— pasadas
+        a números con el único fin de poder ordenarlas. No hay unidades ni
+        precisión: lo único que sostienen es «esto probablemente antes que
+        aquello». Cada valor es la fuerza de la variable en el mantenimiento
+        multiplicada por cuánto puede cambiar con intervención, que es donde el
+        tratamiento rinde.
+      </p>
+
+      <ul className="space-y-3">
+        {blancos.map((b, i) => (
+          <li key={i}>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+              <p className="min-w-0 flex-1 text-[15px] leading-relaxed text-ink">
+                {i + 1}. {b.etiqueta}
+              </p>
+              {/*
+                El valor escrito acompaña siempre a la barra: la longitud sola
+                no se puede leer en una impresión en blanco y negro estrecha, ni
+                con un lector de pantalla.
+              */}
+              <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                fuerza {b.fuerza} × modificabilidad {b.modificabilidad}
+              </p>
+            </div>
+            {/*
+              Escala fija (0 a 0,64, el producto máximo posible) y no relativa
+              al mayor de este informe: con escala relativa, el primer blanco
+              siempre llenaría la barra entera y un caso sin ningún blanco
+              prometedor se vería igual que uno con uno excelente.
+            */}
+            <div
+              role="img"
+              aria-label={`Rendimiento estimado ${Math.round((b.rendimiento / RENDIMIENTO_MAXIMO) * 100)} de 100, en una escala cualitativa`}
+              className="mt-1 h-2 w-full overflow-hidden rounded-full bg-divider"
+            >
+              <div
+                className="h-full rounded-full bg-accent"
+                style={{
+                  width: `${(b.rendimiento / RENDIMIENTO_MAXIMO) * 100}%`,
+                }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -2816,6 +2904,14 @@ function InformeOrdenable({
                     ))}
                   </ul>
                 )}
+              </SubSeccion>
+              {/*
+                Debajo de la priorización razonada y no en su lugar: esa dice
+                por qué, y el porqué manda sobre el orden que sale de cruzar
+                fuerza con modificabilidad.
+              */}
+              <SubSeccion titulo="Rendimiento esperado de cada blanco">
+                <PriorizacionEstimada analisis={analisis} />
               </SubSeccion>
               {/* Se muestran aunque estén vacías: el clínico puede añadir lo que la IA no recogió. */}
               {/*

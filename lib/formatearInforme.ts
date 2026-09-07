@@ -1,5 +1,6 @@
 import { ETIQUETA_ESQUEMA, type AnalisisFuncional, type Cita, type Situacion } from "./types";
 import { agruparAlertas } from "./validadores";
+import { priorizarBlancos } from "./priorizacion";
 import { ORDEN_SECCIONES_POR_DEFECTO, TITULO_DE_SECCION } from "./secciones";
 import { AVISO_EJEMPLO } from "./maqueta";
 import {
@@ -352,6 +353,20 @@ export function formatearInformeTexto(
         analisis.formulacion.priorizacion
           .map((p, i) => `${i + 1}. ${p.blanco}: ${p.justificacion}`)
           .join("\n"),
+        "",
+        "Rendimiento esperado de cada blanco (orientación, no medida):",
+        // La advertencia viaja con el documento: en pantalla acompaña a las
+        // barras, y aquí no hay barras que la arrastren consigo. Un listado
+        // ordenado sin ella se leería como una cuantificación del caso.
+        "  Estimaciones cualitativas pasadas a números solo para poder ordenarlas.",
+        "  Sin unidades ni precisión: solo sostienen «esto probablemente antes que aquello».",
+        priorizarBlancos(analisis)
+          .map(
+            (b, i) =>
+              `${i + 1}. ${b.etiqueta} — fuerza ${b.fuerza} × modificabilidad ${b.modificabilidad}`
+          )
+          .join("\n") ||
+          "Ninguna variable moduladora aparece nombrada en las hipótesis de mantenimiento: no hay nada que ordenar.",
         "",
         "Fortalezas y recursos:",
         listaOTexto(analisis.fortalezas_y_recursos),

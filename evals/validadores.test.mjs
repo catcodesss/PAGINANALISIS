@@ -29,6 +29,7 @@ execFileSync(
     "lib/parseAnalisis.ts",
     "lib/validadores.ts",
     "lib/redFuncional.ts",
+    "lib/priorizacion.ts",
     "--outDir", ".tmp-evals",
     "--rootDir", "lib",
     "--module", "commonjs",
@@ -50,6 +51,9 @@ const {
   yaEnRepertorio,
 } = require(join(RAIZ, ".tmp-evals/validadores.js"));
 const { construirRedFuncional } = require(join(RAIZ, ".tmp-evals/redFuncional.js"));
+const { priorizarBlancos, VALOR_CUALITATIVO, RENDIMIENTO_MAXIMO } = require(
+  join(RAIZ, ".tmp-evals/priorizacion.js")
+);
 
 // Misma nota del caso 01, tal como se le envió al modelo.
 const caso = readFileSync(join(AQUI, "casos/01-ansiedad-social.md"), "utf8");
@@ -261,6 +265,64 @@ prueba("cada alerta dice en qué sección del informe puede haberse reflejado", 
   assert.equal(seccionDeRuta("riesgo"), "riesgo");
   // Sin sección es mejor que la sección equivocada.
   assert.equal(seccionDeRuta("general"), null);
+});
+
+/* ── Priorización estimada ───────────────────────────────────────────────── */
+
+prueba("la priorización cruza fuerza con modificabilidad, no una sola de las dos", () => {
+  // Es la idea clínica entera: el tratamiento rinde donde algo PESA y además
+  // PUEDE MOVERSE. Una variable determinante pero inamovible tiene que quedar
+  // por debajo de una determinante y modificable, aunque su fuerza sea la misma.
+  const conModificabilidad = (nivel) => {
+    const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+    crudo.hipotesis_mantenimiento[0].fuerza = "alta";
+    crudo.variables_moduladoras[0].modificabilidad = nivel;
+    const blancos = priorizarBlancos(normalizarAnalisis(crudo, lineas));
+    return blancos.find((b) => /Sueño/.test(b.etiqueta)).rendimiento;
+  };
+
+  assert.ok(conModificabilidad("baja") < conModificabilidad("media"));
+  assert.ok(conModificabilidad("media") < conModificabilidad("alta"));
+});
+
+prueba("la escala es geométrica: alta×baja empata con media×media", () => {
+  // Consecuencia deliberada de 0,8 / 0,4 / 0,2 (cada nivel es el doble del
+  // siguiente): un factor determinante pero rígido y uno intermedio en las dos
+  // escalas rinden lo mismo. Es la lectura clínica que se quiere, y se fija
+  // aquí para que nadie "arregle" el empate cambiando los números sin darse
+  // cuenta de que con eso cambia el criterio.
+  assert.equal(
+    VALOR_CUALITATIVO.alta * VALOR_CUALITATIVO.baja,
+    VALOR_CUALITATIVO.media * VALOR_CUALITATIVO.media
+  );
+});
+
+prueba("una variable que ninguna hipótesis nombra no es un blanco", () => {
+  // Sin relación declarada es contexto, no un blanco. Aparecer con rendimiento
+  // cero se leería como "esto no sirve de nada", cuando lo que pasa es que el
+  // informe no dijo qué papel juega.
+  const blancos = priorizarBlancos(informe);
+  const sueltas = informe.variables_moduladoras.filter(
+    (v) => !blancos.some((b) => b.etiqueta === v.descripcion)
+  );
+  assert.ok(sueltas.length > 0, "el caso 01 tiene alguna variable sin relación");
+  assert.ok(blancos.every((b) => b.relaciones > 0));
+});
+
+prueba("la conversión a números está en un solo sitio y ordena de mayor a menor", () => {
+  assert.deepEqual(VALOR_CUALITATIVO, { alta: 0.8, media: 0.4, baja: 0.2 });
+  // El salto de media a alta pesa más que el de baja a media: es la distancia
+  // real entre las tres etiquetas en la práctica clínica.
+  assert.ok(
+    VALOR_CUALITATIVO.alta - VALOR_CUALITATIVO.media >
+      VALOR_CUALITATIVO.media - VALOR_CUALITATIVO.baja
+  );
+  assert.equal(RENDIMIENTO_MAXIMO, 0.8 * 0.8);
+
+  const rendimientos = priorizarBlancos(informe).map((b) => b.rendimiento);
+  assert.deepEqual(rendimientos, [...rendimientos].sort((a, b) => b - a));
+  // Ningún blanco puede salirse de la escala fija con la que se dibuja la barra.
+  assert.ok(rendimientos.every((r) => r > 0 && r <= RENDIMIENTO_MAXIMO));
 });
 
 /* ── Red funcional ───────────────────────────────────────────────────────── */
