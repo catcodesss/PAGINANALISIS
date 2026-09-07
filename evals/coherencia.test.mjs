@@ -36,6 +36,7 @@ execFileSync(
     join(RAIZ, "node_modules/typescript/bin/tsc"),
     "lib/preferencias.ts",
     "lib/secciones.ts",
+    "lib/ordenSecciones.ts",
     "--outDir", ".tmp-evals",
     "--rootDir", "lib",
     "--module", "commonjs",
@@ -48,7 +49,10 @@ execFileSync(
 
 const require = createRequire(import.meta.url);
 const { ESCALA_TEXTO } = require(join(RAIZ, ".tmp-evals/preferencias.js"));
-const { SECCIONES_INFORME } = require(join(RAIZ, ".tmp-evals/secciones.js"));
+const { SECCIONES_INFORME, GRUPOS_INFORME, posicionDeGrupo } = require(
+  join(RAIZ, ".tmp-evals/secciones.js")
+);
+const { reconciliarOrden } = require(join(RAIZ, ".tmp-evals/ordenSecciones.js"));
 
 const css = readFileSync(join(RAIZ, "app/globals.css"), "utf8");
 const reportView = readFileSync(join(RAIZ, "components/ReportView.tsx"), "utf8");
@@ -178,6 +182,87 @@ prueba("toda sección tiene título y ninguno se repite", () => {
   const titulos = SECCIONES_INFORME.map((s) => s.titulo);
   assert.ok(titulos.every((t) => t && t.trim().length > 0));
   assert.equal(new Set(titulos).size, titulos.length, "hay títulos duplicados");
+});
+
+/* ── Grupos del índice ───────────────────────────────────────────────────── */
+
+prueba("toda sección declara un grupo que existe", () => {
+  const idsGrupo = GRUPOS_INFORME.map((g) => g.id);
+  const invalidos = SECCIONES_INFORME.filter((s) => !idsGrupo.includes(s.grupo));
+  assert.deepEqual(
+    invalidos.map((s) => s.id),
+    []
+  );
+});
+
+prueba("el orden de fábrica no entremezcla grupos", () => {
+  // Si un grupo aparece, se acaba y vuelve a aparecer más abajo, el informe se
+  // lee como si dos tramos distintos fueran el mismo. Las posiciones de grupo
+  // del orden de fábrica tienen que ser monótonas crecientes.
+  const posiciones = SECCIONES_INFORME.map((s) => posicionDeGrupo(s.id));
+  const ordenadas = [...posiciones].sort((a, b) => a - b);
+  assert.deepEqual(
+    posiciones,
+    ordenadas,
+    `un grupo se interrumpe y vuelve: ${SECCIONES_INFORME.map((s) => s.grupo).join(" ")}`
+  );
+});
+
+prueba("ningún grupo se queda sin secciones", () => {
+  // Un grupo vacío es un grupo que se declaró y nadie usa: o sobra, o alguien
+  // olvidó mover ahí la sección que lo motivaba.
+  const usados = new Set(SECCIONES_INFORME.map((s) => s.grupo));
+  const vacios = GRUPOS_INFORME.filter((g) => !usados.has(g.id)).map((g) => g.id);
+  assert.deepEqual(vacios, []);
+});
+
+/* ── Conciliación del orden guardado ─────────────────────────────────────── */
+
+prueba("un orden guardado con ids que ya no existen se concilia sin romperse", () => {
+  // Los ids viejos que queden en localStorage —una sección retirada, o dos que
+  // se fusionaron en una— tienen que caerse solos, sin dejar el informe con
+  // una sección de menos ni una entrada muerta en el índice.
+  const conBasura = reconciliarOrden(
+    ["seccion-que-ya-no-existe", "resumen", 42, null, "alertas", "datos-faltantes"],
+    IDS
+  );
+  assert.deepEqual(
+    conBasura.filter((id) => !IDS.includes(id)),
+    [],
+    "sobrevivió un id que no está en lib/secciones.ts"
+  );
+  assert.deepEqual(
+    [...conBasura].sort(),
+    [...IDS].sort(),
+    "la conciliación perdió o duplicó alguna sección"
+  );
+});
+
+prueba("el grupo manda sobre la posición guardada", () => {
+  // Un orden guardado que sube la última sección hasta la primera posición: se
+  // respeta que suba dentro de su grupo, pero no que se cuele delante de la
+  // apertura del informe.
+  const ultima = SECCIONES_INFORME[SECCIONES_INFORME.length - 1].id;
+  const conciliado = reconciliarOrden(
+    [ultima, ...IDS.filter((id) => id !== ultima)],
+    IDS
+  );
+  const posiciones = conciliado.map(posicionDeGrupo);
+  assert.deepEqual(posiciones, [...posiciones].sort((a, b) => a - b));
+  assert.notEqual(conciliado[0], ultima, "un bloque saltó por encima de su grupo");
+});
+
+prueba("dentro de un grupo se respeta entero el orden elegido", () => {
+  const delGrupo = SECCIONES_INFORME.filter((s) => s.grupo === "apertura").map(
+    (s) => s.id
+  );
+  assert.ok(delGrupo.length >= 2, "el grupo de apertura debería tener varias secciones");
+  const invertido = [...delGrupo].reverse();
+  const conciliado = reconciliarOrden(
+    [...invertido, ...IDS.filter((id) => !delGrupo.includes(id))],
+    IDS
+  );
+  assert.deepEqual(conciliado.slice(0, delGrupo.length), invertido);
 });
 
 console.log(`\n${pasadas} pruebas correctas\n`);
