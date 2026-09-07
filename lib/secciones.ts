@@ -58,7 +58,7 @@ export const SECCIONES_INFORME = [
   { id: "resumen", titulo: "Resumen clínico", grupo: "apertura" },
   { id: "hipotesis-principal", titulo: "Formulación destacada", grupo: "apertura" },
   { id: "conductas", titulo: "Repertorio conductual", grupo: "descripcion" },
-  { id: "variables-moduladoras", titulo: "Variables moduladoras", grupo: "descripcion" },
+  { id: "variables-moduladoras", titulo: "Contexto y variables moduladoras", grupo: "descripcion" },
   { id: "situaciones", titulo: "Análisis por situaciones", grupo: "descripcion" },
   { id: "modalidad", titulo: "Detalle según modelo terapéutico", grupo: "descripcion" },
   { id: "hipotesis-mantenimiento", titulo: "Hipótesis de mantenimiento", grupo: "mantenimiento" },

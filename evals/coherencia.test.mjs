@@ -178,6 +178,33 @@ prueba("cada sección de la lista se dibuja de verdad", () => {
   );
 });
 
+prueba("el título del índice y el de la tarjeta no se contradicen", () => {
+  /*
+    El índice saca el título de lib/secciones.ts y la tarjeta lo recibe como
+    prop: son dos sitios, y nada los comparaba. Al renombrar "Variables
+    moduladoras" a "Contexto y variables moduladoras" se cambió solo uno, y el
+    resultado fue un índice que enviaba a una sección con otro nombre — sin
+    error, sin enlace roto, solo un documento que se contradice.
+
+    La regla no es igualdad estricta: algunas tarjetas alargan el título del
+    índice ("Líneas de intervención" → "Líneas de intervención tentativas") y
+    eso es deliberado, el índice tiene menos sitio. Lo que no puede pasar es que
+    empiecen por cosas distintas: quien sigue un enlace del índice tiene que
+    reconocer dónde ha aterrizado.
+  */
+  const pintados = new Map();
+  const re = /<(?:Seccion|BloqueOrdenable)\s+id="([^"]+)"\s*\n?\s*titulo="([^"]+)"/g;
+  let m;
+  while ((m = re.exec(reportView)) !== null) pintados.set(m[1], m[2]);
+
+  const discrepantes = SECCIONES_INFORME.filter((s) => {
+    const pintado = pintados.get(s.id);
+    return pintado !== undefined && !pintado.startsWith(s.titulo);
+  }).map((s) => `${s.id}: índice "${s.titulo}" ≠ tarjeta "${pintados.get(s.id)}"`);
+
+  assert.deepEqual(discrepantes, []);
+});
+
 prueba("toda sección tiene título y ninguno se repite", () => {
   const titulos = SECCIONES_INFORME.map((s) => s.titulo);
   assert.ok(titulos.every((t) => t && t.trim().length > 0));
