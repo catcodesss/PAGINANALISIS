@@ -62,6 +62,7 @@ export const SECCIONES_INFORME = [
   { id: "situaciones", titulo: "Análisis por situaciones", grupo: "descripcion" },
   { id: "modalidad", titulo: "Detalle según modelo terapéutico", grupo: "descripcion" },
   { id: "hipotesis-mantenimiento", titulo: "Hipótesis de mantenimiento", grupo: "mantenimiento" },
+  { id: "hipotesis-origen", titulo: "Hipótesis de origen", grupo: "mantenimiento" },
   { id: "formulacion", titulo: "Formulación del caso", grupo: "mantenimiento" },
   { id: "conductas-alternativas", titulo: "Conductas alternativas", grupo: "plan" },
   { id: "intervencion", titulo: "Líneas de intervención", grupo: "plan" },

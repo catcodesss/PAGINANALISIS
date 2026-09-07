@@ -257,6 +257,16 @@ prueba("cada alerta dice en qué sección del informe puede haberse reflejado", 
   assert.equal(seccionDeRuta("general"), null);
 });
 
+prueba("el origen aterriza en su propia sección, no en la de mantenimiento", () => {
+  // Separar origen de mantenimiento es la defensa contra tratar cómo se
+  // adquirió el problema en vez de qué lo sostiene hoy. Si un aviso sobre el
+  // origen enviara al clínico a "Hipótesis de mantenimiento", la separación
+  // sería solo visual.
+  assert.equal(seccionDeRuta("hipotesis_origen"), "hipotesis-origen");
+  assert.equal(seccionDeRuta("hipotesis_mantenimiento[0]"), null);
+  assert.notEqual(seccionDeRuta("hipotesis_origen"), "hipotesis-mantenimiento");
+});
+
 prueba("revalidarTrasReanalisis conserva las alertas de la pasada crítica", () => {
   // Un reanálisis de sección no repite la pasada crítica (cuesta dinero), así
   // que perder sus hallazgos al reanalizar sería descartar algo válido sobre

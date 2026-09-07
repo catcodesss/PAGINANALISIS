@@ -105,6 +105,7 @@ const BLOQUE_DE_SECCION: Partial<Record<IdSeccion, string[]>> = {
   "variables-moduladoras": ["base", "moduladoras"],
   situaciones: ["situaciones"],
   "hipotesis-mantenimiento": ["mantenimiento"],
+  "hipotesis-origen": ["mantenimiento"],
   "hipotesis-principal": ["mantenimiento"],
   formulacion: ["formulacion"],
   "conductas-alternativas": ["alternativas"],
@@ -558,6 +559,31 @@ function ListaEditable({
         onAgregar={(texto) => onCambiar([...items, texto])}
       />
     </>
+  );
+}
+
+/**
+ * Franja de "esto no se toca" para las hipótesis de origen.
+ *
+ * No usa el ámbar de los avisos: no hay nada que revisar ni que corregir aquí,
+ * y gastar el color de "hay que mirarlo" en algo que solo hay que leer una vez
+ * lo devaluaría para cuando de verdad haga falta (ver MARCA.md). Es una franja
+ * gris, con el rótulo en versalitas del resto del informe, y sobrevive a la
+ * impresión: el texto está escrito, no dibujado, así que dice lo mismo en
+ * papel — y el papel es lo que acaba en la historia clínica.
+ */
+function SelloNoModificable() {
+  return (
+    <div className="mb-4 rounded-md border border-divider bg-canvas px-4 py-3 print:border-black">
+      <p className="font-mono text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+        No modificable · no genera blancos de intervención
+      </p>
+      <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+        El origen explica cómo se adquirió el problema, no qué lo mantiene hoy;
+        por eso no se interviene sobre él. Los blancos de intervención salen de
+        las hipótesis de mantenimiento, no de aquí.
+      </p>
+    </div>
   );
 }
 
@@ -2231,7 +2257,7 @@ function InformeOrdenable({
           <Seccion
             id="hipotesis-mantenimiento"
             titulo="Hipótesis de mantenimiento"
-            camposReanalisis={["hipotesis_mantenimiento", "hipotesis_origen"]}
+            camposReanalisis={["hipotesis_mantenimiento"]}
           >
             {analisis.hipotesis_mantenimiento.length === 0 ? (
               <SinHallazgos />
@@ -2253,22 +2279,34 @@ function InformeOrdenable({
                 ))}
               </ul>
             )}
+          </Seccion>
 
-            <div className="mt-6">
-              <SubSeccion titulo="Hipótesis de origen (tentativas)">
-                <ListaEditable
-                  items={analisis.hipotesis_origen}
-                  seccionId="hipotesis-mantenimiento"
-                  etiqueta="hipótesis de origen"
-                  claseItem="text-sm italic leading-relaxed text-ink-muted"
-                  onCambiar={(nuevos) =>
-                    onEditarSeccion("hipotesis-mantenimiento", (c) => {
-                      c.hipotesis_origen = nuevos;
-                    })
-                  }
-                />
-              </SubSeccion>
-            </div>
+          {/*
+            Sección propia, no un apartado dentro del mantenimiento. Es la
+            defensa estructural contra el error clínico más frecuente en una
+            formulación: tratar el origen —lo que explica cómo se adquirió el
+            problema— en vez de la función que lo sostiene hoy. Mientras el
+            origen vivía debajo de las hipótesis de mantenimiento se leía como
+            una continuación suya, y la distinción quedaba en manos de que el
+            lector se fijara en el subtítulo.
+          */}
+          <Seccion
+            id="hipotesis-origen"
+            titulo="Hipótesis de origen"
+            camposReanalisis={["hipotesis_origen"]}
+          >
+            <SelloNoModificable />
+            <ListaEditable
+              items={analisis.hipotesis_origen}
+              seccionId="hipotesis-origen"
+              etiqueta="hipótesis de origen"
+              claseItem="text-sm italic leading-relaxed text-ink-muted"
+              onCambiar={(nuevos) =>
+                onEditarSeccion("hipotesis-origen", (c) => {
+                  c.hipotesis_origen = nuevos;
+                })
+              }
+            />
           </Seccion>
 
           <Seccion

@@ -321,6 +321,8 @@ export function seccionDeRuta(ruta: string): IdSeccion | null {
       return "variables-moduladoras";
     case "situaciones":
       return "situaciones";
+    case "hipotesis_origen":
+      return "hipotesis-origen";
     case "conductas_alternativas":
       return "conductas-alternativas";
     case "lineas_de_intervencion_tentativas":

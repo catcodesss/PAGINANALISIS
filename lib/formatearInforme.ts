@@ -9,6 +9,17 @@ import {
 } from "./nivelesConfianza";
 
 const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
+
+/**
+ * Lo que la sección "Hipótesis de origen" advierte de sí misma, en pantalla y
+ * en el documento exportado. Vive aquí y no en el componente porque es
+ * redacción clínica que tiene que decir lo mismo en las dos superficies: si el
+ * sello de la pantalla y la advertencia del papel divergen, el informe impreso
+ * —que es el que acaba en una historia clínica— sería el que se queda sin
+ * ella.
+ */
+export const AVISO_ORIGEN_NO_MODIFICABLE =
+  "No modificable · no genera blancos de intervención. El origen explica cómo se adquirió el problema, no qué lo mantiene hoy; por eso no se interviene sobre él. Los blancos salen de las hipótesis de mantenimiento.";
 const DESCARGO =
   "Este análisis es una síntesis asistida de hipótesis funcionales generadas a partir de las notas proporcionadas. No constituye un diagnóstico ni sustituye el juicio clínico profesional. Toda hipótesis debe verificarse mediante evaluación directa.";
 
@@ -266,8 +277,22 @@ export function formatearInformeTexto(
     )
   );
 
-  bloques["hipotesis-mantenimiento"] += SALTO + (
-    seccion("HIPÓTESIS DE ORIGEN (TENTATIVAS)", listaOTexto(analisis.hipotesis_origen))
+  // Bloque propio, no un apartado dentro del mantenimiento. Separar origen de
+  // mantenimiento es la defensa estructural contra el error clínico más
+  // frecuente —tratar cómo se adquirió el problema en vez de qué lo sostiene
+  // hoy—, y esa separación tiene que sobrevivir al papel: en el documento
+  // exportado, un subtítulo dentro de otra sección se lee como una
+  // continuación suya. La advertencia va escrita, no solo dibujada, porque el
+  // informe impreso no tiene sellos.
+  bloques["hipotesis-origen"] = (
+    seccion(
+      "HIPÓTESIS DE ORIGEN (TENTATIVAS)",
+      [
+        AVISO_ORIGEN_NO_MODIFICABLE,
+        "",
+        listaOTexto(analisis.hipotesis_origen),
+      ].join("\n")
+    )
   );
 
   bloques["formulacion"] = (
