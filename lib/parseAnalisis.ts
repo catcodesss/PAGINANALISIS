@@ -342,6 +342,26 @@ function normalizarCapaDbt(valor: unknown): CapaModalidadDBT {
         };
       }
     ),
+    analisis_de_soluciones: comoArreglo<unknown>(d.analisis_de_soluciones).map(
+      (s) => {
+        const so = comoObjeto(s);
+        return {
+          eslabon_objetivo: comoTexto(so.eslabon_objetivo),
+          alternativa_habil: comoTexto(so.alternativa_habil),
+          // Lo desconocido cae en "respuesta": es la estrategia disponible
+          // una vez la cadena arrancó, así que es la lectura conservadora.
+          // Suponer "antecedente" prometería un margen de maniobra anterior
+          // al eslabón que nadie ha comprobado que exista.
+          tipo_estrategia:
+            so.tipo_estrategia === "antecedente" ? "antecedente" : "respuesta",
+        };
+      }
+    ),
+    plan_de_prevencion: comoArregloDeTexto(d.plan_de_prevencion),
+    // null y no "": la ausencia de daño a terceros es un hallazgo, no un
+    // campo vacío que alguien deba rellenar.
+    plan_de_reparacion: comoTextoONulo(d.plan_de_reparacion),
+    eslabon_ausente: comoTextoONulo(d.eslabon_ausente),
   };
 }
 

@@ -119,6 +119,19 @@ function textosDeIntervencion(
       texto: `${h.habilidad} ${h.eslabon_objetivo}`,
     });
   });
+  // El análisis de soluciones propone conductas alternativas para cada
+  // eslabón: es tan susceptible de prescribir el propio mantenedor como
+  // cualquier otra propuesta del informe, y sin esto se quedaba fuera de la
+  // comprobación V3.
+  a.capa_dbt.analisis_de_soluciones.forEach((s, i) => {
+    salida.push({
+      ruta: `capa_dbt.analisis_de_soluciones[${i}]`,
+      texto: `${s.alternativa_habil} ${s.eslabon_objetivo}`,
+    });
+  });
+  a.capa_dbt.plan_de_prevencion.forEach((p, i) => {
+    salida.push({ ruta: `capa_dbt.plan_de_prevencion[${i}]`, texto: p });
+  });
   a.capa_mc.procedimientos_sugeridos.forEach((p, i) => {
     salida.push({
       ruta: `capa_mc.procedimientos_sugeridos[${i}]`,

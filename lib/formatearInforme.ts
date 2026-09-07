@@ -417,6 +417,40 @@ export function formatearInformeTexto(
       ].join("\n")
     )
   );
+  if (analisis.capa_dbt.eslabon_ausente) {
+    bloques["modalidad"] += SALTO + (
+      seccion("CAPA DBT — ESLABÓN AUSENTE", analisis.capa_dbt.eslabon_ausente)
+    );
+  }
+
+  bloques["modalidad"] += SALTO + (
+    seccion(
+      "CAPA DBT — ANÁLISIS DE SOLUCIONES",
+      analisis.capa_dbt.analisis_de_soluciones
+        .map(
+          (s) =>
+            `- [${s.tipo_estrategia === "antecedente" ? "antes del eslabón" : "durante el eslabón"}] ${s.eslabon_objetivo}\n  ${s.alternativa_habil}`
+        )
+        .join("\n")
+    )
+  );
+
+  bloques["modalidad"] += SALTO + (
+    seccion(
+      "CAPA DBT — PLAN DE PREVENCIÓN",
+      listaOTexto(analisis.capa_dbt.plan_de_prevencion)
+    )
+  );
+
+  // Solo si hubo daño real a un tercero: un apartado que siempre aparece
+  // invita a rellenarlo, y lo que se rellena por rellenar son disculpas de
+  // trámite.
+  if (analisis.capa_dbt.plan_de_reparacion) {
+    bloques["modalidad"] += SALTO + (
+      seccion("CAPA DBT — PLAN DE REPARACIÓN", analisis.capa_dbt.plan_de_reparacion)
+    );
+  }
+
   bloques["modalidad"] += SALTO + (
     seccion(
       "CAPA DBT — HABILIDADES SUGERIDAS",

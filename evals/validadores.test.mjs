@@ -261,6 +261,55 @@ prueba("cada alerta dice en qué sección del informe puede haberse reflejado", 
   assert.equal(seccionDeRuta("general"), null);
 });
 
+prueba("el análisis de soluciones pasa por la comprobación de conductas de seguridad", () => {
+  // Es una propuesta de intervención como cualquier otra: si sugiere respirar
+  // para calmarse en un caso donde respirar ya es el mantenedor, tiene que
+  // avisar igual que si estuviera en conductas_alternativas.
+  const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+  crudo.capa_dbt.analisis_de_soluciones = [
+    {
+      eslabon_objetivo: "Sensación de taquicardia",
+      alternativa_habil: "Practicar respiración diafragmática hasta que baje la activación.",
+      tipo_estrategia: "respuesta",
+    },
+  ];
+  const conSolucion = validarAnalisis(normalizarAnalisis(crudo, lineas), nota);
+  assert.ok(
+    conSolucion.alertas.some(
+      (a) =>
+        a.codigo === "prescribe_conducta_seguridad" &&
+        a.ruta.startsWith("capa_dbt.analisis_de_soluciones")
+    ),
+    "una solución DBT que prescribe el propio mantenedor pasó sin aviso"
+  );
+});
+
+prueba("la reparación y el eslabón ausente son null salvo que haya motivo", () => {
+  // Un campo que siempre se rellena produce disculpas de trámite; el
+  // normalizador no puede convertir la ausencia en una cadena vacía que la
+  // interfaz pintaría como un apartado más.
+  const sinCapa = normalizarAnalisis({ ...fixture.analisis, capa_dbt: {} }, lineas);
+  assert.equal(sinCapa.capa_dbt.plan_de_reparacion, null);
+  assert.equal(sinCapa.capa_dbt.eslabon_ausente, null);
+  assert.deepEqual(sinCapa.capa_dbt.analisis_de_soluciones, []);
+  assert.deepEqual(sinCapa.capa_dbt.plan_de_prevencion, []);
+});
+
+prueba("un tipo de estrategia desconocido cae en la lectura conservadora", () => {
+  // "respuesta" es la estrategia disponible una vez la cadena arrancó.
+  // Suponer "antecedente" prometería un margen de maniobra anterior al eslabón
+  // que nadie ha comprobado que exista.
+  const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+  crudo.capa_dbt.analisis_de_soluciones = [
+    { eslabon_objetivo: "x", alternativa_habil: "y", tipo_estrategia: "preventiva" },
+  ];
+  const normalizado = normalizarAnalisis(crudo, lineas);
+  assert.equal(
+    normalizado.capa_dbt.analisis_de_soluciones[0].tipo_estrategia,
+    "respuesta"
+  );
+});
+
 prueba("un esquema de contingencia ausente o inventado cae en no_determinable", () => {
   // El valor por defecto NO puede afirmar un esquema: el esquema decide la
   // dosis de exposición que el informe sugiere, y elegir "continua" porque el

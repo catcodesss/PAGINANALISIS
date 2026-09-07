@@ -271,9 +271,47 @@ export interface HabilidadSugeridaDBT {
   eslabon_objetivo: string;
 }
 
+/**
+ * Análisis de soluciones: por cada eslabón de la cadena, qué habría podido
+ * hacerse en su lugar. Es la mitad terapéutica del análisis en cadena — sin
+ * ella la cadena solo describe cómo se llegó a la conducta problema, que es
+ * exactamente lo que el consultante ya sabe.
+ *
+ * `tipo_estrategia` distingue las dos formas de romper una cadena, y no es un
+ * matiz: "antecedente" actúa ANTES de que el eslabón ocurra (cambiar la
+ * situación, salir del contexto, resolver la vulnerabilidad) y "respuesta"
+ * actúa CUANDO ya está ocurriendo (tolerar, regular, actuar de otro modo). La
+ * primera es más fiable y la segunda es la única disponible una vez la cadena
+ * arrancó; confundirlas produce planes que solo funcionan en el momento en que
+ * ya es tarde.
+ */
+export interface SolucionDBT {
+  eslabon_objetivo: string;
+  alternativa_habil: string;
+  tipo_estrategia: "antecedente" | "respuesta";
+}
+
 export interface CapaModalidadDBT {
   analisis_en_cadena: AnalisisEnCadenaDBT;
   habilidades_sugeridas: HabilidadSugeridaDBT[];
+  /** Qué hacer en cada eslabón en lugar de lo que se hizo. Ver SolucionDBT. */
+  analisis_de_soluciones: SolucionDBT[];
+  /** Cómo reducir las vulnerabilidades que abren la cadena, antes de que empiece. */
+  plan_de_prevencion: string[];
+  /**
+   * Solo si hubo daño real a terceros. `null` es lo normal, y es importante que
+   * lo sea: convertir la reparación en un campo que siempre se rellena produce
+   * disculpas de trámite, que es justo el gesto superficial que la reparación
+   * genuina —reparar el daño concreto, no aliviar la culpa propia— pretende
+   * evitar.
+   */
+  plan_de_reparacion: string | null;
+  /**
+   * Análisis de eslabón faltante: cuando lo relevante no es lo que se hizo sino
+   * lo que NO se hizo (no pedir ayuda, no usar la habilidad que ya conoce, no
+   * avisar). `null` cuando la cadena se explica por lo emitido.
+   */
+  eslabon_ausente: string | null;
 }
 
 export interface ProcedimientoSugeridoMC {

@@ -1218,6 +1218,94 @@ function DetalleDBT({ capa }: { capa: AnalisisFuncional["capa_dbt"] }) {
         </div>
       </SubSeccion>
 
+      {/*
+        El eslabón ausente va justo después de la cadena y antes de las
+        soluciones: si lo relevante es una conducta que NO se emitió, todo lo
+        que venga después se lee distinto — la alternativa hábil deja de ser
+        "otra cosa que hacer" y pasa a ser "lo que ya sabía hacer y no hizo".
+      */}
+      {capa.eslabon_ausente && (
+        <SubSeccion titulo="Eslabón ausente">
+          <p className="text-[15px] leading-relaxed text-ink">
+            {capa.eslabon_ausente}
+          </p>
+        </SubSeccion>
+      )}
+
+      {/*
+        La mitad terapéutica de la cadena. Sin esto, el análisis en cadena solo
+        describe cómo se llegó a la conducta problema — que es exactamente lo
+        que el consultante ya sabe.
+      */}
+      <SubSeccion titulo="Análisis de soluciones">
+        {capa.analisis_de_soluciones.length === 0 ? (
+          <SinHallazgos />
+        ) : (
+          <ul className="space-y-4">
+            {capa.analisis_de_soluciones.map((s, i) => (
+              <li key={i}>
+                <div className="flex flex-wrap items-baseline gap-2">
+                  {/*
+                    El tipo de estrategia no es decorativo: "antecedente" actúa
+                    antes de que el eslabón ocurra y "respuesta" cuando ya está
+                    ocurriendo. Un plan hecho solo de estrategias de respuesta
+                    únicamente sirve cuando ya es tarde, y eso solo se ve si
+                    cada solución dice de cuál de las dos es.
+                  */}
+                  <Chip>
+                    {s.tipo_estrategia === "antecedente"
+                      ? "antes del eslabón"
+                      : "durante el eslabón"}
+                  </Chip>
+                  <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
+                    {s.eslabon_objetivo}
+                  </p>
+                </div>
+                <p className="mt-1 text-[15px] leading-relaxed text-ink">
+                  {s.alternativa_habil}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SubSeccion>
+
+      <SubSeccion titulo="Plan de prevención">
+        {capa.plan_de_prevencion.length === 0 ? (
+          <SinHallazgos />
+        ) : (
+          <>
+            <p className="mb-2 text-sm leading-relaxed text-ink-muted">
+              Actúa sobre las vulnerabilidades que abren la cadena, antes de que
+              haya cadena: baja la probabilidad de que el precipitante encuentre
+              a la persona en disposición de reaccionar así.
+            </p>
+            <ul className="list-disc space-y-2 pl-5">
+              {capa.plan_de_prevencion.map((p, i) => (
+                <li key={i} className="text-[15px] leading-relaxed text-ink">
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </SubSeccion>
+
+      {/*
+        Solo aparece si hubo daño real a un tercero. Que la ausencia sea lo
+        normal es el punto: un apartado de reparación que siempre está invita a
+        rellenarlo, y lo que se rellena por rellenar son disculpas de trámite —
+        el gesto superficial que alivia la culpa de quien lo hace y no repara
+        nada.
+      */}
+      {capa.plan_de_reparacion && (
+        <SubSeccion titulo="Plan de reparación">
+          <p className="text-[15px] leading-relaxed text-ink">
+            {capa.plan_de_reparacion}
+          </p>
+        </SubSeccion>
+      )}
+
       <SubSeccion titulo="Habilidades sugeridas">
         {capa.habilidades_sugeridas.length === 0 ? (
           <SinHallazgos />

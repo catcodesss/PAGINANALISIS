@@ -260,7 +260,24 @@
           "habilidad": "DEAR MAN",
           "eslabon_objetivo": "Acción de ceder ante demandas indebidas."
         }
-      ]
+      ],
+      "analisis_de_soluciones": [
+        {
+          "eslabon_objetivo": "Pensamiento: \"Voy a quedarme en blanco\"",
+          "alternativa_habil": "Comprobar el pensamiento contra lo ocurrido en reuniones previas y sostener la exposicion sin resolverlo.",
+          "tipo_estrategia": "respuesta"
+        },
+        {
+          "eslabon_objetivo": "Impulso de ir al bano",
+          "alternativa_habil": "Acordar con la supervisora un turno fijo de intervencion, de modo que el momento no dependa de la anticipacion.",
+          "tipo_estrategia": "antecedente"
+        }
+      ],
+      "plan_de_prevencion": [
+        "Regularizar el sueno de los domingos, que es la vulnerabilidad que abre la cadena del lunes."
+      ],
+      "plan_de_reparacion": null,
+      "eslabon_ausente": null
     },
     "capa_mc": {
       "procedimientos_sugeridos": [
