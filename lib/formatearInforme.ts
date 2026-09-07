@@ -321,6 +321,9 @@ export function formatearInformeTexto(
           .map((p, i) => `${i + 1}. ${p.blanco}: ${p.justificacion}`)
           .join("\n"),
         "",
+        "Fortalezas y recursos:",
+        listaOTexto(analisis.fortalezas_y_recursos),
+        "",
         "Valores y metas del consultante:",
         listaOTexto(analisis.valores_y_metas),
         "",

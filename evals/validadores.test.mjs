@@ -257,6 +257,22 @@ prueba("cada alerta dice en qué sección del informe puede haberse reflejado", 
   assert.equal(seccionDeRuta("general"), null);
 });
 
+prueba("una lista de fortalezas vacía es un resultado válido, no un fallo", () => {
+  // El principio 20 dice explícitamente que vacío es preferible a inventar. El
+  // normalizador no puede convertir eso en otra cosa ni rellenarlo.
+  const sinFortalezas = normalizarAnalisis(
+    { ...fixture.analisis, fortalezas_y_recursos: undefined },
+    lineas
+  );
+  assert.deepEqual(sinFortalezas.fortalezas_y_recursos, []);
+
+  const conBasura = normalizarAnalisis(
+    { ...fixture.analisis, fortalezas_y_recursos: ["Sostiene el empleo.", 3, null] },
+    lineas
+  );
+  assert.deepEqual(conBasura.fortalezas_y_recursos, ["Sostiene el empleo."]);
+});
+
 prueba("los huecos y los avisos aterrizan en la misma sección de verificación", () => {
   // Eran dos secciones distintas del índice para la misma pregunta: qué hay
   // que comprobar antes de dar el informe por bueno.

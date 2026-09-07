@@ -393,6 +393,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     ).map(normalizarHipotesisMantenimiento),
     hipotesis_origen: comoArregloDeTexto(d.hipotesis_origen),
     formulacion: normalizarFormulacion(d.formulacion),
+    fortalezas_y_recursos: comoArregloDeTexto(d.fortalezas_y_recursos),
     conductas_alternativas: comoArreglo<unknown>(d.conductas_alternativas).map(
       normalizarConductaAlternativa
     ),
@@ -457,6 +458,7 @@ const NORMALIZADORES_POR_CAMPO: {
     ),
   hipotesis_origen: (d) => comoArregloDeTexto(d.hipotesis_origen),
   formulacion: (d) => normalizarFormulacion(d.formulacion),
+  fortalezas_y_recursos: (d) => comoArregloDeTexto(d.fortalezas_y_recursos),
   conductas_alternativas: (d) =>
     comoArreglo<unknown>(d.conductas_alternativas).map(
       normalizarConductaAlternativa

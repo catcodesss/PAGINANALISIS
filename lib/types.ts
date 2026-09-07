@@ -300,6 +300,15 @@ export interface AnalisisFuncional {
   datos_faltantes: DatoFaltante[];
   /** Principio 7: ciclos de acomodación del entorno, con quién y qué función. */
   acomodacion_entorno: Acomodacion[];
+  /**
+   * Lo que el consultante ya tiene a favor: repertorio disponible, apoyos
+   * sociales, económicos y vocacionales, éxitos previos de afrontamiento y
+   * exposición previa a intervenciones. Un informe que solo enumera déficits
+   * describe a una persona que no existe, y deja fuera justo el material con
+   * el que se construye la intervención. Vacío es una respuesta válida: la
+   * alternativa —inventar fortalezas que la nota no sostiene— es peor.
+   */
+  fortalezas_y_recursos: string[];
   /** Principio 18: direcciones valiosas o metas que el consultante expresa. */
   valores_y_metas: string[];
   /** Principio 19: actividades reforzantes abandonadas y su papel en el mantenimiento. */
@@ -342,6 +351,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "hipotesis_mantenimiento",
   "hipotesis_origen",
   "formulacion",
+  "fortalezas_y_recursos",
   "conductas_alternativas",
   "capa_act",
   "capa_dbt",

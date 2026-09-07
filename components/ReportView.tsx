@@ -2296,7 +2296,12 @@ function InformeOrdenable({
           <Seccion
             id="formulacion"
             titulo="Formulación del caso"
-            camposReanalisis={["formulacion", "valores_y_metas", "perdida_de_reforzadores"]}
+            camposReanalisis={[
+              "formulacion",
+              "fortalezas_y_recursos",
+              "valores_y_metas",
+              "perdida_de_reforzadores",
+            ]}
           >
             <div className="space-y-5">
               <SubSeccion titulo="Relaciones entre problemas">
@@ -2333,6 +2338,32 @@ function InformeOrdenable({
                 )}
               </SubSeccion>
               {/* Se muestran aunque estén vacías: el clínico puede añadir lo que la IA no recogió. */}
+              {/*
+                Un informe que solo enumera déficits describe a una persona que
+                no existe, y deja fuera el material con el que se construye la
+                intervención. Vacío es una respuesta válida —la alternativa,
+                inventar fortalezas que la nota no sostiene, es peor—, y por eso
+                el texto de la lista vacía lo dice en vez de callarse.
+              */}
+              <SubSeccion titulo="Fortalezas y recursos">
+                <ListaEditable
+                  items={analisis.fortalezas_y_recursos}
+                  seccionId="formulacion"
+                  etiqueta="fortaleza o recurso"
+                  onCambiar={(nuevos) =>
+                    onEditarSeccion("formulacion", (c) => {
+                      c.fortalezas_y_recursos = nuevos;
+                    })
+                  }
+                  vacio={
+                    <p className="text-sm text-ink-muted">
+                      La nota no sostiene ninguna fortaleza ni recurso concreto.
+                      No significa que no los haya: significa que no están
+                      escritos, y conviene preguntarlos en sesión.
+                    </p>
+                  }
+                />
+              </SubSeccion>
               <SubSeccion titulo="Valores y metas del consultante">
                 <ListaEditable
                   items={analisis.valores_y_metas}
