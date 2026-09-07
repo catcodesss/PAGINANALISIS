@@ -184,6 +184,35 @@ prueba("toda sección tiene título y ninguno se repite", () => {
   assert.equal(new Set(titulos).size, titulos.length, "hay títulos duplicados");
 });
 
+/* ── Selector de lente ───────────────────────────────────────────────────── */
+
+prueba("el selector de lente aparece una sola vez en el informe", () => {
+  // Repetir el mando en cada sección no daba más control: daba ocasiones de
+  // leer una situación en ACT y la de al lado en DBT sin darse cuenta. Si
+  // alguien vuelve a colocar un <SelectorDeLente> dentro de una sección, esto
+  // lo caza — no da error, solo devuelve el problema que se acaba de quitar.
+  const usos = [...reportView.matchAll(/<SelectorDeLente\b/g)];
+  assert.equal(
+    usos.length,
+    1,
+    `el selector de lente se pinta ${usos.length} veces; tiene que ser una`
+  );
+});
+
+prueba("la lente elegida no vive en el estado del componente", () => {
+  // Es una preferencia del terapeuta, no del informe: se guarda como el orden
+  // de los bloques (ver components/useLente.ts). Con useState volvería a ACT en
+  // cada informe nuevo, que es justo lo que se quería dejar de pedirle.
+  assert.ok(
+    /useLente\(/.test(reportView),
+    "ReportView ya no usa la preferencia persistida de lente"
+  );
+  assert.ok(
+    !/useState<ModeloTerapeutico>/.test(reportView),
+    "la lente volvió a un useState local"
+  );
+});
+
 /* ── Grupos del índice ───────────────────────────────────────────────────── */
 
 prueba("toda sección declara un grupo que existe", () => {

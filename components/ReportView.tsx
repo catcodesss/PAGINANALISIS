@@ -57,6 +57,7 @@ import {
   tooltipConfianza,
 } from "@/lib/nivelesConfianza";
 import FranjaDocumento from "./FranjaDocumento";
+import { useLente } from "./useLente";
 import {
   BloqueOrdenable,
   BotonRestaurarOrden,
@@ -1819,12 +1820,18 @@ function DetalleMC({ capa }: { capa: AnalisisFuncional["capa_mc"] }) {
 const MODELOS: ModeloTerapeutico[] = ["act", "dbt", "mc"];
 
 /**
- * Botones de pestaña reutilizables: se usan tanto arriba de "Análisis por
- * situaciones" (donde cambian qué cadena se ve) como en "Detalle según
- * modelo terapéutico" (donde cambian qué capa se ve), ambos ligados al mismo
- * estado para que no se desincronicen.
+ * El selector de lente: UNO, arriba del informe.
+ *
+ * Antes eran los mismos botones repetidos en cada sección que tenía algo que
+ * enseñar por modelo. Repetir el mando no daba más control: daba más ocasiones
+ * de leer una situación en ACT y la de al lado en DBT sin darse cuenta. El
+ * terapeuta trabaja con un modelo por paciente, lo elige una vez y el documento
+ * entero se adapta.
+ *
+ * No se imprime. En papel no hay nada que pulsar, y el documento exportado
+ * lista todas las capas generadas en vez de una — ver SelectorCapaModalidad.
  */
-function BotonesModalidad({
+function SelectorDeLente({
   activa,
   onChange,
   modelos = MODELOS,
@@ -1838,48 +1845,56 @@ function BotonesModalidad({
   if (modelos.length < 2) return null;
 
   return (
-    <div className="flex w-full overflow-hidden rounded border border-divider print:hidden sm:inline-flex sm:w-auto">
-      {modelos.map((m) => (
-        <button
-          key={m}
-          type="button"
-          onClick={() => onChange(m)}
-          aria-pressed={activa === m}
-          className={`flex-1 px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 sm:flex-none ${
-            activa === m
-              ? "bg-accent texto-sobre-acento"
-              : "bg-surface text-ink-muted hover:bg-canvas"
-          }`}
-        >
-          {ETIQUETA_MODELO[m]}
-        </button>
-      ))}
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 print:hidden">
+      <p
+        id="etiqueta-lente"
+        className="font-mono text-[10px] uppercase tracking-wide text-ink-muted"
+      >
+        Lente terapéutica
+      </p>
+      {/* role=group con su etiqueta: sin esto, un lector de pantalla anuncia
+          tres botones sueltos sin decir de qué son las opciones. */}
+      <div
+        role="group"
+        aria-labelledby="etiqueta-lente"
+        className="flex overflow-hidden rounded border border-divider"
+      >
+        {modelos.map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => onChange(m)}
+            aria-pressed={activa === m}
+            className={`px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+              activa === m
+                ? "bg-accent texto-sobre-acento"
+                : "bg-surface text-ink-muted hover:bg-canvas"
+            }`}
+          >
+            {ETIQUETA_MODELO[m]}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-ink-muted">
+        Vale para todo el informe y se recuerda entre casos. Al imprimir se
+        listan todas.
+      </p>
     </div>
   );
 }
 
-/** Detalle de capa según la pestaña activa; en impresión no hay pestañas interactivas, así que se listan las tres. */
+/** Detalle de la capa elegida; en impresión no hay selector, así que se listan todas. */
 function SelectorCapaModalidad({
   analisis,
   pestanaActiva,
-  onCambiarPestana,
-  modelos,
 }: {
   analisis: AnalisisFuncional;
   pestanaActiva: ModeloTerapeutico;
-  onCambiarPestana: (m: ModeloTerapeutico) => void;
-  modelos?: ModeloTerapeutico[];
 }) {
   return (
     <div>
-      <div className="mb-4">
-        <BotonesModalidad
-          activa={pestanaActiva}
-          onChange={onCambiarPestana}
-          modelos={modelos}
-        />
-      </div>
-
+      {/* Sin botones aquí: la lente se elige una sola vez, arriba del informe
+          (ver SelectorDeLente). */}
       <div className="print:hidden">
         {pestanaActiva === "act" && <DetalleACT capa={analisis.capa_act} />}
         {pestanaActiva === "dbt" && <DetalleDBT capa={analisis.capa_dbt} />}
@@ -2501,20 +2516,14 @@ function InformeOrdenable({
     return todas.filter((m) => analisis.campos_generados.includes(m));
   }, [analisis]);
 
-  const [pestanaElegida, setPestanaActiva] = useState<ModeloTerapeutico>("act");
-
   /*
-    Si la pestaña elegida no se generó, se cae a la primera disponible. Se
-    calcula durante el render y no en un efecto: corregir el estado desde un
-    efecto obliga a un segundo render, y entre los dos hay un fotograma con la
-    pestaña que no existe. Derivarlo aquí lo hace imposible por construcción, y
-    `pestanaElegida` ya no puede quedarse desincronizada de `modalidades`
-    porque no es ella la que se enseña.
+    La lente vive en localStorage y no en el estado del componente: es una
+    preferencia de lectura del terapeuta, no del informe. useLente ya la acota a
+    las capas que este análisis generó, así que una preferencia guardada que
+    aquí no exista cae en la primera disponible sin pasar por un fotograma con
+    la pestaña que no está.
   */
-  const pestanaActiva =
-    modalidades.length > 0 && !modalidades.includes(pestanaElegida)
-      ? modalidades[0]
-      : pestanaElegida;
+  const { lente: pestanaActiva, elegirLente } = useLente(modalidades);
 
   /*
     Las dos primeras columnas del repertorio salen del mismo campo:
@@ -2614,6 +2623,13 @@ function InformeOrdenable({
               Referencia del caso: {referenciaCaso.trim()}
             </p>
           )}
+        </div>
+        <div className="mt-4 border-t border-divider pt-4">
+          <SelectorDeLente
+            activa={pestanaActiva}
+            onChange={elegirLente}
+            modelos={modalidades}
+          />
         </div>
         <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <p className="text-xs text-ink-muted">
@@ -2864,9 +2880,6 @@ function InformeOrdenable({
             id="situaciones"
             titulo="Análisis por situaciones"
             camposReanalisis={["situaciones", "acomodacion_entorno"]}
-            extra={
-              <BotonesModalidad activa={pestanaActiva} onChange={setPestanaActiva} modelos={modalidades} />
-            }
           >
             {analisis.situaciones.length === 0 ? (
               <SinHallazgos />
@@ -3181,8 +3194,6 @@ function InformeOrdenable({
               <SelectorCapaModalidad
                 analisis={analisis}
                 pestanaActiva={pestanaActiva}
-                onCambiarPestana={setPestanaActiva}
-                modelos={modalidades}
               />
             </DetalleModalidad>
           </Seccion>
