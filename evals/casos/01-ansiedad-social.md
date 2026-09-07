@@ -67,7 +67,7 @@ En cuanto a antecedentes, describe un padre muy crítico con el rendimiento esco
     "tipo": "no_debe_aparecer",
     "ambito": "variables_moduladoras",
     "incluirRuta": true,
-    "patron": "(?=.*biologic)(?=.*(duerme|dormir|sueno|insomnio))"
+    "patron": "(?=.*(biologic|biofisiolog))(?=.*(duerme|dormir|sueno|insomnio))"
   },
   {
     "id": "perdida-de-reforzadores",

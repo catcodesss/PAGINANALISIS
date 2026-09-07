@@ -20,21 +20,21 @@ Su marido está en paro desde enero y ella refiere que ahora todo depende de su 
     "id": "tiroides-como-biologica",
     "descripcion": "El hipotiroidismo con TSH alterada sí es una variable biológica y debe recogerse",
     "tipo": "debe_aparecer",
-    "ambito": "biologic",
+    "ambito": "biologic|biofisiolog",
     "patron": "tiroid|levotiroxina|tsh"
   },
   {
     "id": "insomnio-no-es-causa",
     "descripcion": "El insomnio y la pérdida de peso son productos del cuadro, no vulnerabilidades biológicas",
     "tipo": "no_debe_aparecer",
-    "ambito": "biologic",
+    "ambito": "biologic|biofisiolog",
     "patron": "insomnio|duerme|dormir|peso|apetito"
   },
   {
     "id": "precipitante-contextual",
     "descripcion": "La reestructuración laboral debe aparecer como contextual o precipitante",
     "tipo": "debe_aparecer",
-    "ambito": "contextual|precipitante|moduladoras|situaciones",
+    "ambito": "contextual|sociocultural|precipitante|moduladoras|situaciones",
     "patron": "reestructuracion|empresa|laboral|despido|trabajo"
   },
   {

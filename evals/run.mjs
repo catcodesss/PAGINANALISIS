@@ -70,14 +70,19 @@ function aplanar(valor, ruta = '', salida = []) {
 
 /**
  * Muchos arrays del informe se distinguen por un campo interno, no por su ruta:
- * variables_moduladoras[] usa `tipo: "biologica"`, habilidades_sugeridas[] usa
- * `modulo`, reglas_verbales[] usa `clase`. Sin esto, un `ambito` como "biologic"
- * no encontraría nada, porque la ruta solo dice variables_moduladoras[0].
- * Lo añadimos a la ruta como {biologica} para poder acotar por él.
+ * variables_moduladoras[] usa `nivel: "biofisiologico"`, habilidades_sugeridas[]
+ * usa `modulo`, reglas_verbales[] usa `clase`. Sin esto, un `ambito` como
+ * "biofisiolog" no encontraría nada, porque la ruta solo dice
+ * variables_moduladoras[0]. Lo añadimos a la ruta como {biofisiologico} para
+ * poder acotar por él.
+ *
+ * `nivel` va antes que `tipo` desde la rejilla de contexto y procesos: las
+ * variables moduladoras dejaron de tener `tipo`, y el orden decide cuál gana
+ * cuando un objeto tiene varios de estos campos.
  */
 function discriminador(item) {
   if (!item || typeof item !== 'object' || Array.isArray(item)) return '';
-  for (const campo of ['tipo', 'clase', 'modulo', 'proceso', 'nombre', 'situacion']) {
+  for (const campo of ['nivel', 'tipo', 'clase', 'modulo', 'proceso', 'nombre', 'situacion']) {
     const v = item[campo];
     if (typeof v === 'string' && v.length > 0 && v.length < 60) return `{${v}}`;
   }

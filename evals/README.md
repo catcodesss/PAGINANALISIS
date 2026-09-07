@@ -38,7 +38,7 @@ de comprobaciones en su propio archivo. Dos tipos:
   biológicas, dar confianza alta a una nota de cuatro líneas).
 
 El campo `ambito` limita la búsqueda a una parte del informe: es una expresión
-regular sobre la ruta del dato, por ejemplo `conductas_problema` o `biologic`.
+regular sobre la ruta del dato, por ejemplo `conductas_problema` o `biofisiolog`.
 Sin `ambito`, busca en todo el informe.
 
 Los patrones se comparan sin acentos y en minúsculas, así que escribe
