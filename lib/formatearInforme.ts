@@ -1,4 +1,4 @@
-import type { AnalisisFuncional, Cita, Situacion } from "./types";
+import { ETIQUETA_ESQUEMA, type AnalisisFuncional, type Cita, type Situacion } from "./types";
 import { agruparAlertas } from "./validadores";
 import { ORDEN_SECCIONES_POR_DEFECTO, TITULO_DE_SECCION } from "./secciones";
 import { AVISO_EJEMPLO } from "./maqueta";
@@ -57,8 +57,13 @@ function formatearSituacion(s: Situacion): string {
     lineas.push(`  Antecedente: ${c.antecedente}`);
     lineas.push(`  Respuesta: ${c.respuesta}`);
     lineas.push(
-      `  Consecuencia [${c.tipo_contingencia}, ${c.inmediatez}]: ${c.consecuencia}`
+      `  Consecuencia [${c.tipo_contingencia}, ${c.inmediatez}, ${ETIQUETA_ESQUEMA[c.esquema_de_contingencia]}]: ${c.consecuencia}`
     );
+    if (c.esquema_de_contingencia === "intermitente") {
+      lineas.push(
+        "    El refuerzo intermitente sostiene el patrón mucho más que uno continuo: cuenta con más resistencia a la extinción y más dosis de exposición."
+      );
+    }
     if (c.consecuencias_largo_plazo) {
       lineas.push(`  Consecuencias a largo plazo: ${c.consecuencias_largo_plazo}`);
     }

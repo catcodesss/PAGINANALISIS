@@ -55,7 +55,8 @@
           "tipo_contingencia": "refuerzo negativo",
           "inmediatez": "inmediata",
           "consecuencias_largo_plazo": "Erosión de la confianza en sus habilidades.",
-          "evidencia": "Sintió un alivio inmediato muy fuerte."
+          "evidencia": "Sintió un alivio inmediato muy fuerte.",
+          "esquema_de_contingencia": "intermitente"
         },
         "cadena_dbt": {
           "factores_vulnerabilidad": [
@@ -105,7 +106,8 @@
           "tipo_contingencia": "refuerzo negativo",
           "inmediatez": "inmediata",
           "consecuencias_largo_plazo": "Posible reprimenda por decisiones indebidas.",
-          "evidencia": "Aceptó una compensación que no le correspondía autorizar."
+          "evidencia": "Aceptó una compensación que no le correspondía autorizar.",
+          "esquema_de_contingencia": "continua"
         },
         "cadena_dbt": null,
         "cadena_respondiente": null,
@@ -123,7 +125,8 @@
           "tipo_contingencia": "refuerzo negativo",
           "inmediatez": "inmediata",
           "consecuencias_largo_plazo": "Dependencia del alcohol para socializar.",
-          "evidencia": "Bebe dos o tres copas de vino antes de quedar con amigos."
+          "evidencia": "Bebe dos o tres copas de vino antes de quedar con amigos.",
+          "esquema_de_contingencia": "no_determinable"
         },
         "cadena_dbt": null,
         "cadena_respondiente": null,

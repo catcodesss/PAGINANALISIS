@@ -87,12 +87,43 @@ export interface Riesgo {
   indicadores: string[];
 }
 
+/**
+ * Cada cuánto sigue la consecuencia a la respuesta. No es lo mismo que
+ * `tipo_contingencia` (esa dice QUÉ pasa: R+/R−/C+/C−/extinción) y no se
+ * deduce de ella: es CON QUÉ REGULARIDAD pasa.
+ *
+ * Explica la resistencia a la extinción, que es la variable que decide la
+ * dosis de tratamiento. Un alivio que llega siempre se apaga rápido en cuanto
+ * deja de llegar; uno intermitente sostiene la evitación mucho más tiempo, y
+ * exige bastante más exposición antes de que el patrón ceda. Sin este dato,
+ * dos cadenas idénticas sobre el papel piden planes de intervención distintos
+ * sin que nada lo indique.
+ *
+ * "no_determinable" es una respuesta válida y frecuente: la nota de una sesión
+ * rara vez dice cada cuánto ocurre algo, y adivinarlo aquí produciría una dosis
+ * de exposición apoyada en nada.
+ */
+export type EsquemaDeContingencia = "continua" | "intermitente" | "no_determinable";
+
+/**
+ * Cómo se nombra cada esquema de cara al clínico. Vive junto al tipo y no en
+ * el componente porque el informe exportado escribe lo mismo: dos redacciones
+ * del mismo dato acabarían diciendo cosas distintas.
+ */
+export const ETIQUETA_ESQUEMA: Record<EsquemaDeContingencia, string> = {
+  continua: "esquema continuo",
+  intermitente: "esquema intermitente",
+  no_determinable: "esquema no determinable",
+};
+
 export interface CadenaOperante {
   antecedente: string;
   operacion_motivacional: string | null;
   respuesta: string;
   consecuencia: string;
   tipo_contingencia: TipoContingencia;
+  /** Cada cuánto sigue la consecuencia. Ver EsquemaDeContingencia. */
+  esquema_de_contingencia: EsquemaDeContingencia;
   inmediatez: "inmediata" | "demorada";
   /** Efecto a mediano/largo plazo del patrón (CMLP): coste o mantenimiento futuro, distinto de la consecuencia inmediata. */
   consecuencias_largo_plazo: string | null;

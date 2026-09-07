@@ -13,6 +13,7 @@ import {
   type ConductaProblema,
   type DatoFaltante,
   type DeficitOInterferencia,
+  type EsquemaDeContingencia,
   type Formulacion,
   type HipotesisAlternativa,
   type HipotesisMantenimiento,
@@ -147,6 +148,24 @@ function normalizarVariableModuladora(valor: unknown, lineas: string[]): Variabl
   };
 }
 
+const ESQUEMAS_CONTINGENCIA: EsquemaDeContingencia[] = [
+  "continua",
+  "intermitente",
+  "no_determinable",
+];
+
+/**
+ * Lo desconocido cae en "no_determinable", nunca en "continua" ni en
+ * "intermitente": un valor por defecto que afirmara un esquema concreto
+ * alteraría la dosis de exposición que el informe sugiere, apoyándose en que
+ * el modelo omitió una clave.
+ */
+function comoEsquemaContingencia(valor: unknown): EsquemaDeContingencia {
+  return ESQUEMAS_CONTINGENCIA.includes(valor as EsquemaDeContingencia)
+    ? (valor as EsquemaDeContingencia)
+    : "no_determinable";
+}
+
 function normalizarCadenaOperante(valor: unknown, lineas: string[]): CadenaOperante | null {
   const d = comoObjetoONulo(valor);
   if (!d) return null;
@@ -156,6 +175,7 @@ function normalizarCadenaOperante(valor: unknown, lineas: string[]): CadenaOpera
     respuesta: comoTexto(d.respuesta),
     consecuencia: comoTexto(d.consecuencia),
     tipo_contingencia: comoTipoContingencia(d.tipo_contingencia),
+    esquema_de_contingencia: comoEsquemaContingencia(d.esquema_de_contingencia),
     inmediatez: d.inmediatez === "demorada" ? "demorada" : "inmediata",
     consecuencias_largo_plazo: comoTextoONulo(d.consecuencias_largo_plazo),
     evidencia: resolverCita(lineas, d.evidencia),

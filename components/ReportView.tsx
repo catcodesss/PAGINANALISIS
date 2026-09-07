@@ -23,6 +23,7 @@ import type {
   Situacion,
   TipoEslabonDBT,
 } from "@/lib/types";
+import { ETIQUETA_ESQUEMA } from "@/lib/types";
 import {
   contieneDatosIdentificables,
   enmascararDatosIdentificables,
@@ -822,10 +823,30 @@ function CadenaOperanteView({ cadena }: { cadena: CadenaOperante }) {
   }
   filas.push({ elemento: "RO", valor: cadena.respuesta });
   filas.push({ elemento: "C", valor: cadena.consecuencia });
+  /*
+    El esquema va en la misma fila que la contingencia, no en una propia: son
+    las dos mitades del mismo dato —qué pasa tras la respuesta y cada cuánto
+    pasa— y separarlas invitaría a leer solo la primera, que es justo el
+    descuido que este campo existe para evitar.
+  */
   filas.push({
     elemento: "Consecuencia",
-    valor: `${codigo} (${cadena.tipo_contingencia}, ${cadena.inmediatez})`,
+    valor: `${codigo} (${cadena.tipo_contingencia}, ${cadena.inmediatez}, ${ETIQUETA_ESQUEMA[cadena.esquema_de_contingencia]})`,
   });
+  /*
+    La consecuencia clínica del esquema intermitente se escribe, no se deja a
+    que el lector la recuerde: es lo que decide cuánta exposición hace falta, y
+    va donde se toma esa decisión. Con "continua" y "no_determinable" no se
+    dice nada — una nota que repita lo obvio o que rellene un hueco donde no
+    hay dato le resta peso a la que sí importa.
+  */
+  if (cadena.esquema_de_contingencia === "intermitente") {
+    filas.push({
+      elemento: "Resistencia",
+      valor:
+        "El refuerzo intermitente sostiene el patrón mucho más que uno continuo: cuenta con más resistencia a la extinción y, por tanto, con más dosis de exposición de la que pediría esta misma cadena en esquema continuo.",
+    });
+  }
   if (cadena.consecuencias_largo_plazo) {
     filas.push({ elemento: "CMLP", valor: cadena.consecuencias_largo_plazo });
   }

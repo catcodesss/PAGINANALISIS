@@ -261,6 +261,41 @@ prueba("cada alerta dice en qué sección del informe puede haberse reflejado", 
   assert.equal(seccionDeRuta("general"), null);
 });
 
+prueba("un esquema de contingencia ausente o inventado cae en no_determinable", () => {
+  // El valor por defecto NO puede afirmar un esquema: el esquema decide la
+  // dosis de exposición que el informe sugiere, y elegir "continua" porque el
+  // modelo omitió la clave sería recomendar menos exposición apoyándose en un
+  // descuido del proveedor.
+  const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+  delete crudo.situaciones[0].cadena_operante.esquema_de_contingencia;
+  crudo.situaciones[1].cadena_operante.esquema_de_contingencia = "razon variable";
+  const normalizado = normalizarAnalisis(crudo, lineas);
+  assert.equal(
+    normalizado.situaciones[0].cadena_operante.esquema_de_contingencia,
+    "no_determinable"
+  );
+  assert.equal(
+    normalizado.situaciones[1].cadena_operante.esquema_de_contingencia,
+    "no_determinable"
+  );
+});
+
+prueba("el esquema no se deduce del tipo de contingencia", () => {
+  // Son dos ejes independientes: qué pasa tras la respuesta y cada cuánto
+  // pasa. Un R− puede ser continuo o intermitente, y el normalizador no puede
+  // rellenar uno a partir del otro.
+  const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+  crudo.situaciones[0].cadena_operante.tipo_contingencia = "refuerzo negativo";
+  crudo.situaciones[0].cadena_operante.esquema_de_contingencia = "intermitente";
+  crudo.situaciones[1].cadena_operante.tipo_contingencia = "refuerzo negativo";
+  crudo.situaciones[1].cadena_operante.esquema_de_contingencia = "continua";
+  const normalizado = normalizarAnalisis(crudo, lineas);
+  assert.notEqual(
+    normalizado.situaciones[0].cadena_operante.esquema_de_contingencia,
+    normalizado.situaciones[1].cadena_operante.esquema_de_contingencia
+  );
+});
+
 prueba("el repertorio disponible reparte las columnas sin perder ninguna conducta", () => {
   // Excesos y déficits salen del mismo campo: "deficit" a Déficits, todo lo
   // demás a Excesos. Si el reparto perdiera una conducta, desaparecería del
