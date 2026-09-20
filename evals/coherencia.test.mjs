@@ -48,7 +48,9 @@ execFileSync(
 );
 
 const require = createRequire(import.meta.url);
-const { ESCALA_TEXTO } = require(join(RAIZ, ".tmp-evals/preferencias.js"));
+const { ESCALA_TEXTO, claveEstiloGrafo } = require(
+  join(RAIZ, ".tmp-evals/preferencias.js")
+);
 const { SECCIONES_INFORME, ANCLAS_INFORME } = require(
   join(RAIZ, ".tmp-evals/secciones.js")
 );
@@ -56,6 +58,10 @@ const { reconciliarOrden } = require(join(RAIZ, ".tmp-evals/ordenSecciones.js"))
 
 const css = readFileSync(join(RAIZ, "app/globals.css"), "utf8");
 const reportView = readFileSync(join(RAIZ, "components/ReportView.tsx"), "utf8");
+const grafoAFC = readFileSync(join(RAIZ, "components/grafo/GrafoAFC.tsx"), "utf8");
+const estilosGrafo = ["dbt", "act", "mc"].map((estilo) =>
+  readFileSync(join(RAIZ, `components/grafo/estilos/${estilo}.tsx`), "utf8")
+);
 
 let pasadas = 0;
 function prueba(nombre, fn) {
@@ -285,6 +291,24 @@ prueba("la lente elegida no vive en el estado del componente", () => {
     !/useState<ModeloTerapeutico>/.test(reportView),
     "la lente volvió a un useState local"
   );
+});
+
+prueba("los estilos del grafo son proyecciones locales de una sola colección", () => {
+  assert.equal(
+    [...grafoAFC.matchAll(/construirNodosGrafo\(analisis\)/g)].length,
+    1,
+    "el contenedor dejó de construir una única colección de nodos"
+  );
+  for (const fuente of estilosGrafo) {
+    assert.ok(/nodos:\s*readonly NodoGrafo\[\]/.test(fuente));
+    assert.ok(/renderNodo/.test(fuente));
+    assert.ok(!/\bfetch\s*\(/.test(fuente), "un cambio de estilo hace una petición de red");
+  }
+});
+
+prueba("el estilo del grafo se guarda por referencia de caso", () => {
+  assert.notEqual(claveEstiloGrafo("M.34"), claveEstiloGrafo("L.12"));
+  assert.equal(claveEstiloGrafo(""), "acia-estilo-grafo:borrador");
 });
 
 /* ── Orden de fábrica de las anclas ──────────────────────────────────────── */

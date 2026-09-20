@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import type { ModeloTerapeutico } from "@/lib/types";
+import {
+  ESTILO_GRAFO_POR_DEFECTO,
+  claveEstiloGrafo,
+  type EstiloGrafo,
+} from "@/lib/preferencias";
 
 /**
  * La lente terapéutica con la que se lee el informe entero.
@@ -14,16 +18,13 @@ import type { ModeloTerapeutico } from "@/lib/types";
  * ocasiones de desincronizarse.
  *
  * Se guarda igual que la preferencia de orden (ver components/ordenBloques.tsx)
- * y por la misma razón: es una preferencia de lectura, no contenido clínico, así
- * que vive en localStorage sin rozar el invariante 5. Persiste entre casos a
- * propósito — quien trabaja en DBT lo hace con todos sus pacientes, y volver a
- * ACT en cada informe nuevo sería pedirle lo mismo cada vez.
+ * y por la misma razón: es una preferencia de lectura, no contenido clínico.
+ * La clave se acota a la referencia local del caso para que una vista elegida
+ * para un análisis no cambie la presentación inicial de otro.
  *
  * En impresión no cambia nada: el documento sigue listando todas las capas
  * generadas, porque en papel no hay selector que pulsar.
  */
-
-const CLAVE_ALMACEN = "acia-lente";
 
 const suscriptores = new Set<() => void>();
 
@@ -34,9 +35,9 @@ function suscribir(alCambiar: () => void) {
   };
 }
 
-function leerCrudo(): string {
+function leerCrudo(clave: string): string {
   try {
-    return localStorage.getItem(CLAVE_ALMACEN) ?? "";
+    return localStorage.getItem(clave) ?? "";
   } catch {
     return "";
   }
@@ -47,21 +48,26 @@ function leerCrudoEnServidor(): string {
   return "";
 }
 
-export const LENTE_POR_DEFECTO: ModeloTerapeutico = "act";
+export const LENTE_POR_DEFECTO: EstiloGrafo = ESTILO_GRAFO_POR_DEFECTO;
 
 /**
  * Un valor guardado por una versión anterior —o una capa que este análisis
  * parcial no generó— no puede dejar el informe enseñando una lente que no
  * existe. `disponibles` lo acota a lo que este informe puede mostrar.
  */
-export function useLente(disponibles: ModeloTerapeutico[]): {
-  lente: ModeloTerapeutico;
-  elegirLente: (m: ModeloTerapeutico) => void;
+export function useLente(disponibles: EstiloGrafo[], referenciaCaso = ""): {
+  lente: EstiloGrafo;
+  elegirLente: (m: EstiloGrafo) => void;
 } {
-  const crudo = useSyncExternalStore(suscribir, leerCrudo, leerCrudoEnServidor);
+  const clave = claveEstiloGrafo(referenciaCaso);
+  const crudo = useSyncExternalStore(
+    suscribir,
+    () => leerCrudo(clave),
+    leerCrudoEnServidor
+  );
 
-  const guardada = disponibles.includes(crudo as ModeloTerapeutico)
-    ? (crudo as ModeloTerapeutico)
+  const guardada = disponibles.includes(crudo as EstiloGrafo)
+    ? (crudo as EstiloGrafo)
     : null;
 
   // Se resuelve durante el render y no en un efecto: corregir el estado desde
@@ -73,14 +79,14 @@ export function useLente(disponibles: ModeloTerapeutico[]): {
       ? LENTE_POR_DEFECTO
       : (disponibles[0] ?? LENTE_POR_DEFECTO));
 
-  const elegirLente = useCallback((m: ModeloTerapeutico) => {
+  const elegirLente = useCallback((m: EstiloGrafo) => {
     try {
-      localStorage.setItem(CLAVE_ALMACEN, m);
+      localStorage.setItem(clave, m);
     } catch {
       // Modo privado o almacenamiento lleno: vale para esta sesión.
     }
     for (const alCambiar of suscriptores) alCambiar();
-  }, []);
+  }, [clave]);
 
   return { lente, elegirLente };
 }

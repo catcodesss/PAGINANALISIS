@@ -218,6 +218,14 @@ export function construirNodosGrafo(analisis: AnalisisFuncional): NodoGrafo[] {
   return salida;
 }
 
+/** Las lecturas clínicas especializadas requieren al menos una conducta relacionada. */
+export function hayGrafoBase(analisis: AnalisisFuncional): boolean {
+  const idsConducta = new Set(analisis.conductas_problema.map((conducta) => conducta.id));
+  return idsConducta.size > 0 && analisis.aristas.some(
+    (arista) => idsConducta.has(arista.desde) || idsConducta.has(arista.hasta)
+  );
+}
+
 export function apoyoCadena(nodos: readonly NodoGrafo[]): 1 | 2 | 3 {
   const relevantes = nodos.filter((n) => !n.alternativa && n.tipo !== "funcion");
   return relevantes.length

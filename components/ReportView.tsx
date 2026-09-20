@@ -68,6 +68,8 @@ import {
   useOrden,
 } from "./ordenBloques";
 import GrafoAFC from "./grafo/GrafoAFC";
+import { hayGrafoBase } from "@/lib/grafo";
+import type { EstiloGrafo } from "@/lib/preferencias";
 import {
   Chip,
   ChipDestacado,
@@ -104,9 +106,10 @@ interface SeccionIndice {
   titulo: string;
 }
 
-const ETIQUETA_MODELO: Record<ModeloTerapeutico, string> = {
-  act: "ACT",
+const ETIQUETA_ESTILO: Record<EstiloGrafo, string> = {
+  afc: "AFC",
   dbt: "DBT",
+  act: "ACT",
   mc: "Conductual (MC)",
 };
 
@@ -1649,7 +1652,7 @@ function DetalleMC({ capa }: { capa: AnalisisFuncional["capa_mc"] }) {
   );
 }
 
-const MODELOS: ModeloTerapeutico[] = ["act", "dbt", "mc"];
+const ESTILOS_GRAFO: EstiloGrafo[] = ["afc", "dbt", "act", "mc"];
 
 /**
  * El selector de lente: UNO, arriba del informe.
@@ -1666,23 +1669,19 @@ const MODELOS: ModeloTerapeutico[] = ["act", "dbt", "mc"];
 function SelectorDeLente({
   activa,
   onChange,
-  modelos = MODELOS,
+  habilitaLecturas,
 }: {
-  activa: ModeloTerapeutico;
-  onChange: (m: ModeloTerapeutico) => void;
-  /** En un análisis parcial solo se ofrecen las capas que se generaron. */
-  modelos?: ModeloTerapeutico[];
+  activa: EstiloGrafo;
+  onChange: (m: EstiloGrafo) => void;
+  habilitaLecturas: boolean;
 }) {
-  // Con una sola capa no hay nada que alternar: el selector sobra.
-  if (modelos.length < 2) return null;
-
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 print:hidden">
       <p
         id="etiqueta-lente"
         className="font-mono text-[10px] uppercase tracking-wide text-ink-muted"
       >
-        Lente terapéutica
+        Estilo del grafo
       </p>
       {/* role=group con su etiqueta: sin esto, un lector de pantalla anuncia
           tres botones sueltos sin decir de qué son las opciones. */}
@@ -1691,25 +1690,30 @@ function SelectorDeLente({
         aria-labelledby="etiqueta-lente"
         className="flex overflow-hidden rounded border border-divider"
       >
-        {modelos.map((m) => (
+        {ESTILOS_GRAFO.map((m) => {
+          const deshabilitada = m !== "afc" && !habilitaLecturas;
+          return (
           <button
             key={m}
             type="button"
+            disabled={deshabilitada}
             onClick={() => onChange(m)}
             aria-pressed={activa === m}
-            className={`px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+            title={deshabilitada ? "Añade una relación que toque una conducta para habilitar esta lectura" : undefined}
+            className={`px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:cursor-not-allowed disabled:opacity-40 ${
               activa === m
                 ? "bg-accent texto-sobre-acento"
                 : "bg-surface text-ink-muted hover:bg-canvas"
             }`}
           >
-            {ETIQUETA_MODELO[m]}
+            {ETIQUETA_ESTILO[m]}
           </button>
-        ))}
+          );
+        })}
       </div>
       <p className="text-xs text-ink-muted">
-        Vale para todo el informe y se recuerda entre casos. Al imprimir se
-        listan todas.
+        Las cuatro vistas leen las mismas entidades y relaciones. La preferencia
+        se recuerda por caso; la exportación siempre usa AFC.
       </p>
     </div>
   );
@@ -2359,13 +2363,6 @@ function InformeOrdenable({
   const ids = useMemo(() => seccionesVisibles.map((s) => s.id), [seccionesVisibles]);
   const activa = useSeccionActiva(ids);
 
-  // Solo se ofrecen las pestañas de modalidad que se hayan generado.
-  const modalidades = useMemo<ModeloTerapeutico[]>(() => {
-    const todas: ModeloTerapeutico[] = ["act", "dbt", "mc"];
-    if (analisis.campos_generados.length === 0) return todas;
-    return todas.filter((m) => analisis.campos_generados.includes(m));
-  }, [analisis]);
-
   /*
     La lente vive en localStorage y no en el estado del componente: es una
     preferencia de lectura del terapeuta, no del informe. useLente ya la acota a
@@ -2373,7 +2370,12 @@ function InformeOrdenable({
     aquí no exista cae en la primera disponible sin pasar por un fotograma con
     la pestaña que no está.
   */
-  const { lente: pestanaActiva, elegirLente } = useLente(modalidades);
+  const grafoBaseDisponible = hayGrafoBase(analisis);
+  const estilosDisponibles = grafoBaseDisponible ? ESTILOS_GRAFO : ["afc" as const];
+  const { lente: pestanaActiva, elegirLente } = useLente(
+    estilosDisponibles as EstiloGrafo[],
+    referenciaCaso
+  );
 
   const hipotesisDestacada = useMemo(() => {
     const conductaAlta = analisis.conductas_problema.find(
@@ -2455,7 +2457,7 @@ function InformeOrdenable({
           <SelectorDeLente
             activa={pestanaActiva}
             onChange={elegirLente}
-            modelos={modalidades}
+            habilitaLecturas={grafoBaseDisponible}
           />
         </div>
         <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
@@ -2600,6 +2602,7 @@ function InformeOrdenable({
               <GrafoAFC
                 analisis={analisis}
                 notaOriginal={notaOriginal}
+                estilo={pestanaActiva}
                 onEditar={(mutar) => onEditarSeccion("situaciones", mutar)}
               />
             )}

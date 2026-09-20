@@ -1,7 +1,13 @@
 # Relevo — ACIA, refactor del informe
 
-Eres la siguiente IA de código en este trabajo. **Las fases 0 y 1 están hechas y
-commiteadas.** Te tocan las fases 2, 3 y 4. Lee esto entero antes de tocar nada.
+> Estado actualizado: las fases 2 y 3 ya están implementadas. El grafo AFC
+> editable quedó en `10243c1`; la fase 3 añade lecturas DBT, ACT y MC sobre las
+> mismas entidades, con AFC por defecto y preferencia por caso. Falta la fase 4:
+> derivar la prosa del grafo. La decisión confirmada es que la prosa derivada
+> gana salvo en las secciones que el profesional haya editado manualmente.
+
+Eres la siguiente IA de código en este trabajo. **Las fases 0, 1, 2 y 3 están
+hechas.** Te toca la fase 4. Lee esto entero antes de tocar nada.
 
 Repo: `Desktop/ACIA` (Next.js 16, React 19, TypeScript, Tailwind v4).
 Rama `main`, dos commits por delante de `origin/main`:

@@ -1,5 +1,29 @@
 # CAMBIOS
 
+## Fase 3 — un grafo, cuatro lecturas
+
+El bloque funcional conserva una sola colección de entidades y relaciones,
+pero ahora puede ordenarla como AFC, cadena DBT, matriz ACT o lectura
+conductual MC. El cambio de estilo no llama al servidor ni crea copias de los
+datos. El contador superior sale siempre de `construirNodosGrafo` y la edición
+de etiquetas se refleja al instante al volver a cualquier otra vista.
+
+AFC sigue siendo la vista inicial y la única que permite añadir, borrar o
+conectar estructura. DBT, ACT y MC se habilitan cuando existe al menos una
+conducta tocada por una relación; antes muestran un tooltip explicativo. La
+preferencia se guarda por referencia local del caso. Pantalla puede usar las
+cuatro lecturas, mientras impresión y exportación conservan AFC como base.
+
+DBT muestra una conducta problema cada vez y alinea prevención, habilidades,
+alternativa, consecuencia necesaria y reparación con las fases de la cadena.
+ACT agrega todas las situaciones en una matriz 2×2 y deja que el trazador común
+muestre solo las relaciones cuyos extremos están presentes. MC se conserva
+como cuarta lectura de antecedentes, conductas y consecuencias, con sus
+procedimientos sugeridos, sin convertirse en otro almacén clínico.
+
+Las pruebas de coherencia fijan que las lecturas reciben la misma colección,
+que no contienen `fetch` y que la preferencia queda separada por caso.
+
 ## Fase 2 — el bloque 2 es un grafo AFC editable
 
 `AnalisisFuncional.aristas` conserva ahora las relaciones que ve y corrige el

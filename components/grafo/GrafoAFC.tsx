@@ -8,6 +8,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import type { AnalisisFuncional, TipoArista } from "@/lib/types";
+import type { EstiloGrafo } from "@/lib/preferencias";
 import {
   CARRILES_GRAFO,
   agregarArista,
@@ -21,10 +22,14 @@ import {
   type NodoGrafo,
   type TipoNodoGrafo,
 } from "@/lib/grafo";
+import VistaACT from "./estilos/act";
+import VistaDBT from "./estilos/dbt";
+import VistaMC from "./estilos/mc";
 
 interface GrafoAFCProps {
   analisis: AnalisisFuncional;
   notaOriginal: string;
+  estilo: EstiloGrafo;
   onEditar: (mutar: (copia: AnalisisFuncional) => void) => void;
 }
 
@@ -230,7 +235,7 @@ function BotonAgregarNodo({
   );
 }
 
-export default function GrafoAFC({ analisis, notaOriginal, onEditar }: GrafoAFCProps) {
+export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const pila = useRef<AnalisisFuncional[]>([]);
   const rehacer = useRef<AnalisisFuncional[]>([]);
@@ -343,9 +348,20 @@ export default function GrafoAFC({ analisis, notaOriginal, onEditar }: GrafoAFCP
       window.removeEventListener("resize", dibujar);
       window.removeEventListener("scroll", dibujar, true);
     };
-  }, [analisis.aristas, nodos]);
+  }, [analisis.aristas, nodos, estilo]);
 
   const globales = nodos.filter((n) => n.situacion_id === null);
+  const renderNodo = (n: NodoGrafo) => (
+    <Nodo
+      nodo={n}
+      seleccionado={seleccionado === n.id}
+      atenuado={(filtro !== null && n.apoyo !== filtro) || (soloApoyado && n.apoyo < 3)}
+      conectando={estilo === "afc" && modoConectar}
+      onSeleccionar={seleccionarNodo}
+      onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
+      onCita={irACita}
+    />
+  );
 
   return (
     <div className="print:contents">
@@ -354,9 +370,11 @@ export default function GrafoAFC({ analisis, notaOriginal, onEditar }: GrafoAFCP
         <button type="button" disabled={!puedeRehacer} onClick={rehacerAccion} className="rounded border border-divider px-3 py-1.5 text-xs text-ink disabled:opacity-40">Rehacer</button>
         <button
           type="button"
+          disabled={estilo !== "afc"}
           aria-pressed={modoConectar}
           onClick={() => { setModoConectar((v) => !v); setOrigenConexion(null); }}
-          className={`rounded border px-3 py-1.5 text-xs ${modoConectar ? "border-accent bg-accent/10 text-accent" : "border-divider text-ink"}`}
+          title={estilo === "afc" ? "Crear una relación entre dos nodos" : "Las relaciones se editan en la vista AFC"}
+          className={`rounded border px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${modoConectar ? "border-accent bg-accent/10 text-accent" : "border-divider text-ink"}`}
         >
           {origenConexion ? "Elige el destino" : "Conectar"}
         </button>
@@ -385,6 +403,15 @@ export default function GrafoAFC({ analisis, notaOriginal, onEditar }: GrafoAFCP
               <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink-muted/60"} markerEnd="url(#punta-afc)" />
             ))}
           </svg>
+
+          {estilo !== "afc" ? (
+            <div className="relative z-10">
+              {estilo === "dbt" && <VistaDBT analisis={analisis} nodos={nodos} renderNodo={renderNodo} />}
+              {estilo === "act" && <VistaACT analisis={analisis} nodos={nodos} renderNodo={renderNodo} />}
+              {estilo === "mc" && <VistaMC analisis={analisis} nodos={nodos} renderNodo={renderNodo} />}
+            </div>
+          ) : (
+          <>
 
           <div className="relative z-10 hidden grid-cols-6 gap-2 px-2 md:grid">
             {CARRILES_GRAFO.map((carril) => <div key={carril.id} className="pb-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted"><b className="block text-ink">{carril.titulo}</b>{carril.subtitulo}</div>)}
@@ -445,6 +472,8 @@ export default function GrafoAFC({ analisis, notaOriginal, onEditar }: GrafoAFCP
               );
             })}
           </div>
+          </>
+          )}
         </div>
 
         <aside className="grid min-w-0 gap-5 rounded-lg border border-divider bg-canvas p-3 md:grid-cols-2 print:hidden">
@@ -458,8 +487,8 @@ export default function GrafoAFC({ analisis, notaOriginal, onEditar }: GrafoAFCP
               }} rows={3} className="mt-1 w-full rounded border border-divider bg-surface p-2 text-sm text-ink" />
             </label>
             <dl className="space-y-1 text-xs"><div><dt className="inline text-ink-muted">Tipo: </dt><dd className="inline text-ink">{ETIQUETA_TIPO[nodoSeleccionado.tipo]}</dd></div><div><dt className="inline text-ink-muted">Confianza: </dt><dd className="inline text-ink">{nodoSeleccionado.confianza}</dd></div><div><dt className="inline text-ink-muted">Apoyo: </dt><dd className="inline text-ink">{etiquetaApoyo(nodoSeleccionado.apoyo)}</dd></div></dl>
-            <button type="button" onClick={() => aplicar((copia) => borrarNodo(copia, nodoSeleccionado.id))} className="rounded border border-warn/50 px-2 py-1 text-xs text-warn">Borrar nodo</button>
-            <div className="border-t border-divider pt-3"><p className="mb-2 text-xs font-medium text-ink">Relaciones del nodo</p>{analisis.aristas.filter((a) => a.desde === nodoSeleccionado.id || a.hasta === nodoSeleccionado.id).map((a) => <div key={a.id} className="mb-1 flex items-center gap-2 text-[11px] text-ink-muted"><span className="min-w-0 flex-1 truncate">{a.desde} → {a.hasta}</span><button type="button" aria-label={`Borrar relación ${a.id}`} onClick={() => aplicar((copia) => { copia.aristas = copia.aristas.filter((actual) => actual.id !== a.id); })} className="text-warn">Borrar</button></div>)}</div>
+            <button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar nodo" : "La estructura se edita en la vista AFC"} onClick={() => aplicar((copia) => borrarNodo(copia, nodoSeleccionado.id))} className="rounded border border-warn/50 px-2 py-1 text-xs text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar nodo</button>
+            <div className="border-t border-divider pt-3"><p className="mb-2 text-xs font-medium text-ink">Relaciones del nodo</p>{analisis.aristas.filter((a) => a.desde === nodoSeleccionado.id || a.hasta === nodoSeleccionado.id).map((a) => <div key={a.id} className="mb-1 flex items-center gap-2 text-[11px] text-ink-muted"><span className="min-w-0 flex-1 truncate">{a.desde} → {a.hasta}</span><button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar relación" : "Las relaciones se editan en la vista AFC"} aria-label={`Borrar relación ${a.id}`} onClick={() => aplicar((copia) => { copia.aristas = copia.aristas.filter((actual) => actual.id !== a.id); })} className="text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar</button></div>)}</div>
           </div> : <p className="mt-3 text-sm text-ink-muted">Selecciona un nodo. Doble clic sobre su etiqueta para editarla en el grafo.</p>}
           </div>
           <div><h5 className="font-serif text-sm font-semibold text-ink">Nota en bruto</h5><div className="mt-2 max-h-80 overflow-y-auto rounded border border-divider bg-surface p-2 font-mono text-[11px] leading-relaxed">{lineas.map((linea, indice) => <p id={`nota-linea-${indice + 1}`} key={indice} className={`rounded px-1 ${lineaActiva === indice + 1 ? "bg-warn/20 text-ink ring-1 ring-warn/40" : "text-ink-muted"}`}><span className="mr-2 select-none text-ink-muted">L{indice + 1}</span>{linea || " "}</p>)}</div></div>

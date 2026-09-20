@@ -32,6 +32,16 @@ export const ESCALA_TEXTO: Record<TamanoTexto, number> = {
 };
 export type Acento = "verde" | "indigo" | "lavanda" | "teal" | "arena";
 export type Idioma = "es";
+export type EstiloGrafo = "afc" | "dbt" | "act" | "mc";
+
+export const ESTILO_GRAFO_POR_DEFECTO: EstiloGrafo = "afc";
+export const CLAVE_ESTILO_GRAFO = "acia-estilo-grafo";
+
+/** La referencia es un código local; nunca se guarda texto clínico en la clave. */
+export function claveEstiloGrafo(referenciaCaso: string): string {
+  const referencia = referenciaCaso.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
+  return `${CLAVE_ESTILO_GRAFO}:${referencia || "borrador"}`;
+}
 
 export interface Preferencias {
   tema: Tema;
