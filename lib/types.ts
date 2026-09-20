@@ -297,11 +297,13 @@ export interface HipotesisMantenimiento {
   id: Id;
   /** A qué conducta se refiere, con las palabras del modelo. Para mostrar. */
   conducta: string;
+  /** El otro extremo nombrado por el modelo; el servidor lo resuelve a id. */
+  origen: string;
   /**
    * Los dos extremos de la relación, resueltos a id.
    *
-   * `destino_id` sale de `conducta`; `origen_id`, del enunciado, que por el
-   * principio 28 tiene que nombrar el otro extremo. Son lo que permite a
+   * `destino_id` sale de `conducta`; `origen_id`, de `origen`. En informes
+   * anteriores a la fase 4 se recupera desde el enunciado heredado. Son lo que permite a
    * lib/redFuncional.ts dibujar la arista sin adivinarla: antes extraía el
    * origen del enunciado por raíces de palabra y, si no lo encontraba, se
    * saltaba la relación sin decir nada. `null` significa que no se pudo
@@ -309,6 +311,7 @@ export interface HipotesisMantenimiento {
    */
   destino_id: Id | null;
   origen_id: Id | null;
+  /** Prosa heredada o escrita a mano. La vista normal se deriva del grafo. */
   enunciado: string;
   funcion: string;
   confianza: NivelConfianza;

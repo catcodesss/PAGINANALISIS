@@ -194,5 +194,13 @@ prueba("el principio de profundidad viaja en el núcleo", () => {
   assert.ok(prompt.includes("PROFUNDIDAD NO ES LONGITUD"));
 });
 
-console.log(`\n${pasadas}/10 pruebas pasadas`);
+prueba("el modelo declara extremos pero no redacta la hipótesis de mantenimiento", () => {
+  const prompt = construirSystemPrompt(["hipotesis_mantenimiento"]);
+  const esquema = prompt.split("\n").find((linea) => linea.includes('"hipotesis_mantenimiento"'));
+  assert.ok(esquema.includes('"origen"'));
+  assert.ok(!esquema.includes('"enunciado"'));
+  assert.ok(prompt.includes("prompt") || prompt.length > 0);
+});
+
+console.log(`\n${pasadas}/11 pruebas pasadas`);
 if (process.exitCode) console.error("Hay pruebas fallidas.");

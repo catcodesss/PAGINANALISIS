@@ -1,3 +1,226 @@
-import type { ReactNode } from "react";
-import { BloqueBase } from "./primitivas";
-export default function BloqueMantenimiento({ visible, children }: { visible: boolean; children: ReactNode }) { return <BloqueBase id="mantenimiento" visible={visible}>{children}</BloqueBase>; }
+"use client";
+
+/**
+ * Bloque 3 · Formulación integrada.
+ *
+ * Las hipótesis de mantenimiento, el origen y la formulación del caso. La prosa
+ * de las hipótesis llega ya derivada del grafo: aquí no se vuelve a calcular,
+ * porque dos derivaciones de lo mismo acaban diciendo cosas distintas.
+ */
+
+import type { AnalisisFuncional, HipotesisMantenimiento } from "@/lib/types";
+import { BloqueBase, Chip, Confianza, ListaEditable, SinHallazgos, SubSeccion } from "./primitivas";
+import { Seccion } from "./seccion";
+import { TextoEditable } from "../edicionManual";
+import { PriorizacionEstimada, RedFuncionalSVG, SelloNoModificable } from "./mantenimiento";
+
+export default function BloqueMantenimiento({
+  visible,
+  analisis,
+  analisisConProsa,
+  hipotesis,
+  onEditarSeccion,
+}: {
+  visible: boolean;
+  analisis: AnalisisFuncional;
+  analisisConProsa: AnalisisFuncional;
+  hipotesis: HipotesisMantenimiento[];
+  onEditarSeccion: (
+    seccionId: string,
+    mutar: (copia: AnalisisFuncional) => void
+  ) => void;
+}) {
+  const prosaDerivada = { hipotesis };
+  return (
+    <BloqueBase id="mantenimiento" visible={visible}>
+      <Seccion
+        id="hipotesis-mantenimiento"
+        titulo="Hipótesis de mantenimiento"
+        camposReanalisis={["hipotesis_mantenimiento"]}
+      >
+        {prosaDerivada.hipotesis.length === 0 ? (
+          <SinHallazgos />
+        ) : (
+          <ul className="space-y-4">
+            {prosaDerivada.hipotesis.map((h, i) => (
+              <li key={i} className="hipotesis-card rounded border border-divider p-4">
+                {/*
+                  Sin rótulo con la conducta encima: el enunciado derivado
+                  la nombra dentro («…se observa «X»…»), y tenerla también
+                  aquí escribía el mismo dato dos veces por tarjeta. Con
+                  cinco hipótesis sobre la misma conducta eso eran cinco
+                  repeticiones que no añadían nada.
+                */}
+                <TextoEditable
+                  valor={h.enunciado}
+                  seccionId="hipotesis-mantenimiento"
+                  etiqueta={`Hipótesis de mantenimiento ${i + 1}`}
+                  className="mt-1 text-[15px] leading-relaxed text-ink"
+                  onCambio={(v) =>
+                    onEditarSeccion("hipotesis-mantenimiento", (copia) => {
+                      copia.hipotesis_mantenimiento[i] = {
+                        ...copia.hipotesis_mantenimiento[i],
+                        enunciado: v,
+                      };
+                    })
+                  }
+                />
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  {h.funcion && <Chip>{h.funcion}</Chip>}
+                  <Confianza nivel={h.confianza} />
+                </div>
+                {/*
+                  Etiquetas discretas, en la línea de metadatos y no como
+                  chips de acento: son coeficientes de la relación, no
+                  conclusiones. La función y la confianza siguen mandando
+                  visualmente porque son lo que se lee primero; esto se
+                  consulta cuando ya se ha entendido la hipótesis.
+
+                  El tipo de relación se escribe entero y no como inicial:
+                  "moderadora" y "mediadora" empiezan igual, y la
+                  diferencia entre atenuar un efecto y cortarlo no puede
+                  depender de leer bien una abreviatura.
+                */}
+                <p className="mt-1.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                  Fuerza: {h.fuerza} · {h.tipo_relacion} ·{" "}
+                  {h.direccion === "bidireccional"
+                    ? "bidireccional (bucle)"
+                    : "unidireccional"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <RedFuncionalSVG analisis={analisisConProsa} />
+      </Seccion>
+
+      {/*
+        Sección propia, no un apartado dentro del mantenimiento. Es la
+        defensa estructural contra el error clínico más frecuente en una
+        formulación: tratar el origen —lo que explica cómo se adquirió el
+        problema— en vez de la función que lo sostiene hoy. Mientras el
+        origen vivía debajo de las hipótesis de mantenimiento se leía como
+        una continuación suya, y la distinción quedaba en manos de que el
+        lector se fijara en el subtítulo.
+      */}
+      <Seccion
+        id="hipotesis-origen"
+        titulo="Hipótesis de origen"
+        camposReanalisis={["hipotesis_origen"]}
+      >
+        <SelloNoModificable />
+        <ListaEditable
+          items={analisis.hipotesis_origen}
+          seccionId="hipotesis-origen"
+          etiqueta="hipótesis de origen"
+          claseItem="text-sm italic leading-relaxed text-ink-muted"
+          onCambiar={(nuevos) =>
+            onEditarSeccion("hipotesis-origen", (c) => {
+              c.hipotesis_origen = nuevos;
+            })
+          }
+        />
+      </Seccion>
+
+      <Seccion
+        id="formulacion"
+        titulo="Formulación del caso"
+        camposReanalisis={[
+          "formulacion",
+          "fortalezas_y_recursos",
+          "valores_y_metas",
+          "perdida_de_reforzadores",
+        ]}
+      >
+        <div className="space-y-5">
+          <SubSeccion titulo="Relaciones entre problemas">
+            {analisis.formulacion.relaciones_entre_problemas.length === 0 ? (
+              <SinHallazgos />
+            ) : (
+              <ul className="list-disc space-y-2 pl-5">
+                {analisis.formulacion.relaciones_entre_problemas.map(
+                  (r, i) => (
+                    <li key={i} className="text-[15px] leading-relaxed text-ink">
+                      {r}
+                    </li>
+                  )
+                )}
+              </ul>
+            )}
+          </SubSeccion>
+          {/*
+            UN SOLO RANKING, Y ES DE CONDUCTAS.
+
+            Aquí había dos, uno debajo del otro: «Priorización de blancos de
+            intervención», que ordenaba conductas con la prosa del modelo, y
+            «Rendimiento esperado de cada blanco», que ordenaba variables
+            moduladoras. Dos listas con nombres casi idénticos y unidades de
+            análisis distintas — el lector no tenía cómo saber que no
+            hablaban de lo mismo, y las dos decían llamarse «blancos».
+
+            El blanco que se interviene es la conducta. La variable
+            moduladora no es un blanco: es la palanca por la que esa
+            conducta se mueve, y ahora sale colgando de ella. La
+            justificación que escribió el modelo viaja con su conducta por
+            `conducta_id`, así que no se pierde.
+          */}
+          <SubSeccion titulo="Priorización de blancos de intervención">
+            <PriorizacionEstimada analisis={analisis} />
+          </SubSeccion>
+          {/* Se muestran aunque estén vacías: el clínico puede añadir lo que la IA no recogió. */}
+          {/*
+            Un informe que solo enumera déficits describe a una persona que
+            no existe, y deja fuera el material con el que se construye la
+            intervención. Vacío es una respuesta válida —la alternativa,
+            inventar fortalezas que la nota no sostiene, es peor—, y por eso
+            el texto de la lista vacía lo dice en vez de callarse.
+          */}
+          <SubSeccion titulo="Fortalezas y recursos">
+            <ListaEditable
+              items={analisis.fortalezas_y_recursos}
+              seccionId="formulacion"
+              etiqueta="fortaleza o recurso"
+              onCambiar={(nuevos) =>
+                onEditarSeccion("formulacion", (c) => {
+                  c.fortalezas_y_recursos = nuevos;
+                })
+              }
+              vacio={
+                <p className="text-sm text-ink-muted">
+                  La nota no sostiene ninguna fortaleza ni recurso concreto.
+                  No significa que no los haya: significa que no están
+                  escritos, y conviene preguntarlos en sesión.
+                </p>
+              }
+            />
+          </SubSeccion>
+          <SubSeccion titulo="Valores y metas del consultante">
+            <ListaEditable
+              items={analisis.valores_y_metas}
+              seccionId="formulacion"
+              etiqueta="valor o meta"
+              onCambiar={(nuevos) =>
+                onEditarSeccion("formulacion", (c) => {
+                  c.valores_y_metas = nuevos;
+                })
+              }
+            />
+          </SubSeccion>
+          <SubSeccion titulo="Pérdida de reforzadores">
+            <ListaEditable
+              items={analisis.perdida_de_reforzadores}
+              seccionId="formulacion"
+              etiqueta="reforzador perdido"
+              onCambiar={(nuevos) =>
+                onEditarSeccion("formulacion", (c) => {
+                  c.perdida_de_reforzadores = nuevos;
+                })
+              }
+            />
+          </SubSeccion>
+        </div>
+      </Seccion>
+    </BloqueBase>
+  );
+}

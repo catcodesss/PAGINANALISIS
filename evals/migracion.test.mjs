@@ -55,7 +55,10 @@ const { migrarAV2, todosLosIds, situacionDeLaCadenaDBT } = require(
   join(RAIZ, ".tmp-evals/identidad.js")
 );
 const { construirRedFuncional } = require(join(RAIZ, ".tmp-evals/redFuncional.js"));
-const { hayCamino } = require(join(RAIZ, ".tmp-evals/aristas.js"));
+const { hayCamino, idNodoSituacion } = require(join(RAIZ, ".tmp-evals/aristas.js"));
+const { derivarVistasProsa, formatearInformeTexto } = require(
+  join(RAIZ, ".tmp-evals/formatearInforme.js")
+);
 const {
   actualizarEtiquetaNodo,
   apoyoCadena,
@@ -77,9 +80,11 @@ const crudoV1 = () =>
   ).analisis;
 
 let fallos = 0;
+let pasadas = 0;
 function prueba(nombre, fn) {
   try {
     fn();
+    pasadas += 1;
     console.log(`  ok   ${nombre}`);
   } catch (error) {
     fallos += 1;
@@ -294,9 +299,70 @@ prueba("la red funcional no dibuja menos relaciones que antes", () => {
   assert.equal(red.sinResolver, a.hipotesis_mantenimiento.length - conDosExtremos);
 });
 
+prueba("editar una conducta en el grafo actualiza hipótesis y destacado", () => {
+  /*
+    Criterio 3 del encargo: reescribir la etiqueta de una conducta en el bloque
+    2 cambia el texto del bloque 3 y del bloque 4, sin recargar y sin llamar a
+    la API. Aquí se comprueba la parte derivable en Node.
+
+    NO se comprueba el resumen clínico, y es deliberado: el resumen dejó de
+    derivarse del grafo. Llegó a hacerlo y el resultado era un recuento de
+    nodos —«el grafo contiene 3 situaciones, 4 conductas…»— en el sitio donde
+    antes decía de quién es el caso y por qué consulta. El grafo no contiene
+    eso, así que derivarlo de ahí no lo reescribe: lo pierde.
+  */
+  const a = normalizarAnalisis(crudoV1(), lineas);
+  const conducta = a.conductas_problema[0];
+  actualizarEtiquetaNodo(a, conducta.id, "Conducta revisada desde el grafo");
+  const prosa = derivarVistasProsa(a);
+  assert.ok(prosa.destacada.enunciado.includes("Conducta revisada desde el grafo"));
+  assert.ok(prosa.hipotesis.some((h) => h.conducta === "Conducta revisada desde el grafo"));
+});
+
+prueba("el resumen clínico sobrevive a la derivación", () => {
+  // La regresión que esto vigila: el resumen sustituido por un inventario del
+  // grafo. Es el único sitio del informe que dice de quién hablamos y por qué
+  // consulta, y no se puede reconstruir desde nodos y aristas.
+  const a = normalizarAnalisis(crudoV1(), lineas);
+  assert.ok(a.resumen_clinico.length > 0, "el fixture no trae resumen");
+  const prosa = derivarVistasProsa(a);
+  assert.equal(prosa.resumen, a.resumen_clinico);
+  assert.ok(
+    !/contiene \d+ situaci/.test(prosa.resumen),
+    "el resumen volvió a ser un recuento de nodos"
+  );
+});
+
+prueba("una ruta Ed-conducta borrada se declara no trazada", () => {
+  const a = normalizarAnalisis(crudoV1(), lineas);
+  const h = a.hipotesis_mantenimiento.find((actual) => actual.destino_id);
+  const situacion = a.situaciones.find((s) => s.conductas_ids.includes(h.destino_id));
+  const ed = idNodoSituacion(situacion, "ed");
+  a.aristas = a.aristas.filter((arista) => arista.desde !== ed);
+  const derivada = derivarVistasProsa(a).hipotesis.find((actual) => actual.id === h.id);
+  assert.ok(derivada.enunciado.includes("[Ed no trazado hasta la conducta]"));
+});
+
+prueba("la prosa manual tiene precedencia sobre la derivada", () => {
+  const a = normalizarAnalisis(crudoV1(), lineas);
+  a.secciones_editadas = ["resumen", "hipotesis-mantenimiento"];
+  a.resumen_clinico = "Resumen escrito por el profesional.";
+  a.hipotesis_mantenimiento[0].enunciado = "Hipótesis escrita por el profesional.";
+  const prosa = derivarVistasProsa(a);
+  assert.equal(prosa.resumen, "Resumen escrito por el profesional.");
+  assert.equal(prosa.hipotesis[0].enunciado, "Hipótesis escrita por el profesional.");
+});
+
+prueba("la formulación destacada derivada viaja al texto y al Word", () => {
+  const a = normalizarAnalisis(crudoV1(), lineas);
+  const texto = formatearInformeTexto(a, "CASO-1", "fecha");
+  assert.ok(texto.includes("FORMULACIÓN FUNCIONAL DESTACADA"));
+  assert.ok(texto.includes(derivarVistasProsa(a).destacada.enunciado));
+});
+
 console.log(
   fallos === 0
-    ? `\n${14} pruebas correctas\n`
+    ? `\n${pasadas} pruebas correctas\n`
     : `\n${fallos} PRUEBAS FALLIDAS\n`
 );
 process.exit(fallos === 0 ? 0 : 1);

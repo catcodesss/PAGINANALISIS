@@ -22,6 +22,8 @@ import {
   INTRO_NIVELES_CONFIANZA,
   NOTA_PIE_NIVELES_CONFIANZA,
 } from "./nivelesConfianza";
+import { hayCamino, idNodoSituacion } from "./aristas";
+import { construirNodosGrafo } from "./grafo";
 
 const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
 
@@ -37,6 +39,146 @@ export const AVISO_ORIGEN_NO_MODIFICABLE =
   "No modificable · no genera blancos de intervención. El origen explica cómo se adquirió el problema, no qué lo mantiene hoy; por eso no se interviene sobre él. Los blancos salen de las hipótesis de mantenimiento.";
 const DESCARGO =
   "Este análisis es una síntesis asistida de hipótesis funcionales generadas a partir de las notas proporcionadas. No constituye un diagnóstico ni sustituye el juicio clínico profesional. Toda hipótesis debe verificarse mediante evaluación directa.";
+
+export interface VistasProsaDerivada {
+  resumen: string;
+  hipotesis: AnalisisFuncional["hipotesis_mantenimiento"];
+  destacada: AnalisisFuncional["hipotesis_mantenimiento"][number] | null;
+}
+
+/**
+ * Traduce relaciones persistidas a prosa sin completar los huecos por cercanía.
+ * Compartir situación o carril clasifica un nodo; solo `hayCamino` autoriza a
+ * afirmar que un evento conduce a otro.
+ */
+function derivarEnunciadoHipotesis(
+  analisis: AnalisisFuncional,
+  hipotesis: AnalisisFuncional["hipotesis_mantenimiento"][number],
+  etiquetas: ReadonlyMap<string, string>
+): AnalisisFuncional["hipotesis_mantenimiento"][number] {
+  const destino = hipotesis.destino_id;
+  const conducta = (destino && etiquetas.get(destino)) || hipotesis.conducta;
+  if (!destino) {
+    return {
+      ...hipotesis,
+      conducta,
+      enunciado: "[Conducta no resuelta en el grafo]",
+      funcion: "",
+    };
+  }
+
+  const situacion = analisis.situaciones.find((s) => s.conductas_ids.includes(destino));
+  const operante = situacion?.cadena_operante;
+  const ed = situacion && operante?.antecedente
+    ? idNodoSituacion(situacion, "ed")
+    : null;
+  const om = situacion && operante?.operacion_motivacional
+    ? idNodoSituacion(situacion, "om")
+    : null;
+  const funcionId = situacion?.funcion_hipotetizada
+    ? idNodoSituacion(situacion, "funcion")
+    : null;
+  const trazado = (desde: string | null, hasta = destino) =>
+    Boolean(desde && hayCamino(analisis.aristas, desde, hasta));
+
+  const partes: string[] = [];
+  partes.push(
+    trazado(ed)
+      ? `Ante el Ed «${etiquetas.get(ed!) ?? operante?.antecedente ?? ""}»`
+      : "[Ed no trazado hasta la conducta]"
+  );
+  if (om) {
+    partes.push(
+      trazado(om)
+        ? `bajo la OM «${etiquetas.get(om) ?? operante?.operacion_motivacional ?? ""}»`
+        : "[OM no trazada hasta la conducta]"
+    );
+  }
+  partes.push(`se observa «${conducta}»`);
+
+  const inmediata = operante?.consecuencia;
+  if (inmediata?.texto) {
+    partes.push(
+      trazado(destino, inmediata.id)
+        ? `seguida de «${etiquetas.get(inmediata.id) ?? inmediata.texto}»`
+        : "[consecuencia inmediata no trazada desde la conducta]"
+    );
+  }
+  const demorada = operante?.consecuencias_largo_plazo;
+  if (demorada?.texto) {
+    partes.push(
+      trazado(destino, demorada.id)
+        ? `y de «${etiquetas.get(demorada.id) ?? demorada.texto}» a medio o largo plazo`
+        : "[consecuencia demorada no trazada desde la conducta]"
+    );
+  }
+
+  const origen = hipotesis.origen_id;
+  if (origen) {
+    partes.push(
+      trazado(origen)
+        ? `La relación de mantenimiento trazada parte de «${etiquetas.get(origen) ?? hipotesis.origen}»`
+        : "[Origen no trazado hasta la conducta]"
+    );
+  }
+
+  const funcionTrazada = trazado(destino, funcionId ?? "");
+  if (funcionId) {
+    partes.push(
+      funcionTrazada
+        ? `La ruta termina en la función hipotetizada «${etiquetas.get(funcionId) ?? situacion?.funcion_hipotetizada ?? ""}»`
+        : "[Función no trazada desde la conducta]"
+    );
+  }
+
+  return {
+    ...hipotesis,
+    conducta,
+    origen: (origen && etiquetas.get(origen)) || hipotesis.origen,
+    enunciado: `${partes.join("; ")}.`,
+    funcion: funcionTrazada ? situacion?.funcion_hipotetizada ?? "" : "",
+  };
+}
+
+/** Única fuente de la prosa que aparece en pantalla, texto copiado y Word. */
+export function derivarVistasProsa(analisis: AnalisisFuncional): VistasProsaDerivada {
+  const etiquetas = new Map(
+    construirNodosGrafo(analisis).map((nodo) => [nodo.id, nodo.etiqueta] as const)
+  );
+  const conservaHipotesis = analisis.secciones_editadas.includes("hipotesis-mantenimiento");
+  const hipotesis = conservaHipotesis
+    ? analisis.hipotesis_mantenimiento
+    : analisis.hipotesis_mantenimiento.map((h) =>
+        derivarEnunciadoHipotesis(analisis, h, etiquetas)
+      );
+  const importancia = new Map(
+    analisis.conductas_problema.map((conducta) => [conducta.id, conducta.importancia])
+  );
+  const destacada =
+    hipotesis.find((h) => h.destino_id && importancia.get(h.destino_id) === "alta") ??
+    hipotesis[0] ??
+    null;
+  /*
+    EL RESUMEN CLÍNICO NO SE DERIVA DEL GRAFO, Y NO ES UN OLVIDO.
+
+    Llegó a derivarse, y el resultado era un inventario: «El grafo funcional
+    contiene 3 situación(es), 4 conducta(s) problema y 25 relación(es)
+    trazada(s)», seguido del enunciado destacado. Eso sustituía «M., mujer de 29
+    años, consulta por episodios de ansiedad intensa en contextos evaluativos…»
+    por un recuento de nodos.
+
+    El grafo no contiene de quién hablamos, por qué consulta ni qué historia
+    trae: nada de eso es un nodo ni una arista. Derivar el resumen de ahí no
+    reescribe ese contenido con otras palabras — LO PIERDE. Y la regla de este
+    refactor es borrar representaciones duplicadas, no funcionalidad: el resumen
+    no duplicaba nada, porque era lo único que situaba el caso.
+
+    Lo que sí duplicaba la prosa del modelo —la formulación repetida en cada
+    sección— se deriva y vive en el destacado, una sola vez. El resumen se queda
+    como lo escribió el modelo, y editarlo a mano lo marca como siempre.
+  */
+  return { resumen: analisis.resumen_clinico, hipotesis, destacada };
+}
 
 /**
  * Mismo criterio que el componente Cita de la interfaz: solo se entrecomilla el
@@ -178,6 +320,7 @@ export function formatearInformeTexto(
   // Cada bloque se indexa por su id de seccion; se emiten al final en el
   // orden que pida el clinico (ver ORDEN_BLOQUES_POR_DEFECTO).
   const bloques: Record<string, string> = {};
+  const prosa = derivarVistasProsa(analisis);
 
   // Los huecos de la nota y los avisos del validador responden a la misma
   // pregunta —qué hay que comprobar antes de dar el informe por bueno— y por
@@ -259,7 +402,13 @@ export function formatearInformeTexto(
     ].join("\n")
   );
 
-  bloques["resumen"] = seccion("RESUMEN CLÍNICO", analisis.resumen_clinico);
+  bloques["resumen"] = seccion("RESUMEN CLÍNICO", prosa.resumen);
+  bloques["hipotesis-principal"] = seccion(
+    "FORMULACIÓN FUNCIONAL DESTACADA",
+    prosa.destacada
+      ? `[${prosa.destacada.conducta}] ${prosa.destacada.enunciado}${prosa.destacada.funcion ? `\nFunción: ${prosa.destacada.funcion}` : ""}`
+      : "No hay una ruta funcional suficiente para destacar."
+  );
 
   // Las tres columnas de la pantalla, en el papel, como tres apartados: los
   // excesos y los déficits salen del mismo campo (los reparte
@@ -354,7 +503,7 @@ export function formatearInformeTexto(
   bloques["hipotesis-mantenimiento"] = (
     seccion(
       "HIPÓTESIS DE MANTENIMIENTO",
-      analisis.hipotesis_mantenimiento
+      prosa.hipotesis
         .map(
           (h) =>
             `- [${h.conducta}] (Confianza: ${h.confianza}) ${h.enunciado}\n  Función: ${h.funcion}\n  Fuerza: ${h.fuerza} · ${h.tipo_relacion} · ${h.direccion === "bidireccional" ? "bidireccional (bucle)" : "unidireccional"}`
@@ -388,24 +537,24 @@ export function formatearInformeTexto(
         "Relaciones entre problemas:",
         listaOTexto(analisis.formulacion.relaciones_entre_problemas),
         "",
-        "Priorización de blancos de intervención:",
-        analisis.formulacion.priorizacion
-          .map((p, i) => `${i + 1}. ${p.blanco}: ${p.justificacion}`)
-          .join("\n"),
-        "",
-        "Rendimiento esperado de cada blanco (orientación, no medida):",
+        // Un solo ranking, y es de conductas: ver lib/priorizacion.ts. Antes
+        // salían dos seguidos, con nombres casi iguales y ordenando cosas
+        // distintas — conductas uno, variables moduladoras el otro.
+        "Priorización de blancos de intervención (orientación, no medida):",
         // La advertencia viaja con el documento: en pantalla acompaña a las
         // barras, y aquí no hay barras que la arrastren consigo. Un listado
         // ordenado sin ella se leería como una cuantificación del caso.
         "  Estimaciones cualitativas pasadas a números solo para poder ordenarlas.",
         "  Sin unidades ni precisión: solo sostienen «esto probablemente antes que aquello».",
         priorizarBlancos(analisis)
-          .map(
-            (b, i) =>
-              `${i + 1}. ${b.etiqueta} — fuerza ${b.fuerza} × modificabilidad ${b.modificabilidad}`
-          )
+          .map((b, i) => {
+            const cabecera = b.palanca
+              ? `${i + 1}. ${b.etiqueta} — importancia ${b.importancia} × modificabilidad ${b.palanca.modificabilidad} (palanca: ${b.palanca.etiqueta})`
+              : `${i + 1}. ${b.etiqueta} — sin palanca trazada: no consta por dónde moverla`;
+            return b.justificacion ? `${cabecera}\n   ${b.justificacion}` : cabecera;
+          })
           .join("\n") ||
-          "Ninguna variable moduladora aparece nombrada en las hipótesis de mantenimiento: no hay nada que ordenar.",
+          "El informe no declara ninguna conducta problema: no hay nada que ordenar.",
         "",
         "Fortalezas y recursos:",
         listaOTexto(analisis.fortalezas_y_recursos),

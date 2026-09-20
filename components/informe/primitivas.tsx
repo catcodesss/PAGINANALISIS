@@ -88,3 +88,34 @@ export function SeccionInforme({
 }) {
   return <section id={id} className={`scroll-mt-24 ${editada ? "seccion-editada" : ""}`}><div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h3 className="section-title flex items-center gap-3 font-serif text-lg font-semibold text-ink">{titulo}{editada && marcaEditada}</h3>{extra}</div>{children}{pie}</section>;
 }
+
+/** Tabla de dos columnas (Elemento / Análisis) para una cadena de contingencia. */
+export interface FilaCadena {
+  elemento: string;
+  valor: string;
+}
+
+export function TablaCadena({ filas }: { filas: FilaCadena[] }) {
+  return (
+    <div className="w-full overflow-x-auto">
+      <table className="chain-table w-full border-collapse text-sm">
+        <tbody>
+          {filas.map((f, i) => (
+            <tr
+              key={i}
+              className="border-b border-divider last:border-b-0 print:border-black"
+            >
+              <td className="el-label w-[110px] py-3 pr-4 align-top font-mono text-xs font-bold text-ink">
+                {f.elemento}
+              </td>
+              <td className="py-3 align-top leading-relaxed text-ink">
+                {f.valor}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+

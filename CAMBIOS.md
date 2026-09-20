@@ -1,5 +1,75 @@
 # CAMBIOS
 
+## Fase 4 — la prosa se deriva del grafo
+
+`lib/formatearInforme.ts#derivarVistasProsa` genera las hipótesis de
+mantenimiento y el destacado desde nodos y aristas. La regla que no se rompe:
+**la prosa solo afirma lo TRAZADO**. Sin arista de por medio el texto escribe
+`[Ed no trazado hasta la conducta]` en vez de afirmarlo, y la cascada funciona
+—si el Ed no llega, la OM que pasaba por él tampoco—. Lo fija
+`evals/migracion.test.mjs`.
+
+El modelo deja de emitir `enunciado` y pasa a emitir `origen`, el otro extremo
+de la relación (`VERSION_PROMPT` 1.6.0). Editar a mano sigue mandando sobre lo
+derivado: invariante 6.
+
+### El resumen clínico NO se deriva, y es deliberado
+
+Llegó a derivarse y el resultado era un inventario —«El grafo funcional contiene
+3 situación(es), 4 conducta(s) problema y 25 relación(es) trazada(s)»— justo
+donde antes decía de quién es el caso y por qué consulta. El grafo no contiene
+demografía, motivo ni historia: derivar el resumen de ahí no lo reescribe, **lo
+pierde**. Se retiró esa derivación y hay una prueba que vigila que no vuelva.
+
+La regla del refactor es borrar representaciones duplicadas, no funcionalidad.
+El resumen no duplicaba nada.
+
+### Un solo ranking, y es de conductas
+
+Había dos, uno debajo del otro y con nombres casi iguales: «Priorización de
+blancos de intervención» (conductas, prosa del modelo) y «Rendimiento esperado
+de cada blanco» (variables moduladoras, `fuerza × modificabilidad`). Dos
+unidades de análisis distintas presentadas como lo mismo.
+
+`lib/priorizacion.ts` ordena ahora **conductas** por `importancia ×
+modificabilidad de su palanca`. La variable moduladora no es un blanco: es la
+palanca por la que una conducta se mueve, y sale colgando de ella. Una conducta
+sin palanca trazada **no recibe un cero** —se leería como «esto no sirve»— sino
+que se dice que no consta por dónde moverla, y va al final.
+
+### Menos repeticiones del mismo dato
+
+«Evitar exponer» pasó de 13 apariciones en el DOM a 9. Lo que se quitó eran
+copias, no contenido: el rótulo de la conducta encima de un enunciado que ya la
+nombra (en el destacado y en cada tarjeta de hipótesis), la priorización
+repetida dentro del destacado, y el `<title>` de cada arista de la red, que
+llevaba el enunciado entero pegado —tres líneas de nombre accesible por trazo,
+cuando lo que el dibujo aporta es saber qué une cada flecha—.
+
+### ReportView troceado de verdad
+
+De **3.533 a 1.700 líneas**. Antes había cinco ficheros de bloque de *una línea*
+que solo delegaban en `BloqueBase`: el contenido seguía entero en ReportView.
+
+- `components/informe/seccion.tsx` — el andamiaje compartido: `Seccion`,
+  `ReportarFallo`, `BloqueReanalisis`, `ListaAlertas`, el contexto de reanálisis
+  y la visibilidad de anclas y bloques. **Vive fuera de ReportView porque si no
+  hay ciclo de importación**: los cinco bloques necesitan `Seccion` y ReportView
+  necesita los cinco. Ese ciclo es la razón de que el troceado se hubiera
+  quedado a medias.
+- `components/informe/Bloque{Sintesis,AnalisisFuncional,Mantenimiento,Plan,Pendientes}.tsx`
+  — un fichero por bloque, con su contenido dentro.
+- `components/informe/mantenimiento.tsx` — lo que solo usa el bloque 3
+  (`RedFuncionalSVG`, `PriorizacionEstimada`, `SelloNoModificable`). Lo que usa
+  un solo bloque va con su bloque; `primitivas.tsx` guarda lo que comparten
+  todos.
+
+`evals/coherencia.test.mjs` se adaptó y quedó **más estricta**: ya no basta con
+que un ancla exista en algún sitio, tiene que estar en el fichero del bloque que
+`ANCLAS_INFORME` declara. La comprobación de tamaños de texto pasó a leer
+también `components/informe/`, porque mirando solo ReportView habría seguido en
+verde sin vigilar casi nada.
+
 ## Fase 3 — un grafo, cuatro lecturas
 
 El bloque funcional conserva una sola colección de entidades y relaciones,

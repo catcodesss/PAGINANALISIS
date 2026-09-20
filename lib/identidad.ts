@@ -298,6 +298,9 @@ function resolverReferencias(a: AnalisisFuncional): void {
   }
 
   for (const h of a.hipotesis_mantenimiento) {
+    // `origen` se añadió cuando la prosa pasó a derivarse del grafo. Los
+    // informes anteriores conservan su enunciado y se resuelven igual.
+    if (typeof h.origen !== "string") h.origen = "";
     if (h.destino_id === null) {
       h.destino_id = mejorCoincidencia(h.conducta, conductas);
     }
@@ -306,7 +309,7 @@ function resolverReferencias(a: AnalisisFuncional): void {
       // entre las otras conductas: una hipótesis que relaciona dos conductas es
       // legítima (un bucle), pero es la lectura menos habitual, y probarla antes
       // emparejaría con la propia conducta de destino descrita otra vez.
-      const contexto = `${h.enunciado} ${h.funcion}`;
+      const contexto = `${h.origen || h.enunciado} ${h.funcion}`;
       h.origen_id =
         mejorCoincidencia(contexto, variables) ??
         mejorCoincidencia(

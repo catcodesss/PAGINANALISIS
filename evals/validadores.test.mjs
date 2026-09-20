@@ -322,16 +322,31 @@ prueba("una rejilla sin variables es 0 de 18, no un error", () => {
 
 /* ── Priorización estimada ───────────────────────────────────────────────── */
 
-prueba("la priorización cruza fuerza con modificabilidad, no una sola de las dos", () => {
+prueba("la priorización cruza importancia con modificabilidad, no una sola", () => {
   // Es la idea clínica entera: el tratamiento rinde donde algo PESA y además
-  // PUEDE MOVERSE. Una variable determinante pero inamovible tiene que quedar
-  // por debajo de una determinante y modificable, aunque su fuerza sea la misma.
+  // PUEDE MOVERSE. La misma conducta, con la misma importancia, tiene que
+  // subir cuando la variable que la mantiene se vuelve más modificable.
+  //
+  // El ranking es de CONDUCTAS desde que se unificaron los dos que había (ver
+  // lib/priorizacion.ts): la variable moduladora no es un blanco, es la palanca
+  // por la que una conducta concreta se mueve.
+  // Se sigue LA MISMA conducta en las tres corridas, buscándola por la palanca
+  // que se está moviendo. Tomar "la primera con palanca" compararía conductas
+  // distintas, porque cambiar la modificabilidad cambia el propio orden.
+  const idPalanca = normalizarAnalisis(
+    JSON.parse(JSON.stringify(fixture.analisis)),
+    lineas
+  ).variables_moduladoras[0].id;
+
   const conModificabilidad = (nivel) => {
     const crudo = JSON.parse(JSON.stringify(fixture.analisis));
-    crudo.hipotesis_mantenimiento[0].fuerza = "alta";
     crudo.variables_moduladoras[0].modificabilidad = nivel;
-    const blancos = priorizarBlancos(normalizarAnalisis(crudo, lineas));
-    return blancos.find((b) => /Sueño/.test(b.etiqueta)).rendimiento;
+    const analisis = normalizarAnalisis(crudo, lineas);
+    const blanco = priorizarBlancos(analisis).find(
+      (b) => b.palanca?.id === idPalanca
+    );
+    assert.ok(blanco, "ninguna conducta cuelga de esa variable moduladora");
+    return blanco.rendimiento;
   };
 
   assert.ok(conModificabilidad("baja") < conModificabilidad("media"));
@@ -350,16 +365,33 @@ prueba("la escala es geométrica: alta×baja empata con media×media", () => {
   );
 });
 
-prueba("una variable que ninguna hipótesis nombra no es un blanco", () => {
-  // Sin relación declarada es contexto, no un blanco. Aparecer con rendimiento
-  // cero se leería como "esto no sirve de nada", cuando lo que pasa es que el
-  // informe no dijo qué papel juega.
+prueba("una conducta sin palanca trazada no recibe un rendimiento inventado", () => {
+  // La contrapartida de la prueba anterior, y la razón de que `rendimiento`
+  // pueda ser null: si ninguna variable moduladora llega trazada hasta la
+  // conducta, no se sabe por dónde moverla. Un cero se leería como "esto no
+  // sirve de nada", cuando lo que pasa es que el informe no lo ha dicho — y esa
+  // diferencia decide si el clínico descarta el blanco o lo pregunta.
   const blancos = priorizarBlancos(informe);
-  const sueltas = informe.variables_moduladoras.filter(
-    (v) => !blancos.some((b) => b.etiqueta === v.descripcion)
-  );
-  assert.ok(sueltas.length > 0, "el caso 01 tiene alguna variable sin relación");
-  assert.ok(blancos.every((b) => b.relaciones > 0));
+
+  // Toda conducta problema aparece: ninguna desaparece por no tener palanca.
+  assert.equal(blancos.length, informe.conductas_problema.length);
+
+  for (const b of blancos) {
+    if (b.palanca === null) {
+      assert.equal(b.rendimiento, null, "rendimiento inventado sin palanca");
+    } else {
+      assert.ok(b.rendimiento > 0, "una palanca trazada tiene que puntuar");
+    }
+  }
+
+  // Y las que no tienen palanca van al final, nunca intercaladas.
+  const sinPalanca = blancos.findIndex((b) => b.rendimiento === null);
+  if (sinPalanca !== -1) {
+    assert.ok(
+      blancos.slice(sinPalanca).every((b) => b.rendimiento === null),
+      "un blanco con rendimiento aparece detrás de uno sin palanca"
+    );
+  }
 });
 
 prueba("la conversión a números está en un solo sitio y ordena de mayor a menor", () => {
@@ -372,7 +404,11 @@ prueba("la conversión a números está en un solo sitio y ordena de mayor a men
   );
   assert.equal(RENDIMIENTO_MAXIMO, 0.8 * 0.8);
 
-  const rendimientos = priorizarBlancos(informe).map((b) => b.rendimiento);
+  // Solo los que puntúan entran en la comprobación de orden: los que no tienen
+  // palanca no llevan número y van al final (ver la prueba de arriba).
+  const rendimientos = priorizarBlancos(informe)
+    .map((b) => b.rendimiento)
+    .filter((r) => r !== null);
   assert.deepEqual(rendimientos, [...rendimientos].sort((a, b) => b - a));
   // Ningún blanco puede salirse de la escala fija con la que se dibuja la barra.
   assert.ok(rendimientos.every((r) => r > 0 && r <= RENDIMIENTO_MAXIMO));

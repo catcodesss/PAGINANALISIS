@@ -345,6 +345,7 @@ function normalizarHipotesisMantenimiento(valor: unknown): HipotesisMantenimient
   return {
     id: typeof d.id === "string" ? d.id : SIN_ID,
     conducta: comoTexto(d.conducta),
+    origen: comoTexto(d.origen),
     destino_id: comoIdONulo(d.destino_id),
     origen_id: comoIdONulo(d.origen_id),
     enunciado: comoTexto(d.enunciado),

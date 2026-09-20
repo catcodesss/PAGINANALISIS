@@ -1,36 +1,39 @@
-import type { AnalisisFuncional, NivelConfianza } from "./types";
+import type { AnalisisFuncional, Id, NivelConfianza } from "./types";
 
 /**
- * Ordena los blancos de intervención por rendimiento esperado.
+ * UN SOLO RANKING, Y ES DE CONDUCTAS.
  *
- * QUÉ ES Y QUÉ NO ES. Los números de este módulo NO miden nada. Son
- * estimaciones cualitativas —alta, media, baja, dichas por un modelo a partir
- * de una nota clínica— convertidas a números con el único fin de poder
- * ordenarlas. No hay unidades, no hay escala, no hay precisión: 0,32 no es "el
- * doble de bueno" que 0,16, y la diferencia entre 0,32 y 0,16 no significa lo
- * mismo en dos informes distintos. Todo lo que este cálculo sostiene es "esto
- * probablemente antes que aquello", y ni siquiera eso sin que el clínico lo
- * mire.
+ * Había dos, y los dos se llamaban casi igual en pantalla: «Priorización de
+ * blancos de intervención», que ordenaba CONDUCTAS a partir de la prosa del
+ * modelo, y «Rendimiento esperado de cada blanco», que ordenaba VARIABLES
+ * MODULADORAS por fuerza × modificabilidad. Dos listas, dos unidades de
+ * análisis distintas, el mismo nombre y ninguna relación declarada entre ellas:
+ * el lector no tenía forma de saber que hablaban de cosas diferentes.
  *
- * POR QUÉ AUN ASÍ EXISTE. Con seis variables y ocho relaciones, el orden en que
- * conviene atacarlas no se ve leyendo. La multiplicación fuerza × modificabilidad
+ * Se unifican en el blanco que de verdad se interviene: la conducta. Una
+ * variable moduladora no es un blanco por sí misma —nadie trata «el sueño
+ * deficiente» en abstracto—: es la PALANCA por la que una conducta concreta se
+ * puede mover, y aquí aparece como eso, colgando de la conducta que mantiene.
+ *
+ * QUÉ ES Y QUÉ NO ES. Los números NO miden nada. Son estimaciones cualitativas
+ * —alta, media, baja, dichas por un modelo a partir de una nota clínica—
+ * convertidas a números con el único fin de poder ordenarlas. No hay unidades,
+ * no hay escala, no hay precisión: 0,32 no es «el doble de bueno» que 0,16, y
+ * la diferencia entre 0,32 y 0,16 no significa lo mismo en dos informes
+ * distintos. Todo lo que sostiene este cálculo es «esto probablemente antes que
+ * aquello», y ni siquiera eso sin que el clínico lo mire.
+ *
+ * POR QUÉ AUN ASÍ EXISTE. La multiplicación importancia × modificabilidad
  * captura una idea clínica sencilla y correcta: el tratamiento rinde donde algo
- * PESA en el mantenimiento y además PUEDE MOVERSE. Una variable determinante e
- * inamovible y una trivial y muy modificable dan las dos un rendimiento bajo,
- * por motivos opuestos, y eso es exactamente lo que se quiere que salte a la
- * vista.
+ * PESA y además PUEDE MOVERSE. Una conducta central pero sin palanca conocida y
+ * una trivial muy modificable dan las dos un rendimiento bajo, por motivos
+ * opuestos, y eso es exactamente lo que se quiere que salte a la vista.
  *
- * POR QUÉ ESTOS NÚMEROS. 0,8 / 0,4 / 0,2 y no 3 / 2 / 1: el salto de "media" a
- * "alta" tiene que pesar más que el de "baja" a "media", porque en la práctica
- * clínica esa es la distancia real entre las tres etiquetas. Cualquier terna
- * decreciente con esa propiedad daría el mismo orden en casi todos los casos —
- * lo que confirma que el valor concreto no es el punto.
- *
- * La escala es geométrica (cada nivel es el doble del siguiente), y de ahí sale
- * una consecuencia que conviene conocer: alta × baja empata exactamente con
- * media × media. Un factor determinante pero rígido y uno intermedio en las dos
- * escalas rinden lo mismo, que es la lectura clínica que se busca. No es un
- * defecto del cálculo que haya que corregir subiendo un número.
+ * POR QUÉ ESTOS NÚMEROS. 0,8 / 0,4 / 0,2 y no 3 / 2 / 1: el salto de «media» a
+ * «alta» tiene que pesar más que el de «baja» a «media». La escala es
+ * geométrica, y de ahí sale una consecuencia que conviene conocer: alta × baja
+ * empata exactamente con media × media. No es un defecto que haya que corregir
+ * subiendo un número: es la lectura clínica que se busca.
  *
  * La interfaz tiene la obligación de decir todo esto donde se pinten las
  * barras. Ver PriorizacionEstimada en components/ReportView.tsx.
@@ -50,18 +53,33 @@ export const VALOR_CUALITATIVO: Record<NivelConfianza, number> = {
 export const RENDIMIENTO_MAXIMO =
   VALOR_CUALITATIVO.alta * VALOR_CUALITATIVO.alta;
 
-export interface BlancoPriorizado {
-  /** El id de la variable moduladora, para enlazar con su nodo y su celda. */
-  id: string;
-  /** La descripción de la variable moduladora, tal cual la escribió el informe. */
+/** La variable moduladora por la que una conducta se puede mover. */
+export interface PalancaBlanco {
+  id: Id;
   etiqueta: string;
-  /** La mayor fuerza entre las relaciones que la nombran. */
-  fuerza: NivelConfianza;
   modificabilidad: NivelConfianza;
-  /** fuerza × modificabilidad. Sin unidades: solo sirve para ordenar. */
-  rendimiento: number;
-  /** Cuántas hipótesis de mantenimiento la nombran. */
+  /** Cuánto pesa la relación de esa variable con esta conducta. */
+  fuerza: NivelConfianza;
+}
+
+export interface BlancoPriorizado {
+  /** El id de la conducta problema, para enlazar con su nodo del grafo. */
+  id: Id;
+  etiqueta: string;
+  importancia: NivelConfianza;
+  /**
+   * La mejor palanca conocida, o null si ninguna variable moduladora se ha
+   * trazado hasta esta conducta. `null` NO es modificabilidad baja: es que no
+   * consta por dónde moverla, y son dos cosas distintas que el informe no puede
+   * presentar igual.
+   */
+  palanca: PalancaBlanco | null;
+  /** importancia × modificabilidad de la palanca. null si no hay palanca. */
+  rendimiento: number | null;
+  /** Cuántas hipótesis de mantenimiento apuntan a esta conducta. */
   relaciones: number;
+  /** La justificación que escribió el modelo, si nombró este blanco. */
+  justificacion: string;
 }
 
 const ORDEN_NIVEL: NivelConfianza[] = ["baja", "media", "alta"];
@@ -71,49 +89,79 @@ function laMayor(a: NivelConfianza, b: NivelConfianza): NivelConfianza {
 }
 
 /**
- * Una variable causal es una variable moduladora que alguna hipótesis de
- * mantenimiento nombra: sin relación declarada no es un blanco, es un dato de
- * contexto. Se queda fuera en vez de aparecer con rendimiento cero, que se
- * leería como "esto no sirve de nada" cuando lo que pasa es que el informe no
- * dijo qué papel juega.
+ * Ordena las conductas problema por rendimiento esperado.
  *
- * La fuerza de la variable es la MAYOR de las relaciones que la nombran, no su
- * media: si participa en una relación fuerte, es un blanco fuerte, aunque
- * también aparezca en dos débiles. Promediar la castigaría por estar bien
- * descrita.
+ * La palanca de una conducta es la variable moduladora MÁS MODIFICABLE de entre
+ * las que alguna hipótesis traza hasta ella (`origen_id` → `destino_id`). Se
+ * toma la más modificable y no la más fuerte porque lo que decide por dónde
+ * empezar es qué se puede mover: una variable determinante e inamovible explica
+ * el caso, pero no abre ninguna puerta.
+ *
+ * Todo esto es exacto desde la v2. Antes se emparejaban las raíces de palabra
+ * del enunciado con la descripción de la variable, en cada render, así que la
+ * misma variable entraba o salía del ranking según cómo estuviera redactada la
+ * hipótesis.
  */
 export function priorizarBlancos(analisis: AnalisisFuncional): BlancoPriorizado[] {
-  const blancos: BlancoPriorizado[] = [];
+  const variables = new Map(
+    analisis.variables_moduladoras.map((v) => [v.id, v] as const)
+  );
+  const justificaciones = new Map(
+    analisis.formulacion.priorizacion
+      .filter((p) => p.conducta_id)
+      .map((p) => [p.conducta_id!, p.justificacion] as const)
+  );
 
-  for (const variable of analisis.variables_moduladoras) {
-    let fuerza: NivelConfianza | null = null;
+  const blancos = analisis.conductas_problema.map((conducta) => {
+    let palanca: PalancaBlanco | null = null;
     let relaciones = 0;
 
-    // Por id: una hipótesis nombra a esta variable cuando su `origen_id` es el
-    // suyo. Hasta la v2 se comparaban las raíces de palabra del enunciado con
-    // las de la descripción en cada render, así que la misma variable podía
-    // entrar o salir del ranking según cómo estuviera redactada la hipótesis.
     for (const h of analisis.hipotesis_mantenimiento) {
-      if (h.origen_id !== variable.id) continue;
+      if (h.destino_id !== conducta.id) continue;
       relaciones += 1;
-      fuerza = fuerza === null ? h.fuerza : laMayor(fuerza, h.fuerza);
+      const variable = h.origen_id ? variables.get(h.origen_id) : undefined;
+      if (!variable) continue;
+      if (
+        !palanca ||
+        laMayor(palanca.modificabilidad, variable.modificabilidad) ===
+          variable.modificabilidad
+      ) {
+        palanca = {
+          id: variable.id,
+          etiqueta: variable.descripcion,
+          modificabilidad: variable.modificabilidad,
+          fuerza: h.fuerza,
+        };
+      }
     }
 
-    if (fuerza === null) continue;
-
-    blancos.push({
-      id: variable.id,
-      etiqueta: variable.descripcion,
-      fuerza,
-      modificabilidad: variable.modificabilidad,
-      rendimiento:
-        VALOR_CUALITATIVO[fuerza] * VALOR_CUALITATIVO[variable.modificabilidad],
+    return {
+      id: conducta.id,
+      etiqueta: conducta.descripcion,
+      importancia: conducta.importancia,
+      palanca,
+      rendimiento: palanca
+        ? VALOR_CUALITATIVO[conducta.importancia] *
+          VALOR_CUALITATIVO[palanca.modificabilidad]
+        : null,
       relaciones,
-    });
-  }
+      justificacion: justificaciones.get(conducta.id) ?? "",
+    };
+  });
 
-  // Array.prototype.sort es estable: dos blancos con el mismo rendimiento
-  // conservan el orden del informe en vez de reordenarse sin motivo entre
-  // renders.
-  return blancos.sort((a, b) => b.rendimiento - a.rendimiento);
+  /*
+    Las que no tienen palanca van al final, pero NO con rendimiento cero: cero
+    se leería como «esto no sirve de nada», y lo que pasa es que el informe no
+    ha trazado todavía por dónde se mueve. Es un hueco de la formulación, no un
+    veredicto sobre la conducta, y la interfaz tiene que decirlo así.
+
+    Array.prototype.sort es estable: dos blancos con el mismo rendimiento
+    conservan el orden del informe en vez de reordenarse entre renders.
+  */
+  return blancos.sort((a, b) => {
+    if (a.rendimiento === null && b.rendimiento === null) return 0;
+    if (a.rendimiento === null) return 1;
+    if (b.rendimiento === null) return -1;
+    return b.rendimiento - a.rendimiento;
+  });
 }

@@ -20,7 +20,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -58,6 +58,19 @@ const { reconciliarOrden } = require(join(RAIZ, ".tmp-evals/ordenSecciones.js"))
 
 const css = readFileSync(join(RAIZ, "app/globals.css"), "utf8");
 const reportView = readFileSync(join(RAIZ, "components/ReportView.tsx"), "utf8");
+
+/*
+  Todo el código del informe, no solo ReportView.
+
+  Las clases de tamaño se repartieron por components/informe/ al trocear el
+  fichero, y una comprobación que siguiera mirando solo ReportView habría
+  seguido en verde sin vigilar ya casi nada: el caso exacto de acuerdo tácito
+  que esta suite existe para cazar.
+*/
+const fuentesInforme = readdirSync(join(RAIZ, "components/informe"))
+  .filter((f) => f.endsWith(".tsx"))
+  .map((f) => readFileSync(join(RAIZ, "components/informe", f), "utf8"));
+const codigoInforme = [reportView, ...fuentesInforme].join("\n");
 const grafoAFC = readFileSync(join(RAIZ, "components/grafo/GrafoAFC.tsx"), "utf8");
 const estilosGrafo = ["dbt", "act", "mc"].map((estilo) =>
   readFileSync(join(RAIZ, `components/grafo/estilos/${estilo}.tsx`), "utf8")
@@ -172,15 +185,48 @@ function bloquesDibujados() {
   );
 }
 
+/**
+ * El codigo de cada bloque, leido de SU fichero.
+ *
+ * Desde que ReportView se troceo, las anclas no estan en ReportView: estan en
+ * components/informe/Bloque*.tsx. Buscarlas en el fichero que las contiene, y
+ * no en todo el monton, hace la comprobacion mas estricta que antes: ya no
+ * basta con que el ancla exista en algun sitio, tiene que estar en el bloque
+ * que ANCLAS_INFORME dice.
+ */
+const FICHERO_DE_BLOQUE = {
+  sintesis: "BloqueSintesis",
+  "que-pasa": "BloqueAnalisisFuncional",
+  mantenimiento: "BloqueMantenimiento",
+  plan: "BloquePlan",
+  pendientes: "BloquePendientes",
+};
+
+const fuenteDeBloque = Object.fromEntries(
+  Object.entries(FICHERO_DE_BLOQUE).map(([id, fichero]) => [
+    id,
+    readFileSync(join(RAIZ, "components/informe/" + fichero + ".tsx"), "utf8"),
+  ])
+);
+
+function anclasEn(fuente) {
+  return new Set(
+    [
+      ...fuente.matchAll(/<Seccion\s+id="([^"]+)"/g),
+      ...fuente.matchAll(/<Seccion\s*\n\s*id="([^"]+)"/g),
+      // Las que no siguen el molde de <Seccion> pintan su ancla a mano.
+      ...fuente.matchAll(/<section\s+id="([^"]+)"/g),
+      ...fuente.matchAll(/<span\s+id="([^"]+)"/g),
+    ].map((m) => m[1])
+  );
+}
+
 function anclasDibujadas() {
-  const ids = [
-    ...reportView.matchAll(/<Seccion\s+id="([^"]+)"/g),
-    ...reportView.matchAll(/<Seccion\s*\n\s*id="([^"]+)"/g),
-    // Las que no siguen el molde de <Seccion> pintan su <section id> a mano.
-    ...reportView.matchAll(/<section\s+id="([^"]+)"/g),
-    ...reportView.matchAll(/<span\s+id="([^"]+)"/g),
-  ].map((m) => m[1]);
-  return new Set(ids);
+  const todas = new Set();
+  for (const fuente of Object.values(fuenteDeBloque)) {
+    for (const id of anclasEn(fuente)) todas.add(id);
+  }
+  return todas;
 }
 
 prueba("no hay identificadores repetidos, ni de bloque ni de ancla", () => {
@@ -217,7 +263,7 @@ prueba("toda ancla que se pinta está declarada, y toda la declarada se pinta", 
   assert.deepEqual(
     IDS_ANCLA.filter((id) => !dibujadas.has(id)),
     [],
-    "anclas declaradas que ReportView no pinta"
+    "anclas declaradas que ningun bloque pinta"
   );
 });
 
@@ -327,27 +373,16 @@ prueba("el orden de fábrica de las anclas no entremezcla bloques", () => {
 
 prueba("las anclas se pintan dentro del bloque que declaran", () => {
   /*
-    El acuerdo que nada más comprueba: ANCLAS_INFORME dice a qué bloque
-    pertenece cada apartado, y ReportView lo monta anidándolo en un <Bloque>.
-    Si los dos dejan de coincidir no hay error — hay un apartado que se arrastra
-    con el bloque equivocado y un índice que miente sobre dónde está.
+    El acuerdo que nada mas comprueba: ANCLAS_INFORME dice a que bloque
+    pertenece cada apartado, y cada componente de bloque lo pinta. Si los dos
+    dejan de coincidir no hay error: hay un apartado que se arrastra con el
+    bloque equivocado y un indice que miente sobre donde esta.
   */
   const mal = [];
-  const componentes = {
-    sintesis: "BloqueSintesis",
-    "que-pasa": "BloqueAnalisisFuncional",
-    mantenimiento: "BloqueMantenimiento",
-    plan: "BloquePlan",
-    pendientes: "BloquePendientes",
-  };
-  for (const b of IDS) {
-    const componente = componentes[b];
-    const ini = reportView.indexOf(`<${componente}`);
-    assert.notEqual(ini, -1, `no se pinta el bloque ${b}`);
-    const fin = reportView.indexOf(`</${componente}>`, ini);
-    const dentro = reportView.slice(ini, fin);
-    for (const a of ANCLAS_INFORME.filter((x) => x.bloque === b)) {
-      if (!dentro.includes(`id="${a.id}"`)) mal.push(`${a.id} debería estar en ${b}`);
+  for (const [bloque, fuente] of Object.entries(fuenteDeBloque)) {
+    const dentro = anclasEn(fuente);
+    for (const a of ANCLAS_INFORME.filter((x) => x.bloque === bloque)) {
+      if (!dentro.has(a.id)) mal.push(a.id + " deberia estar en " + bloque);
     }
   }
   assert.deepEqual(mal, []);
