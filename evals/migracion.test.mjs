@@ -31,6 +31,8 @@ execFileSync(
   [
     join(RAIZ, "node_modules/typescript/bin/tsc"),
     "lib/citas.ts",
+    "lib/aristas.ts",
+    "lib/grafo.ts",
     "lib/identidad.ts",
     "lib/parseAnalisis.ts",
     "lib/validadores.ts",
@@ -53,6 +55,13 @@ const { migrarAV2, todosLosIds, situacionDeLaCadenaDBT } = require(
   join(RAIZ, ".tmp-evals/identidad.js")
 );
 const { construirRedFuncional } = require(join(RAIZ, ".tmp-evals/redFuncional.js"));
+const { hayCamino } = require(join(RAIZ, ".tmp-evals/aristas.js"));
+const {
+  actualizarEtiquetaNodo,
+  apoyoCadena,
+  construirNodosGrafo,
+  derivarApoyo,
+} = require(join(RAIZ, ".tmp-evals/grafo.js"));
 
 const NOTA = readFileSync(join(RAIZ, "evals/casos/01-ansiedad-social.md"), "utf8")
   .split(/^##\s+NOTA\s*$/m)[1]
@@ -228,6 +237,46 @@ prueba("migrar dos veces da exactamente lo mismo", () => {
   assert.deepEqual(dos, una);
 });
 
+prueba("un informe anterior al grafo materializa aristas una sola vez", () => {
+  const a = normalizarAnalisis(crudoV1(), lineas);
+  assert.ok(a.aristas.length > 0, "la cadena implícita no produjo relaciones");
+  assert.ok(a.aristas.every((arista) => arista.id && arista.desde && arista.hasta));
+
+  // Vaciar el grafo es una edición válida. El migrador no puede reconstruirlo
+  // después y deshacer lo que trazó el profesional.
+  a.aristas = [];
+  assert.deepEqual(migrarAV2(JSON.parse(JSON.stringify(a))).aristas, []);
+});
+
+prueba("una franja completa exige una cita verificada", () => {
+  const sinCita = { texto: null, verificada: false, motivo: "sin_referencia" };
+  const cita = { texto: "texto literal", linea_inicio: 1, linea_fin: 1, verificada: true };
+  assert.equal(derivarApoyo(sinCita, "alta"), 1);
+  assert.equal(derivarApoyo(cita, "baja"), 2);
+  assert.equal(derivarApoyo(cita, "media"), 3);
+});
+
+prueba("la cadena hereda el apoyo del eslabón más débil", () => {
+  const a = normalizarAnalisis(crudoV1(), lineas);
+  const nodos = construirNodosGrafo(a).filter(
+    (n) => n.situacion_id === a.situaciones[0].id && !n.alternativa
+  );
+  assert.equal(apoyoCadena(nodos), Math.min(...nodos.filter((n) => n.tipo !== "funcion").map((n) => n.apoyo)));
+});
+
+prueba("editar un nodo modifica la entidad original y no una copia del grafo", () => {
+  const a = normalizarAnalisis(crudoV1(), lineas);
+  const conducta = a.conductas_problema[0];
+  actualizarEtiquetaNodo(a, conducta.id, "Etiqueta revisada por el clínico");
+  assert.equal(a.conductas_problema[0].descripcion, "Etiqueta revisada por el clínico");
+  assert.equal(
+    construirNodosGrafo(a).find((n) => n.id === conducta.id)?.etiqueta,
+    "Etiqueta revisada por el clínico"
+  );
+  const arista = a.aristas.find((actual) => actual.hasta === conducta.id);
+  if (arista) assert.equal(hayCamino(a.aristas, arista.desde, conducta.id), true);
+});
+
 prueba("la red funcional no dibuja menos relaciones que antes", () => {
   // La prueba que demuestra que esto no es solo fontanería. Con ids, la red
   // deja de perder aristas cuando el enunciado no repite las palabras de la
@@ -247,7 +296,7 @@ prueba("la red funcional no dibuja menos relaciones que antes", () => {
 
 console.log(
   fallos === 0
-    ? `\n${10} pruebas correctas\n`
+    ? `\n${14} pruebas correctas\n`
     : `\n${fallos} PRUEBAS FALLIDAS\n`
 );
 process.exit(fallos === 0 ? 0 : 1);

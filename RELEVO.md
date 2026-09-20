@@ -80,7 +80,7 @@ node evals/validadores.test.mjs                             # 46
 node evals/reporteFallo.test.mjs                            #  7
 node evals/coherencia.test.mjs                              # 18
 node evals/maqueta.test.mjs                                 #  7
-node evals/migracion.test.mjs                               # 10  ← nueva, fase 0
+node evals/migracion.test.mjs                               # 14  ← ampliada, fase 2
 npx eslint components lib app
 ```
 

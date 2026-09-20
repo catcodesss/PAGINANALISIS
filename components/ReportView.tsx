@@ -15,11 +15,9 @@ import type {
   CadenaDBT,
   CadenaOperante,
   CadenaRespondiente,
-  Cita as CitaVerificada,
   ConductaProblema,
   MetaGeneracion,
   ModeloTerapeutico,
-  NivelConfianza,
   Situacion,
   TipoEslabonDBT,
   VariableModuladora,
@@ -52,7 +50,6 @@ import {
 import {
   ANCLAS_DE_BLOQUE,
   SECCIONES_INFORME,
-  TITULO_DE_SECCION,
   TITULO_DE_ANCLA,
   bloqueDeAncla,
   type IdAncla,
@@ -62,17 +59,30 @@ import {
   NIVELES_CONFIANZA,
   INTRO_NIVELES_CONFIANZA,
   NOTA_PIE_NIVELES_CONFIANZA,
-  claseColorConfianza,
-  tooltipConfianza,
 } from "@/lib/nivelesConfianza";
 import FranjaDocumento from "./FranjaDocumento";
 import { useLente } from "./useLente";
 import {
-  BloqueOrdenable,
   BotonRestaurarOrden,
   ProveedorOrden,
   useOrden,
 } from "./ordenBloques";
+import GrafoAFC from "./grafo/GrafoAFC";
+import {
+  Chip,
+  ChipDestacado,
+  Cita,
+  Confianza,
+  ListaEditable,
+  SeccionInforme,
+  SinHallazgos,
+  SubSeccion,
+} from "./informe/primitivas";
+import BloqueSintesis from "./informe/BloqueSintesis";
+import BloqueAnalisisFuncional from "./informe/BloqueAnalisisFuncional";
+import BloqueMantenimiento from "./informe/BloqueMantenimiento";
+import BloquePlan from "./informe/BloquePlan";
+import BloquePendientes from "./informe/BloquePendientes";
 
 interface ReportViewProps {
   analisis: AnalisisFuncional;
@@ -98,18 +108,6 @@ const ETIQUETA_MODELO: Record<ModeloTerapeutico, string> = {
   act: "ACT",
   dbt: "DBT",
   mc: "Conductual (MC)",
-};
-
-/**
- * Qué campo de AnalisisFuncional corresponde a la capa de cada modalidad.
- * Tipado como Record<ModeloTerapeutico, keyof AnalisisFuncional> para que el
- * compilador avise si algún nombre de campo cambia, en vez de construirlo
- * con un template literal + "as" que no se vuelve a chequear.
- */
-const CAMPO_CAPA_POR_MODELO: Record<ModeloTerapeutico, keyof AnalisisFuncional> = {
-  act: "capa_act",
-  dbt: "capa_dbt",
-  mc: "capa_mc",
 };
 
 /**
@@ -170,85 +168,6 @@ const SECCIONES: readonly SeccionIndice[] = SECCIONES_INFORME;
 
 /** Orden de fábrica, el punto de partida antes de que el clínico mueva nada. */
 const IDS_SECCIONES = SECCIONES.map((s) => s.id);
-
-function SinHallazgos() {
-  return (
-    <p className="text-sm text-ink-muted">Sin hallazgos suficientes en la nota.</p>
-  );
-}
-
-/** Chip de clasificación técnica: informativo, discreto. */
-function Chip({ children }: { children: ReactNode }) {
-  return (
-    <span className="clasificacion-chip inline-block max-w-full break-words rounded border border-accent/40 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-accent">
-      {children}
-    </span>
-  );
-}
-
-/** Chip destacado: función hipotetizada o estado que es una conclusión. */
-function ChipDestacado({ children }: { children: ReactNode }) {
-  return (
-    /* Sin `whitespace-nowrap`: la función hipotetizada puede ser una frase
-       entera («Escape/evitación de evaluación social…») y en un móvil no cabía,
-       así que la página entera se desplazaba de lado. Medido: 409 px de
-       contenido en una pantalla de 375. Los chips cortos siguen en una línea
-       solos; los largos ahora parten. */
-    <span className="funcion-chip inline-block max-w-full break-words rounded bg-accent px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide texto-sobre-acento">
-      {children}
-    </span>
-  );
-}
-
-function Confianza({ nivel }: { nivel: NivelConfianza | string }) {
-  return (
-    <span
-      title={tooltipConfianza(nivel)}
-      className="conf-chip inline-flex cursor-help items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-ink-muted"
-    >
-      <span
-        aria-hidden="true"
-        className={`conf-dot h-1.5 w-1.5 rounded-full ${claseColorConfianza(nivel)}`}
-      />
-      Confianza: {nivel}
-    </span>
-  );
-}
-
-/** Cita textual de la nota original, distinguida como bloque. */
-/**
- * Solo se muestra entre comillas bajo el rótulo "De la nota" el texto que el
- * servidor recortó de la propia nota (ver lib/citas.ts). Si la cita no se pudo
- * verificar, se dice explícitamente que es una inferencia: nunca se presenta
- * como textual algo que el modelo redactó.
- */
-function Cita({ children }: { children: CitaVerificada | null | undefined }) {
-  if (!children) return null;
-
-  if (!children.verificada) {
-    return (
-      <p className="evidence-prefix mt-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-        Inferido — sin cita literal en la nota
-      </p>
-    );
-  }
-
-  const rango =
-    children.linea_inicio === children.linea_fin
-      ? `línea ${children.linea_inicio}`
-      : `líneas ${children.linea_inicio}–${children.linea_fin}`;
-
-  return (
-    <blockquote className="evidence-block mt-2 border-l-2 border-divider pl-3">
-      <p className="evidence-prefix font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-        De la nota · {rango}
-      </p>
-      <p className="evidence-text text-sm italic leading-relaxed text-ink-muted">
-        &quot;{children.texto}&quot;
-      </p>
-    </blockquote>
-  );
-}
 
 interface ReanalisisContextValor {
   notaOriginal: string;
@@ -512,41 +431,6 @@ function ListaAlertas({ analisis }: { analisis: AnalisisFuncional }) {
 }
 
 /**
- * Un bloque del informe: la unidad que se arrastra, se oculta y aparece en el
- * índice. Son cinco.
- *
- * Antes lo eran las diecisiete secciones, y eso repartía el mismo dato por seis
- * sitios que nada obligaba a coincidir. El bloque es ahora el contenedor y las
- * secciones de dentro son anclas: se pueden enlazar, pero no mover por su
- * cuenta — un informe cuyo «Plan de monitorización» hubiera aterrizado entre dos
- * apartados descriptivos no se lee como una preferencia, sino como un error del
- * documento.
- */
-function Bloque({
-  id,
-  children,
-}: {
-  id: IdSeccion;
-  children: ReactNode;
-}) {
-  const contexto = useContext(ReanalisisContext);
-  // En un análisis parcial, un bloque entero sin nada que enseñar no se pinta.
-  if (contexto && !bloqueVisible(contexto.analisis, id)) return null;
-
-  return (
-    <BloqueOrdenable id={id} titulo={TITULO_DE_SECCION[id]}>
-      <div id={id} className="scroll-mt-24 space-y-10">
-        <h2 className="section-title flex items-center gap-3 font-serif text-xl font-semibold text-ink sm:text-2xl">
-          <span aria-hidden="true" className="h-6 w-1.5 rounded-full bg-accent" />
-          {TITULO_DE_SECCION[id]}
-        </h2>
-        {children}
-      </div>
-    </BloqueOrdenable>
-  );
-}
-
-/**
  * Un apartado dentro de un bloque. Conserva su id de siempre como ancla, así
  * que `#hipotesis-principal` y los enlaces guardados siguen llevando donde
  * llevaban, y `secciones_editadas` sigue hablando el mismo idioma (invariante
@@ -577,23 +461,23 @@ function Seccion({
   const editada = edicion?.seccionesEditadas.includes(id) ?? false;
 
   return (
-    <section
+    <SeccionInforme
       id={id}
-      className={`scroll-mt-24 ${editada ? "seccion-editada" : ""}`}
+      titulo={titulo}
+      editada={editada}
+      marcaEditada={<MarcaEditado />}
+      extra={extra}
+      pie={
+        <>
+          <ReportarFallo seccionId={id} />
+          {camposReanalisis && (
+            <BloqueReanalisis campos={camposReanalisis} seccionId={id} />
+          )}
+        </>
+      }
     >
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3 className="section-title flex items-center gap-3 font-serif text-lg font-semibold text-ink">
-          {titulo}
-          {editada && <MarcaEditado />}
-        </h3>
-        {extra}
-      </div>
       {children}
-      <ReportarFallo seccionId={id} />
-      {camposReanalisis && (
-        <BloqueReanalisis campos={camposReanalisis} seccionId={id} />
-      )}
-    </section>
+    </SeccionInforme>
   );
 }
 
@@ -684,66 +568,6 @@ function ReportarFallo({ seccionId }: { seccionId: string }) {
 }
 
 /**
- * Lista de textos sueltos (datos faltantes, preguntas, líneas de intervención,
- * valores, reforzadores perdidos, indicadores de riesgo). Todas se editan
- * igual: reescribir una entrada, borrarla o añadir otra.
- */
-function ListaEditable({
-  items,
-  seccionId,
-  etiqueta,
-  onCambiar,
-  claseItem = "text-[15px] leading-relaxed text-ink",
-  vacio,
-}: {
-  items: string[];
-  seccionId: string;
-  /** En singular: se usa en "+ Agregar {etiqueta}". */
-  etiqueta: string;
-  onCambiar: (nuevos: string[]) => void;
-  claseItem?: string;
-  vacio?: ReactNode;
-}) {
-  const edicion = useEdicion();
-
-  if (items.length === 0 && !edicion) return <>{vacio ?? <SinHallazgos />}</>;
-
-  return (
-    <>
-      {items.length === 0 ? (
-        vacio ?? <SinHallazgos />
-      ) : (
-        <ul className="list-disc space-y-2 pl-5">
-          {items.map((item, i) => (
-            <li key={i} className={claseItem}>
-              <span className="flex flex-wrap items-baseline gap-x-2">
-                <TextoEditable
-                  valor={item}
-                  seccionId={seccionId}
-                  etiqueta={`${etiqueta} ${i + 1}`}
-                  className={claseItem}
-                  onCambio={(v) =>
-                    onCambiar(items.map((x, j) => (j === i ? v : x)))
-                  }
-                />
-                <BotonBorrar
-                  etiqueta={`${etiqueta} ${i + 1}`}
-                  onBorrar={() => onCambiar(items.filter((_, j) => j !== i))}
-                />
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <BotonAgregar
-        etiqueta={etiqueta}
-        onAgregar={(texto) => onCambiar([...items, texto])}
-      />
-    </>
-  );
-}
-
-/**
  * Franja de "esto no se toca" para las hipótesis de origen.
  *
  * No usa el ámbar de los avisos: no hay nada que revisar ni que corregir aquí,
@@ -778,7 +602,7 @@ function SelloNoModificable() {
  * Una columna vacía dice por qué lo está en vez de quedarse en blanco: que la
  * nota no recoja ningún activo es un dato sobre la nota, no sobre la persona.
  */
-function ColumnaRepertorio({
+export function ColumnaRepertorio({
   titulo,
   descripcion,
   vacio,
@@ -808,7 +632,7 @@ function ColumnaRepertorio({
 }
 
 /** Una conducta problema dentro de su columna (exceso o déficit). */
-function ConductaProblemaItem({ conducta }: { conducta: ConductaProblema }) {
+export function ConductaProblemaItem({ conducta }: { conducta: ConductaProblema }) {
   return (
     <li>
       <div className="flex flex-wrap gap-2">
@@ -1154,7 +978,7 @@ function PriorizacionEstimada({ analisis }: { analisis: AnalisisFuncional }) {
  * pantalla, y el momento es un matiz de cada variable, no un sitio donde
  * buscarla.
  */
-function RejillaContexto({ variables }: { variables: VariableModuladora[] }) {
+export function RejillaContexto({ variables }: { variables: VariableModuladora[] }) {
   const cobertura = useMemo(() => calcularCobertura(variables), [variables]);
 
   return (
@@ -1270,17 +1094,6 @@ function RejillaContexto({ variables }: { variables: VariableModuladora[] }) {
           .
         </p>
       )}
-    </div>
-  );
-}
-
-function SubSeccion({ titulo, children }: { titulo: string; children: ReactNode }) {
-  return (
-    <div>
-      <h3 className="mb-2 font-mono text-xs uppercase tracking-wide text-ink-muted">
-        {titulo}
-      </h3>
-      {children}
     </div>
   );
 }
@@ -1590,7 +1403,7 @@ function CicloInterconductual({ texto }: { texto: string }) {
 }
 
 /** Detalle específico del modelo terapéutico: colapsado por defecto para que el informe se lea rápido. */
-function DetalleModalidad({ children }: { children: ReactNode }) {
+export function DetalleModalidad({ children }: { children: ReactNode }) {
   const [abierto, setAbierto] = useState(false);
   return (
     <div>
@@ -1903,7 +1716,7 @@ function SelectorDeLente({
 }
 
 /** Detalle de la capa elegida; en impresión no hay selector, así que se listan todas. */
-function SelectorCapaModalidad({
+export function SelectorCapaModalidad({
   analisis,
   pestanaActiva,
 }: {
@@ -1945,7 +1758,7 @@ function SelectorCapaModalidad({
   );
 }
 
-function SituacionCard({
+export function SituacionCard({
   situacion,
   pestanaActiva,
 }: {
@@ -2562,29 +2375,6 @@ function InformeOrdenable({
   */
   const { lente: pestanaActiva, elegirLente } = useLente(modalidades);
 
-  /*
-    Las dos primeras columnas del repertorio salen del mismo campo:
-    `deficit_o_interferencia` decide en cuál cae cada conducta. "deficit" va a
-    Déficits; todo lo demás —interferencia, mixto y no determinable— va a
-    Excesos, porque es la conducta que está ocurriendo. Se conserva el índice
-    original solo para la clave de React: reordenar la lista no debe remontar
-    las tarjetas.
-  */
-  const { excesos, deficits } = useMemo(() => {
-    const conIndice = analisis.conductas_problema.map((conducta, indice) => ({
-      conducta,
-      indice,
-    }));
-    return {
-      excesos: conIndice.filter(
-        (c) => c.conducta.deficit_o_interferencia !== "deficit"
-      ),
-      deficits: conIndice.filter(
-        (c) => c.conducta.deficit_o_interferencia === "deficit"
-      ),
-    };
-  }, [analisis.conductas_problema]);
-
   const hipotesisDestacada = useMemo(() => {
     const conductaAlta = analisis.conductas_problema.find(
       (c) => c.importancia === "alta"
@@ -2684,7 +2474,7 @@ function InformeOrdenable({
         {/* flex-col: los bloques se reordenan con `order` de CSS, sin moverse
             del árbol de React. Ver components/ordenBloques.tsx. */}
         <div className="flex min-w-0 flex-1 flex-col">
-          <Bloque id="sintesis">
+          <BloqueSintesis visible={bloqueVisible(analisis, "sintesis")}>
           {/* Riesgo: lo primero de fábrica, por su relevancia de seguridad clínica. */}
           <section id="riesgo" className="scroll-mt-24">
             <div className="mb-3 flex items-center gap-3">
@@ -2782,141 +2572,41 @@ function InformeOrdenable({
               <SinHallazgos />
             )}
           </section>
-          </Bloque>
+          </BloqueSintesis>
 
-          <Bloque id="que-pasa">
-          <Seccion
-            id="conductas"
-            titulo="Repertorio conductual"
-            camposReanalisis={["conductas_problema", "repertorio_disponible"]}
-          >
-            {/*
-              Tres columnas, no una lista de problemas. Un informe que solo
-              enumera lo que sobra y lo que falta describe a alguien que no
-              hace nada bien, y esconde el dato que más cambia el tratamiento:
-              que la conducta adecuada ya se emite en algún sitio. Los excesos y
-              los déficits salen del mismo campo —los reparte
-              `deficit_o_interferencia`—, así que separarlos no pide nada nuevo
-              al modelo; los activos sí son un campo propio.
-
-              En pantalla estrecha se apilan: tres columnas de una línea cada
-              una no son una rejilla, son tres párrafos mal cortados.
-            */}
-            {analisis.conductas_problema.length === 0 &&
-            analisis.repertorio_disponible.length === 0 ? (
-              <SinHallazgos />
-            ) : (
-              <div className="grid gap-6 md:grid-cols-3">
-                <ColumnaRepertorio
-                  titulo="Excesos"
-                  descripcion="Conducta que sobra: ocurre de más, o donde no toca."
-                  vacio="Ninguna conducta clasificada como exceso."
-                >
-                  {excesos.map((c) => (
-                    <ConductaProblemaItem key={c.indice} conducta={c.conducta} />
-                  ))}
-                </ColumnaRepertorio>
-
-                <ColumnaRepertorio
-                  titulo="Déficits"
-                  descripcion="Conducta que falta: no está en el repertorio, o no se sabe emitir."
-                  vacio="Ninguna conducta clasificada como déficit."
-                >
-                  {deficits.map((c) => (
-                    <ConductaProblemaItem key={c.indice} conducta={c.conducta} />
-                  ))}
-                </ColumnaRepertorio>
-
-                <ColumnaRepertorio
-                  titulo="Activos"
-                  descripcion="Conducta adecuada que sí emite, y dónde. Si ya ocurre en algún contexto, el problema es de generalización y no de adquisición."
-                  vacio="La nota no recoge ningún contexto en que la conducta adecuada sí ocurra. No significa que no lo haya: conviene preguntarlo en sesión."
-                >
-                  {analisis.repertorio_disponible.map((r, i) => (
-                    <li key={i}>
-                      <p className="text-[15px] leading-relaxed text-ink">
-                        {r.descripcion}
-                      </p>
-                      {r.contexto_en_que_ocurre && (
-                        <p className="mt-1 text-sm leading-relaxed text-ink-muted">
-                          <span className="font-medium text-ink">Ocurre en:</span>{" "}
-                          {r.contexto_en_que_ocurre}
-                        </p>
-                      )}
-                      <Cita>{r.evidencia}</Cita>
-                    </li>
-                  ))}
-                </ColumnaRepertorio>
-              </div>
-            )}
-          </Seccion>
-
-          <Seccion
-            id="variables-moduladoras"
-            titulo="Contexto y variables moduladoras"
-            camposReanalisis={["variables_moduladoras"]}
-          >
-            {analisis.variables_moduladoras.length === 0 ? (
-              <SinHallazgos />
-            ) : (
-              <RejillaContexto variables={analisis.variables_moduladoras} />
-            )}
-          </Seccion>
-
+          <BloqueAnalisisFuncional visible={bloqueVisible(analisis, "que-pasa")}>
           <Seccion
             id="situaciones"
-            titulo="Análisis por situaciones"
-            camposReanalisis={["situaciones", "acomodacion_entorno"]}
+            titulo="Grafo funcional editable · AFC"
+            camposReanalisis={[
+              "conductas_problema",
+              "repertorio_disponible",
+              "variables_moduladoras",
+              "situaciones",
+              "conductas_alternativas",
+              "acomodacion_entorno",
+              "capa_act",
+              "capa_dbt",
+            ]}
           >
+            {/* Las anclas históricas siguen funcionando aunque las cuatro
+                representaciones duplicadas se hayan fundido en un grafo. */}
+            <span id="conductas" className="scroll-mt-24" />
+            <span id="variables-moduladoras" className="scroll-mt-24" />
+            <span id="modalidad" className="scroll-mt-24" />
             {analisis.situaciones.length === 0 ? (
               <SinHallazgos />
             ) : (
-              <div className="space-y-6">
-                {analisis.situaciones.map((s, i) => (
-                  <SituacionCard key={i} situacion={s} pestanaActiva={pestanaActiva} />
-                ))}
-              </div>
-            )}
-
-            {analisis.acomodacion_entorno.length > 0 && (
-              <div className="mt-6">
-                <SubSeccion titulo="Acomodación del entorno">
-                  <ul className="space-y-3">
-                    {analisis.acomodacion_entorno.map((a, i) => (
-                      <li key={i} className="rounded border border-divider p-4">
-                        <p className="font-mono text-xs uppercase tracking-wide text-ink-muted">
-                          {a.quien}
-                        </p>
-                        <p className="mt-1 text-[15px] leading-relaxed text-ink">
-                          {a.conducta_acomodacion}
-                        </p>
-                        {a.funcion && (
-                          <p className="mt-1 text-sm text-ink-muted">{a.funcion}</p>
-                        )}
-                        <Cita>{a.evidencia}</Cita>
-                      </li>
-                    ))}
-                  </ul>
-                </SubSeccion>
-              </div>
-            )}
-          </Seccion>
-
-          <Seccion
-            id="modalidad"
-            titulo="Detalle según modelo terapéutico"
-            camposReanalisis={[CAMPO_CAPA_POR_MODELO[pestanaActiva]]}
-          >
-            <DetalleModalidad>
-              <SelectorCapaModalidad
+              <GrafoAFC
                 analisis={analisis}
-                pestanaActiva={pestanaActiva}
+                notaOriginal={notaOriginal}
+                onEditar={(mutar) => onEditarSeccion("situaciones", mutar)}
               />
-            </DetalleModalidad>
+            )}
           </Seccion>
-          </Bloque>
+          </BloqueAnalisisFuncional>
 
-          <Bloque id="mantenimiento">
+          <BloqueMantenimiento visible={bloqueVisible(analisis, "mantenimiento")}>
           <Seccion
             id="hipotesis-mantenimiento"
             titulo="Hipótesis de mantenimiento"
@@ -3097,9 +2787,9 @@ function InformeOrdenable({
               </SubSeccion>
             </div>
           </Seccion>
-          </Bloque>
+          </BloqueMantenimiento>
 
-          <Bloque id="plan">
+          <BloquePlan visible={bloqueVisible(analisis, "plan")}>
           <Seccion
             id="conductas-alternativas"
             titulo="Conductas alternativas propuestas"
@@ -3273,9 +2963,9 @@ function InformeOrdenable({
               </p>
             )}
           </Seccion>
-          </Bloque>
+          </BloquePlan>
 
-          <Bloque id="pendientes">
+          <BloquePendientes visible={bloqueVisible(analisis, "pendientes")}>
           <Seccion id="hipotesis-alternativas" titulo="Hipótesis alternativas" camposReanalisis={["hipotesis_alternativas"]}>
             {analisis.hipotesis_alternativas.length === 0 ? (
               <SinHallazgos />
@@ -3512,7 +3202,7 @@ function InformeOrdenable({
               {NOTA_PIE_NIVELES_CONFIANZA}
             </p>
           </section>
-          </Bloque>
+          </BloquePendientes>
 
         </div>
       </div>

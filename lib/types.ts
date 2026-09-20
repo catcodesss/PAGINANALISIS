@@ -277,6 +277,22 @@ export interface Situacion {
  */
 export type TipoRelacion = "causal" | "moderadora" | "mediadora";
 
+/**
+ * Relación estructural persistida del grafo funcional.
+ *
+ * No sustituye a TipoRelacion: una arista dice qué nodos están trazados; la
+ * hipótesis dice cómo interpreta clínicamente ese trazo. Mantener ambos ejes
+ * separados permite borrar una conexión sin reescribir una interpretación.
+ */
+export type TipoArista = "secuencial" | "moderadora" | "bucle";
+
+export interface Arista {
+  id: Id;
+  desde: Id;
+  hasta: Id;
+  tipo: TipoArista;
+}
+
 export interface HipotesisMantenimiento {
   id: Id;
   /** A qué conducta se refiere, con las palabras del modelo. Para mostrar. */
@@ -566,6 +582,8 @@ export interface AnalisisFuncional {
    * una relación vieja apuntara a una entidad nueva sin que nada lo avisara.
    */
   siguiente_id: number;
+  /** El modelo no las emite: se materializan una vez al normalizar. */
+  aristas: Arista[];
   resumen_clinico: string;
   conductas_problema: ConductaProblema[];
   /** La tercera columna del repertorio. Ver RepertorioDisponible. */
@@ -635,6 +653,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   // que `alertas`, `meta` y `secciones_editadas`.
   "version",
   "siguiente_id",
+  "aristas",
   "resumen_clinico",
   "conductas_problema",
   "repertorio_disponible",

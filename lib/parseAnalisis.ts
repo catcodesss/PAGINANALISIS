@@ -5,6 +5,7 @@ import {
   VERSION_ANALISIS,
   type Acomodacion,
   type AnalisisFuncional,
+  type Arista,
   type CadenaDBT,
   type CadenaOperante,
   type CadenaRespondiente,
@@ -591,6 +592,9 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
   return migrarAV2({
     version: VERSION_ANALISIS,
     siguiente_id: 1,
+    // El modelo no conoce las aristas. El migrador las materializa después de
+    // asignar ids a todas las entidades.
+    aristas: undefined as unknown as Arista[],
     resumen_clinico: comoTexto(d.resumen_clinico),
     conductas_problema: comoArreglo<unknown>(d.conductas_problema).map((c) =>
       normalizarConductaProblema(c, lineas)
@@ -662,6 +666,24 @@ const NORMALIZADORES_POR_CAMPO: {
   version: () => VERSION_ANALISIS,
   siguiente_id: (d) =>
     typeof d.siguiente_id === "number" ? d.siguiente_id : 1,
+  aristas: (d) =>
+    comoArreglo<unknown>(d.aristas).flatMap((valor): Arista[] => {
+      const arista = comoObjeto(valor);
+      if (
+        typeof arista.id !== "string" ||
+        typeof arista.desde !== "string" ||
+        typeof arista.hasta !== "string" ||
+        !["secuencial", "moderadora", "bucle"].includes(String(arista.tipo))
+      ) {
+        return [];
+      }
+      return [{
+        id: arista.id,
+        desde: arista.desde,
+        hasta: arista.hasta,
+        tipo: arista.tipo as Arista["tipo"],
+      }];
+    }),
   resumen_clinico: (d) => comoTexto(d.resumen_clinico),
   conductas_problema: (d, lineas) =>
     comoArreglo<unknown>(d.conductas_problema).map((c) =>

@@ -24,6 +24,9 @@ export type CampoAnalisis = keyof AnalisisFuncional;
  * fuera completo. No se ofrecen como opción porque no deben poder desactivarse.
  */
 const CAMPOS_SIEMPRE: CampoAnalisis[] = [
+  "version",
+  "siguiente_id",
+  "aristas",
   "resumen_clinico",
   "datos_faltantes",
   "riesgo",

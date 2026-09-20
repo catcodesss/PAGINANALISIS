@@ -1,5 +1,40 @@
 # CAMBIOS
 
+## Fase 2 — el bloque 2 es un grafo AFC editable
+
+`AnalisisFuncional.aristas` conserva ahora las relaciones que ve y corrige el
+profesional. El modelo no las emite: `lib/aristas.ts` materializa una sola vez
+la cadena implícita después de asignar ids. Una lista existente —también una
+lista vacía— nunca se regenera, porque borrar todas las flechas es una edición
+válida y no puede deshacerse al reabrir el caso.
+
+El bloque «Análisis funcional» dejó de repetir repertorio, rejilla, situaciones
+y modalidad como cuatro representaciones. `components/grafo/GrafoAFC.tsx`
+proyecta directamente las entidades del análisis en seis carriles, una banda
+por situación y una fila alternativa. No existe un almacén paralelo de nodos.
+Las posiciones salen del orden y del carril; las flechas se calculan sobre el
+layout ya resuelto y se recalculan en resize y scroll. En móvil la cadena se
+apila y el SVG se oculta; al imprimir se usa la tabla ED/OM/RO/C/CMLP.
+
+La franja superior deriva su longitud de cita + confianza. Una franja completa
+exige cita verificada, y el apoyo de la cadena es el mínimo de sus eslabones.
+Al pulsarla se abre la línea correspondiente de la nota en bruto y se resalta.
+Los huecos estructurales siguen visibles como nodos discontinuos.
+
+La edición actúa sobre la entidad original: doble clic o ficha lateral para la
+etiqueta, botones por carril para añadir, borrado con limpieza de relaciones y
+modo Conectar con origen + destino. Deshacer/rehacer guarda una instantánea por
+acción atómica. Los nodos tienen nombre accesible y recorrido por teclado.
+
+`ReportView.tsx` empezó a dividirse: las primitivas compartidas viven en
+`components/informe/primitivas.tsx`, hay un componente por bloque en
+`components/informe/`, y el grafo está aislado en `components/grafo/`.
+
+`evals/migracion.test.mjs` pasa de 10 a 14 pruebas para fijar la materialización
+única de aristas, la regla de cita, el eslabón más débil y la ausencia de una
+copia paralela al editar.
+
+
 ## v2 del análisis — identidad de las entidades
 
 Cada entidad del análisis lleva ahora un `id` estable (`cnd_1`, `sit_2`,

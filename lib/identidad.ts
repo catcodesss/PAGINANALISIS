@@ -7,6 +7,7 @@ import {
   type Id,
   type Situacion,
 } from "./types";
+import { materializarAristas } from "./aristas";
 
 /**
  * Identidad de las entidades del análisis: asignarla y resolver las referencias
@@ -400,6 +401,9 @@ export function situacionDeLaCadenaDBT(
  * antes de la v2 se abre igual que siempre; lo fija evals/migracion.test.mjs.
  */
 export function migrarAV2(analisis: AnalisisFuncional): AnalisisFuncional {
+  const teniaAristas = Array.isArray(
+    (analisis as unknown as Record<string, unknown>).aristas
+  );
   // La cadena heredada se lee de la propia capa: un análisis guardado en v1 la
   // trae aunque el tipo ya no la declare.
   const capaDbt = analisis.capa_dbt as unknown as Record<string, unknown>;
@@ -410,6 +414,10 @@ export function migrarAV2(analisis: AnalisisFuncional): AnalisisFuncional {
 
   analisis.siguiente_id = asignarIds(analisis);
   resolverReferencias(analisis);
+  // Una lista existente, aunque esté vacía, ya es la decisión persistida del
+  // clínico y no se regenera. Solo los informes anteriores al grafo carecen de
+  // la propiedad por completo.
+  if (!teniaAristas) analisis.aristas = materializarAristas(analisis);
   analisis.version = VERSION_ANALISIS;
   return analisis;
 }

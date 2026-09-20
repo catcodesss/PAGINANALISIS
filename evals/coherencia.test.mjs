@@ -152,8 +152,17 @@ const IDS_ANCLA = ANCLAS_INFORME.map((a) => a.id);
  * ningún error.
  */
 function bloquesDibujados() {
+  const componentes = {
+    BloqueSintesis: "sintesis",
+    BloqueAnalisisFuncional: "que-pasa",
+    BloqueMantenimiento: "mantenimiento",
+    BloquePlan: "plan",
+    BloquePendientes: "pendientes",
+  };
   return new Set(
-    [...reportView.matchAll(/<Bloque\s+id="([^"]+)"/g)].map((m) => m[1])
+    Object.entries(componentes)
+      .filter(([nombre]) => new RegExp(`<${nombre}\\b`).test(reportView))
+      .map(([, id]) => id)
   );
 }
 
@@ -163,6 +172,7 @@ function anclasDibujadas() {
     ...reportView.matchAll(/<Seccion\s*\n\s*id="([^"]+)"/g),
     // Las que no siguen el molde de <Seccion> pintan su <section id> a mano.
     ...reportView.matchAll(/<section\s+id="([^"]+)"/g),
+    ...reportView.matchAll(/<span\s+id="([^"]+)"/g),
   ].map((m) => m[1]);
   return new Set(ids);
 }
@@ -231,7 +241,7 @@ prueba("el título del índice y el del encabezado salen de la misma lista", () 
     Ahora <Bloque> no acepta `titulo`: lo lee de TITULO_DE_SECCION. Esta prueba
     fija esa decisión, porque volver a pasarlo como prop reabriría el fallo.
   */
-  const conTitulo = [...reportView.matchAll(/<Bloque\s+id="[^"]+"\s+titulo=/g)];
+  const conTitulo = [...reportView.matchAll(/<Bloque(?:Sintesis|AnalisisFuncional|Mantenimiento|Plan|Pendientes)\b[^>]*\btitulo=/g)];
   assert.deepEqual(
     conTitulo.map((m) => m[0]),
     [],
@@ -299,10 +309,18 @@ prueba("las anclas se pintan dentro del bloque que declaran", () => {
     con el bloque equivocado y un índice que miente sobre dónde está.
   */
   const mal = [];
+  const componentes = {
+    sintesis: "BloqueSintesis",
+    "que-pasa": "BloqueAnalisisFuncional",
+    mantenimiento: "BloqueMantenimiento",
+    plan: "BloquePlan",
+    pendientes: "BloquePendientes",
+  };
   for (const b of IDS) {
-    const ini = reportView.indexOf(`<Bloque id="${b}">`);
+    const componente = componentes[b];
+    const ini = reportView.indexOf(`<${componente}`);
     assert.notEqual(ini, -1, `no se pinta el bloque ${b}`);
-    const fin = reportView.indexOf("</Bloque>", ini);
+    const fin = reportView.indexOf(`</${componente}>`, ini);
     const dentro = reportView.slice(ini, fin);
     for (const a of ANCLAS_INFORME.filter((x) => x.bloque === b)) {
       if (!dentro.includes(`id="${a.id}"`)) mal.push(`${a.id} debería estar en ${b}`);
