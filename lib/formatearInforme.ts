@@ -9,7 +9,13 @@ import {
   ETIQUETA_NIVEL,
   NIVELES,
 } from "./cobertura";
-import { ORDEN_SECCIONES_POR_DEFECTO, TITULO_DE_SECCION } from "./secciones";
+import {
+  ANCLAS_DE_BLOQUE,
+  ORDEN_SECCIONES_POR_DEFECTO,
+  TITULO_DE_ANCLA,
+  TITULO_DE_SECCION,
+  type IdSeccion,
+} from "./secciones";
 import { AVISO_EJEMPLO } from "./maqueta";
 import {
   NIVELES_CONFIANZA,
@@ -216,7 +222,7 @@ export function formatearInformeTexto(
           const cabecera = `- [${g.gravedad === "alta" ? "revisar antes de usar" : "conviene revisar"}] ${g.mensaje}`;
           const elementos = g.elementos.map((e) => `    — ${e}`);
           const secciones = g.secciones
-            .map((id) => TITULO_DE_SECCION[id])
+            .map((id) => TITULO_DE_ANCLA[id])
             .filter(Boolean);
           const donde = secciones.length
             ? [`    Puede haberse reflejado en: ${secciones.join(", ")}.`]
@@ -567,13 +573,42 @@ export function formatearInformeTexto(
     seccion("LÍNEAS DE INTERVENCIÓN TENTATIVAS", listaOTexto(analisis.lineas_de_intervencion_tentativas))
   );
 
-  for (const id of orden) {
-    if (bloques[id]) partes.push(bloques[id]);
+  /*
+    El documento se recorre por bloque, y dentro de cada bloque por sus anclas
+    en orden de fábrica. `bloques` está indexado por ancla —que es la unidad de
+    texto— mientras que `orden` trae los cinco bloques, que es lo que el clínico
+    reordena en pantalla.
+
+    Sin este doble recorrido el bucle no encontraría ni una clave y caería
+    entero en el repesque de abajo: el documento saldría completo pero en el
+    orden de inserción, ignorando en silencio el que eligió el clínico. Es
+    exactamente la clase de fallo que no da error y solo se ve comparando dos
+    documentos.
+  */
+  const emitidos = new Set<string>();
+  for (const bloque of orden) {
+    const anclas = (ANCLAS_DE_BLOQUE[bloque as IdSeccion] ?? []).filter(
+      (a) => bloques[a]
+    );
+    if (anclas.length === 0) continue;
+    // El encabezado del bloque va también en el documento: en pantalla la
+    // pertenencia se ve por la caja, y en un .docx o en un texto pegado no hay
+    // caja. Sin él, el lector del documento vería diecisiete apartados sueltos
+    // otra vez — que es justo lo que este cambio deshace.
+    const titulo = TITULO_DE_SECCION[bloque as IdSeccion];
+    if (titulo) {
+      partes.push(`${"=".repeat(72)}\n${titulo.toUpperCase()}\n${"=".repeat(72)}\n`);
+    }
+    for (const ancla of anclas) {
+      partes.push(bloques[ancla]);
+      emitidos.add(ancla);
+    }
   }
-  // Un bloque que el orden guardado no mencione —porque se añadió después de
-  // guardarlo— no puede desaparecer del informe: se emite al final.
+  // Un apartado que el orden guardado no alcance —porque se añadió después de
+  // guardarlo, o porque su bloque no está en la lista— no puede desaparecer del
+  // informe: se emite al final.
   for (const [id, texto] of Object.entries(bloques)) {
-    if (!orden.includes(id) && texto) partes.push(texto);
+    if (!emitidos.has(id) && texto) partes.push(texto);
   }
 
   partes.push(DESCARGO);

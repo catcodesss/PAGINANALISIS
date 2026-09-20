@@ -1,6 +1,6 @@
 import type { AnalisisFuncional, Alerta } from "./types";
 // Solo el tipo: no añade nada al JavaScript emitido.
-import type { IdSeccion } from "./secciones";
+import type { IdAncla } from "./secciones";
 import { normalizarTexto } from "./citas";
 
 /**
@@ -368,12 +368,16 @@ export function validarAnalisis(
  * "Conductas problema" y no en "Líneas de intervención" es lo que decide si
  * hay que reanalizar esa sección o el informe entero.
  *
- * Devuelve el id de sección, no su título: el título sale de lib/secciones.ts,
- * que es la única lista. El tipo de retorno es `IdSeccion`, así que señalar una
- * sección que no existe no compila — antes habría sido un enlace roto en el
- * informe, visible solo si alguien lo pulsaba.
+ * Devuelve el id del ANCLA, no el del bloque que la contiene: el aviso señala
+ * un apartado concreto, y decir «Análisis funcional» cuando se puede decir
+ * «Repertorio conductual» pierde justo lo que hace útil al aviso. Quien necesite
+ * el bloque lo obtiene con `bloqueDeAncla`.
+ *
+ * El título sale de lib/secciones.ts, que es la única lista. El tipo de retorno
+ * es `IdAncla`, así que señalar un apartado que no existe no compila — antes
+ * habría sido un enlace roto, visible solo si alguien lo pulsaba.
  */
-export function seccionDeRuta(ruta: string): IdSeccion | null {
+export function seccionDeRuta(ruta: string): IdAncla | null {
   const campo = ruta.split(/[[.]/)[0];
   switch (campo) {
     case "conductas_problema":
@@ -427,7 +431,7 @@ export interface GrupoAlertas {
   /** Vacío cuando la alerta señala el informe entero y no un fragmento. */
   elementos: string[];
   /** Secciones del informe donde puede haberse reflejado el fallo. */
-  secciones: IdSeccion[];
+  secciones: IdAncla[];
 }
 
 /**

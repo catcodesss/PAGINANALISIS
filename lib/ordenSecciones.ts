@@ -1,5 +1,3 @@
-import { posicionDeGrupo } from "./secciones";
-
 /**
  * Conciliar un orden de bloques guardado con el que existe hoy.
  *
@@ -24,12 +22,12 @@ import { posicionDeGrupo } from "./secciones";
  * que el orden que eligió el clínico se respeta entero y el bloque nuevo
  * aterriza donde su lista dice que va.
  *
- * El último paso es una ordenación ESTABLE por grupo: dentro de un grupo se
- * respeta entero lo que el clínico eligió, pero un bloque no puede quedarse en
- * mitad de un grupo ajeno. Sin esto, un orden guardado antes de que existieran
- * los grupos —o antes de que una sección cambiara de grupo— dejaría los
- * contrapesos intercalados entre lo descriptivo, que no se lee como una
- * preferencia sino como un documento roto.
+ * YA NO SE ORDENA POR GRUPO AL FINAL. Había un último paso que reordenaba de
+ * forma estable por grupo, para que una sección no se quedara en mitad de un
+ * grupo ajeno. Desde que el bloque ES el grupo, ese paso pasaría por encima de
+ * todo: los cinco bloques volverían siempre a su orden de fábrica y el
+ * arrastre no haría nada. No hay ninguna agrupación por encima del bloque que
+ * respetar, así que lo que el clínico ordene es lo que sale.
  */
 export function reconciliarOrden(
   guardado: unknown[],
@@ -55,7 +53,5 @@ export function reconciliarOrden(
     unicos.splice(destino, 0, id);
   });
 
-  // Array.prototype.sort es estable desde ES2019: el orden elegido dentro de
-  // cada grupo sobrevive intacto.
-  return unicos.sort((a, b) => posicionDeGrupo(a) - posicionDeGrupo(b));
+  return unicos;
 }

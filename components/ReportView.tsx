@@ -49,7 +49,15 @@ import {
   ETIQUETA_NIVEL,
   NIVELES,
 } from "@/lib/cobertura";
-import { SECCIONES_INFORME, type IdSeccion } from "@/lib/secciones";
+import {
+  ANCLAS_DE_BLOQUE,
+  SECCIONES_INFORME,
+  TITULO_DE_SECCION,
+  TITULO_DE_ANCLA,
+  bloqueDeAncla,
+  type IdAncla,
+  type IdSeccion,
+} from "@/lib/secciones";
 import {
   NIVELES_CONFIANZA,
   INTRO_NIVELES_CONFIANZA,
@@ -115,7 +123,7 @@ const CAMPO_CAPA_POR_MODELO: Record<ModeloTerapeutico, keyof AnalisisFuncional> 
  * de la fusión todavía trae el id viejo en campos_generados, y sin el alias
  * esa sección se ocultaría en un informe que sí la generó.
  */
-const BLOQUE_DE_SECCION: Partial<Record<IdSeccion, string[]>> = {
+const BLOQUE_DE_SECCION: Partial<Record<IdAncla, string[]>> = {
   conductas: ["base", "conductas"],
   "variables-moduladoras": ["base", "moduladoras"],
   situaciones: ["situaciones"],
@@ -134,7 +142,7 @@ const BLOQUE_DE_SECCION: Partial<Record<IdSeccion, string[]>> = {
  * campos_generados vacío = informe completo (y también los análisis guardados
  * antes de que existiera el análisis por partes).
  */
-function seccionVisible(analisis: AnalisisFuncional, id: IdSeccion): boolean {
+function anclaVisible(analisis: AnalisisFuncional, id: IdAncla): boolean {
   if (analisis.campos_generados.length === 0) return true;
   if (id === "modalidad") {
     return ["act", "dbt", "mc"].some((m) => analisis.campos_generados.includes(m));
@@ -144,8 +152,18 @@ function seccionVisible(analisis: AnalisisFuncional, id: IdSeccion): boolean {
 }
 
 /**
+ * Un bloque se pinta si alguno de sus apartados tiene algo que enseñar. Un
+ * bloque entero vacío en un análisis parcial es ruido: ocupa una entrada del
+ * índice para no decir nada.
+ */
+function bloqueVisible(analisis: AnalisisFuncional, id: IdSeccion): boolean {
+  if (analisis.campos_generados.length === 0) return true;
+  return ANCLAS_DE_BLOQUE[id].some((a) => anclaVisible(analisis, a));
+}
+
+/**
  * El índice sale de lib/secciones.ts, que es la única lista: así el orden del
- * índice, el del informe exportado y el nombre de cada sección no pueden
+ * índice, el del informe exportado y el nombre de cada bloque no pueden
  * separarse. Antes eran cuatro listas sueltas y nada las comparaba.
  */
 const SECCIONES: readonly SeccionIndice[] = SECCIONES_INFORME;
@@ -396,6 +414,7 @@ function BloqueReanalisis({
  * es dónde se leen, no qué dicen.
  */
 function ListaAlertas({ analisis }: { analisis: AnalisisFuncional }) {
+  const orden = useOrden();
   return (
       <ul className="space-y-5">
         {agruparAlertas(analisis.alertas).map((g, i) => {
@@ -472,9 +491,13 @@ function ListaAlertas({ analisis }: { analisis: AnalisisFuncional }) {
                       {j > 0 && (j === g.secciones.length - 1 ? " y " : ", ")}
                       <a
                         href={`#${id}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          irAlAncla(orden, id);
+                        }}
                         className="text-accent underline underline-offset-2 print:no-underline"
                       >
-                        {SECCIONES.find((s) => s.id === id)?.titulo ?? id}
+                        {TITULO_DE_ANCLA[id] ?? id}
                       </a>
                     </span>
                   ))}
@@ -488,6 +511,49 @@ function ListaAlertas({ analisis }: { analisis: AnalisisFuncional }) {
   );
 }
 
+/**
+ * Un bloque del informe: la unidad que se arrastra, se oculta y aparece en el
+ * índice. Son cinco.
+ *
+ * Antes lo eran las diecisiete secciones, y eso repartía el mismo dato por seis
+ * sitios que nada obligaba a coincidir. El bloque es ahora el contenedor y las
+ * secciones de dentro son anclas: se pueden enlazar, pero no mover por su
+ * cuenta — un informe cuyo «Plan de monitorización» hubiera aterrizado entre dos
+ * apartados descriptivos no se lee como una preferencia, sino como un error del
+ * documento.
+ */
+function Bloque({
+  id,
+  children,
+}: {
+  id: IdSeccion;
+  children: ReactNode;
+}) {
+  const contexto = useContext(ReanalisisContext);
+  // En un análisis parcial, un bloque entero sin nada que enseñar no se pinta.
+  if (contexto && !bloqueVisible(contexto.analisis, id)) return null;
+
+  return (
+    <BloqueOrdenable id={id} titulo={TITULO_DE_SECCION[id]}>
+      <div id={id} className="scroll-mt-24 space-y-10">
+        <h2 className="section-title flex items-center gap-3 font-serif text-xl font-semibold text-ink sm:text-2xl">
+          <span aria-hidden="true" className="h-6 w-1.5 rounded-full bg-accent" />
+          {TITULO_DE_SECCION[id]}
+        </h2>
+        {children}
+      </div>
+    </BloqueOrdenable>
+  );
+}
+
+/**
+ * Un apartado dentro de un bloque. Conserva su id de siempre como ancla, así
+ * que `#hipotesis-principal` y los enlaces guardados siguen llevando donde
+ * llevaban, y `secciones_editadas` sigue hablando el mismo idioma (invariante
+ * 6: lo que escribe el clínico no se presenta como generado por IA).
+ *
+ * Ya no envuelve un BloqueOrdenable: el apartado no es una unidad de orden.
+ */
 function Seccion({
   id,
   titulo,
@@ -495,9 +561,9 @@ function Seccion({
   children,
   camposReanalisis,
 }: {
-  /* No es un `string` cualquiera: cada sección del informe tiene que estar en
-     lib/secciones.ts, o el índice la ignoraría y el orden no la conocería. */
-  id: IdSeccion;
+  /* No es un `string` cualquiera: cada apartado tiene que estar en
+     lib/secciones.ts, o el enlace que lo señale apuntaría a la nada. */
+  id: IdAncla;
   titulo: string;
   extra?: ReactNode;
   children: ReactNode;
@@ -505,32 +571,29 @@ function Seccion({
 }) {
   const contexto = useContext(ReanalisisContext);
   const edicion = useEdicion();
-  // En un análisis parcial, las secciones no pedidas no se pintan vacías.
-  if (contexto && !seccionVisible(contexto.analisis, id)) return null;
+  // En un análisis parcial, los apartados no pedidos no se pintan vacíos.
+  if (contexto && !anclaVisible(contexto.analisis, id)) return null;
 
   const editada = edicion?.seccionesEditadas.includes(id) ?? false;
 
   return (
-    <BloqueOrdenable id={id} titulo={titulo}>
-      <section
-        id={id}
-        className={`scroll-mt-24 ${editada ? "seccion-editada" : ""}`}
-      >
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 className="section-title flex items-center gap-3 font-serif text-lg font-semibold text-ink sm:text-xl">
-            <span aria-hidden="true" className="h-5 w-1 rounded-full bg-accent" />
-            {titulo}
-            {editada && <MarcaEditado />}
-          </h2>
-          {extra}
-        </div>
-        {children}
-        <ReportarFallo seccionId={id} />
-        {camposReanalisis && (
-          <BloqueReanalisis campos={camposReanalisis} seccionId={id} />
-        )}
-      </section>
-    </BloqueOrdenable>
+    <section
+      id={id}
+      className={`scroll-mt-24 ${editada ? "seccion-editada" : ""}`}
+    >
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h3 className="section-title flex items-center gap-3 font-serif text-lg font-semibold text-ink">
+          {titulo}
+          {editada && <MarcaEditado />}
+        </h3>
+        {extra}
+      </div>
+      {children}
+      <ReportarFallo seccionId={id} />
+      {camposReanalisis && (
+        <BloqueReanalisis campos={camposReanalisis} seccionId={id} />
+      )}
+    </section>
   );
 }
 
@@ -2010,6 +2073,24 @@ function reabrirSeccion(ctx: ReturnType<typeof useOrden>, id: string) {
   });
 }
 
+/**
+ * Lleva a un ancla, reabriendo antes su bloque si estaba oculto.
+ *
+ * Desde que el bloque es la unidad que se oculta, un ancla puede existir en el
+ * árbol y no estar pintada. Un aviso que enlazara a `#hipotesis-principal` con
+ * el bloque «Cabecera» oculto no haría nada al pulsarlo: ni error, ni scroll,
+ * ni explicación. Se reabre el bloque primero y se salta después.
+ */
+function irAlAncla(ctx: ReturnType<typeof useOrden>, ancla: string) {
+  const bloque = bloqueDeAncla(ancla);
+  if (bloque && ctx?.oculta(bloque)) ctx.mostrar(bloque);
+  requestAnimationFrame(() => {
+    document
+      .getElementById(ancla)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 function IndiceLateral({
   secciones,
   activa,
@@ -2455,7 +2536,7 @@ function InformeOrdenable({
   // El índice enseña los bloques en el orden en que están en pantalla, no en el
   // de fábrica: si el clínico sube «Riesgo», también sube en el índice.
   const seccionesVisibles = useMemo(() => {
-    const visibles = SECCIONES.filter((s) => seccionVisible(analisis, s.id));
+    const visibles = SECCIONES.filter((s) => bloqueVisible(analisis, s.id));
     if (!orden) return visibles;
     return orden
       .ordenar(visibles.map((s) => s.id))
@@ -2603,8 +2684,8 @@ function InformeOrdenable({
         {/* flex-col: los bloques se reordenan con `order` de CSS, sin moverse
             del árbol de React. Ver components/ordenBloques.tsx. */}
         <div className="flex min-w-0 flex-1 flex-col">
+          <Bloque id="sintesis">
           {/* Riesgo: lo primero de fábrica, por su relevancia de seguridad clínica. */}
-          <BloqueOrdenable id="riesgo" titulo="Riesgo">
           <section id="riesgo" className="scroll-mt-24">
             <div className="mb-3 flex items-center gap-3">
               <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
@@ -2638,7 +2719,23 @@ function InformeOrdenable({
             <ReportarFallo seccionId="riesgo" />
             <BloqueReanalisis campos={["riesgo"]} seccionId="riesgo" />
           </section>
-          </BloqueOrdenable>
+
+          <Seccion id="resumen" titulo="Resumen clínico" camposReanalisis={["resumen_clinico"]}>
+            {analisis.resumen_clinico ? (
+              <TextoEditable
+                valor={analisis.resumen_clinico}
+                seccionId="resumen"
+                etiqueta="Resumen clínico"
+                onCambio={(v) =>
+                  onEditarSeccion("resumen", (c) => {
+                    c.resumen_clinico = v;
+                  })
+                }
+              />
+            ) : (
+              <SinHallazgos />
+            )}
+          </Seccion>
 
           {/*
             Formulación funcional destacada — el titular del informe. El verde
@@ -2646,11 +2743,6 @@ function InformeOrdenable({
             en una caja aparte metida dentro de una blanca: esa doble caja
             dejaba un marco blanco visible alrededor del color.
           */}
-          <BloqueOrdenable
-            id="hipotesis-principal"
-            titulo="Formulación destacada"
-            destacado={Boolean(hipotesisDestacada?.enunciado)}
-          >
           <section id="hipotesis-principal" className="scroll-mt-24">
             {hipotesisDestacada && hipotesisDestacada.enunciado ? (
               <div className="formulacion-destacada">
@@ -2690,70 +2782,9 @@ function InformeOrdenable({
               <SinHallazgos />
             )}
           </section>
-          </BloqueOrdenable>
+          </Bloque>
 
-          {/* No usa <Seccion> a propósito: esta tarjeta no sale del análisis,
-              así que no tiene nada que reanalizar ni ningún fallo del modelo
-              que reportar. Solo necesita el envoltorio reordenable para
-              aparecer en el índice y moverse con las demás. */}
-          <BloqueOrdenable id="niveles-confianza" titulo="Niveles de confianza">
-          <section id="niveles-confianza" className="scroll-mt-24">
-            <div className="mb-3 flex items-center gap-3">
-              <span aria-hidden="true" className="h-5 w-1 rounded-full bg-accent" />
-              <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
-                Niveles de confianza
-              </h2>
-            </div>
-            <p className="text-sm leading-relaxed text-ink-muted">
-              {INTRO_NIVELES_CONFIANZA}
-            </p>
-            <ul className="mt-4 space-y-2">
-              {NIVELES_CONFIANZA.map(({ nivel, etiqueta, clase, variable, frase, resto }) => (
-                <li
-                  key={nivel}
-                  style={{ borderLeft: `3px solid ${variable}` }}
-                  className="rounded-sm bg-canvas px-4 py-3"
-                >
-                  {/* Dos columnas en pantalla ancha; apiladas en cuanto no
-                      caben, que en un móvil es siempre. */}
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-4">
-                    <p className="flex shrink-0 items-baseline gap-2 sm:w-24">
-                      <span
-                        aria-hidden="true"
-                        className={`h-2 w-2 shrink-0 translate-y-[-1px] rounded-full ${clase}`}
-                      />
-                      <span className="text-sm font-semibold text-ink">{etiqueta}</span>
-                    </p>
-                    <p className="text-sm leading-relaxed text-ink-muted">
-                      <span className="font-semibold text-ink">{frase}</span> {resto}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-4 border-t border-divider pt-3 text-sm leading-relaxed text-ink-muted">
-              {NOTA_PIE_NIVELES_CONFIANZA}
-            </p>
-          </section>
-          </BloqueOrdenable>
-
-          <Seccion id="resumen" titulo="Resumen clínico" camposReanalisis={["resumen_clinico"]}>
-            {analisis.resumen_clinico ? (
-              <TextoEditable
-                valor={analisis.resumen_clinico}
-                seccionId="resumen"
-                etiqueta="Resumen clínico"
-                onCambio={(v) =>
-                  onEditarSeccion("resumen", (c) => {
-                    c.resumen_clinico = v;
-                  })
-                }
-              />
-            ) : (
-              <SinHallazgos />
-            )}
-          </Seccion>
-
+          <Bloque id="que-pasa">
           <Seccion
             id="conductas"
             titulo="Repertorio conductual"
@@ -2871,6 +2902,21 @@ function InformeOrdenable({
             )}
           </Seccion>
 
+          <Seccion
+            id="modalidad"
+            titulo="Detalle según modelo terapéutico"
+            camposReanalisis={[CAMPO_CAPA_POR_MODELO[pestanaActiva]]}
+          >
+            <DetalleModalidad>
+              <SelectorCapaModalidad
+                analisis={analisis}
+                pestanaActiva={pestanaActiva}
+              />
+            </DetalleModalidad>
+          </Seccion>
+          </Bloque>
+
+          <Bloque id="mantenimiento">
           <Seccion
             id="hipotesis-mantenimiento"
             titulo="Hipótesis de mantenimiento"
@@ -3051,7 +3097,9 @@ function InformeOrdenable({
               </SubSeccion>
             </div>
           </Seccion>
+          </Bloque>
 
+          <Bloque id="plan">
           <Seccion
             id="conductas-alternativas"
             titulo="Conductas alternativas propuestas"
@@ -3142,84 +3190,6 @@ function InformeOrdenable({
           </Seccion>
 
           <Seccion
-            id="modalidad"
-            titulo="Detalle según modelo terapéutico"
-            camposReanalisis={[CAMPO_CAPA_POR_MODELO[pestanaActiva]]}
-          >
-            <DetalleModalidad>
-              <SelectorCapaModalidad
-                analisis={analisis}
-                pestanaActiva={pestanaActiva}
-              />
-            </DetalleModalidad>
-          </Seccion>
-
-          <Seccion id="hipotesis-alternativas" titulo="Hipótesis alternativas" camposReanalisis={["hipotesis_alternativas"]}>
-            {analisis.hipotesis_alternativas.length === 0 ? (
-              <SinHallazgos />
-            ) : (
-              <ul className="space-y-4">
-                {analisis.hipotesis_alternativas.map((h, i) => (
-                  <li key={i}>
-                    <span className="flex flex-wrap items-baseline gap-x-2">
-                      <TextoEditable
-                        valor={h.enunciado}
-                        seccionId="hipotesis-alternativas"
-                        etiqueta={`Hipótesis alternativa ${i + 1}`}
-                        onCambio={(v) =>
-                          onEditarSeccion("hipotesis-alternativas", (copia) => {
-                            copia.hipotesis_alternativas[i] = {
-                              ...copia.hipotesis_alternativas[i],
-                              enunciado: v,
-                            };
-                          })
-                        }
-                      />
-                      <BotonBorrar
-                        etiqueta={`hipótesis alternativa ${i + 1}`}
-                        onBorrar={() =>
-                          onEditarSeccion("hipotesis-alternativas", (copia) => {
-                            copia.hipotesis_alternativas =
-                              copia.hipotesis_alternativas.filter((_, j) => j !== i);
-                          })
-                        }
-                      />
-                    </span>
-                    <p className="mt-1 text-sm text-ink-muted">Cómo descartarla:</p>
-                    <TextoEditable
-                      valor={h.como_descartarla}
-                      seccionId="hipotesis-alternativas"
-                      etiqueta={`Cómo descartar la hipótesis ${i + 1}`}
-                      className="text-sm text-ink-muted"
-                      onCambio={(v) =>
-                        onEditarSeccion("hipotesis-alternativas", (copia) => {
-                          copia.hipotesis_alternativas[i] = {
-                            ...copia.hipotesis_alternativas[i],
-                            como_descartarla: v,
-                          };
-                        })
-                      }
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Seccion>
-
-          <Seccion id="preguntas" titulo="Preguntas para la próxima sesión" camposReanalisis={["preguntas_para_sesion"]}>
-            <ListaEditable
-              items={analisis.preguntas_para_sesion}
-              seccionId="preguntas"
-              etiqueta="pregunta"
-              onCambiar={(nuevos) =>
-                onEditarSeccion("preguntas", (c) => {
-                  c.preguntas_para_sesion = nuevos;
-                })
-              }
-            />
-          </Seccion>
-
-          <Seccion
             id="intervencion"
             titulo="Líneas de intervención tentativas"
             camposReanalisis={["lineas_de_intervencion_tentativas"]}
@@ -3303,6 +3273,60 @@ function InformeOrdenable({
               </p>
             )}
           </Seccion>
+          </Bloque>
+
+          <Bloque id="pendientes">
+          <Seccion id="hipotesis-alternativas" titulo="Hipótesis alternativas" camposReanalisis={["hipotesis_alternativas"]}>
+            {analisis.hipotesis_alternativas.length === 0 ? (
+              <SinHallazgos />
+            ) : (
+              <ul className="space-y-4">
+                {analisis.hipotesis_alternativas.map((h, i) => (
+                  <li key={i}>
+                    <span className="flex flex-wrap items-baseline gap-x-2">
+                      <TextoEditable
+                        valor={h.enunciado}
+                        seccionId="hipotesis-alternativas"
+                        etiqueta={`Hipótesis alternativa ${i + 1}`}
+                        onCambio={(v) =>
+                          onEditarSeccion("hipotesis-alternativas", (copia) => {
+                            copia.hipotesis_alternativas[i] = {
+                              ...copia.hipotesis_alternativas[i],
+                              enunciado: v,
+                            };
+                          })
+                        }
+                      />
+                      <BotonBorrar
+                        etiqueta={`hipótesis alternativa ${i + 1}`}
+                        onBorrar={() =>
+                          onEditarSeccion("hipotesis-alternativas", (copia) => {
+                            copia.hipotesis_alternativas =
+                              copia.hipotesis_alternativas.filter((_, j) => j !== i);
+                          })
+                        }
+                      />
+                    </span>
+                    <p className="mt-1 text-sm text-ink-muted">Cómo descartarla:</p>
+                    <TextoEditable
+                      valor={h.como_descartarla}
+                      seccionId="hipotesis-alternativas"
+                      etiqueta={`Cómo descartar la hipótesis ${i + 1}`}
+                      className="text-sm text-ink-muted"
+                      onCambio={(v) =>
+                        onEditarSeccion("hipotesis-alternativas", (copia) => {
+                          copia.hipotesis_alternativas[i] = {
+                            ...copia.hipotesis_alternativas[i],
+                            como_descartarla: v,
+                          };
+                        })
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Seccion>
 
           {/*
             Una sola sección para las dos listas: los huecos que el terapeuta
@@ -3318,10 +3342,6 @@ function InformeOrdenable({
             contrapeso que se lee cuando ya hay una propuesta sobre la mesa.
           */}
           {(analisis.datos_faltantes.length > 0 || analisis.alertas.length > 0) && (
-            <BloqueOrdenable
-              id="verificacion"
-              titulo="Datos faltantes y puntos a verificar"
-            >
             <section id="verificacion" className="scroll-mt-24">
               <div className="mb-3 flex items-center gap-3">
                 <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
@@ -3435,8 +3455,64 @@ function InformeOrdenable({
                 seccionId="verificacion"
               />
             </section>
-            </BloqueOrdenable>
           )}
+
+          <Seccion id="preguntas" titulo="Preguntas para la próxima sesión" camposReanalisis={["preguntas_para_sesion"]}>
+            <ListaEditable
+              items={analisis.preguntas_para_sesion}
+              seccionId="preguntas"
+              etiqueta="pregunta"
+              onCambiar={(nuevos) =>
+                onEditarSeccion("preguntas", (c) => {
+                  c.preguntas_para_sesion = nuevos;
+                })
+              }
+            />
+          </Seccion>
+
+          {/* No usa <Seccion> a propósito: esta tarjeta no sale del análisis,
+              así que no tiene nada que reanalizar ni ningún fallo del modelo
+              que reportar. Solo necesita el envoltorio reordenable para
+              aparecer en el índice y moverse con las demás. */}
+          <section id="niveles-confianza" className="scroll-mt-24">
+            <div className="mb-3 flex items-center gap-3">
+              <span aria-hidden="true" className="h-5 w-1 rounded-full bg-accent" />
+              <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
+                Niveles de confianza
+              </h2>
+            </div>
+            <p className="text-sm leading-relaxed text-ink-muted">
+              {INTRO_NIVELES_CONFIANZA}
+            </p>
+            <ul className="mt-4 space-y-2">
+              {NIVELES_CONFIANZA.map(({ nivel, etiqueta, clase, variable, frase, resto }) => (
+                <li
+                  key={nivel}
+                  style={{ borderLeft: `3px solid ${variable}` }}
+                  className="rounded-sm bg-canvas px-4 py-3"
+                >
+                  {/* Dos columnas en pantalla ancha; apiladas en cuanto no
+                      caben, que en un móvil es siempre. */}
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-4">
+                    <p className="flex shrink-0 items-baseline gap-2 sm:w-24">
+                      <span
+                        aria-hidden="true"
+                        className={`h-2 w-2 shrink-0 translate-y-[-1px] rounded-full ${clase}`}
+                      />
+                      <span className="text-sm font-semibold text-ink">{etiqueta}</span>
+                    </p>
+                    <p className="text-sm leading-relaxed text-ink-muted">
+                      <span className="font-semibold text-ink">{frase}</span> {resto}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 border-t border-divider pt-3 text-sm leading-relaxed text-ink-muted">
+              {NOTA_PIE_NIVELES_CONFIANZA}
+            </p>
+          </section>
+          </Bloque>
 
         </div>
       </div>

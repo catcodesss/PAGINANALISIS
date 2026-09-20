@@ -49,7 +49,7 @@ execFileSync(
 
 const require = createRequire(import.meta.url);
 const { ESCALA_TEXTO } = require(join(RAIZ, ".tmp-evals/preferencias.js"));
-const { SECCIONES_INFORME, GRUPOS_INFORME, posicionDeGrupo } = require(
+const { SECCIONES_INFORME, ANCLAS_INFORME } = require(
   join(RAIZ, ".tmp-evals/secciones.js")
 );
 const { reconciliarOrden } = require(join(RAIZ, ".tmp-evals/ordenSecciones.js"));
@@ -136,77 +136,114 @@ prueba("las anulaciones de tamaño están fuera de @layer, que es lo que las hac
   assert.deepEqual(dentroDeCapa, [], "hay anulaciones de tamaño dentro de @layer");
 });
 
-/* ── Secciones del informe ───────────────────────────────────────────────── */
+/* ── Bloques y anclas del informe ────────────────────────────────────────── */
 
 const IDS = SECCIONES_INFORME.map((s) => s.id);
+const IDS_ANCLA = ANCLAS_INFORME.map((a) => a.id);
 
 /**
- * Qué secciones pinta de verdad ReportView. Hay dos formas: `<Seccion>`, que
- * envuelve en `BloqueOrdenable` por dentro, y `<BloqueOrdenable>` suelto para
- * las cuatro que no siguen el molde (datos faltantes, riesgo, alertas y la
- * formulación destacada). Las dos cuentan.
+ * Los dos niveles del informe, que antes eran uno.
+ *
+ * `<Bloque>` es la unidad que se arrastra, se oculta y sale en el índice: son
+ * cinco. `<Seccion>` es un apartado dentro de un bloque, y solo aporta un
+ * ancla enlazable. Confundirlos es el fallo que estas pruebas cazan: un
+ * apartado convertido en bloque volvería a meter diecisiete entradas en el
+ * índice, y un bloque escrito como apartado desaparecería del orden sin dar
+ * ningún error.
  */
-function seccionesDibujadas() {
+function bloquesDibujados() {
+  return new Set(
+    [...reportView.matchAll(/<Bloque\s+id="([^"]+)"/g)].map((m) => m[1])
+  );
+}
+
+function anclasDibujadas() {
   const ids = [
-    ...reportView.matchAll(/<BloqueOrdenable\s+id="([^"]+)"/g),
     ...reportView.matchAll(/<Seccion\s+id="([^"]+)"/g),
     ...reportView.matchAll(/<Seccion\s*\n\s*id="([^"]+)"/g),
+    // Las que no siguen el molde de <Seccion> pintan su <section id> a mano.
+    ...reportView.matchAll(/<section\s+id="([^"]+)"/g),
   ].map((m) => m[1]);
   return new Set(ids);
 }
 
-prueba("no hay identificadores de sección repetidos", () => {
+prueba("no hay identificadores repetidos, ni de bloque ni de ancla", () => {
   assert.equal(new Set(IDS).size, IDS.length);
+  assert.equal(new Set(IDS_ANCLA).size, IDS_ANCLA.length);
+  // Y un id no puede ser las dos cosas: el orden guardado no sabría cuál es.
+  const ambos = IDS.filter((id) => IDS_ANCLA.includes(id));
+  assert.deepEqual(ambos, [], "hay ids que son bloque y ancla a la vez");
 });
 
-prueba("cada bloque que se dibuja está en la lista de secciones", () => {
-  // Un bloque fuera de la lista no aparecería en el índice ni podría
-  // reordenarse, y el informe exportado lo emitiría al final por la red de
-  // seguridad de leerOrdenGuardado en vez de en su sitio.
-  const dibujados = seccionesDibujadas();
-  const huerfanos = [...dibujados].filter((id) => !IDS.includes(id));
-  assert.deepEqual(huerfanos, [], `bloques que no están en lib/secciones.ts`);
-});
-
-prueba("cada sección de la lista se dibuja de verdad", () => {
-  const dibujados = seccionesDibujadas();
-  const sinDibujar = IDS.filter((id) => !dibujados.has(id));
+prueba("los cinco bloques se dibujan, y no se dibuja ninguno de más", () => {
+  const dibujados = bloquesDibujados();
   assert.deepEqual(
-    sinDibujar,
+    IDS.filter((id) => !dibujados.has(id)),
     [],
-    "secciones listadas en el índice que ningún BloqueOrdenable pinta"
+    "bloques listados en el índice que nadie pinta"
+  );
+  assert.deepEqual(
+    [...dibujados].filter((id) => !IDS.includes(id)),
+    [],
+    "bloques pintados que no están en lib/secciones.ts"
   );
 });
 
-prueba("el título del índice y el de la tarjeta no se contradicen", () => {
-  /*
-    El índice saca el título de lib/secciones.ts y la tarjeta lo recibe como
-    prop: son dos sitios, y nada los comparaba. Al renombrar "Variables
-    moduladoras" a "Contexto y variables moduladoras" se cambió solo uno, y el
-    resultado fue un índice que enviaba a una sección con otro nombre — sin
-    error, sin enlace roto, solo un documento que se contradice.
-
-    La regla no es igualdad estricta: algunas tarjetas alargan el título del
-    índice ("Líneas de intervención" → "Líneas de intervención tentativas") y
-    eso es deliberado, el índice tiene menos sitio. Lo que no puede pasar es que
-    empiecen por cosas distintas: quien sigue un enlace del índice tiene que
-    reconocer dónde ha aterrizado.
-  */
-  const pintados = new Map();
-  const re = /<(?:Seccion|BloqueOrdenable)\s+id="([^"]+)"\s*\n?\s*titulo="([^"]+)"/g;
-  let m;
-  while ((m = re.exec(reportView)) !== null) pintados.set(m[1], m[2]);
-
-  const discrepantes = SECCIONES_INFORME.filter((s) => {
-    const pintado = pintados.get(s.id);
-    return pintado !== undefined && !pintado.startsWith(s.titulo);
-  }).map((s) => `${s.id}: índice "${s.titulo}" ≠ tarjeta "${pintados.get(s.id)}"`);
-
-  assert.deepEqual(discrepantes, []);
+prueba("toda ancla que se pinta está declarada, y toda la declarada se pinta", () => {
+  // Un ancla sin declarar es un enlace que nadie puede alcanzar desde un aviso;
+  // una declarada que nadie pinta es un enlace roto en el informe.
+  const dibujadas = anclasDibujadas();
+  assert.deepEqual(
+    [...dibujadas].filter((id) => !IDS_ANCLA.includes(id)),
+    [],
+    "anclas pintadas que no están en ANCLAS_INFORME"
+  );
+  assert.deepEqual(
+    IDS_ANCLA.filter((id) => !dibujadas.has(id)),
+    [],
+    "anclas declaradas que ReportView no pinta"
+  );
 });
 
-prueba("toda sección tiene título y ninguno se repite", () => {
-  const titulos = SECCIONES_INFORME.map((s) => s.titulo);
+prueba("cada ancla pertenece a un bloque que existe", () => {
+  const huerfanas = ANCLAS_INFORME.filter((a) => !IDS.includes(a.bloque)).map(
+    (a) => a.id
+  );
+  assert.deepEqual(huerfanas, [], "anclas con un bloque que no existe");
+});
+
+prueba("ningún bloque se queda sin anclas", () => {
+  // Un bloque vacío ocupa una entrada del índice para no decir nada.
+  const vacios = IDS.filter(
+    (b) => !ANCLAS_INFORME.some((a) => a.bloque === b)
+  );
+  assert.deepEqual(vacios, []);
+});
+
+prueba("el título del índice y el del encabezado salen de la misma lista", () => {
+  /*
+    El índice saca el título de lib/secciones.ts y antes la tarjeta lo recibía
+    como prop: eran dos sitios y nada los comparaba. Al renombrar «Variables
+    moduladoras» se cambió solo uno, y el resultado fue un índice que enviaba a
+    una sección con otro nombre — sin error, sin enlace roto, solo un documento
+    que se contradice.
+
+    Ahora <Bloque> no acepta `titulo`: lo lee de TITULO_DE_SECCION. Esta prueba
+    fija esa decisión, porque volver a pasarlo como prop reabriría el fallo.
+  */
+  const conTitulo = [...reportView.matchAll(/<Bloque\s+id="[^"]+"\s+titulo=/g)];
+  assert.deepEqual(
+    conTitulo.map((m) => m[0]),
+    [],
+    "algún <Bloque> vuelve a recibir el título como prop"
+  );
+});
+
+prueba("todo bloque y toda ancla tienen título, y ninguno se repite", () => {
+  const titulos = [
+    ...SECCIONES_INFORME.map((s) => s.titulo),
+    ...ANCLAS_INFORME.map((a) => a.titulo),
+  ];
   assert.ok(titulos.every((t) => t && t.trim().length > 0));
   assert.equal(new Set(titulos).size, titulos.length, "hay títulos duplicados");
 });
@@ -240,36 +277,38 @@ prueba("la lente elegida no vive en el estado del componente", () => {
   );
 });
 
-/* ── Grupos del índice ───────────────────────────────────────────────────── */
+/* ── Orden de fábrica de las anclas ──────────────────────────────────────── */
 
-prueba("toda sección declara un grupo que existe", () => {
-  const idsGrupo = GRUPOS_INFORME.map((g) => g.id);
-  const invalidos = SECCIONES_INFORME.filter((s) => !idsGrupo.includes(s.grupo));
-  assert.deepEqual(
-    invalidos.map((s) => s.id),
-    []
-  );
-});
-
-prueba("el orden de fábrica no entremezcla grupos", () => {
-  // Si un grupo aparece, se acaba y vuelve a aparecer más abajo, el informe se
-  // lee como si dos tramos distintos fueran el mismo. Las posiciones de grupo
-  // del orden de fábrica tienen que ser monótonas crecientes.
-  const posiciones = SECCIONES_INFORME.map((s) => posicionDeGrupo(s.id));
-  const ordenadas = [...posiciones].sort((a, b) => a - b);
+prueba("el orden de fábrica de las anclas no entremezcla bloques", () => {
+  // Si un bloque aparece, se acaba y vuelve a aparecer más abajo, el informe se
+  // lee como si dos tramos distintos fueran el mismo — y al montar el árbol de
+  // React las anclas de ese bloque quedarían partidas en dos sitios.
+  const posiciones = ANCLAS_INFORME.map((a) => IDS.indexOf(a.bloque));
   assert.deepEqual(
     posiciones,
-    ordenadas,
-    `un grupo se interrumpe y vuelve: ${SECCIONES_INFORME.map((s) => s.grupo).join(" ")}`
+    [...posiciones].sort((x, y) => x - y),
+    `un bloque se interrumpe y vuelve: ${ANCLAS_INFORME.map((a) => a.bloque).join(" ")}`
   );
 });
 
-prueba("ningún grupo se queda sin secciones", () => {
-  // Un grupo vacío es un grupo que se declaró y nadie usa: o sobra, o alguien
-  // olvidó mover ahí la sección que lo motivaba.
-  const usados = new Set(SECCIONES_INFORME.map((s) => s.grupo));
-  const vacios = GRUPOS_INFORME.filter((g) => !usados.has(g.id)).map((g) => g.id);
-  assert.deepEqual(vacios, []);
+prueba("las anclas se pintan dentro del bloque que declaran", () => {
+  /*
+    El acuerdo que nada más comprueba: ANCLAS_INFORME dice a qué bloque
+    pertenece cada apartado, y ReportView lo monta anidándolo en un <Bloque>.
+    Si los dos dejan de coincidir no hay error — hay un apartado que se arrastra
+    con el bloque equivocado y un índice que miente sobre dónde está.
+  */
+  const mal = [];
+  for (const b of IDS) {
+    const ini = reportView.indexOf(`<Bloque id="${b}">`);
+    assert.notEqual(ini, -1, `no se pinta el bloque ${b}`);
+    const fin = reportView.indexOf("</Bloque>", ini);
+    const dentro = reportView.slice(ini, fin);
+    for (const a of ANCLAS_INFORME.filter((x) => x.bloque === b)) {
+      if (!dentro.includes(`id="${a.id}"`)) mal.push(`${a.id} debería estar en ${b}`);
+    }
+  }
+  assert.deepEqual(mal, []);
 });
 
 /* ── Conciliación del orden guardado ─────────────────────────────────────── */
@@ -294,31 +333,27 @@ prueba("un orden guardado con ids que ya no existen se concilia sin romperse", (
   );
 });
 
-prueba("el grupo manda sobre la posición guardada", () => {
-  // Un orden guardado que sube la última sección hasta la primera posición: se
-  // respeta que suba dentro de su grupo, pero no que se cuele delante de la
-  // apertura del informe.
-  const ultima = SECCIONES_INFORME[SECCIONES_INFORME.length - 1].id;
-  const conciliado = reconciliarOrden(
-    [ultima, ...IDS.filter((id) => id !== ultima)],
-    IDS
-  );
-  const posiciones = conciliado.map(posicionDeGrupo);
-  assert.deepEqual(posiciones, [...posiciones].sort((a, b) => a - b));
-  assert.notEqual(conciliado[0], ultima, "un bloque saltó por encima de su grupo");
+prueba("el orden elegido sobrevive a la conciliación, sin reacomodos", () => {
+  /*
+    Esta prueba sustituye a «el grupo manda sobre la posición guardada», que
+    fijaba lo contrario: que una sección no pudiera salirse de su grupo. Desde
+    que el bloque ES el grupo no hay nada por encima que respetar, y el paso
+    que reordenaba por grupo al final habría devuelto siempre el orden de
+    fábrica — con el arrastre funcionando en pantalla y sin efecto ninguno al
+    recargar. Se fue de lib/ordenSecciones.ts, y esto vigila que no vuelva.
+  */
+  const ultimo = IDS[IDS.length - 1];
+  const movido = [ultimo, ...IDS.filter((id) => id !== ultimo)];
+  assert.deepEqual(reconciliarOrden(movido, IDS), movido);
 });
 
-prueba("dentro de un grupo se respeta entero el orden elegido", () => {
-  const delGrupo = SECCIONES_INFORME.filter((s) => s.grupo === "apertura").map(
-    (s) => s.id
-  );
-  assert.ok(delGrupo.length >= 2, "el grupo de apertura debería tener varias secciones");
-  const invertido = [...delGrupo].reverse();
-  const conciliado = reconciliarOrden(
-    [...invertido, ...IDS.filter((id) => !delGrupo.includes(id))],
-    IDS
-  );
-  assert.deepEqual(conciliado.slice(0, delGrupo.length), invertido);
+prueba("el orden elegido entre bloques se respeta entero", () => {
+  // Cinco bloques y ninguna jerarquía por encima: lo que el clínico ordene es
+  // lo que sale, sin que nada lo reacomode por detrás.
+  const invertido = [...IDS].reverse();
+  assert.deepEqual(reconciliarOrden(invertido, IDS), invertido);
 });
+
+
 
 console.log(`\n${pasadas} pruebas correctas\n`);
