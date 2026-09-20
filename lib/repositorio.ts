@@ -1,4 +1,5 @@
 import type { AnalisisFuncional } from "./types";
+import { migrarAV2 } from "./identidad";
 import {
   cifrar,
   crearTestigo,
@@ -251,10 +252,25 @@ class RepositorioLocal implements Repositorio {
     const plano = await descifrar(clave, crudo.sobre);
     if (!plano) return null;
 
+    const entrada = JSON.parse(plano) as EntradaHistorial;
+
     return {
       id: crudo.id,
       fecha: crudo.fecha,
-      ...(JSON.parse(plano) as EntradaHistorial),
+      ...entrada,
+      /*
+        Un informe guardado puede ser de cualquier versión anterior: el
+        historial es local y nadie lo actualiza por detrás. migrarAV2 le da
+        identidad a sus entidades y funde la cadena DBT duplicada; es
+        idempotente, así que uno que ya sea v2 pasa por aquí sin cambiar.
+
+        Se migra AL LEER y no al guardar a propósito: al guardar habría que
+        reescribir todo el almacén cifrado en una migración de arranque, y un
+        fallo a media migración dejaría el historial en dos versiones sin que
+        el usuario pudiera hacer nada. Leyendo, el peor caso es que el informe
+        se migre otra vez la próxima vez que se abra.
+      */
+      analisis: migrarAV2(entrada.analisis),
     };
   }
 

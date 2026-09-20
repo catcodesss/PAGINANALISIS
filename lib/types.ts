@@ -59,7 +59,45 @@ export type DeficitOInterferencia =
   | "mixto"
   | "no_determinable";
 
+/**
+ * Identidad de las entidades del análisis.
+ *
+ * Por qué existe: hasta la v2, todo se referenciaba por prosa. Una hipótesis de
+ * mantenimiento nombraba su conducta escribiéndola otra vez, con otras palabras,
+ * y quien quisiera saber de qué conducta hablaba tenía que emparejar raíces de
+ * palabra en tiempo de render — lo hacían lib/redFuncional.ts, lib/priorizacion.ts
+ * y `yaEnRepertorio` de lib/validadores.ts, cada uno por su cuenta y con la
+ * posibilidad de concluir cosas distintas sobre el mismo par. Cuando el
+ * emparejamiento fallaba, la red funcional descartaba la relación EN SILENCIO.
+ *
+ * LOS IDS LOS GENERA EL SERVIDOR, NUNCA EL MODELO. Un modelo no emite
+ * identificadores estables, y pedírselos añadiría un campo que puede repetir,
+ * omitir o inventar. Se asignan al normalizar (lib/parseAnalisis.ts) a partir de
+ * la posición, y a partir de ahí viajan con la entidad: no se recalculan al
+ * reordenar ni al borrar.
+ *
+ * La heurística de prosa no desaparece — sigue siendo lo único que puede casar
+ * un texto del modelo con una entidad — pero pasa a ejecutarse UNA SOLA VEZ, en
+ * el borde, y lo que no resuelve queda en `null`. Un vínculo sin resolver deja
+ * de ser una arista que no se dibuja y pasa a ser un hueco que se ve.
+ */
+export type Id = string;
+
+/**
+ * Una consecuencia con identidad propia.
+ *
+ * El modelo sigue emitiendo un string; el servidor lo envuelve. Es la misma
+ * asimetría que ya existe con `evidencia` (el modelo manda un rango de líneas y
+ * se guarda una `Cita`): el contrato con el modelo no cambia, y la consecuencia
+ * gana un id al que la flecha «conducta → consecuencia» puede apuntar.
+ */
+export interface Consecuencia {
+  id: Id;
+  texto: string;
+}
+
 export interface ConductaProblema {
+  id: Id;
   descripcion: string;
   tipo: TipoConducta;
   importancia: NivelConfianza;
@@ -81,6 +119,7 @@ export interface ConductaProblema {
  * contingencias del contexto donde no aparece.
  */
 export interface RepertorioDisponible {
+  id: Id;
   descripcion: string;
   /** Dónde, con quién o bajo qué condiciones sí ocurre. Sin esto el dato no sirve. */
   contexto_en_que_ocurre: string;
@@ -88,6 +127,7 @@ export interface RepertorioDisponible {
 }
 
 export interface VariableModuladora {
+  id: Id;
   /** A qué nivel opera. Ver NivelVariable. */
   nivel: NivelVariable;
   /** Qué clase de proceso modula. Ver DimensionVariable. */
@@ -115,6 +155,7 @@ export interface VariableModuladora {
  * validar y mostrar aparte.
  */
 export interface Acomodacion {
+  id: Id;
   quien: string;
   conducta_acomodacion: string;
   funcion: string;
@@ -166,13 +207,13 @@ export interface CadenaOperante {
   antecedente: string;
   operacion_motivacional: string | null;
   respuesta: string;
-  consecuencia: string;
+  consecuencia: Consecuencia;
   tipo_contingencia: TipoContingencia;
   /** Cada cuánto sigue la consecuencia. Ver EsquemaDeContingencia. */
   esquema_de_contingencia: EsquemaDeContingencia;
   inmediatez: "inmediata" | "demorada";
   /** Efecto a mediano/largo plazo del patrón (CMLP): coste o mantenimiento futuro, distinto de la consecuencia inmediata. */
-  consecuencias_largo_plazo: string | null;
+  consecuencias_largo_plazo: Consecuencia | null;
   evidencia: Cita;
 }
 
@@ -200,7 +241,18 @@ export interface CadenaDBT {
 }
 
 export interface Situacion {
+  id: Id;
   nombre: string;
+  /**
+   * Qué conductas problema se analizan aquí, por id.
+   *
+   * No existía ninguna referencia entre situación y conducta: el vínculo se
+   * adivinaba comparando la prosa de la situación con la de cada conducta, en
+   * cada sitio que lo necesitaba. Lo resuelve el servidor al normalizar, con esa
+   * misma heurística pero una sola vez; lo que no case se queda fuera de la
+   * lista en vez de emparejarse con la conducta más parecida.
+   */
+  conductas_ids: Id[];
   cadena_operante: CadenaOperante | null;
   cadena_respondiente: CadenaRespondiente | null;
   cadena_dbt: CadenaDBT | null;
@@ -226,7 +278,21 @@ export interface Situacion {
 export type TipoRelacion = "causal" | "moderadora" | "mediadora";
 
 export interface HipotesisMantenimiento {
+  id: Id;
+  /** A qué conducta se refiere, con las palabras del modelo. Para mostrar. */
   conducta: string;
+  /**
+   * Los dos extremos de la relación, resueltos a id.
+   *
+   * `destino_id` sale de `conducta`; `origen_id`, del enunciado, que por el
+   * principio 28 tiene que nombrar el otro extremo. Son lo que permite a
+   * lib/redFuncional.ts dibujar la arista sin adivinarla: antes extraía el
+   * origen del enunciado por raíces de palabra y, si no lo encontraba, se
+   * saltaba la relación sin decir nada. `null` significa que no se pudo
+   * resolver, y eso ahora se ve como hueco en vez de desaparecer.
+   */
+  destino_id: Id | null;
+  origen_id: Id | null;
   enunciado: string;
   funcion: string;
   confianza: NivelConfianza;
@@ -242,7 +308,10 @@ export interface HipotesisMantenimiento {
 }
 
 export interface PriorizacionBlanco {
+  /** El blanco tal y como lo nombró el modelo. Para mostrar. */
   blanco: string;
+  /** La conducta problema a la que corresponde, si se pudo resolver. */
+  conducta_id: Id | null;
   justificacion: string;
 }
 
@@ -252,7 +321,10 @@ export interface Formulacion {
 }
 
 export interface ConductaAlternativa {
+  id: Id;
+  /** El nombre de la situación según el modelo. Para mostrar. */
   situacion: string;
+  situacion_id: Id | null;
   conducta_propuesta: string;
   consecuencia_necesaria: string;
 }
@@ -312,6 +384,7 @@ export interface HipotesisAlternativa {
 // para poder alternar entre ellas en pantalla sin volver a consultar la IA. ---
 
 export interface ReglaVerbal {
+  id: Id;
   regla: string;
   textual_o_inferida: "textual" | "inferida";
   clase: "pliance" | "tracking" | "augmenting";
@@ -320,8 +393,16 @@ export interface ReglaVerbal {
 }
 
 export interface ProcesoACT {
+  id: Id;
   proceso: string;
+  /**
+   * Cómo se engancha el proceso a la cadena, en prosa. A diferencia de las otras
+   * referencias, esta NO es redundante con lo que apunta: dice algo que el id no
+   * dice, así que los ids se añaden y el texto se queda.
+   */
   vinculo_con_cadena: string;
+  situacion_id: Id | null;
+  eslabon_id: Id | null;
   evidencia: Cita;
 }
 
@@ -338,17 +419,9 @@ export type TipoEslabonDBT =
   | "accion";
 
 export interface EslabonDBT {
+  id: Id;
   tipo: TipoEslabonDBT;
   descripcion: string;
-}
-
-export interface AnalisisEnCadenaDBT {
-  conducta_objetivo: string;
-  vulnerabilidades: string[];
-  evento_precipitante: string;
-  eslabones: EslabonDBT[];
-  consecuencias_corto_plazo: string[];
-  consecuencias_largo_plazo: string[];
 }
 
 export type ModuloDBT =
@@ -360,7 +433,9 @@ export type ModuloDBT =
 export interface HabilidadSugeridaDBT {
   modulo: ModuloDBT;
   habilidad: string;
+  /** El eslabón según el modelo. Para mostrar cuando el id no resuelva. */
   eslabon_objetivo: string;
+  eslabon_id: Id | null;
 }
 
 /**
@@ -378,13 +453,29 @@ export interface HabilidadSugeridaDBT {
  * ya es tarde.
  */
 export interface SolucionDBT {
+  id: Id;
+  /** El eslabón según el modelo. Para mostrar cuando el id no resuelva. */
   eslabon_objetivo: string;
+  eslabon_id: Id | null;
   alternativa_habil: string;
   tipo_estrategia: "antecedente" | "respuesta";
 }
 
+/**
+ * La capa DBT ya no lleva `analisis_en_cadena`.
+ *
+ * Era una copia literal de la `cadena_dbt` de una de las situaciones: mismos
+ * factores de vulnerabilidad, mismo evento precipitante, mismos eslabones y las
+ * mismas consecuencias partidas en corto y largo plazo. Dos copias del mismo
+ * análisis que nada obligaba a coincidir, y un campo más que generar en cada
+ * llamada. La cadena vive donde siempre debió: en su situación, que además es la
+ * que tiene los eslabones a los que apuntan las habilidades y las soluciones.
+ *
+ * Los informes guardados que aún lo traen se funden al migrar a la v2 (ver
+ * lib/parseAnalisis.ts#migrarAV2). Nada se pierde: si la cadena no casa con
+ * ninguna situación, se convierte en una situación suelta.
+ */
 export interface CapaModalidadDBT {
-  analisis_en_cadena: AnalisisEnCadenaDBT;
   habilidades_sugeridas: HabilidadSugeridaDBT[];
   /** Qué hacer en cada eslabón en lugar de lo que se hizo. Ver SolucionDBT. */
   analisis_de_soluciones: SolucionDBT[];
@@ -460,7 +551,21 @@ export interface MetaGeneracion {
   version_prompt: string;
 }
 
+/**
+ * Versión del esquema del análisis. La 2 es la que da identidad a las entidades
+ * (ver `Id`). Un informe guardado sin este campo es de la v1 y se migra al
+ * leerlo; nunca se descarta. Ver lib/parseAnalisis.ts#migrarAV2.
+ */
+export const VERSION_ANALISIS = 2;
+
 export interface AnalisisFuncional {
+  version: number;
+  /**
+   * De dónde sale el próximo id que cree el clínico a mano. Arranca en el mayor
+   * asignado + 1 y solo sube: reutilizar el id de una entidad borrada haría que
+   * una relación vieja apuntara a una entidad nueva sin que nada lo avisara.
+   */
+  siguiente_id: number;
   resumen_clinico: string;
   conductas_problema: ConductaProblema[];
   /** La tercera columna del repertorio. Ver RepertorioDisponible. */
@@ -526,6 +631,10 @@ export interface AnalisisFuncional {
  * fallar en silencio en producción.
  */
 export const CAMPOS_ANALISIS_FUNCIONAL = [
+  // Las dos primeras las fija el servidor y el modelo no las envía nunca, igual
+  // que `alertas`, `meta` y `secciones_editadas`.
+  "version",
+  "siguiente_id",
   "resumen_clinico",
   "conductas_problema",
   "repertorio_disponible",

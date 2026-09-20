@@ -1,5 +1,4 @@
 import type { AnalisisFuncional, NivelConfianza, TipoRelacion } from "./types";
-import { raicesSignificativas } from "./validadores";
 
 /**
  * La red funcional del caso: qué está conectado con qué, calculado a partir de
@@ -13,9 +12,14 @@ import { raicesSignificativas } from "./validadores";
  * dos mitades como problemas independientes.
  *
  * Este módulo NO dibuja: calcula nodos, aristas y posiciones. El SVG lo pinta
- * components/ReportView.tsx. Separarlo es lo que permite probar lo único que
- * puede salir mal en silencio —el emparejamiento y la detección de ciclos— sin
- * montar un componente.
+ * components/ReportView.tsx. Separarlo es lo que permite probar sin montar un
+ * componente lo que puede salir mal en silencio: la detección de ciclos.
+ *
+ * Tampoco EMPAREJA ya. Desde la v2, cada hipótesis trae sus dos extremos
+ * resueltos a id (ver lib/identidad.ts) y aquí solo se leen. Antes se buscaban
+ * aquí por raíces de palabra, en cada render: una hipótesis que no casara
+ * desaparecía del dibujo sin dejar rastro, y el caso se leía más simple de lo
+ * que era.
  *
  * DETERMINISTA: todo sale del orden de los arreglos del informe. El mismo
  * informe da el mismo dibujo, siempre; un diseño con posiciones aleatorias o
@@ -58,6 +62,13 @@ export interface RedFuncional {
   /** Los ciclos encontrados, ya en palabras: "A → B → A". */
   bucles: string[];
   /**
+   * Cuántas hipótesis de mantenimiento no se pudieron situar en la red porque
+   * les falta uno de los dos extremos. Antes desaparecían sin dejar rastro; se
+   * cuentan para poder decirlo, porque una red con menos relaciones de las que
+   * el informe declara se lee como un caso más simple de lo que es.
+   */
+  sinResolver: number;
+  /**
    * Por qué no hay dibujo. `null` cuando sí lo hay. Se dice en vez de dejar un
    * hueco: un diagrama ausente sin explicación se lee como un fallo de la
    * página, y aquí casi siempre significa que el informe no declaró suficientes
@@ -91,30 +102,6 @@ const X_VARIABLES = 254;
 const X_CONDUCTAS = 640;
 const SEPARACION_VERTICAL = 92;
 const MARGEN_SUPERIOR = 46;
-
-/** Cuántas raíces en común hacen falta para dar dos textos por emparejados. */
-const COINCIDENCIAS_MINIMAS = 2;
-
-function mejorCoincidencia(
-  texto: string,
-  candidatos: { id: string; texto: string }[]
-): string | null {
-  const raices = raicesSignificativas(texto);
-  if (raices.size === 0) return null;
-
-  let mejor: { id: string; puntos: number } | null = null;
-  for (const c of candidatos) {
-    const puntos = [...raicesSignificativas(c.texto)].filter((r) =>
-      raices.has(r)
-    ).length;
-    // Estrictamente mayor: ante un empate gana el primero del arreglo, que es
-    // lo que mantiene el dibujo estable entre ejecuciones.
-    if (puntos >= COINCIDENCIAS_MINIMAS && (!mejor || puntos > mejor.puntos)) {
-      mejor = { id: c.id, puntos };
-    }
-  }
-  return mejor?.id ?? null;
-}
 
 /**
  * Ciclos del grafo dirigido, por búsqueda en profundidad con pila de camino.
@@ -164,22 +151,26 @@ function detectarBucles(
 }
 
 export function construirRedFuncional(analisis: AnalisisFuncional): RedFuncional {
-  const conductas = analisis.conductas_problema.map((c, i) => ({
-    id: `c${i}`,
+  // Los ids son los del propio análisis (cnd_1, vmd_2…), no unos inventados
+  // aquí: así el nodo del dibujo y la entidad del informe son la misma cosa, y
+  // un aviso puede enlazar con su nodo.
+  const conductas = analisis.conductas_problema.map((c) => ({
+    id: c.id,
     texto: c.descripcion,
     radio: RADIO_POR_IMPORTANCIA[c.importancia] ?? RADIO_POR_IMPORTANCIA.baja,
   }));
-  const variables = analisis.variables_moduladoras.map((v, i) => ({
-    id: `v${i}`,
+  const variables = analisis.variables_moduladoras.map((v) => ({
+    id: v.id,
     texto: v.descripcion,
   }));
 
-  const vacia = (motivo: string): RedFuncional => ({
+  const vacia = (motivo: string, sinResolver = 0): RedFuncional => ({
     nodos: [],
     aristas: [],
     ancho: ANCHO,
     alto: 0,
     bucles: [],
+    sinResolver,
     motivoVacio: motivo,
   });
 
@@ -190,26 +181,27 @@ export function construirRedFuncional(analisis: AnalisisFuncional): RedFuncional
   }
 
   /*
-    Cada hipótesis nombra su destino en "conducta" y describe el origen dentro
-    del enunciado. El emparejamiento por raíces es aproximado y puede no
-    resolver una hipótesis; cuando eso pasa, esa hipótesis NO se dibuja. Es
-    deliberado: una arista inventada entre dos nodos que el informe no relaciona
-    afirmaría algo que nadie escribió, y en un dibujo eso se lee como un
-    hallazgo.
+    Cada hipótesis trae sus dos extremos ya resueltos a id (ver lib/identidad.ts):
+    `destino_id` es la conducta que mantiene y `origen_id` lo que la mantiene.
+    Este módulo ya no empareja nada.
+
+    Hasta la v2 los buscaba aquí por raíces de palabra, en cada render, y una
+    hipótesis que no casara se saltaba EN SILENCIO: el dibujo salía con menos
+    relaciones de las que el informe declaraba y nada lo decía. Ahora una
+    relación sin resolver se cuenta y se nombra abajo, que es lo que permite al
+    clínico ir a arreglarla.
   */
   const aristas: AristaRed[] = [];
-  for (const h of analisis.hipotesis_mantenimiento) {
-    const hasta = mejorCoincidencia(h.conducta, conductas);
-    if (!hasta) continue;
+  let sinResolver = 0;
+  const existe = new Set([...conductas, ...variables].map((n) => n.id));
 
-    const contexto = `${h.enunciado} ${h.funcion}`;
-    const desde =
-      mejorCoincidencia(contexto, variables) ??
-      mejorCoincidencia(
-        contexto,
-        conductas.filter((c) => c.id !== hasta)
-      );
-    if (!desde || desde === hasta) continue;
+  for (const h of analisis.hipotesis_mantenimiento) {
+    const hasta = h.destino_id;
+    const desde = h.origen_id;
+    if (!hasta || !desde || desde === hasta || !existe.has(hasta) || !existe.has(desde)) {
+      sinResolver += 1;
+      continue;
+    }
 
     aristas.push({
       desde,
@@ -224,7 +216,10 @@ export function construirRedFuncional(analisis: AnalisisFuncional): RedFuncional
 
   if (aristas.length < MINIMO_ARISTAS) {
     return vacia(
-      "Menos de dos hipótesis de mantenimiento se pueden situar en la red: no nombran una conducta problema y una variable reconocibles del propio informe. El dibujo se omite en vez de inventar conexiones que el análisis no declara."
+      `Menos de dos hipótesis de mantenimiento tienen sus dos extremos identificados${
+        sinResolver > 0 ? ` (${sinResolver} sin resolver)` : ""
+      }: no nombran una conducta problema y una variable reconocibles del propio informe. El dibujo se omite en vez de inventar conexiones que el análisis no declara.`,
+      sinResolver
     );
   }
 
@@ -287,6 +282,7 @@ export function construirRedFuncional(analisis: AnalisisFuncional): RedFuncional
     bucles: ciclos.map((ciclo) =>
       ciclo.map((id) => etiquetaDe.get(id) ?? id).join(" → ")
     ),
+    sinResolver,
     motivoVacio: null,
   };
 }

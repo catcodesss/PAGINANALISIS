@@ -50,6 +50,12 @@ jobs:
       - name: El informe de maqueta no puede llegar a producción
         run: node evals/maqueta.test.mjs
 
+      # Ningún análisis guardado se pierde ni se degrada al migrarlo. El
+      # historial es local: si un informe antiguo se rompe aquí, no hay copia
+      # en ningún servidor con la que recuperarlo.
+      - name: Un informe guardado en v1 se abre en v2 sin perder nada
+        run: node evals/migracion.test.mjs
+
       # El lint atrapa una clase de fallo que las pruebas no ven: estado que se
       # corrige a sí mismo dentro de un efecto, que produce renders en cascada
       # y un fotograma con el valor equivocado.

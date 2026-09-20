@@ -1,5 +1,6 @@
 import { ETIQUETA_ESQUEMA, type AnalisisFuncional, type Cita, type Situacion } from "./types";
 import { agruparAlertas } from "./validadores";
+import { situacionDeLaCadenaDBT } from "./identidad";
 import { priorizarBlancos } from "./priorizacion";
 import {
   calcularCobertura,
@@ -65,7 +66,7 @@ function formatearSituacion(s: Situacion): string {
     lineas.push(`  Antecedente: ${c.antecedente}`);
     lineas.push(`  Respuesta: ${c.respuesta}`);
     lineas.push(
-      `  Consecuencia [${c.tipo_contingencia}, ${c.inmediatez}, ${ETIQUETA_ESQUEMA[c.esquema_de_contingencia]}]: ${c.consecuencia}`
+      `  Consecuencia [${c.tipo_contingencia}, ${c.inmediatez}, ${ETIQUETA_ESQUEMA[c.esquema_de_contingencia]}]: ${c.consecuencia.texto}`
     );
     if (c.esquema_de_contingencia === "intermitente") {
       lineas.push(
@@ -73,7 +74,9 @@ function formatearSituacion(s: Situacion): string {
       );
     }
     if (c.consecuencias_largo_plazo) {
-      lineas.push(`  Consecuencias a largo plazo: ${c.consecuencias_largo_plazo}`);
+      lineas.push(
+        `  Consecuencias a largo plazo: ${c.consecuencias_largo_plazo.texto}`
+      );
     }
     lineas.push(`  De la nota: ${textoCita(c.evidencia)}`);
   }
@@ -445,24 +448,32 @@ export function formatearInformeTexto(
     )
   );
 
-  const cadenaDbt = analisis.capa_dbt.analisis_en_cadena;
+  /*
+    La cadena de la capa DBT ya no es un campo propio: era una copia de la
+    `cadena_dbt` de una situación, y el documento exportado la escribía dos
+    veces. Se toma la de la situación que analiza la conducta prioritaria y se
+    dice de cuál es, para que quien lea el .docx sepa que no es un análisis
+    aparte sino el mismo visto en clave DBT.
+  */
+  const situacionDbt = situacionDeLaCadenaDBT(analisis);
+  const cadenaDbt = situacionDbt?.cadena_dbt ?? null;
   bloques["modalidad"] += SALTO + (
     seccion(
       "CAPA DBT — ANÁLISIS EN CADENA",
-      [
-        `Conducta objetivo: ${cadenaDbt.conducta_objetivo}`,
-        "Vulnerabilidades:",
-        listaOTexto(cadenaDbt.vulnerabilidades),
-        `Evento precipitante: ${cadenaDbt.evento_precipitante}`,
-        "Eslabones:",
-        listaOTexto(
-          cadenaDbt.eslabones.map((e) => `[${e.tipo}] ${e.descripcion}`)
-        ),
-        "Consecuencias corto plazo:",
-        listaOTexto(cadenaDbt.consecuencias_corto_plazo),
-        "Consecuencias largo plazo:",
-        listaOTexto(cadenaDbt.consecuencias_largo_plazo),
-      ].join("\n")
+      cadenaDbt === null
+        ? ""
+        : [
+            `Situación: ${situacionDbt?.nombre ?? ""}`,
+            `Conducta problema: ${cadenaDbt.conducta_problema}`,
+            "Factores de vulnerabilidad:",
+            listaOTexto(cadenaDbt.factores_vulnerabilidad),
+            `Evento precipitante: ${cadenaDbt.evento_precipitante}`,
+            "Eslabones:",
+            listaOTexto(
+              cadenaDbt.eslabones.map((e) => `[${e.tipo}] ${e.descripcion}`)
+            ),
+            `Consecuencias: ${cadenaDbt.consecuencias}`,
+          ].join("\n")
     )
   );
   if (analisis.capa_dbt.eslabon_ausente) {

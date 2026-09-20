@@ -1,5 +1,4 @@
 import type { AnalisisFuncional, NivelConfianza } from "./types";
-import { raicesSignificativas } from "./validadores";
 
 /**
  * Ordena los blancos de intervención por rendimiento esperado.
@@ -52,6 +51,8 @@ export const RENDIMIENTO_MAXIMO =
   VALOR_CUALITATIVO.alta * VALOR_CUALITATIVO.alta;
 
 export interface BlancoPriorizado {
+  /** El id de la variable moduladora, para enlazar con su nodo y su celda. */
+  id: string;
   /** La descripción de la variable moduladora, tal cual la escribió el informe. */
   etiqueta: string;
   /** La mayor fuerza entre las relaciones que la nombran. */
@@ -62,9 +63,6 @@ export interface BlancoPriorizado {
   /** Cuántas hipótesis de mantenimiento la nombran. */
   relaciones: number;
 }
-
-/** Cuántas raíces en común hacen falta para dar por nombrada a una variable. */
-const COINCIDENCIAS_MINIMAS = 2;
 
 const ORDEN_NIVEL: NivelConfianza[] = ["baja", "media", "alta"];
 
@@ -88,16 +86,15 @@ export function priorizarBlancos(analisis: AnalisisFuncional): BlancoPriorizado[
   const blancos: BlancoPriorizado[] = [];
 
   for (const variable of analisis.variables_moduladoras) {
-    const raicesVariable = raicesSignificativas(variable.descripcion);
-    if (raicesVariable.size === 0) continue;
-
     let fuerza: NivelConfianza | null = null;
     let relaciones = 0;
 
+    // Por id: una hipótesis nombra a esta variable cuando su `origen_id` es el
+    // suyo. Hasta la v2 se comparaban las raíces de palabra del enunciado con
+    // las de la descripción en cada render, así que la misma variable podía
+    // entrar o salir del ranking según cómo estuviera redactada la hipótesis.
     for (const h of analisis.hipotesis_mantenimiento) {
-      const raicesHipotesis = raicesSignificativas(`${h.enunciado} ${h.funcion}`);
-      const comunes = [...raicesVariable].filter((r) => raicesHipotesis.has(r));
-      if (comunes.length < COINCIDENCIAS_MINIMAS) continue;
+      if (h.origen_id !== variable.id) continue;
       relaciones += 1;
       fuerza = fuerza === null ? h.fuerza : laMayor(fuerza, h.fuerza);
     }
@@ -105,6 +102,7 @@ export function priorizarBlancos(analisis: AnalisisFuncional): BlancoPriorizado[
     if (fuerza === null) continue;
 
     blancos.push({
+      id: variable.id,
       etiqueta: variable.descripcion,
       fuerza,
       modificabilidad: variable.modificabilidad,

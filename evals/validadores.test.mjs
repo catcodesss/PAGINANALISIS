@@ -413,17 +413,27 @@ prueba("sin relaciones suficientes no se dibuja nada, y se dice por qué", () =>
   assert.deepEqual(unaSola.nodos, []);
   assert.ok(unaSola.motivoVacio && unaSola.motivoVacio.length > 20);
 
-  // Hipótesis que no nombran ningún extremo reconocible: tampoco se inventan
-  // aristas para rellenar el dibujo.
+  // Hipótesis a las que les falta un extremo: tampoco se inventan aristas para
+  // rellenar el dibujo.
+  //
+  // Desde la v2 el extremo es un id y no una frase. Esta prueba borraba el
+  // `enunciado` —porque el origen se extraía de esa prosa en cada render— y eso
+  // ya no quita la relación, con razón: lo que sostiene la arista es el dato,
+  // no cómo esté redactada la hipótesis. Lo que hay que seguir garantizando, y
+  // es lo que se comprueba, es que un extremo SIN RESOLVER no se rellene con la
+  // entidad más parecida.
   const sinExtremos = construirRedFuncional({
     ...informe,
     hipotesis_mantenimiento: informe.hipotesis_mantenimiento.map((h) => ({
       ...h,
+      origen_id: null,
       enunciado: "Mantenida por una contingencia no especificada.",
     })),
   });
   assert.deepEqual(sinExtremos.aristas, []);
   assert.ok(sinExtremos.motivoVacio);
+  // Y se dice cuántas se quedaron fuera, en vez de desaparecer sin más.
+  assert.equal(sinExtremos.sinResolver, informe.hipotesis_mantenimiento.length);
 });
 
 prueba("el tamaño del nodo sale de la importancia, no del orden", () => {

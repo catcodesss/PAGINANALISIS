@@ -1,6 +1,8 @@
 import { resolverCita } from "./citas";
+import { migrarAV2 } from "./identidad";
 import {
   CAMPOS_ANALISIS_FUNCIONAL,
+  VERSION_ANALISIS,
   type Acomodacion,
   type AnalisisFuncional,
   type CadenaDBT,
@@ -11,6 +13,7 @@ import {
   type CapaModalidadMC,
   type ConductaAlternativa,
   type ConductaProblema,
+  type Consecuencia,
   type DatoFaltante,
   type DeficitOInterferencia,
   type DimensionVariable,
@@ -114,9 +117,22 @@ function comoDeficitOInterferencia(valor: unknown): DeficitOInterferencia {
     : "no_determinable";
 }
 
+/**
+ * Los ids no se asignan aquí.
+ *
+ * Los normalizadores dejan el campo vacío y lib/identidad.ts#migrarAV2 lo
+ * rellena al final, en un solo sitio. Repartir la asignación por cada
+ * normalizador obligaría a pasarles el índice —y a los anidados, el del padre—,
+ * y habría dos caminos capaces de producir un id: el de una respuesta recién
+ * llegada y el de un informe guardado. Con un solo camino, los dos coinciden
+ * por construcción.
+ */
+const SIN_ID = "";
+
 function normalizarConductaProblema(valor: unknown, lineas: string[]): ConductaProblema {
   const d = comoObjeto(valor);
   return {
+    id: SIN_ID,
     descripcion: comoTexto(d.descripcion),
     tipo: d.tipo === "encubierta" ? "encubierta" : "manifiesta",
     importancia: comoConfianza(d.importancia),
@@ -133,6 +149,7 @@ function normalizarRepertorioDisponible(
 ): RepertorioDisponible {
   const d = comoObjeto(valor);
   return {
+    id: SIN_ID,
     descripcion: comoTexto(d.descripcion),
     contexto_en_que_ocurre: comoTexto(d.contexto_en_que_ocurre),
     evidencia: resolverCita(lineas, d.evidencia),
@@ -191,6 +208,7 @@ function normalizarVariableModuladora(valor: unknown, lineas: string[]): Variabl
         : "actual";
 
   return {
+    id: SIN_ID,
     nivel,
     // Sin dimensión declarada cae en "conducta": es la dimensión que el resto
     // del informe siempre describe, así que es la lectura que menos añade.
@@ -225,6 +243,22 @@ function comoEsquemaContingencia(valor: unknown): EsquemaDeContingencia {
     : "no_determinable";
 }
 
+/**
+ * Una consecuencia, venga como string (el modelo, y los informes v1) o ya
+ * envuelta (un informe v2 que se vuelve a leer). Null solo si no hay nada.
+ */
+function comoConsecuencia(valor: unknown): Consecuencia | null {
+  if (typeof valor === "string") {
+    return valor.length === 0 ? null : { id: SIN_ID, texto: valor };
+  }
+  const d = comoObjetoONulo(valor);
+  if (!d) return null;
+  return {
+    id: typeof d.id === "string" ? d.id : SIN_ID,
+    texto: comoTexto(d.texto),
+  };
+}
+
 function normalizarCadenaOperante(valor: unknown, lineas: string[]): CadenaOperante | null {
   const d = comoObjetoONulo(valor);
   if (!d) return null;
@@ -232,11 +266,14 @@ function normalizarCadenaOperante(valor: unknown, lineas: string[]): CadenaOpera
     antecedente: comoTexto(d.antecedente),
     operacion_motivacional: comoTextoONulo(d.operacion_motivacional),
     respuesta: comoTexto(d.respuesta),
-    consecuencia: comoTexto(d.consecuencia),
+    // El modelo manda un string; aquí se envuelve para que la consecuencia
+    // tenga id propio. Un informe guardado en v1 trae el string suelto y pasa
+    // por el mismo camino, así que las dos procedencias acaban igual.
+    consecuencia: comoConsecuencia(d.consecuencia) ?? { id: SIN_ID, texto: "" },
     tipo_contingencia: comoTipoContingencia(d.tipo_contingencia),
     esquema_de_contingencia: comoEsquemaContingencia(d.esquema_de_contingencia),
     inmediatez: d.inmediatez === "demorada" ? "demorada" : "inmediata",
-    consecuencias_largo_plazo: comoTextoONulo(d.consecuencias_largo_plazo),
+    consecuencias_largo_plazo: comoConsecuencia(d.consecuencias_largo_plazo),
     evidencia: resolverCita(lineas, d.evidencia),
   };
 }
@@ -261,6 +298,7 @@ function normalizarCadenaDBT(valor: unknown, lineas: string[]): CadenaDBT | null
     eslabones: comoArreglo<unknown>(d.eslabones).map((e) => {
       const eo = comoObjeto(e);
       return {
+        id: typeof eo.id === "string" ? eo.id : SIN_ID,
         tipo: TIPOS_ESLABON_DBT.includes(eo.tipo as string)
           ? (eo.tipo as "pensamiento")
           : "pensamiento",
@@ -276,7 +314,11 @@ function normalizarCadenaDBT(valor: unknown, lineas: string[]): CadenaDBT | null
 function normalizarSituacion(valor: unknown, indice: number, lineas: string[]): Situacion {
   const d = comoObjeto(valor);
   return {
+    id: typeof d.id === "string" ? d.id : SIN_ID,
     nombre: comoTexto(d.nombre, `Situación ${indice + 1}`),
+    // Al modelo no se le pide: lo resuelve lib/identidad.ts. Un informe v2 que
+    // se relee conserva lo que ya tuviera, incluido lo que corrigió el clínico.
+    conductas_ids: comoArregloDeTexto(d.conductas_ids),
     cadena_operante: normalizarCadenaOperante(d.cadena_operante, lineas),
     cadena_respondiente: normalizarCadenaRespondiente(d.cadena_respondiente, lineas),
     cadena_dbt: normalizarCadenaDBT(d.cadena_dbt, lineas),
@@ -288,10 +330,22 @@ function normalizarSituacion(valor: unknown, indice: number, lineas: string[]): 
 
 const TIPOS_RELACION: TipoRelacion[] = ["causal", "moderadora", "mediadora"];
 
+/**
+ * Una referencia por id, o null. Nunca se inventa: si lo que llega no es un id
+ * con contenido, la referencia queda sin resolver y lib/identidad.ts la intenta
+ * una vez. Que se quede en null es un resultado válido y visible.
+ */
+function comoIdONulo(valor: unknown): string | null {
+  return typeof valor === "string" && valor.length > 0 ? valor : null;
+}
+
 function normalizarHipotesisMantenimiento(valor: unknown): HipotesisMantenimiento {
   const d = comoObjeto(valor);
   return {
+    id: typeof d.id === "string" ? d.id : SIN_ID,
     conducta: comoTexto(d.conducta),
+    destino_id: comoIdONulo(d.destino_id),
+    origen_id: comoIdONulo(d.origen_id),
     enunciado: comoTexto(d.enunciado),
     funcion: comoTexto(d.funcion),
     confianza: comoConfianza(d.confianza),
@@ -314,6 +368,7 @@ function normalizarPriorizacion(valor: unknown): PriorizacionBlanco {
   const d = comoObjeto(valor);
   return {
     blanco: comoTexto(d.blanco),
+    conducta_id: comoIdONulo(d.conducta_id),
     justificacion: comoTexto(d.justificacion),
   };
 }
@@ -329,7 +384,9 @@ function normalizarFormulacion(valor: unknown): Formulacion {
 function normalizarConductaAlternativa(valor: unknown): ConductaAlternativa {
   const d = comoObjeto(valor);
   return {
+    id: typeof d.id === "string" ? d.id : SIN_ID,
     situacion: comoTexto(d.situacion),
+    situacion_id: comoIdONulo(d.situacion_id),
     conducta_propuesta: comoTexto(d.conducta_propuesta),
     consecuencia_necesaria: comoTexto(d.consecuencia_necesaria),
   };
@@ -349,6 +406,7 @@ function normalizarCapaAct(valor: unknown, lineas: string[]): CapaModalidadACT {
     reglas_verbales: comoArreglo<unknown>(d.reglas_verbales).map((r) => {
       const ro = comoObjeto(r);
       return {
+        id: typeof ro.id === "string" ? ro.id : SIN_ID,
         regla: comoTexto(ro.regla),
         textual_o_inferida:
           ro.textual_o_inferida === "inferida" ? "inferida" : "textual",
@@ -363,8 +421,11 @@ function normalizarCapaAct(valor: unknown, lineas: string[]): CapaModalidadACT {
     procesos_act: comoArreglo<unknown>(d.procesos_act).map((p) => {
       const po = comoObjeto(p);
       return {
+        id: typeof po.id === "string" ? po.id : SIN_ID,
         proceso: comoTexto(po.proceso),
         vinculo_con_cadena: comoTexto(po.vinculo_con_cadena),
+        situacion_id: comoIdONulo(po.situacion_id),
+        eslabon_id: comoIdONulo(po.eslabon_id),
         evidencia: resolverCita(lineas, po.evidencia),
       };
     }),
@@ -381,28 +442,8 @@ const MODULOS_DBT = [
 
 function normalizarCapaDbt(valor: unknown): CapaModalidadDBT {
   const d = comoObjeto(valor);
-  const cadena = comoObjeto(d.analisis_en_cadena);
-  return {
-    analisis_en_cadena: {
-      conducta_objetivo: comoTexto(cadena.conducta_objetivo),
-      vulnerabilidades: comoArregloDeTexto(cadena.vulnerabilidades),
-      evento_precipitante: comoTexto(cadena.evento_precipitante),
-      eslabones: comoArreglo<unknown>(cadena.eslabones).map((e) => {
-        const eo = comoObjeto(e);
-        return {
-          tipo: TIPOS_ESLABON_DBT.includes(eo.tipo as string)
-            ? (eo.tipo as "pensamiento")
-            : "pensamiento",
-          descripcion: comoTexto(eo.descripcion),
-        };
-      }),
-      consecuencias_corto_plazo: comoArregloDeTexto(
-        cadena.consecuencias_corto_plazo
-      ),
-      consecuencias_largo_plazo: comoArregloDeTexto(
-        cadena.consecuencias_largo_plazo
-      ),
-    },
+
+  const capa: CapaModalidadDBT = {
     habilidades_sugeridas: comoArreglo<unknown>(d.habilidades_sugeridas).map(
       (h) => {
         const ho = comoObjeto(h);
@@ -412,6 +453,7 @@ function normalizarCapaDbt(valor: unknown): CapaModalidadDBT {
             : "mindfulness",
           habilidad: comoTexto(ho.habilidad),
           eslabon_objetivo: comoTexto(ho.eslabon_objetivo),
+          eslabon_id: comoIdONulo(ho.eslabon_id),
         };
       }
     ),
@@ -419,7 +461,9 @@ function normalizarCapaDbt(valor: unknown): CapaModalidadDBT {
       (s) => {
         const so = comoObjeto(s);
         return {
+          id: typeof so.id === "string" ? so.id : SIN_ID,
           eslabon_objetivo: comoTexto(so.eslabon_objetivo),
+          eslabon_id: comoIdONulo(so.eslabon_id),
           alternativa_habil: comoTexto(so.alternativa_habil),
           // Lo desconocido cae en "respuesta": es la estrategia disponible
           // una vez la cadena arrancó, así que es la lectura conservadora.
@@ -436,11 +480,26 @@ function normalizarCapaDbt(valor: unknown): CapaModalidadDBT {
     plan_de_reparacion: comoTextoONulo(d.plan_de_reparacion),
     eslabon_ausente: comoTextoONulo(d.eslabon_ausente),
   };
+
+  /*
+    `analisis_en_cadena` ya no es parte del tipo: era una copia de la cadena DBT
+    de una situación. Los informes guardados en el historial siguen trayéndola,
+    así que se deja pasar sin tocar para que el migrador pueda fundirla en su
+    situación (ver lib/identidad.ts#migrarAV2, que la borra justo después). Sin
+    este acarreo, migrar un informe v1 perdería la cadena en el camino.
+  */
+  if (d.analisis_en_cadena !== undefined) {
+    (capa as unknown as Record<string, unknown>).analisis_en_cadena =
+      d.analisis_en_cadena;
+  }
+
+  return capa;
 }
 
 function normalizarAcomodacion(valor: unknown, lineas: string[]): Acomodacion {
   const d = comoObjeto(valor);
   return {
+    id: typeof d.id === "string" ? d.id : SIN_ID,
     quien: comoTexto(d.quien),
     conducta_acomodacion: comoTexto(d.conducta_acomodacion),
     funcion: comoTexto(d.funcion),
@@ -525,7 +584,13 @@ function normalizarCapaMc(valor: unknown): CapaModalidadMC {
 export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFuncional {
   const d = comoObjeto(json);
 
-  return {
+  // migrarAV2 cierra el paso: asigna los ids que los normalizadores dejaron
+  // vacíos y resuelve las referencias por prosa una sola vez. Que la respuesta
+  // recién llegada y el informe rescatado del historial pasen los dos por aquí
+  // es lo que garantiza que un análisis no pueda existir sin identidad.
+  return migrarAV2({
+    version: VERSION_ANALISIS,
+    siguiente_id: 1,
     resumen_clinico: comoTexto(d.resumen_clinico),
     conductas_problema: comoArreglo<unknown>(d.conductas_problema).map((c) =>
       normalizarConductaProblema(c, lineas)
@@ -574,7 +639,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     meta: { modelo: "", version_prompt: "" },
     // Solo la escribe la interfaz cuando el clínico edita; el modelo nunca.
     secciones_editadas: [],
-  };
+  });
 }
 
 /**
@@ -591,6 +656,12 @@ const NORMALIZADORES_POR_CAMPO: {
     lineas: string[]
   ) => AnalisisFuncional[K];
 } = {
+  // Ninguna de las dos viene del modelo ni se reanaliza por separado: las fija
+  // migrarAV2 sobre el análisis completo. Están aquí porque el tipo obliga a
+  // que toda clave tenga normalizador, que es justo la red que queremos.
+  version: () => VERSION_ANALISIS,
+  siguiente_id: (d) =>
+    typeof d.siguiente_id === "number" ? d.siguiente_id : 1,
   resumen_clinico: (d) => comoTexto(d.resumen_clinico),
   conductas_problema: (d, lineas) =>
     comoArreglo<unknown>(d.conductas_problema).map((c) =>

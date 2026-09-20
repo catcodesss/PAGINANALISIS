@@ -40,6 +40,7 @@ import {
 import { construirReporteFallo } from "@/lib/reporteFallo";
 import { agruparAlertas, yaEnRepertorio } from "@/lib/validadores";
 import { construirRedFuncional } from "@/lib/redFuncional";
+import { situacionDeLaCadenaDBT } from "@/lib/identidad";
 import { priorizarBlancos, RENDIMIENTO_MAXIMO } from "@/lib/priorizacion";
 import {
   calcularCobertura,
@@ -1279,7 +1280,7 @@ function CadenaOperanteView({ cadena }: { cadena: CadenaOperante }) {
     filas.push({ elemento: "OM", valor: cadena.operacion_motivacional });
   }
   filas.push({ elemento: "RO", valor: cadena.respuesta });
-  filas.push({ elemento: "C", valor: cadena.consecuencia });
+  filas.push({ elemento: "C", valor: cadena.consecuencia.texto });
   /*
     El esquema va en la misma fila que la contingencia, no en una propia: son
     las dos mitades del mismo dato —qué pasa tras la respuesta y cada cuánto
@@ -1305,7 +1306,10 @@ function CadenaOperanteView({ cadena }: { cadena: CadenaOperante }) {
     });
   }
   if (cadena.consecuencias_largo_plazo) {
-    filas.push({ elemento: "CMLP", valor: cadena.consecuencias_largo_plazo });
+    filas.push({
+      elemento: "CMLP",
+      valor: cadena.consecuencias_largo_plazo.texto,
+    });
   }
 
   return (
@@ -1316,7 +1320,7 @@ function CadenaOperanteView({ cadena }: { cadena: CadenaOperante }) {
       <TablaCadena filas={filas} />
       <NotacionCadena
         formula={`ED → RO → ${codigo}`}
-        natural={`${cadena.antecedente} → ${cadena.respuesta} → ${cadena.consecuencia}`}
+        natural={`${cadena.antecedente} → ${cadena.respuesta} → ${cadena.consecuencia.texto}`}
       />
       <Cita>{cadena.evidencia}</Cita>
     </div>
@@ -1595,84 +1599,36 @@ function DetalleACT({ capa }: { capa: AnalisisFuncional["capa_act"] }) {
   );
 }
 
-/** Análisis en cadena + habilidades sugeridas (capa DBT). */
-function DetalleDBT({ capa }: { capa: AnalisisFuncional["capa_dbt"] }) {
-  const cadena = capa.analisis_en_cadena;
-  // Mismo dibujo vertical que la cadena por situación (CadenaDBTView): un
-  // círculo por eslabón, precedido por las vulnerabilidades como contexto
-  // (no son un paso más de la secuencia) y seguido de la tabla completa, que
-  // es lo que llega al papel y a un lector de pantalla — ver el comentario de
-  // CadenaVisual sobre por qué el dibujo nunca sustituye a la tabla.
-  const filasCadena: FilaCadena[] = [
-    { elemento: "Precipitante", valor: cadena.evento_precipitante || "—" },
-    ...cadena.eslabones.map((e, i) => ({
-      elemento: `Eslabón ${i + 1}`,
-      valor: `[${e.tipo}] ${e.descripcion}`,
-    })),
-    { elemento: "Conducta objetivo", valor: cadena.conducta_objetivo || "—" },
-    {
-      elemento: "Consecuencias corto plazo",
-      valor: cadena.consecuencias_corto_plazo.join("; ") || "—",
-    },
-    {
-      elemento: "Consecuencias largo plazo",
-      valor: cadena.consecuencias_largo_plazo.join("; ") || "—",
-    },
-  ];
+/**
+ * Análisis en cadena + habilidades sugeridas (capa DBT).
+ *
+ * La cadena ya no es un campo propio de la capa. Era `analisis_en_cadena`, una
+ * copia literal de la `cadena_dbt` de una de las situaciones, y se pintaba aquí
+ * otra vez: el mismo precipitante, los mismos eslabones y las mismas
+ * consecuencias que el lector acababa de ver en «Análisis por situaciones», sin
+ * nada que obligara a las dos versiones a decir lo mismo. Ahora se muestra la
+ * cadena de la situación que analiza la conducta prioritaria, con el mismo
+ * componente que la pinta allí.
+ */
+function DetalleDBT({ analisis }: { analisis: AnalisisFuncional }) {
+  const capa = analisis.capa_dbt;
+  const situacion = situacionDeLaCadenaDBT(analisis);
 
   return (
     <div className="space-y-6">
       <SubSeccion titulo="Análisis en cadena">
-        <div className="rounded border border-divider p-4">
-          {cadena.vulnerabilidades.length > 0 && (
-            <div className="mb-4">
-              <p className="mb-1 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                Vulnerabilidades
-              </p>
-              <ul className="list-disc space-y-1 pl-5">
-                {cadena.vulnerabilidades.map((v, i) => (
-                  <li key={i} className="text-sm text-ink">
-                    {v}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <CadenaVisual
-            nodos={[
-              { rol: "Precipitante", texto: cadena.evento_precipitante || "—", simbolo: "◆" },
-              ...cadena.eslabones.map((e, i) => ({
-                rol: `${i + 1}. ${e.tipo}`,
-                texto: e.descripcion,
-                simbolo: INICIAL_ESLABON[e.tipo] ?? "·",
-              })),
-              {
-                rol: "Conducta objetivo",
-                texto: cadena.conducta_objetivo || "—",
-                simbolo: "✱",
-                destacado: true,
-              },
-              {
-                rol: "Consecuencias a corto plazo",
-                texto: cadena.consecuencias_corto_plazo.join("; ") || "—",
-                simbolo: "▸",
-              },
-              {
-                rol: "Consecuencias a largo plazo",
-                texto: cadena.consecuencias_largo_plazo.join("; ") || "—",
-                simbolo: "▹",
-              },
-            ]}
-          />
-          <TablaCadena filas={filasCadena} />
-          <NotacionCadena
-            formula="Precipitante → Eslabones → Conducta → Consecuencias"
-            natural={`${cadena.evento_precipitante} → ${cadena.conducta_objetivo} → ${[
-              ...cadena.consecuencias_corto_plazo,
-              ...cadena.consecuencias_largo_plazo,
-            ].join("; ")}`}
-          />
-        </div>
+        {!situacion?.cadena_dbt ? (
+          <SinHallazgos />
+        ) : (
+          <div className="rounded border border-divider p-4">
+            <p className="mb-3 text-sm text-ink-muted">
+              Cadena de <span className="text-ink">{situacion.nombre}</span>. Es
+              la misma que aparece en «Análisis por situaciones»: la capa DBT no
+              tiene una cadena propia, sino una lectura de la que ya hay.
+            </p>
+            <CadenaDBTView cadena={situacion.cadena_dbt} />
+          </div>
+        )}
       </SubSeccion>
 
       {/*
@@ -1897,7 +1853,7 @@ function SelectorCapaModalidad({
           (ver SelectorDeLente). */}
       <div className="print:hidden">
         {pestanaActiva === "act" && <DetalleACT capa={analisis.capa_act} />}
-        {pestanaActiva === "dbt" && <DetalleDBT capa={analisis.capa_dbt} />}
+        {pestanaActiva === "dbt" && <DetalleDBT analisis={analisis} />}
         {pestanaActiva === "mc" && <DetalleMC capa={analisis.capa_mc} />}
       </div>
 
@@ -1913,7 +1869,7 @@ function SelectorCapaModalidad({
           <p className="section-title mb-3 font-serif text-base font-semibold text-ink">
             DBT
           </p>
-          <DetalleDBT capa={analisis.capa_dbt} />
+          <DetalleDBT analisis={analisis} />
         </div>
         <div>
           <p className="section-title mb-3 font-serif text-base font-semibold text-ink">

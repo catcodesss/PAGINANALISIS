@@ -1,5 +1,46 @@
 # CAMBIOS
 
+## v2 del análisis — identidad de las entidades
+
+Cada entidad del análisis lleva ahora un `id` estable (`cnd_1`, `sit_2`,
+`esl_1_3`…) que **genera el servidor al normalizar**, nunca el modelo. El
+problema que resuelve: todo se referenciaba por prosa, y tres módulos
+—`redFuncional`, `priorizacion` y `yaEnRepertorio`— emparejaban por raíces de
+palabra **en cada render**, cada uno por su cuenta. Cuando el emparejamiento
+fallaba, la red funcional descartaba la relación en silencio.
+
+La heurística no desaparece: se mueve a `lib/identidad.ts` y corre **una vez**,
+al normalizar. Lo que no resuelve queda en `null` y se cuenta
+(`RedFuncional.sinResolver`), en vez de desaparecer.
+
+| Antes | Ahora |
+|---|---|
+| *(no existía)* | `Situacion.conductas_ids` |
+| `HipotesisMantenimiento.conducta` | `+ destino_id`, `+ origen_id` |
+| `PriorizacionBlanco.blanco` | `+ conducta_id` |
+| `ConductaAlternativa.situacion` | `+ situacion_id` |
+| `HabilidadSugeridaDBT.eslabon_objetivo` | `+ eslabon_id` |
+| `SolucionDBT.eslabon_objetivo` | `+ eslabon_id` |
+| `ProcesoACT.vinculo_con_cadena` | `+ situacion_id`, `+ eslabon_id` |
+| `CadenaOperante.consecuencia: string` | `Consecuencia { id, texto }` |
+
+**Los textos no se borran.** El id se añade; la prosa original se queda para
+mostrarla cuando el id no resuelva, que es justo cuando hace falta.
+
+**`capa_dbt.analisis_en_cadena` se retiró.** Era una copia literal de la
+`cadena_dbt` de una situación —comprobado campo por campo contra el fixture— y
+se pintaba dos veces. El informe muestra ahora la cadena de la situación que
+analiza la conducta prioritaria (`situacionDeLaCadenaDBT`). Un campo menos que
+generar en cada llamada con capa DBT.
+
+**Migración.** `migrarAV2` es idempotente y solo añade. Se aplica al normalizar
+la respuesta del modelo, al leer del historial y al cargar la maqueta. Un
+informe guardado en v1 se abre idéntico; lo fija `evals/migracion.test.mjs`
+(10 pruebas), dado de alta en CI a la vez que aquí.
+
+`VERSION_PROMPT`: 1.4.0 → 1.5.0.
+
+
 Lo que cambió en el informe en esta tanda de trabajo, para quien retome esto sin
 haber visto la conversación. No repite lo que el código ya dice: cuenta qué hay
 de nuevo, dónde vive, qué se rompería si se toca, y qué quedó a medias.
