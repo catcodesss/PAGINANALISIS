@@ -10,21 +10,42 @@ import {
 import type { AnalisisFuncional, TipoArista } from "@/lib/types";
 import type { EstiloGrafo } from "@/lib/preferencias";
 import {
-  CARRILES_GRAFO,
   agregarArista,
   agregarNodo,
-  apoyoCadena,
   actualizarEtiquetaNodo,
   borrarNodo,
   construirNodosGrafo,
-  huecosDeSituacion,
   type CarrilGrafo,
   type NodoGrafo,
   type TipoNodoGrafo,
 } from "@/lib/grafo";
+import {
+  Activity,
+  ArrowBigRightDash,
+  Brain,
+  CircleDot,
+  Clock3,
+  Cloud,
+  Compass,
+  Footprints,
+  HeartPulse,
+  MessageSquareQuote,
+  PersonStanding,
+  Signpost,
+  SlidersHorizontal,
+  Smile,
+  Sprout,
+  Target,
+  TrendingDown,
+  Wrench,
+  Zap,
+} from "lucide-react";
+import VistaAFC from "./estilos/afc";
 import VistaACT from "./estilos/act";
 import VistaDBT from "./estilos/dbt";
 import VistaMC from "./estilos/mc";
+import s from "./afc.module.css";
+import { interAfc, poppinsAfc } from "./fuentesAfc";
 
 interface GrafoAFCProps {
   analisis: AnalisisFuncional;
@@ -37,6 +58,38 @@ interface Trazo {
   id: string;
   d: string;
   tipo: TipoArista;
+  desde: string;
+  hasta: string;
+  /** Une nodos de tableros distintos (o uno global): cruzaría otras situaciones. */
+  lejana?: boolean;
+}
+
+interface Caja { x: number; y: number; w: number; h: number }
+
+/**
+ * En AFC hay nodos apilados en la misma columna (encubiertas y conducta), así
+ * que la curva lateral de siempre los cruzaría por encima: si los nodos se
+ * solapan en horizontal, la relación sale por abajo y entra por arriba.
+ */
+function trazadoAFC(desde: Caja, hasta: Caja): string {
+  if (hasta.x >= desde.x + desde.w - 4) {
+    const x1 = desde.x + desde.w, y1 = desde.y + desde.h / 2;
+    const x2 = hasta.x, y2 = hasta.y + hasta.h / 2;
+    const curva = Math.max(18, (x2 - x1) / 2);
+    return `M ${x1} ${y1} C ${x1 + curva} ${y1}, ${x2 - curva} ${y2}, ${x2} ${y2}`;
+  }
+  if (hasta.x + hasta.w <= desde.x + 4) {
+    const x1 = desde.x, y1 = desde.y + desde.h / 2;
+    const x2 = hasta.x + hasta.w, y2 = hasta.y + hasta.h / 2;
+    const curva = Math.max(18, (x1 - x2) / 2);
+    return `M ${x1} ${y1} C ${x1 - curva} ${y1}, ${x2 + curva} ${y2}, ${x2} ${y2}`;
+  }
+  const x1 = desde.x + desde.w / 2, x2 = hasta.x + hasta.w / 2;
+  const abajo = hasta.y >= desde.y;
+  const y1 = abajo ? desde.y + desde.h : desde.y;
+  const y2 = abajo ? hasta.y : hasta.y + hasta.h;
+  const curva = Math.max(10, Math.abs(y2 - y1) / 2) * (abajo ? 1 : -1);
+  return `M ${x1} ${y1} C ${x1} ${y1 + curva}, ${x2} ${y2 - curva}, ${x2} ${y2}`;
 }
 
 const ETIQUETA_TIPO: Record<TipoNodoGrafo, string> = {
@@ -71,6 +124,34 @@ const CLASE_TIPO: Record<TipoNodoGrafo, string> = {
   valor: "border-l-teal-500",
 };
 
+/** Solo apoyo visual para escanear: el texto del nodo dice lo que es. */
+function IconoNodo({ nodo }: { nodo: NodoGrafo }) {
+  const props = { className: s.icono, strokeWidth: 2.25, "aria-hidden": true } as const;
+  switch (nodo.tipo) {
+    case "om": return <Activity {...props} />;
+    case "moduladora": return <SlidersHorizontal {...props} />;
+    case "ed": return <Signpost {...props} />;
+    case "ec": return <Zap {...props} />;
+    case "regla_verbal": return <MessageSquareQuote {...props} />;
+    case "encubierta":
+      switch (nodo.detalle) {
+        case "sensacion": return <HeartPulse {...props} />;
+        case "pensamiento": return <Cloud {...props} />;
+        case "emocion": return <Smile {...props} />;
+        case "impulso": return <ArrowBigRightDash {...props} />;
+        case "accion": return <Footprints {...props} />;
+        default: return <Brain {...props} />;
+      }
+    case "conducta": return <PersonStanding {...props} />;
+    case "repertorio": return <Wrench {...props} />;
+    case "alternativa": return <Sprout {...props} />;
+    case "consecuencia": return nodo.carril === "demorada" ? <TrendingDown {...props} /> : <Clock3 {...props} />;
+    case "consecuencia_alternativa": return <Target {...props} />;
+    case "valor": return <Compass {...props} />;
+    default: return <CircleDot {...props} />;
+  }
+}
+
 function etiquetaApoyo(apoyo: number) {
   return apoyo === 3
     ? "Apoyo completo: cita verificada"
@@ -87,6 +168,7 @@ function Nodo({
   onSeleccionar,
   onEditar,
   onCita,
+  variante,
 }: {
   nodo: NodoGrafo;
   seleccionado: boolean;
@@ -95,6 +177,7 @@ function Nodo({
   onSeleccionar: (nodo: NodoGrafo) => void;
   onEditar: (nodo: NodoGrafo, texto: string) => void;
   onCita: (nodo: NodoGrafo) => void;
+  variante?: "afc";
 }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(nodo.etiqueta);
@@ -110,6 +193,79 @@ function Nodo({
       evento.preventDefault();
       onSeleccionar(nodo);
     }
+  }
+
+  const editor = (clase: string) => (
+    <input
+      autoFocus
+      value={texto}
+      aria-label={`Editar ${ETIQUETA_TIPO[nodo.tipo]}`}
+      onClick={(evento) => evento.stopPropagation()}
+      onChange={(evento) => setTexto(evento.target.value)}
+      onBlur={guardar}
+      onKeyDown={(evento) => {
+        evento.stopPropagation();
+        if (evento.key === "Enter") guardar();
+        if (evento.key === "Escape") {
+          setTexto(nodo.etiqueta);
+          setEditando(false);
+        }
+      }}
+      className={clase}
+    />
+  );
+
+  const barraApoyo = (clase: string) => (
+    <button
+      type="button"
+      className={clase}
+      aria-label={`${etiquetaApoyo(nodo.apoyo)}. Ir a la línea citada`}
+      onClick={(evento) => {
+        evento.stopPropagation();
+        onCita(nodo);
+      }}
+    >
+      <span
+        className="block h-1 bg-accent"
+        style={{ width: `${nodo.apoyo === 3 ? 100 : nodo.apoyo === 2 ? 66 : 33}%`, opacity: nodo.apoyo === 3 ? 1 : nodo.apoyo === 2 ? 0.66 : 0.42 }}
+      />
+    </button>
+  );
+
+  const comunes = {
+    "data-nodo-id": nodo.id,
+    role: "button",
+    tabIndex: 0,
+    "aria-label": `${ETIQUETA_TIPO[nodo.tipo]}: ${nodo.etiqueta}${conectando ? ". Seleccionar para conectar" : ""}`,
+    onClick: () => onSeleccionar(nodo),
+    onDoubleClick: () => {
+      setTexto(nodo.etiqueta);
+      setEditando(true);
+    },
+    onKeyDown: manejarTecla,
+  } as const;
+
+  if (variante === "afc") {
+    const clases = [
+      s.nodo,
+      nodo.tipo === "encubierta" ? s.encubierta : "",
+      nodo.tipo === "conducta" ? s.conducta : "",
+      seleccionado ? s.seleccionado : "",
+      atenuado ? s.atenuado : "",
+    ].join(" ");
+    return (
+      <article {...comunes} className={clases}>
+        {barraApoyo(s.barraApoyo)}
+        <div className={s.nodoCuerpo}>
+          <IconoNodo nodo={nodo} />
+          <div className={s.nodoTexto}>
+            <span className={s.chip}>{ETIQUETA_TIPO[nodo.tipo]}</span>
+            {editando ? editor(s.editor) : <p className={s.etiqueta}>{nodo.etiqueta}</p>}
+            {nodo.detalle && <p className={s.detalle}>{nodo.detalle}</p>}
+          </div>
+        </div>
+      </article>
+    );
   }
 
   return (
@@ -175,12 +331,14 @@ function BotonAgregarNodo({
   alternativa,
   nodos,
   onAgregar,
+  variante,
 }: {
   carril: CarrilGrafo;
   situacionId: string;
   alternativa: boolean;
   nodos: readonly NodoGrafo[];
   onAgregar: (tipo: TipoNodoGrafo, texto: string) => void;
+  variante?: "afc";
 }) {
   const tipos: TipoNodoGrafo[] = alternativa
     ? carril === "conducta"
@@ -216,8 +374,9 @@ function BotonAgregarNodo({
   });
   if (disponibles.length === 0) return null;
 
+  const afc = variante === "afc";
   return (
-    <div className="mt-2 flex flex-wrap gap-1 print:hidden">
+    <div className={afc ? `${s.agregar} print:hidden` : "mt-2 flex flex-wrap gap-1 print:hidden"}>
       {disponibles.map((tipo) => (
         <button
           key={tipo}
@@ -226,7 +385,7 @@ function BotonAgregarNodo({
             const texto = window.prompt(`Texto para ${ETIQUETA_TIPO[tipo]}`)?.trim();
             if (texto) onAgregar(tipo, texto);
           }}
-          className="rounded border border-dashed border-divider px-2 py-1 text-[10px] text-ink-muted transition hover:border-accent hover:text-accent"
+          className={afc ? s.agregarBoton : "rounded border border-dashed border-divider px-2 py-1 text-[10px] text-ink-muted transition hover:border-accent hover:text-accent"}
         >
           + {ETIQUETA_TIPO[tipo]}
         </button>
@@ -245,6 +404,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
   const [filtro, setFiltro] = useState<1 | 2 | 3 | null>(null);
   const [soloApoyado, setSoloApoyado] = useState(false);
   const [lineaActiva, setLineaActiva] = useState<number | null>(null);
+  const [bajoPuntero, setBajoPuntero] = useState<string | null>(null);
   const [trazos, setTrazos] = useState<Trazo[]>([]);
   const [puedeDeshacer, setPuedeDeshacer] = useState(false);
   const [puedeRehacer, setPuedeRehacer] = useState(false);
@@ -318,6 +478,8 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
         const raiz = contenedorRef.current;
         if (!raiz) return;
         const cajaRaiz = raiz.getBoundingClientRect();
+        const situacionDe = (id: string) =>
+          raiz.querySelector<HTMLElement>(`[data-nodo-id="${CSS.escape(id)}"]`)?.closest<HTMLElement>("[data-situacion-id]")?.dataset.situacionId ?? null;
         const caja = (id: string) => {
           const elemento = raiz.querySelector<HTMLElement>(`[data-nodo-id="${CSS.escape(id)}"]`);
           if (!elemento) return null;
@@ -328,12 +490,17 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
           const desde = caja(arista.desde);
           const hasta = caja(arista.hasta);
           if (!desde || !hasta) return [];
+          if (estilo === "afc") {
+            const origen = situacionDe(arista.desde);
+            const lejana = origen === null || origen !== situacionDe(arista.hasta);
+            return [{ id: arista.id, tipo: arista.tipo, desde: arista.desde, hasta: arista.hasta, lejana, d: trazadoAFC(desde, hasta) }];
+          }
           const x1 = desde.x + desde.w;
           const y1 = desde.y + desde.h / 2;
           const x2 = hasta.x;
           const y2 = hasta.y + hasta.h / 2;
           const curva = Math.max(24, Math.abs(x2 - x1) / 2);
-          return [{ id: arista.id, tipo: arista.tipo, d: `M ${x1} ${y1} C ${x1 + curva} ${y1}, ${x2 - curva} ${y2}, ${x2} ${y2}` }];
+          return [{ id: arista.id, tipo: arista.tipo, desde: arista.desde, hasta: arista.hasta, d: `M ${x1} ${y1} C ${x1 + curva} ${y1}, ${x2 - curva} ${y2}, ${x2} ${y2}` }];
         }));
       });
     };
@@ -350,7 +517,6 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
     };
   }, [analisis.aristas, nodos, estilo]);
 
-  const globales = nodos.filter((n) => n.situacion_id === null);
   const renderNodo = (n: NodoGrafo) => (
     <Nodo
       nodo={n}
@@ -362,6 +528,39 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
       onCita={irACita}
     />
   );
+
+  const renderNodoAFC = (n: NodoGrafo) => (
+    <Nodo
+      variante="afc"
+      nodo={n}
+      seleccionado={seleccionado === n.id}
+      atenuado={(filtro !== null && n.apoyo !== filtro) || (soloApoyado && n.apoyo < 3)}
+      conectando={modoConectar}
+      onSeleccionar={seleccionarNodo}
+      onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
+      onCita={irACita}
+    />
+  );
+  const renderAgregarAFC = (carril: CarrilGrafo, situacionId: string, alternativa: boolean) => (
+    <BotonAgregarNodo
+      variante="afc"
+      carril={carril}
+      situacionId={situacionId}
+      alternativa={alternativa}
+      nodos={nodos}
+      onAgregar={(tipo, texto) => {
+        if (tipo === "consecuencia_alternativa") {
+          const alt = nodos.find((n) => n.situacion_id === situacionId && n.tipo === "alternativa");
+          if (alt) aplicar((copia) => actualizarEtiquetaNodo(copia, `${alt.id}_consecuencia`, texto));
+        } else aplicar((copia) => agregarNodo(copia, situacionId, tipo, texto));
+      }}
+    />
+  );
+
+  // Las relaciones quedan tenues por defecto y se encienden las del nodo que
+  // se señala o se selecciona: así no dominan el tablero.
+  const enFoco = bajoPuntero ?? origenConexion ?? seleccionado;
+  const esAFC = estilo === "afc";
 
   return (
     <div className="print:contents">
@@ -396,12 +595,40 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
       </div>
 
       <div className="grid min-w-0 gap-5 print:block">
-        <div ref={contenedorRef} className="relative min-w-0 print:hidden">
-          <svg className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full overflow-visible md:block" aria-hidden="true">
+        <div className={esAFC ? `${s.scroll} min-w-0 print:hidden` : "contents"}>
+        <div
+          ref={contenedorRef}
+          className={esAFC ? `relative ${s.raiz} ${s.lienzo} ${poppinsAfc.variable} ${interAfc.variable}` : "relative min-w-0 print:hidden"}
+          onMouseOver={esAFC ? (evento) => {
+            const id = (evento.target as HTMLElement).closest<HTMLElement>("[data-nodo-id]")?.dataset.nodoId ?? null;
+            if (id !== bajoPuntero) setBajoPuntero(id);
+          } : undefined}
+          onMouseLeave={esAFC ? () => setBajoPuntero(null) : undefined}
+        >
+          <svg className={`pointer-events-none absolute inset-0 h-full w-full overflow-visible ${esAFC ? "block" : "z-0 hidden md:block"}`} style={esAFC ? { zIndex: 1 } : undefined} aria-hidden="true">
             <defs><marker id="punta-afc" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="currentColor" /></marker></defs>
-            {trazos.map((trazo) => (
-              <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink-muted/60"} markerEnd="url(#punta-afc)" />
-            ))}
+            {trazos.map((trazo) => {
+              if (!esAFC) {
+                return <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink-muted/60"} markerEnd="url(#punta-afc)" />;
+              }
+              const activa = enFoco !== null && (trazo.desde === enFoco || trazo.hasta === enFoco);
+              // Las que cruzan tableros siguen en el modelo y en la ficha; en
+              // el lienzo solo aparecen con uno de sus extremos en foco.
+              if (trazo.lejana && !activa) return null;
+              return (
+                <path
+                  key={trazo.id}
+                  d={trazo.d}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={activa ? 2.5 : 1.75}
+                  strokeDasharray={trazo.tipo === "moderadora" ? "5 4" : undefined}
+                  className={trazo.tipo === "bucle" ? "text-warn" : undefined}
+                  style={{ color: trazo.tipo === "bucle" ? undefined : "var(--afc-line)", opacity: activa ? 0.95 : modoConectar ? 0.55 : 0.26, transition: "opacity 150ms ease" }}
+                  markerEnd="url(#punta-afc)"
+                />
+              );
+            })}
           </svg>
 
           {estilo !== "afc" ? (
@@ -411,69 +638,19 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
               {estilo === "mc" && <VistaMC analisis={analisis} nodos={nodos} renderNodo={renderNodo} />}
             </div>
           ) : (
-          <>
-
-          <div className="relative z-10 hidden grid-cols-6 gap-2 px-2 md:grid">
-            {CARRILES_GRAFO.map((carril) => <div key={carril.id} className="pb-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted"><b className="block text-ink">{carril.titulo}</b>{carril.subtitulo}</div>)}
-          </div>
-
-          {globales.length > 0 && (
-            <section className="relative z-10 mb-4 rounded-lg border border-divider bg-canvas/60 p-3">
-              <h4 className="mb-2 font-serif text-sm font-semibold text-ink">Entidades del caso fuera de una situación concreta</h4>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {globales.map((n) => <Nodo key={n.id} nodo={n} seleccionado={seleccionado === n.id} atenuado={(filtro !== null && n.apoyo !== filtro) || (soloApoyado && n.apoyo < 3)} conectando={modoConectar} onSeleccionar={seleccionarNodo} onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))} onCita={irACita} />)}
-              </div>
-            </section>
+            <VistaAFC
+              analisis={analisis}
+              nodos={nodos}
+              renderNodo={renderNodoAFC}
+              renderAgregar={renderAgregarAFC}
+              onSeleccionar={seleccionarNodo}
+              onAgregarFuncion={(situacionId) => {
+                const texto = window.prompt("Función hipotetizada")?.trim();
+                if (texto) aplicar((copia) => agregarNodo(copia, situacionId, "funcion", texto));
+              }}
+            />
           )}
-
-          <div className="relative z-10 space-y-4">
-            {analisis.situaciones.map((situacion) => {
-              const deSituacion = nodos.filter((n) => n.situacion_id === situacion.id);
-              const apoyo = apoyoCadena(deSituacion);
-              const huecos = huecosDeSituacion(analisis, situacion, nodos);
-              return (
-                <section key={situacion.id} className="overflow-hidden rounded-xl border border-divider bg-canvas/40" data-situacion-id={situacion.id}>
-                  <header className="flex flex-wrap items-center gap-2 border-b border-divider bg-surface px-3 py-2">
-                    <h4 className="font-serif text-base font-semibold text-ink">{situacion.nombre}</h4>
-                    <span className="ml-auto text-[11px] text-ink-muted">Apoyo de la cadena: <span className="inline-block h-1 bg-accent align-middle" style={{ width: apoyo === 3 ? 34 : apoyo === 2 ? 23 : 11, opacity: apoyo === 3 ? 1 : apoyo === 2 ? .66 : .42 }} /> · lo marca el eslabón más débil</span>
-                  </header>
-                  <div className="grid grid-cols-1 gap-2 p-2 md:grid-cols-6">
-                    {CARRILES_GRAFO.map((carril) => {
-                      const deCelda = deSituacion.filter((n) => n.carril === carril.id && !n.alternativa && n.tipo !== "funcion");
-                      const huecosCelda = huecos.filter((h) => h.carril === carril.id);
-                      return <div key={carril.id} className="min-w-0 rounded-md border border-divider/60 p-1.5" data-carril={carril.titulo}>
-                        <p className="mb-1 font-mono text-[9px] uppercase tracking-wide text-ink-muted md:hidden">{carril.titulo}</p>
-                        <div className="space-y-2">{deCelda.map((n) => <Nodo key={n.id} nodo={n} seleccionado={seleccionado === n.id} atenuado={(filtro !== null && n.apoyo !== filtro) || (soloApoyado && n.apoyo < 3)} conectando={modoConectar} onSeleccionar={seleccionarNodo} onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))} onCita={irACita} />)}
-                          {huecosCelda.map((h) => <div key={h.id} className="rounded-lg border border-dashed border-divider p-2 text-xs text-ink-muted">{h.etiqueta}</div>)}
-                        </div>
-                        <BotonAgregarNodo carril={carril.id} situacionId={situacion.id} alternativa={false} nodos={nodos} onAgregar={(tipo, texto) => aplicar((copia) => agregarNodo(copia, situacion.id, tipo, texto))} />
-                      </div>;
-                    })}
-                  </div>
-                  <div className="border-t border-dashed border-divider bg-surface/60 p-2">
-                    <p className="mb-2 text-[11px] font-medium text-ink-muted">Conducta alternativa · compite por la misma contingencia</p>
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-6">
-                      {CARRILES_GRAFO.map((carril) => <div key={carril.id} className="min-w-0 p-1">
-                        {deSituacion.filter((n) => n.carril === carril.id && n.alternativa).map((n) => <Nodo key={n.id} nodo={n} seleccionado={seleccionado === n.id} atenuado={(filtro !== null && n.apoyo !== filtro) || (soloApoyado && n.apoyo < 3)} conectando={modoConectar} onSeleccionar={seleccionarNodo} onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))} onCita={irACita} />)}
-                        <BotonAgregarNodo carril={carril.id} situacionId={situacion.id} alternativa nodos={nodos} onAgregar={(tipo, texto) => {
-                          if (tipo === "consecuencia_alternativa") {
-                            const alt = deSituacion.find((n) => n.tipo === "alternativa");
-                            if (alt) aplicar((copia) => actualizarEtiquetaNodo(copia, `${alt.id}_consecuencia`, texto));
-                          } else aplicar((copia) => agregarNodo(copia, situacion.id, tipo, texto));
-                        }} />
-                      </div>)}
-                    </div>
-                  </div>
-                  <footer className="flex justify-end border-t border-divider px-3 py-2">
-                    {deSituacion.filter((n) => n.tipo === "funcion").map((n) => <button key={n.id} type="button" data-nodo-id={n.id} onClick={() => seleccionarNodo(n)} className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs text-accent"><span className="font-mono uppercase">Función · </span>{n.etiqueta}</button>)}
-                    {!deSituacion.some((n) => n.tipo === "funcion") && <button type="button" onClick={() => { const texto = window.prompt("Función hipotetizada")?.trim(); if (texto) aplicar((copia) => agregarNodo(copia, situacion.id, "funcion", texto)); }} className="text-xs text-ink-muted underline decoration-dashed">+ función hipotetizada</button>}
-                  </footer>
-                </section>
-              );
-            })}
-          </div>
-          </>
-          )}
+        </div>
         </div>
 
         <aside className="grid min-w-0 gap-5 rounded-lg border border-divider bg-canvas p-3 md:grid-cols-2 print:hidden">

@@ -1,0 +1,500 @@
+/*
+  Vista AFC del grafo: cuatro macrocolumnas sobre los seis carriles de
+  lib/grafo.ts. La agrupación es solo visual; los carriles siguen existiendo.
+
+  Tamaños en rem: la raíz escala con --escala-texto, así que la vista obedece
+  al tamaño de texto elegido sin anulaciones en globals.css.
+
+  Los colores de columna son categorías de lectura. El respaldo en la nota
+  (con cita / parcial / inferencia) va aparte, en la barra de apoyo de cada
+  nodo, con el acento de la aplicación: son dos dimensiones distintas.
+*/
+
+.raiz {
+  --afc-bg: #FEFDFE;
+  --afc-text-title: #101426;
+  --afc-text: #172033;
+  --afc-text-secondary: #575B6F;
+  --afc-text-tertiary: #6B7385;
+  --afc-line: #364860;
+
+  --afc-blue-header: #BAE2FE;
+  --afc-blue-bg: #F7FBFE;
+  --afc-blue-accent: #2196F3;
+  --afc-blue-border: #7FC3F6;
+  --afc-blue-chip: #D7EFFE;
+
+  --afc-yellow-header: #FEE39B;
+  --afc-yellow-bg: #FEF5E4;
+  --afc-yellow-accent: #FAB11A;
+  --afc-yellow-border: #F5CB66;
+  --afc-yellow-chip: #FFF0C5;
+
+  --afc-green-header: #B2EED1;
+  --afc-green-bg: #EEFAF5;
+  --afc-green-accent: #22A66F;
+  --afc-green-border: #62C999;
+  --afc-green-dark: #087A52;
+  --afc-green-chip: #CDEFE2;
+  --afc-green-soft: #DFF5EA;
+
+  --afc-pink-header: #FDC5CF;
+  --afc-pink-bg: #FEF3F6;
+  --afc-pink-accent: #E95C6D;
+  --afc-pink-border: #F291A0;
+  --afc-pink-dark: #A3283B;
+  --afc-pink-chip: #FDE0E5;
+
+  --afc-slate-accent: #7B8BA3;
+  --afc-slate-chip: #E6ECF3;
+
+  --afc-card: #FFFFFF;
+  --afc-card-border: #E2E8EF;
+  --afc-neutral-bg: #F3F6F9;
+  --afc-neutral-border: #DCE3EA;
+  --afc-alt-bg: #F7FAFC;
+  --afc-legend-bg: #F2F6FA;
+  --afc-legend-border: #DDE5EC;
+  --afc-shadow: 0 1px 3px rgba(20, 30, 50, .08), 0 4px 10px rgba(20, 30, 50, .04);
+  --afc-shadow-hover: 0 2px 5px rgba(20, 30, 50, .10), 0 6px 14px rgba(20, 30, 50, .06);
+
+  font-family: var(--afc-fuente-texto), var(--font-sans);
+  color: var(--afc-text);
+}
+
+/* En modo noche se conserva la identidad de cada columna, pero mezclada con
+   la superficie oscura de la aplicación: un tablero blanco ahí deslumbra. */
+:global(html[data-tema="oscuro"]) .raiz {
+  --afc-bg: var(--color-surface);
+  --afc-text-title: var(--color-ink);
+  --afc-text: var(--color-ink);
+  --afc-text-secondary: var(--color-ink-muted);
+  --afc-text-tertiary: var(--color-ink-muted);
+  --afc-line: #A9B7C9;
+  --afc-card: var(--color-canvas);
+  --afc-card-border: var(--color-divider);
+  --afc-neutral-bg: color-mix(in srgb, var(--color-canvas) 70%, var(--color-surface));
+  --afc-neutral-border: var(--color-divider);
+  --afc-alt-bg: var(--color-canvas);
+  --afc-legend-bg: var(--color-canvas);
+  --afc-legend-border: var(--color-divider);
+
+  --afc-blue-header: color-mix(in srgb, #2196F3 30%, var(--color-surface));
+  --afc-blue-bg: color-mix(in srgb, #2196F3 6%, var(--color-surface));
+  --afc-blue-border: color-mix(in srgb, #2196F3 55%, var(--color-surface));
+  --afc-blue-chip: color-mix(in srgb, #2196F3 22%, var(--color-surface));
+  --afc-yellow-header: color-mix(in srgb, #FAB11A 30%, var(--color-surface));
+  --afc-yellow-bg: color-mix(in srgb, #FAB11A 6%, var(--color-surface));
+  --afc-yellow-border: color-mix(in srgb, #FAB11A 55%, var(--color-surface));
+  --afc-yellow-chip: color-mix(in srgb, #FAB11A 22%, var(--color-surface));
+  --afc-green-header: color-mix(in srgb, #22A66F 32%, var(--color-surface));
+  --afc-green-bg: color-mix(in srgb, #22A66F 6%, var(--color-surface));
+  --afc-green-border: color-mix(in srgb, #22A66F 60%, var(--color-surface));
+  --afc-green-dark: #7FD9AE;
+  --afc-green-chip: color-mix(in srgb, #22A66F 24%, var(--color-surface));
+  --afc-green-soft: color-mix(in srgb, #22A66F 12%, var(--color-surface));
+  --afc-pink-header: color-mix(in srgb, #E95C6D 30%, var(--color-surface));
+  --afc-pink-bg: color-mix(in srgb, #E95C6D 6%, var(--color-surface));
+  --afc-pink-border: color-mix(in srgb, #E95C6D 55%, var(--color-surface));
+  --afc-pink-dark: #F5A3AF;
+  --afc-pink-chip: color-mix(in srgb, #E95C6D 22%, var(--color-surface));
+  --afc-slate-chip: color-mix(in srgb, #7B8BA3 25%, var(--color-surface));
+  --afc-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  --afc-shadow-hover: 0 2px 8px rgba(0, 0, 0, .45);
+}
+
+/* Se prefiere scroll horizontal a comprimir la cadena en una lista vertical:
+   la lectura de izquierda a derecha es el contenido. */
+.scroll {
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding-bottom: 4px;
+}
+/* El informe deja ~1090 px en un escritorio de 1600: el mínimo cabe ahí sin
+   scroll y solo por debajo aparece la barra horizontal. */
+.lienzo { min-width: 1040px; }
+
+.pila { display: flex; flex-direction: column; gap: 1.25rem; }
+
+/* ---------- Situación ---------- */
+.situacion {
+  background: var(--afc-bg);
+  border: 1px solid var(--afc-neutral-border);
+  border-radius: 14px;
+  padding: 1rem 1.125rem 1.125rem;
+}
+.situacionCabecera {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-bottom: .875rem;
+}
+.situacionTitulo {
+  margin: 0;
+  font-family: var(--afc-fuente-titulo), var(--font-sans);
+  font-size: 1.1875rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--afc-text);
+}
+.apoyo {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .4rem .75rem;
+  background: var(--afc-legend-bg);
+  border: 1px solid var(--afc-legend-border);
+  border-radius: 10px;
+  font-size: .78rem;
+  color: var(--afc-text-secondary);
+  white-space: nowrap;
+}
+
+/* ---------- Tablero ---------- */
+.tablero {
+  display: grid;
+  grid-template-columns:
+    minmax(225px, 1.05fr)
+    minmax(205px, 0.95fr)
+    minmax(290px, 1.22fr)
+    minmax(215px, 0.98fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.columna {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--afc-col-bg);
+  border: 1.5px solid var(--afc-col-border);
+  border-radius: 13px;
+}
+.om  { --afc-col-bg: var(--afc-blue-bg);   --afc-col-border: var(--afc-blue-border);   --afc-col-head: var(--afc-blue-header);   --afc-acento: var(--afc-blue-accent);   --afc-chip: var(--afc-blue-chip); }
+.ant { --afc-col-bg: var(--afc-yellow-bg); --afc-col-border: var(--afc-yellow-border); --afc-col-head: var(--afc-yellow-header); --afc-acento: var(--afc-yellow-accent); --afc-chip: var(--afc-yellow-chip); }
+.con { --afc-col-bg: var(--afc-green-bg);  --afc-col-border: var(--afc-green-border);  --afc-col-head: var(--afc-green-header);  --afc-acento: var(--afc-green-accent);  --afc-chip: var(--afc-green-chip); }
+.csq { --afc-col-bg: var(--afc-pink-bg);   --afc-col-border: var(--afc-pink-border);   --afc-col-head: var(--afc-pink-header);   --afc-acento: var(--afc-pink-accent);   --afc-chip: var(--afc-pink-chip); }
+.alt { --afc-acento: var(--afc-slate-accent); --afc-chip: var(--afc-slate-chip); }
+
+/* Guía de lectura entre macrocolumnas, a la altura de las cabeceras para no
+   confundirse con las relaciones reales entre nodos. */
+.columna:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: calc(1.75rem - 5px);
+  right: -12px;
+  width: 10px;
+  height: 10px;
+  border-top: 2.5px solid var(--afc-line);
+  border-right: 2.5px solid var(--afc-line);
+  transform: rotate(45deg);
+  opacity: .5;
+  pointer-events: none;
+}
+
+.columnaCabecera {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.5rem;
+  padding: .5rem .75rem;
+  background: var(--afc-col-head);
+  border-radius: 11.5px 11.5px 0 0;
+}
+.columnaTitulo {
+  margin: 0;
+  font-family: var(--afc-fuente-titulo), var(--font-sans);
+  font-size: clamp(1.25rem, 1.5vw, 1.625rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--afc-text-title);
+  text-align: center;
+}
+.columnaCuerpo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+}
+
+/* ---------- Subgrupos ---------- */
+.subgrupoCabecera {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+.subgrupoTitulo {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--afc-green-dark);
+}
+.subgrupoCabecera > :last-child:not(:first-child) { margin-left: auto; }
+
+.encubiertas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1.5px dashed var(--afc-green-accent);
+  border-radius: 14px;
+}
+.manifiesta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 10px 12px;
+  border: 2px solid var(--afc-green-border);
+  border-radius: 14px;
+  background: var(--afc-green-soft);
+}
+
+.consecuencias { display: flex; flex-direction: column; gap: 10px; }
+.consecuencias + .consecuencias {
+  padding-top: 12px;
+  border-top: 1px dashed var(--afc-pink-border);
+}
+.subzonaTitulo {
+  margin: 0;
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--afc-pink-dark);
+}
+
+.lista { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- Nodos ---------- */
+.nodo {
+  position: relative;
+  /* Por encima de la capa de relaciones: las líneas pasan por detrás. */
+  z-index: 2;
+  min-width: 0;
+  padding: 14px 14px 14px 12px;
+  background: var(--afc-card);
+  border: 1px solid var(--afc-card-border);
+  border-left: 6px solid var(--afc-acento);
+  border-radius: 12px;
+  box-shadow: var(--afc-shadow);
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease, opacity 150ms ease;
+}
+.nodo:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--afc-shadow-hover);
+  border-top-color: var(--afc-col-border, var(--afc-neutral-border));
+  border-right-color: var(--afc-col-border, var(--afc-neutral-border));
+  border-bottom-color: var(--afc-col-border, var(--afc-neutral-border));
+}
+.nodo:focus-visible {
+  outline: 2px solid var(--afc-line);
+  outline-offset: 2px;
+}
+.seleccionado {
+  box-shadow: 0 0 0 2px rgba(54, 72, 96, .28), 0 3px 10px rgba(20, 30, 50, .10);
+}
+.seleccionado:hover {
+  box-shadow: 0 0 0 2px rgba(54, 72, 96, .28), var(--afc-shadow-hover);
+}
+.atenuado { opacity: .25; }
+
+.encubierta { border-left-width: 1px; border-left-color: var(--afc-card-border); }
+.conducta { border: 1.5px solid var(--afc-green-border); border-left: 6px solid var(--afc-green-accent); }
+
+.nodoCuerpo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 4px;
+}
+.icono {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  color: var(--afc-text);
+  opacity: .85;
+  pointer-events: none;
+}
+.nodoTexto { min-width: 0; flex: 1; }
+.chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--afc-chip);
+  color: var(--afc-text);
+  font-size: .72rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.con .chip { color: var(--afc-green-dark); }
+.etiqueta {
+  margin: 5px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--afc-text);
+  overflow-wrap: anywhere;
+}
+.conducta .etiqueta { font-size: 1.0625rem; color: var(--afc-text-title); }
+.detalle {
+  margin: 4px 0 0;
+  font-size: .8rem;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--afc-text-tertiary);
+}
+.editor {
+  margin-top: 5px;
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--afc-line);
+  border-radius: 6px;
+  background: var(--afc-card);
+  color: var(--afc-text);
+  font: inherit;
+  font-size: .95rem;
+}
+
+/* Barra de respaldo en la nota: la longitud y la opacidad codifican el nivel
+   (lib/grafo.ts). Usa el acento de la app, no el color de la columna. */
+.barraApoyo {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 12px 12px 0 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+.barraApoyo > span { display: block; height: 3px; }
+
+.hueco {
+  padding: 10px 12px;
+  border: 1.5px dashed var(--afc-col-border, var(--afc-neutral-border));
+  border-radius: 10px;
+  font-size: .85rem;
+  color: var(--afc-text-secondary);
+}
+
+/* ---------- Controles «+» ---------- */
+.agregar { display: flex; flex-wrap: wrap; gap: 6px; }
+.agregarBoton {
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px dashed var(--afc-acento, var(--afc-line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--afc-acento, var(--afc-line)) 8%, transparent);
+  color: var(--afc-text-secondary);
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.agregarBoton:hover {
+  background: color-mix(in srgb, var(--afc-acento, var(--afc-line)) 16%, transparent);
+  color: var(--afc-text);
+}
+.agregarBoton:focus-visible {
+  outline: 2px solid var(--afc-line);
+  outline-offset: 2px;
+}
+
+/* ---------- Conducta alternativa ---------- */
+.alternativa {
+  margin-top: 14px;
+  padding: 14px 16px 16px;
+  background: var(--afc-alt-bg);
+  border: 1px solid var(--afc-neutral-border);
+  border-radius: 12px;
+}
+.alternativaCabecera {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  margin: 0 0 10px;
+  font-size: .95rem;
+  color: var(--afc-text-secondary);
+}
+.alternativaCabecera strong { color: var(--afc-text-title); font-weight: 700; }
+.alternativaFila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+.flecha {
+  width: 26px;
+  height: 26px;
+  color: var(--afc-line);
+  opacity: .7;
+  pointer-events: none;
+}
+
+/* ---------- Función ---------- */
+.funcionFila {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.funcion {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: baseline;
+  gap: .6rem;
+  max-width: 100%;
+  padding: 8px 14px;
+  background: var(--afc-neutral-bg);
+  border: 1px solid var(--afc-neutral-border);
+  border-radius: 10px;
+  font: inherit;
+  font-size: .9rem;
+  text-align: left;
+  color: var(--afc-text);
+  cursor: pointer;
+}
+.funcion:focus-visible { outline: 2px solid var(--afc-line); outline-offset: 2px; }
+.funcion > span:first-child {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--afc-text-secondary);
+}
+
+/* ---------- Entidades globales ---------- */
+.globales {
+  padding: 14px 16px 16px;
+  background: var(--afc-bg);
+  border: 1px solid var(--afc-neutral-border);
+  border-radius: 14px;
+}
+.globalesTitulo {
+  margin: 0 0 10px;
+  font-family: var(--afc-fuente-titulo), var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--afc-text);
+}
+.globalesRejilla {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* Portátiles: mismas cuatro columnas, algo menos de aire. */
+@media (max-width: 1399px) {
+  .situacion { padding: .875rem .875rem 1rem; }
+  .columnaCuerpo { padding: 12px; }
+  .tablero { gap: 12px; }
+}
