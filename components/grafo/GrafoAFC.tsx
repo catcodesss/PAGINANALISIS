@@ -396,7 +396,8 @@ function BotonAgregarNodo({
 
 export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
-  const pila = useRef<AnalisisFuncional[]>([]);
+  const redibujar = useRef<() => void>(() => {});
+  const pila =useRef<AnalisisFuncional[]>([]);
   const rehacer = useRef<AnalisisFuncional[]>([]);
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   const [modoConectar, setModoConectar] = useState(false);
@@ -504,6 +505,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
         }));
       });
     };
+    redibujar.current = dibujar;
     dibujar();
     const observador = new ResizeObserver(dibujar);
     observador.observe(contenedor);
@@ -644,6 +646,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
               renderNodo={renderNodoAFC}
               renderAgregar={renderAgregarAFC}
               onSeleccionar={seleccionarNodo}
+              onReacomodo={() => redibujar.current()}
               onAgregarFuncion={(situacionId) => {
                 const texto = window.prompt("Función hipotetizada")?.trim();
                 if (texto) aplicar((copia) => agregarNodo(copia, situacionId, "funcion", texto));

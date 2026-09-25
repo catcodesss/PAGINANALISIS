@@ -1,7 +1,7 @@
 "use client";
 
-import { Fragment, type ReactNode } from "react";
-import { ArrowRight } from "lucide-react";
+import { Fragment, useLayoutEffect, useRef, useState, type PointerEvent as EventoPuntero, type ReactNode } from "react";
+import { ArrowRight, GripVertical } from "lucide-react";
 import type { AnalisisFuncional } from "@/lib/types";
 import {
   apoyoCadena,
@@ -19,7 +19,82 @@ interface VistaAFCProps {
   renderAgregar: (carril: CarrilGrafo, situacionId: string, alternativa: boolean) => ReactNode;
   onSeleccionar: (nodo: NodoGrafo) => void;
   onAgregarFuncion: (situacionId: string) => void;
+  /** Tras mover algo a mano: las relaciones se trazan midiendo el DOM y no se enteran solas. */
+  onReacomodo: () => void;
 }
+
+type Desplazamiento = { x: number; y: number };
+
+/** Por debajo de esto un gesto es un clic (seleccionar, editar), no un arrastre. */
+const UMBRAL_ARRASTRE = 4;
+
+/**
+ * Arrastre libre para colocar a mano. Es solo presentación: vive en el estado
+ * de la vista y no toca el análisis, así que ni entra en Deshacer ni viaja al
+ * informe. En táctil el arrastre de los cuadros cede al desplazamiento de la
+ * página (sin touch-action: none); la tarjeta sí se arrastra por su cabecera.
+ */
+function useArrastre(onReacomodo: () => void) {
+  const [posiciones, setPosiciones] = useState<Record<string, Desplazamiento>>({});
+  const [arrastrando, setArrastrando] = useState<string | null>(null);
+  const reacomodo = useRef(onReacomodo);
+
+  useLayoutEffect(() => {
+    reacomodo.current = onReacomodo;
+  });
+  useLayoutEffect(() => reacomodo.current(), [posiciones]);
+
+  function iniciar(id: string, evento: EventoPuntero<HTMLElement>) {
+    if (evento.button !== 0) return;
+    if ((evento.target as HTMLElement).closest("input, textarea, [data-sin-arrastre]")) return;
+    evento.stopPropagation();
+    const inicio = { x: evento.clientX, y: evento.clientY };
+    const base = posiciones[id] ?? { x: 0, y: 0 };
+    let movido = false;
+
+    const mover = (e: PointerEvent) => {
+      const dx = e.clientX - inicio.x;
+      const dy = e.clientY - inicio.y;
+      if (!movido && Math.hypot(dx, dy) < UMBRAL_ARRASTRE) return;
+      if (!movido) setArrastrando(id);
+      movido = true;
+      setPosiciones((p) => ({ ...p, [id]: { x: base.x + dx, y: base.y + dy } }));
+    };
+    const soltar = () => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", soltar);
+      window.removeEventListener("pointercancel", soltar);
+      setArrastrando(null);
+      if (!movido) return;
+      // El clic que sigue al soltar seleccionaría el nodo: se descarta ese solo.
+      const tragar = (e: MouseEvent) => { e.stopPropagation(); e.preventDefault(); };
+      window.addEventListener("click", tragar, { capture: true, once: true });
+      setTimeout(() => window.removeEventListener("click", tragar, { capture: true }), 0);
+    };
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", soltar);
+    window.addEventListener("pointercancel", soltar);
+  }
+
+  const estilo = (id: string) => {
+    const p = posiciones[id];
+    return {
+      position: "relative" as const,
+      transform: p ? `translate(${p.x}px, ${p.y}px)` : undefined,
+      zIndex: arrastrando === id ? 20 : p ? 2 : undefined,
+    };
+  };
+
+  return {
+    movidos: Object.keys(posiciones).length > 0,
+    recolocar: () => setPosiciones({}),
+    estilo,
+    arrastrando,
+    iniciar,
+  };
+}
+
+const ID_TARJETA_GLOBALES = "__globales";
 
 /** Clase de color de cada carril: las seis zonas del modelo en cuatro columnas. */
 export const COLUMNA_DE_CARRIL: Record<CarrilGrafo, "om" | "ant" | "con" | "csq"> = {
@@ -50,22 +125,12 @@ function Lista({ nodos, huecos, renderNodo }: { nodos: readonly NodoGrafo[]; hue
   );
 }
 
-export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, onSeleccionar, onAgregarFuncion }: VistaAFCProps) {
+export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, onSeleccionar, onAgregarFuncion, onReacomodo }: VistaAFCProps) {
   const globales = nodos.filter((n) => n.situacion_id === null);
+  const arrastre = useArrastre(onReacomodo);
 
   return (
     <div className={s.pila}>
-      {globales.length > 0 && (
-        <section className={s.globales}>
-          <h4 className={s.globalesTitulo}>Entidades del caso fuera de una situación concreta</h4>
-          <div className={s.globalesRejilla}>
-            {globales.map((n) => (
-              <div key={n.id} className={n.alternativa ? s.alt : s[COLUMNA_DE_CARRIL[n.carril]]}>{renderNodo(n)}</div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {analisis.situaciones.map((situacion) => {
         const deSituacion = nodos.filter((n) => n.situacion_id === situacion.id);
         const apoyo = apoyoCadena(deSituacion);
@@ -156,6 +221,38 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
           </section>
         );
       })}
+
+      {/* Después de las situaciones: son el marco del caso, no un paso previo
+          de la cadena, y delante empujaban el AFC fuera de la vista. */}
+      {globales.length > 0 && (
+        <section className={s.globales} style={arrastre.estilo(ID_TARJETA_GLOBALES)}>
+          <header
+            className={`${s.globalesCabecera} ${arrastre.arrastrando === ID_TARJETA_GLOBALES ? s.agarrado : ""}`}
+            onPointerDown={(e) => arrastre.iniciar(ID_TARJETA_GLOBALES, e)}
+            title="Arrastra para mover la tarjeta"
+          >
+            <GripVertical className={s.asa} aria-hidden="true" />
+            <h4 className={s.globalesTitulo}>Entidades del caso fuera de una situación concreta</h4>
+            {arrastre.movidos && (
+              <button type="button" data-sin-arrastre onClick={arrastre.recolocar} className={s.recolocar}>
+                Recolocar
+              </button>
+            )}
+          </header>
+          <div className={s.globalesRejilla}>
+            {globales.map((n) => (
+              <div
+                key={n.id}
+                className={`${n.alternativa ? s.alt : s[COLUMNA_DE_CARRIL[n.carril]]} ${s.movible} ${arrastre.arrastrando === n.id ? s.agarrado : ""}`}
+                style={arrastre.estilo(n.id)}
+                onPointerDown={(e) => arrastre.iniciar(n.id, e)}
+              >
+                {renderNodo(n)}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
