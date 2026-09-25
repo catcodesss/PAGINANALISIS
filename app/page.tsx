@@ -196,6 +196,13 @@ export default function Home() {
     void ejecutarAnalisis(textoFinal, bloques, omitidas);
   }
 
+  /** Cerrar la ventana de preguntas: no se analiza nada y la nota queda intacta. */
+  function manejarCancelarPreguntas() {
+    setPreguntas(null);
+    setTextoPendiente("");
+    setEstado("inicial");
+  }
+
   function manejarGenerarClick() {
     if (nota.trim().length < LONGITUD_MINIMA) {
       setMensajeValidacion(MENSAJE_NOTA_BREVE);
@@ -559,12 +566,11 @@ export default function Home() {
                 )}
 
                 {estado === "preguntando" && preguntas && (
-                  <div className="mt-8">
-                    <PreguntasDatosFaltantes
-                      preguntas={preguntas}
-                      onCompletar={manejarCompletarPreguntas}
-                    />
-                  </div>
+                  <PreguntasDatosFaltantes
+                    preguntas={preguntas}
+                    onCompletar={manejarCompletarPreguntas}
+                    onCancelar={manejarCancelarPreguntas}
+                  />
                 )}
 
                 {estado === "cargando" && (

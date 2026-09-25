@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { HelpCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { HelpCircle, X } from "lucide-react";
 import type { DatoFaltante, PreguntaPrevia } from "@/lib/types";
 
 export interface RespuestaConfirmada {
@@ -31,14 +31,29 @@ export interface ResultadoPreguntas {
  * Una pregunta a la vez, no un formulario largo: entran de una en una con la
  * animación `.pregunta-entra` (ver app/globals.css) para que se lea como una
  * conversación breve y no como una encuesta antes de poder trabajar.
+ *
+ * Va en una ventana modal (<dialog> nativo con showModal) y no incrustada bajo
+ * el formulario: es un paso aparte, no parte de la nota, y el <dialog> ya trae
+ * el foco atrapado, el fondo inerte y Escape sin código propio. Cerrarla
+ * cancela el análisis y deja la nota como estaba — no equivale a "No sé".
  */
 export default function PreguntasDatosFaltantes({
   preguntas,
   onCompletar,
+  onCancelar,
 }: {
   preguntas: PreguntaPrevia[];
   onCompletar: (resultado: ResultadoPreguntas) => void;
+  onCancelar: () => void;
 }) {
+  const ventana = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const d = ventana.current;
+    if (d && !d.open) d.showModal();
+    return () => d?.close();
+  }, []);
+
   const [indice, setIndice] = useState(0);
   const [texto, setTexto] = useState("");
   const [confirmadas, setConfirmadas] = useState<RespuestaConfirmada[]>([]);
@@ -87,19 +102,41 @@ export default function PreguntasDatosFaltantes({
   }
 
   return (
-    <div className="rounded-2xl border border-divider bg-surface p-5 shadow-sm sm:p-6">
+    <dialog
+      ref={ventana}
+      aria-labelledby="titulo-preguntas-previas"
+      // Escape dispara "cancel"; se intercepta para que el cierre pase por el
+      // estado de la página y no deje el <dialog> cerrado con estado "preguntando".
+      onCancel={(e) => {
+        e.preventDefault();
+        onCancelar();
+      }}
+      className="m-auto w-[min(40rem,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-divider bg-surface p-5 text-ink shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm sm:p-6"
+    >
       <div className="flex items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft">
           <HelpCircle className="h-[18px] w-[18px] text-accent" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className="font-serif text-base font-semibold text-ink sm:text-lg">
+          <h2
+            id="titulo-preguntas-previas"
+            className="font-serif text-base font-semibold text-ink sm:text-lg"
+          >
             Antes de generar el análisis
-          </p>
+          </h2>
           <p className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
             Pregunta {indice + 1} de {preguntas.length}
           </p>
         </div>
+        <button
+          type="button"
+          onClick={onCancelar}
+          aria-label="Cerrar y volver a la nota"
+          title="Cerrar y volver a la nota"
+          className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-canvas hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+        >
+          <X className="h-[18px] w-[18px]" aria-hidden="true" />
+        </button>
       </div>
 
       <p className="mt-2 text-sm leading-relaxed text-ink-muted">
@@ -164,6 +201,6 @@ export default function PreguntasDatosFaltantes({
           )}
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
