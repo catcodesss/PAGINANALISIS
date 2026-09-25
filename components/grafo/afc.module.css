@@ -428,16 +428,9 @@
 .alternativaCabecera strong { color: var(--afc-text-title); font-weight: 700; }
 .alternativaFila {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
-  align-items: center;
-}
-.flecha {
-  width: 26px;
-  height: 26px;
-  color: var(--afc-line);
-  opacity: .7;
-  pointer-events: none;
+  align-items: start;
 }
 
 /* ---------- Función ---------- */

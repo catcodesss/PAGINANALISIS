@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useLayoutEffect, useRef, useState, type PointerEvent as EventoPuntero, type ReactNode } from "react";
-import { ArrowRight, GripVertical } from "lucide-react";
+import { GripVertical } from "lucide-react";
 import type { AnalisisFuncional } from "@/lib/types";
 import {
   apoyoCadena,
@@ -200,7 +200,6 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
                   {alternativas.map((n) => <Fragment key={n.id}>{renderNodo(n)}</Fragment>)}
                   {renderAgregar("conducta", situacion.id, true)}
                 </div>
-                <ArrowRight className={s.flecha} strokeWidth={2.25} aria-hidden="true" />
                 <div className={s.lista}>
                   {necesarias.map((n) => <Fragment key={n.id}>{renderNodo(n)}</Fragment>)}
                   {renderAgregar("inmediata", situacion.id, true)}
