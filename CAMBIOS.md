@@ -38,23 +38,65 @@ Lo fija `evals/plan.test.mjs` (13 pruebas, en CI): ninguna conducta sin tarjeta,
 ninguna alternativa perdida ni repetida, el aviso de la respiración en su
 tarjeta, todo aviso sobre el plan en el exportado, y los estados.
 
-### Fase B — pendiente, cambia el prompt
+## Plan por blanco, fase B — intervención y monitorización en la tarjeta (prompt 1.7.0)
 
-Intervenciones y monitorización siguen **fuera de las tarjetas**, rotuladas «sin
-asignar» y «del caso», porque el esquema no dice a qué blanco pertenecen
-(`lineas_de_intervencion_tentativas: string[]`, un solo
-`plan_de_monitorizacion`). Repartirlas por palabras sería volver al
-emparejamiento por prosa que la v2 quitó. Para meterlas en la tarjeta:
+Cierra lo que la fase A dejó fuera de las tarjetas. Se mantienen los nombres de
+campo (anclas, bloques y rutas de alertas no cambian) y cambia su forma:
 
-1. Intervención como objeto `{conducta, intervencion, porque, depende_de}` —el
-   `porque` es la razón visible («exposición porque el escape se mantiene por
-   alivio inmediato»)—, resuelta a `conducta_id` en el servidor.
-2. Monitorización y criterio de revisión por blanco.
-3. El ejemplo del principio 27 dice «tras seis ensayos de exposición»: es la
-   fuente probable de la precisión arbitraria («seis exposiciones», «cuatro
-   semanas»). Cambiarlo por uno sin cifra, o exigir justificación de toda cifra.
+- `lineas_de_intervencion_tentativas: LineaIntervencion[]` con `conducta`
+  (resuelta a `conducta_id` en `lib/identidad.ts`, como la priorización),
+  `intervencion`, `porque` y `depende_de`. El porqué es la razón visible:
+  «se propone X porque la conducta parece mantenerse por Y».
+- **Sin base, sin plan.** Si la función de un blanco no está sostenida, el
+  modelo emite `intervencion: ""` con `depende_de`, y la tarjeta dice
+  «Información insuficiente para proponer intervención. Primero explorar: X».
+  Un `depende_de` declarado se suma a lo que detecta V4: el validador sigue
+  existiendo porque no se puede depender de que el modelo lo declare.
+- `plan_de_monitorizacion: PlanDeMonitorizacion[]`, uno por blanco, con su
+  criterio de revisión.
+- **Precisión.** El ejemplo del principio 27 ya no dice «tras seis ensayos»; una
+  nota pide no fijar cifras que la nota no sostenga. Esa nota y las reglas del
+  plan por blanco solo se envían cuando se piden estos campos.
+- **Lo común al caso** (coordinación médica) va con `conducta: ""` y sale en
+  «Intervenciones sin blanco». En la primera medida desapareció en el caso 04
+  —organizar por blanco hizo que el modelo la omitiera—; se añadió una regla
+  explícita y volvió (10/10 en dos repeticiones).
+- **Informes guardados**: `lib/formaPlan.ts` lleva las cadenas y el objeto único
+  a la forma nueva, sin blanco. No se adivina a qué conducta iba una
+  intervención antigua. Se aplica en el normalizador y en `migrarAV2`.
+- **V3 mira solo `intervencion`**, no el `porque`: el porqué nombra a menudo el
+  mantenedor para retirarlo, y avisaría justo en la propuesta correcta.
+- Las comprobaciones de evals que miraban `lineas_de_intervencion` se acotaron
+  al texto de la intervención con una regex que casa igual la forma vieja y la
+  nueva; así la referencia sigue siendo comparable.
 
-Requiere migración de informes guardados y correr las evals (gasta API).
+### Medida (temperatura 0.2, 1 repetición, 9 casos)
+
+| Prompt | Comprobaciones | Citas |
+|---|---|---|
+| 1.6.0 (antes) | 42/47 | 56/57 |
+| 1.7.0 (después) | 39/47 | 58/58 (100%) |
+
+La red dio varios `Connection error` con OpenAI; esos casos se repitieron sueltos
+y se sumaron. Las tres diferencias no son del plan:
+
+- `explora-refuerzo-positivo` (01): pasa 3/3 con `--reps=3`. Varianza.
+- `no-escape-escolar` (03): falla también con el 1.6.0 (2/2). Previo; misma
+  familia que `no-inventa-evitacion`: forzar refuerzo negativo sin evidencia.
+- `no-inventa-evitacion` (02) y `cita-mueble` (05): intermitentes conocidos.
+
+Las comprobaciones del plan (`respiracion-no-como-intervencion`,
+`intervencion-por-adquisicion`, `no-exposicion`, `intervencion-sobre-el-entorno`,
+`derivacion-medica`) quedan igual o mejor. `respiracion-no-como-intervencion`
+sigue fallando como antes (en la capa DBT; V3 lo avisa).
+
+### Pendiente
+
+- En el caso 04 la coordinación médica salió con `depende_de` del mismo dato que
+  sirve para obtener: la tarjeta la muestra como condicional, lo que es raro.
+  Pedir que `depende_de` no se use en la acción que obtiene el dato es un cambio
+  de prompt: medir antes y después.
+- Las cifras arbitrarias no las vigila ningún validador; solo lo pide el prompt.
 
 ## Fase 4 — la prosa se deriva del grafo
 

@@ -102,9 +102,11 @@ export default function BloquePlan({
               Conductas alternativas sin blanco asignado
             </p>
             <p className="mt-1 text-sm leading-relaxed text-ink-muted">
-              Su situación no se pudo enlazar con ninguna conducta problema, así
-              que no se colocan en una tarjeta: asignarlas por parecido sería
-              afirmar una relación que el análisis no traza.
+              Su situación no se pudo enlazar con ninguna conducta problema que
+              admita alternativa —o no se pudo enlazar en absoluto, o solo con
+              conductas de seguridad, que son blanco de eliminación—, así que no
+              se colocan en una tarjeta: asignarlas por parecido sería afirmar
+              una relación que el análisis no traza.
             </p>
             <ul className="mt-3 space-y-4">
               {plan.alternativasSinBlanco.map((a) => (
@@ -505,16 +507,18 @@ function Intervencion({
                 onCambio={(v) => cambiar({ intervencion: v })}
               />
               {linea.porque ? (
-                <div className="mt-1 text-sm leading-relaxed text-ink-muted">
-                  <span className="font-medium text-ink">Por qué: </span>
+                <>
+                  <p className="mt-1.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                    Por qué
+                  </p>
                   <TextoEditable
                     valor={linea.porque}
                     seccionId="intervencion"
                     etiqueta="Por qué se propone"
-                    className="inline text-sm leading-relaxed text-ink-muted"
+                    className="text-sm leading-relaxed text-ink-muted"
                     onCambio={(v) => cambiar({ porque: v })}
                   />
-                </div>
+                </>
               ) : (
                 <p className="mt-1 text-sm leading-relaxed text-warn">
                   Sin razón declarada: no consta sobre qué función actúa, así

@@ -21,16 +21,16 @@ npx tsc --noEmit
 node --experimental-strip-types evals/citas.test.mjs        # 10
 node --experimental-strip-types evals/pii.test.mjs          # 11
 node --experimental-strip-types evals/razonamiento.test.mjs # 11
-node evals/validadores.test.mjs                             # 46
+node evals/validadores.test.mjs                             # 47
 node evals/reporteFallo.test.mjs                            #  7
 node evals/coherencia.test.mjs                              # 20
 node evals/maqueta.test.mjs                                 #  7
 node evals/migracion.test.mjs                               # 19
-node evals/plan.test.mjs                                    # 13
+node evals/plan.test.mjs                                    # 19
 npx eslint components lib app
 ```
 
-144 pruebas. `eslint` da 0 errores y 1 warning preexistente en
+151 pruebas. `eslint` da 0 errores y 1 warning preexistente en
 `PanelRecomendaciones.tsx`. Esta lista y `.github/workflows/evals.yml` **tienen
 que decir lo mismo**.
 
