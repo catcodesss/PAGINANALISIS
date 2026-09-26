@@ -21,12 +21,13 @@ import {
 } from "@/lib/grafo";
 import VistaAFC from "./estilos/afc";
 import VistaACT from "./estilos/act";
-import VistaDBT from "./estilos/dbt";
+import VistaDBT, { IconoNodo, subtipoDeNodo } from "./estilos/dbt";
 import VistaMC from "./estilos/mc";
 import s from "./afc.module.css";
 import { TERMINOS, terminoDeContingencia, terminoEnTexto, type IdTermino } from "@/lib/terminos";
 import { describirGrado, gradoDeNumero } from "@/lib/gradoApoyo";
 import { interAfc, poppinsAfc } from "./fuentesAfc";
+import { ChevronRight } from "lucide-react";
 
 interface GrafoAFCProps {
   analisis: AnalisisFuncional;
@@ -171,7 +172,7 @@ function Nodo({
   onSeleccionar: (nodo: NodoGrafo) => void;
   onEditar: (nodo: NodoGrafo, texto: string) => void;
   onCita: (nodo: NodoGrafo) => void;
-  variante?: "afc";
+  variante?: "afc" | "dbt";
 }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(nodo.etiqueta);
@@ -258,6 +259,48 @@ function Nodo({
             {detalle && <p className={s.detalle} title={detalle.definicion}>{detalle.texto}</p>}
           </div>
         </div>
+      </article>
+    );
+  }
+
+  if (variante === "dbt") {
+    // Sin color por tipo: lo dicen el icono y el subtipo. El color queda para
+    // el grado de apoyo, y la selección es solo borde y un fondo muy tenue.
+    const grado = describirGrado(gradoDeNumero(nodo.apoyo));
+    const conducta = nodo.tipo === "conducta";
+    // En una columna estrecha (reglas verbales) la píldora baja bajo el texto:
+    // a su lado, dejaba al texto sin anchura.
+    const pildora = (clase: string) => (
+      <button
+        type="button"
+        title={grado.corta}
+        aria-label={`${grado.etiqueta}. Ir a la línea citada`}
+        onClick={(evento) => {
+          evento.stopPropagation();
+          onCita(nodo);
+        }}
+        className={`${clase} items-center gap-1.5 whitespace-nowrap rounded-full border border-divider bg-canvas px-2 py-0.5 text-[11px] text-ink-muted`}
+      >
+        <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${grado.clase}`} />
+        {grado.etiqueta}
+      </button>
+    );
+    return (
+      <article
+        {...comunes}
+        className={`@container/tarjeta relative flex min-w-0 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${seleccionado ? "border-accent bg-accent-soft ring-1 ring-accent" : conducta ? "border-ink-muted/35 bg-canvas hover:border-ink-muted/60" : "border-divider bg-surface hover:border-ink-muted/40"} ${atenuado ? "opacity-25" : ""}`}
+      >
+        <IconoNodo nodo={nodo} className={`h-5 w-5 flex-none ${seleccionado ? "text-accent" : "text-ink-muted"}`} />
+        <div className="min-w-0 flex-1">
+          {editando
+            ? editor("w-full rounded border border-accent bg-canvas px-1.5 py-1 text-sm text-ink outline-none")
+            : <p className={`break-words text-sm leading-snug text-ink ${conducta ? "font-medium" : ""}`}>{nodo.etiqueta}</p>}
+          <p className="mt-0.5 text-[11px] text-ink-muted">{subtipoDeNodo(nodo) ?? ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} /></p>
+          {detalle && nodo.tipo !== "encubierta" && <p className="mt-0.5 text-[11px] text-ink-muted" title={detalle.definicion}>{detalle.texto}</p>}
+          {pildora("mt-1.5 inline-flex @xs/tarjeta:hidden")}
+        </div>
+        {pildora("hidden flex-none @xs/tarjeta:inline-flex")}
+        <ChevronRight className="hidden h-4 w-4 flex-none text-ink-muted/60 @xs/tarjeta:block" aria-hidden="true" />
       </article>
     );
   }
@@ -553,6 +596,22 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
   );
 
   const esAFC = estilo === "afc";
+  // DBT pinta sus propias relaciones y su propio panel de detalle.
+  const esDBT = estilo === "dbt";
+  const conectable = esAFC || esDBT;
+
+  const renderNodoDBT = (n: NodoGrafo) => (
+    <Nodo
+      variante="dbt"
+      nodo={n}
+      seleccionado={seleccionado === n.id}
+      atenuado={(filtro !== null && n.apoyo !== filtro) || (soloApoyado && n.apoyo < 3)}
+      conectando={modoConectar}
+      onSeleccionar={seleccionarNodo}
+      onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
+      onCita={irACita}
+    />
+  );
 
   return (
     <div className="print:contents">
@@ -561,10 +620,10 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
         <button type="button" disabled={!puedeRehacer} onClick={rehacerAccion} className="rounded border border-divider px-3 py-1.5 text-xs text-ink disabled:opacity-40">Rehacer</button>
         <button
           type="button"
-          disabled={estilo !== "afc"}
+          disabled={!conectable}
           aria-pressed={modoConectar}
           onClick={() => { setModoConectar((v) => !v); setOrigenConexion(null); }}
-          title={estilo === "afc" ? "Crear una relación entre dos nodos" : "Las relaciones se editan en la vista AFC"}
+          title={conectable ? "Crear una relación entre dos nodos" : "Las relaciones se editan en la vista AFC o DBT"}
           className={`rounded border px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${modoConectar ? "border-accent bg-accent/10 text-accent" : "border-divider text-ink"}`}
         >
           {origenConexion ? "Elige el destino" : "Conectar"}
@@ -595,7 +654,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
           {/* En la vista AFC las relaciones ya se leen en las columnas y en la
               Ficha ("Relaciones del nodo"); las líneas curvas encima del
               tablero sobraban como trazo visual y no se dibujan aquí. */}
-          {!esAFC && (
+          {!esAFC && !esDBT && (
             <svg className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full overflow-visible md:block" aria-hidden="true">
               <defs><marker id="punta-afc" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="currentColor" /></marker></defs>
               {trazos.map((trazo) => (
@@ -605,8 +664,21 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
           )}
 
           {estilo !== "afc" ? (
-            <div className="relative z-10">
-              {estilo === "dbt" && <VistaDBT analisis={analisis} nodos={nodos} renderNodo={renderNodo} />}
+            <div className={esDBT ? "relative" : "relative z-10"}>
+              {esDBT && (
+                <VistaDBT
+                  analisis={analisis}
+                  nodos={nodos}
+                  renderNodo={renderNodoDBT}
+                  seleccionado={seleccionado}
+                  onSeleccionar={seleccionarNodo}
+                  onCerrar={() => { setSeleccionado(null); setLineaActiva(null); }}
+                  describirTipo={(n) => ETIQUETA_TIPO[n.tipo]}
+                  lineas={lineas}
+                  lineaActiva={lineaActiva}
+                  onEditar={aplicar}
+                />
+              )}
               {estilo === "act" && <VistaACT analisis={analisis} nodos={nodos} renderNodo={renderNodo} />}
               {estilo === "mc" && <VistaMC analisis={analisis} nodos={nodos} renderNodo={renderNodo} />}
             </div>
@@ -627,7 +699,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
         </div>
         </div>
 
-        <aside className="grid min-w-0 gap-5 rounded-lg border border-divider bg-canvas p-3 md:grid-cols-2 print:hidden">
+        {!esDBT && <aside className="grid min-w-0 gap-5 rounded-lg border border-divider bg-canvas p-3 md:grid-cols-2 print:hidden">
           <div>
           <h4 className="font-serif text-base font-semibold text-ink">Ficha</h4>
           {nodoSeleccionado ? <div className="mt-3 space-y-3">
@@ -643,7 +715,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
           </div> : <p className="mt-3 text-sm text-ink-muted">Selecciona un nodo. Doble clic sobre su etiqueta para editarla en el grafo.</p>}
           </div>
           <div><h5 className="font-serif text-sm font-semibold text-ink">Nota en bruto</h5><div className="mt-2 max-h-80 overflow-y-auto rounded border border-divider bg-surface p-2 font-mono text-[11px] leading-relaxed">{lineas.map((linea, indice) => <p id={`nota-linea-${indice + 1}`} key={indice} className={`rounded px-1 ${lineaActiva === indice + 1 ? "bg-warn/20 text-ink ring-1 ring-warn/40" : "text-ink-muted"}`}><span className="mr-2 select-none text-ink-muted">L{indice + 1}</span>{linea || " "}</p>)}</div></div>
-        </aside>
+        </aside>}
       </div>
 
       <div className="hidden print:block">
