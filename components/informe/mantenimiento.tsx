@@ -12,7 +12,14 @@
 import { useMemo } from "react";
 import type { AnalisisFuncional } from "@/lib/types";
 import { construirRedFuncional } from "@/lib/redFuncional";
-import { priorizarBlancos, RENDIMIENTO_MAXIMO } from "@/lib/priorizacion";
+import { verboRelacion } from "@/lib/gradoApoyo";
+import { construirNodosGrafo } from "@/lib/grafo";
+import {
+  criteriosDeBlanco,
+  ORIGEN_DE_CRITERIO,
+  priorizarBlancos,
+  type CriteriosBlanco,
+} from "@/lib/priorizacion";
 
 /**
  * Franja de "esto no se toca" para las hipótesis de origen.
@@ -58,7 +65,7 @@ export function SelloNoModificable() {
  * EL COLOR NO ES EL ÚNICO PORTADOR. Los nodos se distinguen por FORMA
  * (círculo = conducta problema, rombo = variable moduladora), no por color; los
  * bucles llevan trazo discontinuo Y aparecen escritos en la lista de abajo; la
- * fuerza va en el grosor Y en el texto. En blanco y negro, con daltonismo o con
+ * dirección va en las puntas Y en el texto. En blanco y negro, con daltonismo o con
  * lector de pantalla se sigue leyendo lo mismo.
  *
  * Sin librerías y con posiciones calculadas en lib/redFuncional.ts: el mismo
@@ -84,7 +91,6 @@ export function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
   }
 
   const posicion = new Map(red.nodos.map((n) => [n.id, n]));
-  const GROSOR: Record<string, number> = { alta: 3.4, media: 2.1, baja: 1.2 };
 
   /** Recorta la etiqueta para que quepa al lado del nodo; el texto entero va en el <title>. */
   const corta = (texto: string) =>
@@ -96,10 +102,10 @@ export function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
         Red funcional
       </h3>
       <p className="mt-1 text-sm leading-relaxed text-ink-muted">
-        Las mismas hipótesis de arriba, dibujadas. El tamaño del círculo es la
-        importancia de la conducta; el grosor de la línea, la fuerza de la
-        relación. Los trazos discontinuos son bucles cerrados: se alimentan a sí
-        mismos, así que hay que romperlos por algún punto.
+        Las mismas hipótesis de arriba, dibujadas. Una flecha dice que un
+        elemento influye en otro; con punta en los dos extremos, que se
+        relacionan entre sí. Los trazos discontinuos son bucles cerrados: se
+        alimentan a sí mismos, así que hay que romperlos por algún punto.
       </p>
 
       {/* overflow-x: en un móvil el diagrama no cabe, y el resto del informe no
@@ -159,7 +165,9 @@ export function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
                 d={d}
                 fill="none"
                 stroke={a.enBucle ? "var(--color-warn)" : "var(--color-ink-muted)"}
-                strokeWidth={GROSOR[a.fuerza] ?? 1.2}
+                // Grosor fijo: la fuerza de la relación ya no se enseña en
+                // pantalla (ver lib/gradoApoyo.ts#verboRelacion).
+                strokeWidth={2}
                 strokeDasharray={a.enBucle ? "7 4" : undefined}
                 markerEnd={`url(#${a.enBucle ? "red-punta-bucle" : "red-punta"})`}
                 markerStart={
@@ -182,7 +190,7 @@ export function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
                   aporta y la prosa no.
                 */}
                 <title>
-                  {`De «${desde.etiqueta}» a «${hasta.etiqueta}». Relación ${a.tipo_relacion}, fuerza ${a.fuerza}, ${a.bidireccional ? "bidireccional" : "unidireccional"}${a.enBucle ? ", en bucle cerrado" : ""}.`}
+                  {`«${desde.etiqueta}» ${verboRelacion(a.bidireccional ? "bidireccional" : "unidireccional")} «${hasta.etiqueta}»${a.enBucle ? ", en bucle cerrado" : ""}.`}
                 </title>
               </path>
             );
@@ -266,114 +274,77 @@ export function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
 
 
 /**
- * Los blancos de intervención ordenados por rendimiento esperado, en barras.
+ * Los blancos de intervención, en orden, con cuatro criterios en categorías.
  *
- * La advertencia de arriba no es un descargo de responsabilidad de trámite: es
- * la parte más importante del componente. Una barra tiene aspecto de medida, y
- * esto no mide nada — son "alta/media/baja" dichas por un modelo, convertidas a
- * números para poder ordenarlas. Sin ese aviso, un dibujo que solo sostiene
- * "esto probablemente antes que aquello" se leería como una cuantificación del
- * caso.
- *
- * Va junto a `formulacion.priorizacion` y no en su lugar: la priorización
- * razonada del informe dice POR QUÉ, y esto solo dice en qué orden salen las
- * variables al cruzar cuánto pesan con cuánto pueden moverse. El porqué manda.
+ * Antes eran barras de «rendimiento esperado». Una barra tiene aspecto de
+ * medida y esto no mide nada: son alta/media/baja estimadas, que solo sostienen
+ * «esto probablemente antes que aquello». Ahora se dicen como lo que son, y
+ * cada criterio explica en su tooltip de dónde sale. Ver
+ * lib/priorizacion.ts#criteriosDeBlanco.
  */
 export function PriorizacionEstimada({ analisis }: { analisis: AnalisisFuncional }) {
   const blancos = useMemo(() => priorizarBlancos(analisis), [analisis]);
+  const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
 
   if (blancos.length === 0) {
     return (
       <p className="text-sm leading-relaxed text-ink-muted">
-        Ninguna variable moduladora aparece nombrada en las hipótesis de
-        mantenimiento, así que no hay nada que ordenar. Una variable sin relación
-        declarada es contexto, no un blanco de intervención.
+        No hay conductas problema que ordenar.
       </p>
     );
   }
 
+  const apoyoDe = (id: string): 1 | 2 | 3 =>
+    nodos.find((n) => n.id === id)?.apoyo ?? 1;
+
   return (
     <div>
-      {/*
-        Antes de las barras, no después: quien mira un gráfico decide qué está
-        viendo en el primer segundo, y a esas alturas una nota al pie llega
-        tarde.
-      */}
-      <p className="mb-4 rounded-md border border-divider bg-canvas px-4 py-3 text-sm leading-relaxed text-ink-muted print:border-black">
-        <span className="font-medium text-ink">
-          Orientación, no medida.
-        </span>{" "}
-        Estas barras son estimaciones cualitativas —alta, media y baja— pasadas
-        a números con el único fin de poder ordenarlas. No hay unidades ni
-        precisión: lo único que sostienen es «esto probablemente antes que
-        aquello». Cada valor es la importancia de la conducta multiplicada por
-        cuánto puede moverse la variable que la mantiene, que es donde el
-        tratamiento rinde.
+      <p className="mb-4 text-sm leading-relaxed text-ink-muted">
+        Orientación, no medida: cada criterio está estimado a partir de lo que
+        el análisis ya dice (pasa el cursor para ver de dónde). Donde no hay de
+        dónde estimarlo pone «sin datos», que no es lo mismo que «baja».
       </p>
 
-      <ul className="space-y-3">
-        {blancos.map((b, i) => (
-          <li key={i}>
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-              <p className="min-w-0 flex-1 text-[15px] leading-relaxed text-ink">
+      <ol className="space-y-4">
+        {blancos.map((b, i) => {
+          const criterios = criteriosDeBlanco(analisis, b, apoyoDe(b.id));
+          return (
+            <li key={b.id} className="rounded border border-divider p-4 print:border-black">
+              <p className="text-[15px] leading-relaxed text-ink">
                 {i + 1}. {b.etiqueta}
               </p>
-              {/*
-                El valor escrito acompaña siempre a la barra: la longitud sola
-                no se puede leer en una impresión en blanco y negro estrecha, ni
-                con un lector de pantalla.
-              */}
-              <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                {b.palanca
-                  ? `importancia ${b.importancia} × modificabilidad ${b.palanca.modificabilidad}`
-                  : "sin palanca trazada"}
-              </p>
-            </div>
-            {/*
-              Escala fija (0 a 0,64, el producto máximo posible) y no relativa
-              al mayor de este informe: con escala relativa, el primer blanco
-              siempre llenaría la barra entera y un caso sin ningún blanco
-              prometedor se vería igual que uno con uno excelente.
-            */}
-            {b.rendimiento === null ? (
-              /*
-                Sin barra, y dicho con palabras. Pintar una barra vacía se
-                leería como «esta conducta no rinde», cuando lo que pasa es que
-                ninguna variable moduladora se ha trazado hasta ella: es un
-                hueco de la formulación, no un veredicto sobre la conducta.
-              */
-              <p className="mt-1 text-sm italic text-ink-muted">
-                Ninguna variable moduladora llega trazada hasta esta conducta:
-                no consta por dónde moverla. Trázala en el grafo o pregúntalo en
-                la próxima sesión.
-              </p>
-            ) : (
-              <>
-                <div
-                  role="img"
-                  aria-label={`Rendimiento estimado ${Math.round((b.rendimiento / RENDIMIENTO_MAXIMO) * 100)} de 100, en una escala cualitativa`}
-                  className="mt-1 h-2 w-full overflow-hidden rounded-full bg-divider"
-                >
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{
-                      width: `${(b.rendimiento / RENDIMIENTO_MAXIMO) * 100}%`,
-                    }}
-                  />
-                </div>
-                {/* La palanca es el «por dónde»: sin ella el orden no acciona nada. */}
-                <p className="mt-1 text-sm text-ink-muted">
-                  Palanca: {b.palanca?.etiqueta}
+              <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+                {(Object.keys(ORIGEN_DE_CRITERIO) as (keyof CriteriosBlanco)[]).map((clave) => {
+                  const valor = criterios[clave];
+                  return (
+                    <div key={clave} className="flex items-baseline justify-between gap-3 border-b border-divider/60 pb-1">
+                      <dt title={ORIGEN_DE_CRITERIO[clave].origen} className="cursor-help text-ink-muted">
+                        {ORIGEN_DE_CRITERIO[clave].titulo}
+                      </dt>
+                      <dd className={`font-mono text-[11px] uppercase tracking-wide ${valor ? "text-ink" : "italic text-ink-muted"}`}>
+                        {valor ?? "sin datos"}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+              {b.palanca ? (
+                <p className="mt-2 text-sm text-ink-muted">
+                  Por dónde moverla: {b.palanca.etiqueta}
                 </p>
-              </>
-            )}
-            {b.justificacion && (
-              <p className="mt-0.5 text-sm text-ink-muted">{b.justificacion}</p>
-            )}
-          </li>
-        ))}
-      </ul>
+              ) : (
+                <p className="mt-2 text-sm italic text-ink-muted">
+                  Ninguna variable llega trazada hasta esta conducta: no consta
+                  por dónde moverla. Trázala en el grafo o pregúntalo en sesión.
+                </p>
+              )}
+              {b.justificacion && (
+                <p className="mt-1 text-sm text-ink-muted">{b.justificacion}</p>
+              )}
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
-

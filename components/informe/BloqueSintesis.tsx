@@ -1,17 +1,34 @@
 "use client";
 
 /**
- * Bloque 1 · Cabecera: riesgo y síntesis.
+ * Pestaña 1 · Resumen.
  *
- * Lo que obliga a actuar hoy, de quién hablamos y la formulación que manda. El
- * destacado no repite la conducta en su rótulo ni arrastra la priorización: la
- * primera la nombra el enunciado derivado y la segunda vive en el bloque 3.
+ * Lo que el terapeuta necesita antes de entrar al detalle: si hay riesgo, cuál
+ * es la formulación que manda, por dónde empezar y qué preguntar en la próxima
+ * sesión. El resumen clínico en prosa queda plegado debajo: describe el caso,
+ * pero no decide nada que las cuatro piezas de arriba no digan ya.
  */
 
+import { useMemo } from "react";
 import type { AnalisisFuncional, HipotesisMantenimiento } from "@/lib/types";
-import { BloqueBase, ChipDestacado, Confianza, ListaEditable, SinHallazgos } from "./primitivas";
+import { construirNodosGrafo } from "@/lib/grafo";
+import { gradoDeHipotesis } from "@/lib/gradoApoyo";
+import { priorizarBlancos } from "@/lib/priorizacion";
+import {
+  Apoyo,
+  BloqueBase,
+  ChipDestacado,
+  ListaEditable,
+  Plegable,
+  SinHallazgos,
+  Termino,
+} from "./primitivas";
 import { BloqueReanalisis, ReportarFallo, Seccion } from "./seccion";
+import { irAlAncla, usePestanas } from "./pestanas";
 import { TextoEditable } from "../edicionManual";
+
+/** Cuántas prioridades caben en el resumen. El resto vive en Formulación. */
+const PRIORIDADES_EN_RESUMEN = 3;
 
 export default function BloqueSintesis({
   visible,
@@ -29,10 +46,16 @@ export default function BloqueSintesis({
     mutar: (copia: AnalisisFuncional) => void
   ) => void;
 }) {
-  const hipotesisDestacada = destacada;
+  const pestanas = usePestanas();
+  const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
+  const prioridades = useMemo(
+    () => priorizarBlancos(analisis).slice(0, PRIORIDADES_EN_RESUMEN),
+    [analisis]
+  );
+
   return (
     <BloqueBase id="sintesis" visible={visible}>
-      {/* Riesgo: lo primero de fábrica, por su relevancia de seguridad clínica. */}
+      {/* Riesgo: lo primero, por su relevancia de seguridad clínica. */}
       <section id="riesgo" className="scroll-mt-24">
         <div className="mb-3 flex items-center gap-3">
           <span aria-hidden="true" className="h-5 w-1 rounded-full bg-warn" />
@@ -42,9 +65,9 @@ export default function BloqueSintesis({
         </div>
         {!analisis.riesgo.evaluado ? (
           <p className="text-sm text-ink-muted">
-            No se ha evaluado el riesgo en esta nota: falta información para
-            pronunciarse sobre escalada de consumo, ideación, riesgo laboral o
-            legal, menores implicados u otros indicadores.
+            La nota no da base para valorar el riesgo: no dice nada sobre
+            consumo, ideación, riesgo laboral o legal, menores implicados u
+            otros indicadores. No significa que no lo haya.
           </p>
         ) : (
           <ListaEditable
@@ -58,7 +81,7 @@ export default function BloqueSintesis({
             }
             vacio={
               <p className="text-sm text-ink-muted">
-                Sin indicadores de riesgo detectados en la nota.
+                La nota no recoge indicadores de riesgo.
               </p>
             }
           />
@@ -67,69 +90,112 @@ export default function BloqueSintesis({
         <BloqueReanalisis campos={["riesgo"]} seccionId="riesgo" />
       </section>
 
-      <Seccion id="resumen" titulo="Resumen clínico" camposReanalisis={["resumen_clinico"]}>
-        {resumen ? (
-          <TextoEditable
-            valor={resumen}
-            seccionId="resumen"
-            etiqueta="Resumen clínico"
-            onCambio={(v) =>
-              onEditarSeccion("resumen", (c) => {
-                c.resumen_clinico = v;
-              })
-            }
-          />
-        ) : (
-          <SinHallazgos />
-        )}
-      </Seccion>
-
       {/*
-        Formulación funcional destacada — el titular del informe. El verde
-        va en la tarjeta entera (prop `destacado` de BloqueOrdenable), no
-        en una caja aparte metida dentro de una blanca: esa doble caja
-        dejaba un marco blanco visible alrededor del color.
+        La formulación que manda. Se escribe en prosa clara cuando el análisis
+        la trae; los análisis que no la traen (todos los anteriores a que el
+        prompt la pida) enseñan la versión técnica, que es la que hay, en vez
+        de fallar o inventar una traducción.
       */}
       <section id="hipotesis-principal" className="scroll-mt-24">
-        {hipotesisDestacada && hipotesisDestacada.enunciado ? (
+        {destacada && destacada.enunciado ? (
           <div className="formulacion-destacada">
-            {/*
-              El rótulo ya no repite la conducta. El enunciado de abajo la
-              nombra entera, así que ponerla también aquí escribía el mismo
-              dato dos veces en la misma tarjeta — y era, junto con la
-              priorización, la razón de que «evitar exponer» apareciera tres
-              veces en un bloque que solo tiene una idea.
-            */}
             <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-accent">
-              Formulación funcional destacada
+              Formulación principal
             </p>
             <p className="mt-3 font-serif text-[21px] leading-relaxed text-ink">
-              {hipotesisDestacada.enunciado}
+              {destacada.enunciado}
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              {hipotesisDestacada.funcion && (
-                <ChipDestacado>{hipotesisDestacada.funcion}</ChipDestacado>
+              {destacada.funcion && (
+                <span className="flex flex-wrap items-center gap-2 text-sm text-ink-muted">
+                  <Termino id="funcion" />
+                  <ChipDestacado>{destacada.funcion}</ChipDestacado>
+                </span>
               )}
-              <Confianza nivel={hipotesisDestacada.confianza} />
+              <Apoyo grado={gradoDeHipotesis(destacada, nodos)} />
             </div>
-            {/*
-              La priorización de blancos vive en «Formulación del caso», que
-              es su sitio, y no se repite aquí. Estaba en los dos, y el
-              destacado es un resaltado de una sola idea: la formulación que
-              manda. Un ranking completo debajo lo convertía en un segundo
-              índice del bloque 3, con los mismos blancos escritos otra vez.
-            */}
             <a
-              href="#resumen"
+              href="#hipotesis-mantenimiento"
+              onClick={(e) => {
+                e.preventDefault();
+                irAlAncla(pestanas, "hipotesis-mantenimiento");
+              }}
               className="mt-5 inline-block text-sm text-ink-muted underline decoration-divider underline-offset-4 transition-colors hover:text-accent print:hidden"
             >
-              Ver análisis completo ↓
+              Ver todas las hipótesis en Formulación →
             </a>
           </div>
         ) : (
           <SinHallazgos />
         )}
       </section>
+
+      {/*
+        Tres, sin números ni barras: el orden sale de la priorización de la
+        pestaña Formulación, que es donde se ven los cuatro criterios. Aquí
+        solo se dice por dónde empezar.
+      */}
+      <Seccion id="prioridades" titulo="Tres prioridades">
+        {prioridades.length === 0 ? (
+          <SinHallazgos />
+        ) : (
+          <>
+            <ol className="list-decimal space-y-2 pl-5">
+              {prioridades.map((p) => (
+                <li key={p.id} className="text-[15px] leading-relaxed text-ink">
+                  {p.etiqueta}
+                </li>
+              ))}
+            </ol>
+            <a
+              href="#formulacion"
+              onClick={(e) => {
+                e.preventDefault();
+                irAlAncla(pestanas, "formulacion");
+              }}
+              className="mt-3 block w-fit text-sm text-ink-muted underline decoration-divider underline-offset-4 transition-colors hover:text-accent print:hidden"
+            >
+              Ver por qué, criterio a criterio →
+            </a>
+          </>
+        )}
+      </Seccion>
+
+      <Seccion
+        id="preguntas"
+        titulo="Preguntas para la próxima sesión"
+        camposReanalisis={["preguntas_para_sesion"]}
+      >
+        <ListaEditable
+          items={analisis.preguntas_para_sesion}
+          seccionId="preguntas"
+          etiqueta="pregunta"
+          onCambiar={(nuevos) =>
+            onEditarSeccion("preguntas", (c) => {
+              c.preguntas_para_sesion = nuevos;
+            })
+          }
+        />
+      </Seccion>
+
+      <Seccion id="resumen" titulo="Resumen clínico" camposReanalisis={["resumen_clinico"]}>
+        {resumen ? (
+          <Plegable titulo="Ver resumen clínico">
+            <TextoEditable
+              valor={resumen}
+              seccionId="resumen"
+              etiqueta="Resumen clínico"
+              onCambio={(v) =>
+                onEditarSeccion("resumen", (c) => {
+                  c.resumen_clinico = v;
+                })
+              }
+            />
+          </Plegable>
+        ) : (
+          <SinHallazgos />
+        )}
+      </Seccion>
     </BloqueBase>
   );
 }

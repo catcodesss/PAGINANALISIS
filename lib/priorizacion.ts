@@ -165,3 +165,66 @@ export function priorizarBlancos(analisis: AnalisisFuncional): BlancoPriorizado[
     return b.rendimiento - a.rendimiento;
   });
 }
+
+/**
+ * Los cuatro criterios con que se muestra un blanco, en alta / media / baja.
+ *
+ * POR QUÉ NO LAS BARRAS. Una barra tiene aspecto de medida, y el producto
+ * importancia × modificabilidad no mide nada: son etiquetas del modelo pasadas a
+ * números para poder ordenarlas. Se sigue usando para ORDENAR (priorizarBlancos),
+ * pero en pantalla solo se dicen las categorías y de dónde sale cada una.
+ *
+ * NINGUNO ES UN CAMPO PROPIO DEL ANÁLISIS: se estiman desde lo que el análisis
+ * ya trae, y la interfaz lo dice. Cuando no hay de dónde estimar, es `null`, y
+ * eso se muestra como «sin datos», nunca como «baja»: no saber cuánto puede
+ * moverse algo no es lo mismo que saber que se mueve poco.
+ */
+export interface CriteriosBlanco {
+  /** Desde la importancia de la conducta. */
+  interferencia: NivelConfianza;
+  /** Desde la fuerza mayor de las hipótesis que la mantienen. */
+  relevancia_funcional: NivelConfianza | null;
+  /** Desde la palanca más modificable trazada hasta ella. */
+  modificabilidad: NivelConfianza | null;
+  /** Desde el grado de apoyo de la conducta en la nota. */
+  evidencia: NivelConfianza;
+}
+
+export const ORIGEN_DE_CRITERIO: Record<keyof CriteriosBlanco, { titulo: string; origen: string }> = {
+  interferencia: {
+    titulo: "Interferencia",
+    origen: "Estimada a partir de la importancia que el análisis da a la conducta.",
+  },
+  relevancia_funcional: {
+    titulo: "Relevancia funcional",
+    origen: "Estimada a partir de cuánto pesan las relaciones que la mantienen.",
+  },
+  modificabilidad: {
+    titulo: "Modificabilidad",
+    origen: "Estimada a partir de la variable más modificable trazada hasta ella.",
+  },
+  evidencia: {
+    titulo: "Evidencia disponible",
+    origen: "Cita textual = alta, dato parcial = media, inferencia = baja.",
+  },
+};
+
+const NIVEL_DE_APOYO: Record<1 | 2 | 3, NivelConfianza> = { 3: "alta", 2: "media", 1: "baja" };
+
+export function criteriosDeBlanco(
+  analisis: AnalisisFuncional,
+  blanco: BlancoPriorizado,
+  apoyoConducta: 1 | 2 | 3
+): CriteriosBlanco {
+  let relevancia: NivelConfianza | null = null;
+  for (const h of analisis.hipotesis_mantenimiento) {
+    if (h.destino_id !== blanco.id) continue;
+    relevancia = relevancia ? laMayor(relevancia, h.fuerza) : h.fuerza;
+  }
+  return {
+    interferencia: blanco.importancia,
+    relevancia_funcional: relevancia,
+    modificabilidad: blanco.palanca?.modificabilidad ?? null,
+    evidencia: NIVEL_DE_APOYO[apoyoConducta],
+  };
+}

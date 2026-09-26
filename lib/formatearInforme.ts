@@ -1,7 +1,12 @@
 import { ETIQUETA_ESQUEMA, type AnalisisFuncional, type Cita, type Situacion } from "./types";
 import { agruparAlertas } from "./validadores";
 import { situacionDeLaCadenaDBT } from "./identidad";
-import { priorizarBlancos } from "./priorizacion";
+import {
+  criteriosDeBlanco,
+  ORIGEN_DE_CRITERIO,
+  priorizarBlancos,
+  type CriteriosBlanco,
+} from "./priorizacion";
 import {
   calcularCobertura,
   DIMENSIONES,
@@ -18,12 +23,19 @@ import {
 } from "./secciones";
 import { AVISO_EJEMPLO } from "./maqueta";
 import {
-  NIVELES_CONFIANZA,
-  INTRO_NIVELES_CONFIANZA,
-  NOTA_PIE_NIVELES_CONFIANZA,
-} from "./nivelesConfianza";
+  describirGrado,
+  gradoDeHipotesis,
+  gradoDeNumero,
+  INTRO_GRADO_APOYO,
+  NIVELES_APOYO,
+  NOTA_PIE_GRADO_APOYO,
+  traducirMensajeAlerta,
+  verboRelacion,
+  type GradoApoyo,
+} from "./gradoApoyo";
+import { terminoEnTexto } from "./terminos";
 import { hayCamino, idNodoSituacion } from "./aristas";
-import { construirNodosGrafo } from "./grafo";
+import { apoyoCadena, construirNodosGrafo, type NodoGrafo } from "./grafo";
 
 const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
 
@@ -202,14 +214,21 @@ function listaOTexto(items: string[]): string {
   return items.length > 0 ? items.map((i) => `- ${i}`).join("\n") : SIN_HALLAZGOS;
 }
 
-function formatearSituacion(s: Situacion): string {
-  const lineas: string[] = [`## ${s.nombre} (Confianza: ${s.confianza})`];
+/** El grado de una situación: el de su elemento peor apoyado, no un promedio. */
+function gradoDeSituacion(s: Situacion, nodos: readonly NodoGrafo[]): GradoApoyo {
+  return gradoDeNumero(apoyoCadena(nodos.filter((n) => n.situacion_id === s.id)));
+}
+
+function formatearSituacion(s: Situacion, nodos: readonly NodoGrafo[]): string {
+  const lineas: string[] = [
+    `## ${s.nombre} (Apoyo en la nota: ${describirGrado(gradoDeSituacion(s, nodos)).etiqueta})`,
+  ];
 
   if (s.cadena_operante) {
     const c = s.cadena_operante;
     lineas.push("Cadena operante:");
     if (c.operacion_motivacional) {
-      lineas.push(`  OM: ${c.operacion_motivacional}`);
+      lineas.push(`  ${terminoEnTexto("om")}: ${c.operacion_motivacional}`);
     }
     lineas.push(`  Antecedente: ${c.antecedente}`);
     lineas.push(`  Respuesta: ${c.respuesta}`);
@@ -321,6 +340,7 @@ export function formatearInformeTexto(
   // orden que pida el clinico (ver ORDEN_BLOQUES_POR_DEFECTO).
   const bloques: Record<string, string> = {};
   const prosa = derivarVistasProsa(analisis);
+  const nodos = construirNodosGrafo(analisis);
 
   // Los huecos de la nota y los avisos del validador responden a la misma
   // pregunta —qué hay que comprobar antes de dar el informe por bueno— y por
@@ -362,7 +382,7 @@ export function formatearInformeTexto(
       "## Puntos a verificar del análisis",
       agruparAlertas(analisis.alertas)
         .map((g) => {
-          const cabecera = `- [${g.gravedad === "alta" ? "revisar antes de usar" : "conviene revisar"}] ${g.mensaje}`;
+          const cabecera = `- [${g.gravedad === "alta" ? "revisar antes de usar" : "conviene revisar"}] ${traducirMensajeAlerta(g.mensaje)}`;
           const elementos = g.elementos.map((e) => `    — ${e}`);
           const secciones = g.secciones
             .map((id) => TITULO_DE_ANCLA[id])
@@ -385,20 +405,20 @@ export function formatearInformeTexto(
 
   // Texto fijo, no salida del modelo: no depende del análisis y por eso se
   // emite siempre, igual en un informe parcial que en uno completo. Va aquí
-  // porque el documento exportado escribe "(Confianza: alta)" en cada
+  // porque el documento exportado escribe "(Apoyo en la nota: …)" en cada
   // situación y en cada hipótesis, y sin la leyenda esas palabras llegan al
   // papel —o a una historia clínica— sin nada que diga qué miden. En pantalla
   // hay una tarjeta; fuera de la pantalla no había nada.
   bloques["niveles-confianza"] = seccion(
-    "NIVELES DE CONFIANZA",
+    "GRADO DE APOYO EN LA NOTA",
     [
-      INTRO_NIVELES_CONFIANZA,
+      INTRO_GRADO_APOYO,
       "",
-      ...NIVELES_CONFIANZA.map(
+      ...NIVELES_APOYO.map(
         ({ etiqueta, frase, resto }) => `- ${etiqueta}: ${frase} ${resto}`
       ),
       "",
-      NOTA_PIE_NIVELES_CONFIANZA,
+      NOTA_PIE_GRADO_APOYO,
     ].join("\n")
   );
 
@@ -484,7 +504,7 @@ export function formatearInformeTexto(
   bloques["situaciones"] = (
     seccion(
       "ANÁLISIS POR SITUACIONES",
-      analisis.situaciones.map(formatearSituacion).join("\n\n")
+      analisis.situaciones.map((sit) => formatearSituacion(sit, nodos)).join("\n\n")
     )
   );
 
@@ -506,7 +526,7 @@ export function formatearInformeTexto(
       prosa.hipotesis
         .map(
           (h) =>
-            `- [${h.conducta}] (Confianza: ${h.confianza}) ${h.enunciado}\n  Función: ${h.funcion}\n  Fuerza: ${h.fuerza} · ${h.tipo_relacion} · ${h.direccion === "bidireccional" ? "bidireccional (bucle)" : "unidireccional"}`
+            `- [${h.conducta}] (Apoyo en la nota: ${describirGrado(gradoDeHipotesis(h, nodos)).etiqueta}) ${h.enunciado}\n  Para qué le sirve (función): ${h.funcion}${h.origen ? `\n  «${h.origen}» ${verboRelacion(h.direccion)} «${h.conducta}»` : ""}`
         )
         .join("\n")
     )
@@ -541,16 +561,25 @@ export function formatearInformeTexto(
         // salían dos seguidos, con nombres casi iguales y ordenando cosas
         // distintas — conductas uno, variables moduladoras el otro.
         "Priorización de blancos de intervención (orientación, no medida):",
-        // La advertencia viaja con el documento: en pantalla acompaña a las
-        // barras, y aquí no hay barras que la arrastren consigo. Un listado
-        // ordenado sin ella se leería como una cuantificación del caso.
-        "  Estimaciones cualitativas pasadas a números solo para poder ordenarlas.",
-        "  Sin unidades ni precisión: solo sostienen «esto probablemente antes que aquello».",
+        // Categorías, no números: cada criterio se estima desde lo que el
+        // análisis ya dice, y el documento lo explica una vez aquí arriba.
+        ...(Object.keys(ORIGEN_DE_CRITERIO) as (keyof CriteriosBlanco)[]).map(
+          (clave) => `  ${ORIGEN_DE_CRITERIO[clave].titulo}: ${ORIGEN_DE_CRITERIO[clave].origen}`
+        ),
         priorizarBlancos(analisis)
           .map((b, i) => {
-            const cabecera = b.palanca
-              ? `${i + 1}. ${b.etiqueta} — importancia ${b.importancia} × modificabilidad ${b.palanca.modificabilidad} (palanca: ${b.palanca.etiqueta})`
-              : `${i + 1}. ${b.etiqueta} — sin palanca trazada: no consta por dónde moverla`;
+            const c = criteriosDeBlanco(
+              analisis,
+              b,
+              nodos.find((n) => n.id === b.id)?.apoyo ?? 1
+            );
+            const criterios = (Object.keys(ORIGEN_DE_CRITERIO) as (keyof CriteriosBlanco)[])
+              .map((clave) => `${ORIGEN_DE_CRITERIO[clave].titulo.toLowerCase()} ${c[clave] ?? "sin datos"}`)
+              .join(" · ");
+            const palanca = b.palanca
+              ? `\n   Por dónde moverla: ${b.palanca.etiqueta}`
+              : "\n   Sin variable trazada: no consta por dónde moverla";
+            const cabecera = `${i + 1}. ${b.etiqueta}\n   ${criterios}${palanca}`;
             return b.justificacion ? `${cabecera}\n   ${b.justificacion}` : cabecera;
           })
           .join("\n") ||

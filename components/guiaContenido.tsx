@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react";
-import { NIVELES_CONFIANZA } from "@/lib/nivelesConfianza";
+import { NIVELES_APOYO } from "@/lib/gradoApoyo";
 
 /**
  * Contenido y piezas visuales compartidas por la guía rápida (modal) y la guía
@@ -327,13 +327,13 @@ export function BloqueElInforme() {
         </div>
       </Marca>
 
-      <Marca titulo="Confianza: cuánto respalda la nota">
+      <Marca titulo="Grado de apoyo: de dónde sale cada dato">
         <ul className="space-y-2">
-          {NIVELES_CONFIANZA.map(({ nivel, clase, frase, resto }) => (
-            <li key={nivel} className="flex items-baseline gap-2">
+          {NIVELES_APOYO.map(({ grado, etiqueta, clase, frase, resto }) => (
+            <li key={grado} className="flex items-baseline gap-2">
               <span className={`h-1.5 w-1.5 shrink-0 translate-y-[-2px] rounded-full ${clase}`} />
               <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
-                {nivel}
+                {etiqueta}
               </span>
               <span className="text-sm text-ink-muted">
                 {frase} {resto}

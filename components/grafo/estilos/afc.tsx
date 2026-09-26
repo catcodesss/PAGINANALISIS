@@ -11,6 +11,8 @@ import {
   type NodoGrafo,
 } from "@/lib/grafo";
 import s from "../afc.module.css";
+import { TERMINOS, type IdTermino } from "@/lib/terminos";
+import { describirGrado, gradoDeNumero } from "@/lib/gradoApoyo";
 
 interface VistaAFCProps {
   analisis: AnalisisFuncional;
@@ -106,10 +108,10 @@ export const COLUMNA_DE_CARRIL: Record<CarrilGrafo, "om" | "ant" | "con" | "csq"
   demorada: "csq",
 };
 
-function Columna({ clase, titulo, children }: { clase: string; titulo: string; children: ReactNode }) {
+function Columna({ clase, titulo, termino, children }: { clase: string; titulo: string; termino?: IdTermino; children: ReactNode }) {
   return (
     <section className={`${s.columna} ${clase}`} aria-label={titulo}>
-      <header className={s.columnaCabecera}><h5 className={s.columnaTitulo}>{titulo}</h5></header>
+      <header className={s.columnaCabecera}><h5 className={s.columnaTitulo} title={termino ? TERMINOS[termino].definicion : undefined}>{titulo}{termino && <abbr className="ml-1.5 font-mono text-[9px] no-underline opacity-70">{TERMINOS[termino].tecnico}</abbr>}</h5></header>
       <div className={s.columnaCuerpo}>{children}</div>
     </section>
   );
@@ -150,14 +152,14 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
             <header className={s.situacionCabecera}>
               <h4 className={s.situacionTitulo}>{situacion.nombre}</h4>
               <span className={s.apoyo}>
-                Apoyo de la cadena:
+                Apoyo de la situación:
                 <span className="inline-block h-1 bg-accent" style={{ width: apoyo === 3 ? 34 : apoyo === 2 ? 23 : 11, opacity: apoyo === 3 ? 1 : apoyo === 2 ? .66 : .42 }} />
-                · lo marca el eslabón más débil
+                {describirGrado(gradoDeNumero(apoyo)).etiqueta} · lo marca el elemento peor apoyado
               </span>
             </header>
 
             <div className={s.tablero}>
-              <Columna clase={s.om} titulo="Operador Motivador">
+              <Columna clase={s.om} titulo={TERMINOS.om.claro} termino="om">
                 <Lista nodos={enCarril("contexto")} huecos={huecosDe("contexto")} renderNodo={renderNodo} />
                 {renderAgregar("contexto", situacion.id, false)}
               </Columna>
@@ -210,7 +212,7 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
             <div className={s.funcionFila}>
               {funciones.map((n) => (
                 <button key={n.id} type="button" data-nodo-id={n.id} onClick={() => onSeleccionar(n)} className={s.funcion}>
-                  <span>Función</span><span>{n.etiqueta}</span>
+                  <span title={TERMINOS.funcion.definicion}>{TERMINOS.funcion.claro}</span><span>{n.etiqueta}</span>
                 </button>
               ))}
               {funciones.length === 0 && (

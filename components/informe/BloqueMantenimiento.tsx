@@ -1,15 +1,19 @@
 "use client";
 
 /**
- * Bloque 3 · Formulación integrada.
+ * Pestaña 3 · Formulación.
  *
- * Las hipótesis de mantenimiento, el origen y la formulación del caso. La prosa
+ * Las hipótesis de mantenimiento, el origen, las relaciones entre problemas,
+ * la priorización, las fortalezas y los valores. La prosa
  * de las hipótesis llega ya derivada del grafo: aquí no se vuelve a calcular,
  * porque dos derivaciones de lo mismo acaban diciendo cosas distintas.
  */
 
+import { useMemo } from "react";
 import type { AnalisisFuncional, HipotesisMantenimiento } from "@/lib/types";
-import { BloqueBase, Chip, Confianza, ListaEditable, SinHallazgos, SubSeccion } from "./primitivas";
+import { construirNodosGrafo } from "@/lib/grafo";
+import { gradoDeHipotesis, verboRelacion } from "@/lib/gradoApoyo";
+import { Apoyo, BloqueBase, Chip, ListaEditable, SinHallazgos, SubSeccion, Termino } from "./primitivas";
 import { Seccion } from "./seccion";
 import { TextoEditable } from "../edicionManual";
 import { PriorizacionEstimada, RedFuncionalSVG, SelloNoModificable } from "./mantenimiento";
@@ -31,6 +35,7 @@ export default function BloqueMantenimiento({
   ) => void;
 }) {
   const prosaDerivada = { hipotesis };
+  const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
   return (
     <BloqueBase id="mantenimiento" visible={visible}>
       <Seccion
@@ -66,27 +71,25 @@ export default function BloqueMantenimiento({
                   }
                 />
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                  {h.funcion && <Chip>{h.funcion}</Chip>}
-                  <Confianza nivel={h.confianza} />
+                  {h.funcion && (
+                    <span className="flex flex-wrap items-center gap-2 text-sm text-ink-muted">
+                      <Termino id="funcion" soloClaro />
+                      <Chip>{h.funcion}</Chip>
+                    </span>
+                  )}
+                  <Apoyo grado={gradoDeHipotesis(h, nodos)} />
                 </div>
                 {/*
-                  Etiquetas discretas, en la línea de metadatos y no como
-                  chips de acento: son coeficientes de la relación, no
-                  conclusiones. La función y la confianza siguen mandando
-                  visualmente porque son lo que se lee primero; esto se
-                  consulta cuando ya se ha entendido la hipótesis.
-
-                  El tipo de relación se escribe entero y no como inicial:
-                  "moderadora" y "mediadora" empiezan igual, y la
-                  diferencia entre atenuar un efecto y cortarlo no puede
-                  depender de leer bien una abreviatura.
+                  La relación en dos verbos, «influye en» o «se relaciona
+                  con». Causal / moderadora / mediadora y la fuerza se siguen
+                  guardando, pero en pantalla sugerían un análisis de mediación
+                  que nadie hizo (ver lib/gradoApoyo.ts#verboRelacion).
                 */}
-                <p className="mt-1.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                  Fuerza: {h.fuerza} · {h.tipo_relacion} ·{" "}
-                  {h.direccion === "bidireccional"
-                    ? "bidireccional (bucle)"
-                    : "unidireccional"}
-                </p>
+                {h.origen && h.conducta && (
+                  <p className="mt-1.5 text-sm text-ink-muted">
+                    «{h.origen}» {verboRelacion(h.direccion)} «{h.conducta}»
+                  </p>
+                )}
               </li>
             ))}
           </ul>

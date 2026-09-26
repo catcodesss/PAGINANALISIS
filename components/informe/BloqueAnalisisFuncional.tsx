@@ -10,6 +10,7 @@
  * #conductas tiene que seguir llevando a donde ahora se ve esa información.
  */
 
+import type { ReactNode } from "react";
 import type { AnalisisFuncional } from "@/lib/types";
 import type { EstiloGrafo } from "@/lib/preferencias";
 import GrafoAFC from "../grafo/GrafoAFC";
@@ -22,12 +23,15 @@ export default function BloqueAnalisisFuncional({
   analisis,
   notaOriginal,
   estilo,
+  selectorEstilo,
   onEditarSeccion,
 }: {
   visible: boolean;
   analisis: AnalisisFuncional;
   notaOriginal: string;
   estilo: EstiloGrafo;
+  /** Las vistas AFC / DBT / ACT / conductual: solo tienen sentido aquí. */
+  selectorEstilo: ReactNode;
   onEditarSeccion: (
     seccionId: string,
     mutar: (copia: AnalisisFuncional) => void
@@ -37,7 +41,7 @@ export default function BloqueAnalisisFuncional({
     <BloqueBase id="que-pasa" visible={visible}>
       <Seccion
         id="situaciones"
-        titulo="Grafo funcional editable · AFC"
+        titulo="Situaciones y grafo"
         camposReanalisis={[
           "conductas_problema",
           "repertorio_disponible",
@@ -54,6 +58,7 @@ export default function BloqueAnalisisFuncional({
         <span id="conductas" className="scroll-mt-24" />
         <span id="variables-moduladoras" className="scroll-mt-24" />
         <span id="modalidad" className="scroll-mt-24" />
+        <div className="mb-5">{selectorEstilo}</div>
         {analisis.situaciones.length === 0 ? (
           <SinHallazgos />
         ) : (

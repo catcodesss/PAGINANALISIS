@@ -1,23 +1,47 @@
 "use client";
 
-import type { ReactNode } from "react";
-import type { Cita as CitaVerificada, NivelConfianza } from "@/lib/types";
-import { TITULO_DE_SECCION, type IdSeccion } from "@/lib/secciones";
+import { useState, type ReactNode } from "react";
+import type { Cita as CitaVerificada } from "@/lib/types";
 import {
-  claseColorConfianza,
-  tooltipConfianza,
-} from "@/lib/nivelesConfianza";
+  ANCLAS_DE_BLOQUE,
+  TITULO_DE_ANCLA,
+  TITULO_DE_SECCION,
+  type IdSeccion,
+} from "@/lib/secciones";
+import { describirGrado, type GradoApoyo } from "@/lib/gradoApoyo";
+import { TERMINOS, type IdTermino } from "@/lib/terminos";
 import {
   BotonAgregar,
   BotonBorrar,
   TextoEditable,
   useEdicion,
 } from "../edicionManual";
-import { BloqueOrdenable } from "../ordenBloques";
+import { PanelPestana } from "./pestanas";
 
 export function BloqueBase({ id, visible, children }: { id: IdSeccion; visible: boolean; children: ReactNode }) {
   if (!visible) return null;
-  return <BloqueOrdenable id={id} titulo={TITULO_DE_SECCION[id]}><div id={id} className="scroll-mt-24 space-y-10"><h2 className="section-title flex items-center gap-3 font-serif text-xl font-semibold text-ink sm:text-2xl"><span aria-hidden="true" className="h-6 w-1.5 rounded-full bg-accent" />{TITULO_DE_SECCION[id]}</h2>{children}</div></BloqueOrdenable>;
+  return <PanelPestana id={id}><div id={id} className="bloque-informe scroll-mt-24 space-y-10 print:mb-10"><div><h2 className="section-title flex items-center gap-3 font-serif text-xl font-semibold text-ink sm:text-2xl"><span aria-hidden="true" className="h-6 w-1.5 rounded-full bg-accent" />{TITULO_DE_SECCION[id]}</h2><EstadoRevision bloque={id} /></div>{children}</div></PanelPestana>;
+}
+
+/**
+ * El ESTADO de lo que hay en la pestaña: propuesta de la IA sin revisar, o con
+ * cambios del terapeuta. No es un grado de apoyo y no se mezcla con él (ver
+ * lib/gradoApoyo.ts): revisar algo no lo hace estar mejor apoyado en la nota.
+ * Nombra dónde hubo cambios para que la marca de edición (invariante 6) se lea
+ * también desde arriba.
+ */
+function EstadoRevision({ bloque }: { bloque: IdSeccion }) {
+  const edicion = useEdicion();
+  const editadas = ANCLAS_DE_BLOQUE[bloque].filter((a) =>
+    edicion?.seccionesEditadas.includes(a)
+  );
+  return (
+    <p className="mt-1.5 pl-[18px] text-xs text-ink-muted">
+      {editadas.length === 0
+        ? "Propuesta de la IA · pendiente de revisar"
+        : `Propuesta de la IA · con cambios tuyos en ${editadas.map((a) => TITULO_DE_ANCLA[a]).join(", ")}`}
+    </p>
+  );
 }
 
 export function SinHallazgos() {
@@ -32,8 +56,22 @@ export function ChipDestacado({ children }: { children: ReactNode }) {
   return <span className="funcion-chip inline-block max-w-full break-words rounded bg-accent px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide texto-sobre-acento">{children}</span>;
 }
 
-export function Confianza({ nivel }: { nivel: NivelConfianza | string }) {
-  return <span title={tooltipConfianza(nivel)} className="conf-chip inline-flex cursor-help items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-ink-muted"><span aria-hidden="true" className={`conf-dot h-1.5 w-1.5 rounded-full ${claseColorConfianza(nivel)}`} />Confianza: {nivel}</span>;
+/**
+ * De dónde sale el dato: cita textual, dato parcial o inferencia. Sustituye al
+ * antiguo «Confianza: alta/media/baja» (ver lib/gradoApoyo.ts).
+ */
+export function Apoyo({ grado }: { grado: GradoApoyo }) {
+  const d = describirGrado(grado);
+  return <span title={d.corta} className="conf-chip inline-flex cursor-help items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-ink-muted"><span aria-hidden="true" className={`conf-dot h-1.5 w-1.5 rounded-full ${d.clase}`} />{d.etiqueta}</span>;
+}
+
+/**
+ * Un concepto técnico en tres capas: la etiqueta clara, la sigla en pequeño al
+ * lado y la definición al pasar el cursor. Ver lib/terminos.ts.
+ */
+export function Termino({ id, soloClaro = false }: { id: IdTermino; soloClaro?: boolean }) {
+  const t = TERMINOS[id];
+  return <span title={t.definicion} className="cursor-help">{t.claro}{!soloClaro && <> <abbr title={t.definicion} className="ml-0.5 rounded border border-divider px-1 font-mono text-[9px] uppercase tracking-wide text-ink-muted no-underline">{t.tecnico}</abbr></>}</span>;
 }
 
 export function Cita({ children }: { children: CitaVerificada | null | undefined }) {
@@ -43,6 +81,38 @@ export function Cita({ children }: { children: CitaVerificada | null | undefined
     ? `línea ${children.linea_inicio}`
     : `líneas ${children.linea_inicio}–${children.linea_fin}`;
   return <blockquote className="evidence-block mt-2 border-l-2 border-divider pl-3"><p className="evidence-prefix font-mono text-[10px] uppercase tracking-wide text-ink-muted">De la nota · {rango}</p><p className="evidence-text text-sm italic leading-relaxed text-ink-muted">&quot;{children.texto}&quot;</p></blockquote>;
+}
+
+/**
+ * Lo secundario, plegado. No es un <details>: Chrome no imprime el contenido de
+ * un <details> cerrado, y lo que se pliega en pantalla tiene que seguir en el
+ * documento que se archiva. Aquí el contenido plegado es `hidden print:block`.
+ */
+export function Plegable({
+  titulo,
+  children,
+  abiertoDeInicio = false,
+}: {
+  titulo: string;
+  children: ReactNode;
+  abiertoDeInicio?: boolean;
+}) {
+  const [abierto, setAbierto] = useState(abiertoDeInicio);
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        aria-expanded={abierto}
+        onClick={() => setAbierto((v) => !v)}
+        className="inline-flex items-center gap-1.5 text-sm text-accent transition-colors hover:text-accent/80 print:hidden"
+      >
+        <span aria-hidden="true" className="inline-block w-3 font-mono text-xs">{abierto ? "−" : "+"}</span>
+        {titulo}
+      </button>
+      <p className="hidden font-mono text-[10px] uppercase tracking-wide text-ink-muted print:block">{titulo}</p>
+      <div className={`${abierto ? "" : "hidden print:block"} mt-2`}>{children}</div>
+    </div>
+  );
 }
 
 export function SubSeccion({ titulo, children }: { titulo: string; children: ReactNode }) {

@@ -45,6 +45,8 @@ import VistaACT from "./estilos/act";
 import VistaDBT from "./estilos/dbt";
 import VistaMC from "./estilos/mc";
 import s from "./afc.module.css";
+import { TERMINOS, terminoDeContingencia, terminoEnTexto, type IdTermino } from "@/lib/terminos";
+import { describirGrado, gradoDeNumero } from "@/lib/gradoApoyo";
 import { interAfc, poppinsAfc } from "./fuentesAfc";
 
 interface GrafoAFCProps {
@@ -92,11 +94,17 @@ function trazadoAFC(desde: Caja, hasta: Caja): string {
   return `M ${x1} ${y1} C ${x1} ${y1 + curva}, ${x2} ${y2 - curva}, ${x2} ${y2}`;
 }
 
+/**
+ * La etiqueta clara de cada tipo de nodo. Los que tienen sigla técnica la
+ * llevan al lado en pequeño, con su definición al pasar el cursor
+ * (TERMINO_DE_TIPO y lib/terminos.ts). Ed y EC no comparten palabra: uno
+ * indica que la conducta funciona ahí y el otro provoca la reacción.
+ */
 const ETIQUETA_TIPO: Record<TipoNodoGrafo, string> = {
-  om: "OM",
+  om: TERMINOS.om.claro,
   moduladora: "Moduladora",
-  ed: "Ed",
-  ec: "EC",
+  ed: TERMINOS.ed.claro,
+  ec: TERMINOS.ec.claro,
   regla_verbal: "Regla verbal",
   encubierta: "Encubierta",
   conducta: "Conducta",
@@ -104,9 +112,48 @@ const ETIQUETA_TIPO: Record<TipoNodoGrafo, string> = {
   alternativa: "Conducta alternativa",
   consecuencia: "Consecuencia",
   consecuencia_alternativa: "Consecuencia necesaria",
-  funcion: "Función",
+  funcion: TERMINOS.funcion.claro,
   valor: "Valor",
 };
+
+const TERMINO_DE_TIPO: Partial<Record<TipoNodoGrafo, IdTermino>> = {
+  om: "om",
+  ed: "ed",
+  ec: "ec",
+  funcion: "funcion",
+};
+
+/** La sigla técnica al lado de la etiqueta clara, con su definición. */
+function SiglaTipo({ tipo }: { tipo: TipoNodoGrafo }) {
+  const id = TERMINO_DE_TIPO[tipo];
+  if (!id) return null;
+  return (
+    <abbr title={TERMINOS[id].definicion} className="ml-1 cursor-help font-mono text-[9px] no-underline opacity-70">
+      {TERMINOS[id].tecnico}
+    </abbr>
+  );
+}
+
+/**
+ * El detalle de un nodo, traducido donde hay traducción: el tipo de
+ * contingencia de una consecuencia («refuerzo negativo» → «Alivio: qué deja de
+ * pasar · R−») y la clase de una regla verbal (pliance, tracking, augmenting).
+ */
+function textoDetalle(nodo: NodoGrafo): { texto: string; definicion?: string } | null {
+  if (!nodo.detalle) return null;
+  if (nodo.tipo === "consecuencia") {
+    const id = terminoDeContingencia(nodo.detalle);
+    if (id) return { texto: `${TERMINOS[id].claro} · ${TERMINOS[id].tecnico}`, definicion: TERMINOS[id].definicion };
+  }
+  if (nodo.tipo === "regla_verbal") {
+    const [clase, ...resto] = nodo.detalle.split(" · ");
+    if (clase === "pliance" || clase === "tracking" || clase === "augmenting") {
+      const t = TERMINOS[clase];
+      return { texto: [`${t.claro} · ${t.tecnico}`, ...resto].join(" · "), definicion: t.definicion };
+    }
+  }
+  return { texto: nodo.detalle };
+}
 
 const CLASE_TIPO: Record<TipoNodoGrafo, string> = {
   om: "border-l-sky-500",
@@ -152,12 +199,8 @@ function IconoNodo({ nodo }: { nodo: NodoGrafo }) {
   }
 }
 
-function etiquetaApoyo(apoyo: number) {
-  return apoyo === 3
-    ? "Apoyo completo: cita verificada"
-    : apoyo === 2
-      ? "Apoyo parcial"
-      : "Inferencia sin cita";
+function etiquetaApoyo(apoyo: 1 | 2 | 3) {
+  return describirGrado(gradoDeNumero(apoyo)).etiqueta;
 }
 
 function Nodo({
@@ -181,6 +224,7 @@ function Nodo({
 }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(nodo.etiqueta);
+  const detalle = textoDetalle(nodo);
 
   function guardar() {
     const limpio = texto.trim();
@@ -259,9 +303,9 @@ function Nodo({
         <div className={s.nodoCuerpo}>
           <IconoNodo nodo={nodo} />
           <div className={s.nodoTexto}>
-            <span className={s.chip}>{ETIQUETA_TIPO[nodo.tipo]}</span>
+            <span className={s.chip}>{ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} /></span>
             {editando ? editor(s.editor) : <p className={s.etiqueta}>{nodo.etiqueta}</p>}
-            {nodo.detalle && <p className={s.detalle}>{nodo.detalle}</p>}
+            {detalle && <p className={s.detalle} title={detalle.definicion}>{detalle.texto}</p>}
           </div>
         </div>
       </article>
@@ -297,7 +341,7 @@ function Nodo({
         />
       </button>
       <p className="mt-1 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-        {ETIQUETA_TIPO[nodo.tipo]}
+        {ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} />
       </p>
       {editando ? (
         <input
@@ -320,7 +364,7 @@ function Nodo({
       ) : (
         <p className="mt-1 break-words text-sm leading-snug text-ink">{nodo.etiqueta}</p>
       )}
-      {nodo.detalle && <p className="mt-1 text-[11px] text-ink-muted">{nodo.detalle}</p>}
+      {detalle && <p className="mt-1 text-[11px] text-ink-muted" title={detalle.definicion}>{detalle.texto}</p>}
     </article>
   );
 }
@@ -583,7 +627,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
         {([3, 2, 1] as const).map((nivel) => (
           <button key={nivel} type="button" aria-pressed={filtro === nivel} onClick={() => setFiltro(filtro === nivel ? null : nivel)} className="rounded-full border border-divider px-2.5 py-1 text-ink-muted aria-pressed:border-accent aria-pressed:text-accent">
             <span className="mr-1 inline-block h-1 bg-accent align-middle" style={{ width: nivel === 3 ? 24 : nivel === 2 ? 16 : 8, opacity: nivel === 3 ? 1 : nivel === 2 ? .66 : .42 }} />
-            {nivel === 3 ? "Con cita" : nivel === 2 ? "Parcial" : "Inferencia"}
+            {etiquetaApoyo(nivel)}
           </button>
         ))}
         <label className="ml-2 flex items-center gap-1.5 text-ink-muted">
@@ -643,7 +687,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
                 if (valor && valor !== nodoSeleccionado.etiqueta) aplicar((copia) => actualizarEtiquetaNodo(copia, nodoSeleccionado.id, valor));
               }} rows={3} className="mt-1 w-full rounded border border-divider bg-surface p-2 text-sm text-ink" />
             </label>
-            <dl className="space-y-1 text-xs"><div><dt className="inline text-ink-muted">Tipo: </dt><dd className="inline text-ink">{ETIQUETA_TIPO[nodoSeleccionado.tipo]}</dd></div><div><dt className="inline text-ink-muted">Confianza: </dt><dd className="inline text-ink">{nodoSeleccionado.confianza}</dd></div><div><dt className="inline text-ink-muted">Apoyo: </dt><dd className="inline text-ink">{etiquetaApoyo(nodoSeleccionado.apoyo)}</dd></div></dl>
+            <dl className="space-y-1 text-xs"><div><dt className="inline text-ink-muted">Tipo: </dt><dd className="inline text-ink">{ETIQUETA_TIPO[nodoSeleccionado.tipo]}</dd></div><div><dt className="inline text-ink-muted">Apoyo en la nota: </dt><dd className="inline text-ink">{etiquetaApoyo(nodoSeleccionado.apoyo)}</dd></div></dl>
             <button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar nodo" : "La estructura se edita en la vista AFC"} onClick={() => aplicar((copia) => borrarNodo(copia, nodoSeleccionado.id))} className="rounded border border-warn/50 px-2 py-1 text-xs text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar nodo</button>
             <div className="border-t border-divider pt-3"><p className="mb-2 text-xs font-medium text-ink">Relaciones del nodo</p>{analisis.aristas.filter((a) => a.desde === nodoSeleccionado.id || a.hasta === nodoSeleccionado.id).map((a) => <div key={a.id} className="mb-1 flex items-center gap-2 text-[11px] text-ink-muted"><span className="min-w-0 flex-1 truncate">{a.desde} → {a.hasta}</span><button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar relación" : "Las relaciones se editan en la vista AFC"} aria-label={`Borrar relación ${a.id}`} onClick={() => aplicar((copia) => { copia.aristas = copia.aristas.filter((actual) => actual.id !== a.id); })} className="text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar</button></div>)}</div>
           </div> : <p className="mt-3 text-sm text-ink-muted">Selecciona un nodo. Doble clic sobre su etiqueta para editarla en el grafo.</p>}
@@ -653,7 +697,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
       </div>
 
       <div className="hidden print:block">
-        {analisis.situaciones.map((situacion) => <table key={situacion.id} className="mb-5 w-full table-fixed border-collapse text-xs"><caption className="mb-2 text-left font-serif text-base font-semibold">{situacion.nombre}</caption><thead><tr>{["ED", "OM", "RO", "C", "CMLP"].map((h) => <th key={h} className="border border-divider p-2 text-left">{h}</th>)}</tr></thead><tbody><tr><td className="border border-divider p-2">{situacion.cadena_operante?.antecedente || "—"}</td><td className="border border-divider p-2">{situacion.cadena_operante?.operacion_motivacional || "—"}</td><td className="border border-divider p-2">{situacion.cadena_operante?.respuesta || "—"}</td><td className="border border-divider p-2">{situacion.cadena_operante?.consecuencia.texto || "—"}</td><td className="border border-divider p-2">{situacion.cadena_operante?.consecuencias_largo_plazo?.texto || "—"}</td></tr></tbody></table>)}
+        {analisis.situaciones.map((situacion) => <table key={situacion.id} className="mb-5 w-full table-fixed border-collapse text-xs"><caption className="mb-2 text-left font-serif text-base font-semibold">{situacion.nombre}</caption><thead><tr>{[terminoEnTexto("ed"), terminoEnTexto("om"), "Conducta", "Consecuencia", terminoEnTexto("consecuencia_demorada")].map((h) => <th key={h} className="border border-divider p-2 text-left">{h}</th>)}</tr></thead><tbody><tr><td className="border border-divider p-2">{situacion.cadena_operante?.antecedente || "—"}</td><td className="border border-divider p-2">{situacion.cadena_operante?.operacion_motivacional || "—"}</td><td className="border border-divider p-2">{situacion.cadena_operante?.respuesta || "—"}</td><td className="border border-divider p-2">{situacion.cadena_operante?.consecuencia.texto || "—"}</td><td className="border border-divider p-2">{situacion.cadena_operante?.consecuencias_largo_plazo?.texto || "—"}</td></tr></tbody></table>)}
       </div>
     </div>
   );

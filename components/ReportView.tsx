@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useMemo, useState } from "react";
 import type {
   AnalisisFuncional,
   MetaGeneracion,
@@ -17,16 +12,15 @@ import {
   SECCIONES_INFORME,
   type IdSeccion,
 } from "@/lib/secciones";
-import {
-  NIVELES_CONFIANZA,
-} from "@/lib/nivelesConfianza";
+import { NIVELES_APOYO } from "@/lib/gradoApoyo";
 import FranjaDocumento from "./FranjaDocumento";
 import { useLente } from "./useLente";
 import {
-  BotonRestaurarOrden,
-  ProveedorOrden,
-  useOrden,
-} from "./ordenBloques";
+  BarraPestanas,
+  irAlAncla,
+  PestanasContext,
+  usePestanas,
+} from "./informe/pestanas";
 import { hayGrafoBase } from "@/lib/grafo";
 import type { EstiloGrafo } from "@/lib/preferencias";
 import {
@@ -74,8 +68,6 @@ const ETIQUETA_ESTILO: Record<EstiloGrafo, string> = {
  */
 const SECCIONES: readonly SeccionIndice[] = SECCIONES_INFORME;
 
-/** Orden de fábrica, el punto de partida antes de que el clínico mueva nada. */
-const IDS_SECCIONES = SECCIONES.map((s) => s.id);
 
 const ESTILOS_GRAFO: EstiloGrafo[] = ["afc", "dbt", "act", "mc"];
 
@@ -140,308 +132,6 @@ function SelectorDeLente({
         Las cuatro vistas leen las mismas entidades y relaciones. La preferencia
         se recuerda por caso; la exportación siempre usa AFC.
       </p>
-    </div>
-  );
-}
-
-function useSeccionActiva(ids: string[]) {
-  const [activa, setActiva] = useState<string>(ids[0] ?? "");
-
-  useEffect(() => {
-    const elementos = ids
-      .map((id) => document.getElementById(id))
-      .filter((el): el is HTMLElement => el !== null);
-
-    if (elementos.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entradas) => {
-        const visibles = entradas
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visibles.length > 0) {
-          setActiva(visibles[0].target.id);
-        }
-      },
-      { rootMargin: "-96px 0px -70% 0px", threshold: 0 }
-    );
-
-    elementos.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [ids]);
-
-  return activa;
-}
-
-/**
- * El índice consume el mismo OrdenContext que las tarjetas (ver
- * components/ordenBloques.tsx#BloqueOrdenable): arrastrar un título aquí
- * llama a la misma `soltarSobre` que arrastrar una tarjeta, así que reordena
- * exactamente lo mismo y desde cualquiera de los dos sitios se ve el mismo
- * resultado. A diferencia de las tarjetas, aquí no hace falta la animación
- * FLIP ni el truco de `order` de CSS: `secciones` ya llega reordenado (ver
- * seccionesVisibles en InformeOrdenable), así que basta con dejar que la
- * lista se vuelva a pintar en su nuevo orden.
- *
- * `draggable={false}` en el enlace es necesario: un <a> es arrastrable de
- * fábrica en el navegador (arrastra el enlace, no reordena nada), y eso
- * gana al `draggable` del <li> si no se desactiva explícitamente.
- */
-
-/**
- * Reabrir una tarjeta oculta desde cualquiera de los dos índices (el lateral
- * y el desplegable móvil). La tarjeta sigue en el DOM (display:none, ver
- * BloqueOrdenable en components/ordenBloques.tsx), así que basta con
- * quitarle la marca; no ocupa espacio hasta que React repinta, y eso pasa un
- * frame después de esta llamada — de ahí el requestAnimationFrame antes de
- * desplazarse.
- */
-function reabrirSeccion(ctx: ReturnType<typeof useOrden>, id: string) {
-  ctx?.mostrar(id);
-  requestAnimationFrame(() => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-}
-
-function IndiceLateral({
-  secciones,
-  activa,
-}: {
-  secciones: SeccionIndice[];
-  activa: string;
-}) {
-  const ctx = useOrden();
-  const [encimaDe, setEncimaDe] = useState<string | null>(null);
-
-  // Un clic navega, como siempre; ocultar necesita una intención más clara
-  // (doble clic, o mantener pulsado) para no confundir "quiero leer esto" con
-  // "quiero quitarlo de en medio". Solo puede haber una pulsación mantenida a
-  // la vez, así que un único ref alcanza para toda la lista.
-  const PULSACION_MS = 3000;
-  const pulsacionRef = useRef<{
-    id: string;
-    timer: ReturnType<typeof setTimeout>;
-    disparada: boolean;
-  } | null>(null);
-
-  function iniciarPulsacion(id: string) {
-    const timer = setTimeout(() => {
-      ctx?.ocultar(id);
-      if (pulsacionRef.current?.id === id) pulsacionRef.current.disparada = true;
-    }, PULSACION_MS);
-    pulsacionRef.current = { id, timer, disparada: false };
-  }
-
-  /** Al soltar antes de tiempo, o si el ratón se va, se cancela el temporizador. */
-  function soltarPulsacion() {
-    if (pulsacionRef.current) clearTimeout(pulsacionRef.current.timer);
-  }
-
-  /**
-   * El clic llega SIEMPRE después del mousedown/mouseup que lo originan, así
-   * que si la pulsación mantenida ya ocultó la tarjeta, `disparada` ya está en
-   * true para cuando esto se ejecuta: se ignora, porque ya hizo su trabajo.
-   * Si no está disparada y la sección está oculta, es un clic normal sobre
-   * "+ Título": reabre. Si está visible, es un clic normal: navega (el <a>
-   * ya tiene su href, no hace falta nada más).
-   */
-  function alHacerClic(ctx: ReturnType<typeof useOrden>, id: string, oculto: boolean, e: React.MouseEvent) {
-    const yaDisparada = pulsacionRef.current?.id === id && pulsacionRef.current.disparada;
-    pulsacionRef.current = null;
-    if (yaDisparada) {
-      e.preventDefault();
-      return;
-    }
-    if (oculto) {
-      e.preventDefault();
-      reabrirSeccion(ctx, id);
-    }
-  }
-
-  return (
-    <nav
-      aria-label="Índice del informe"
-      className="hidden shrink-0 print:hidden lg:sticky lg:top-24 lg:block lg:h-fit lg:w-[210px]"
-    >
-      <ul className="space-y-3.5 text-sm">
-        {secciones.map(({ id, titulo }) => {
-          const oculto = ctx?.oculta(id) ?? false;
-          // Un solo clic vuelve a ser navegación pura, así que el hover
-          // vuelve a su tono neutro de siempre: el ámbar de "esto oculta" ya
-          // no pertenece al primer pase del ratón, solo al doble clic o a
-          // mantener pulsado (sin hover propio: no hay forma de anticiparlo
-          // con un pase de ratón, tiene que descubrirse o enseñarse aparte).
-          const claseComun = `block w-full rounded-r border-l-2 py-0.5 pl-3 text-left transition-colors ${
-            ctx?.arrastrando === id ? "opacity-40" : ""
-          } ${
-            encimaDe === id
-              ? "border-accent bg-accent-soft ring-1 ring-accent/30"
-              : oculto
-                ? "border-divider text-ink-muted/60 hover:text-ink-muted"
-                : activa === id
-                  ? "border-accent font-semibold text-accent"
-                  : "border-divider text-ink-muted hover:border-ink-muted hover:text-ink"
-          }`;
-
-          return (
-            <li
-              key={id}
-              draggable={Boolean(ctx)}
-              onDragStart={(e) => {
-                if (!ctx) return;
-                // Si el arrastre empieza durante los 3 segundos de pulsación
-                // mantenida, es que la intención era reordenar, no ocultar.
-                soltarPulsacion();
-                e.dataTransfer.setData("text/plain", id);
-                e.dataTransfer.effectAllowed = "move";
-                ctx.setArrastrando(id);
-              }}
-              onDragEnd={() => ctx?.setArrastrando(null)}
-              onDragOver={(e) => {
-                if (!ctx?.arrastrando || ctx.arrastrando === id) return;
-                e.preventDefault();
-                setEncimaDe(id);
-              }}
-              onDragLeave={() => setEncimaDe((actual) => (actual === id ? null : actual))}
-              onDrop={(e) => {
-                e.preventDefault();
-                setEncimaDe(null);
-                const origen = e.dataTransfer.getData("text/plain") || ctx?.arrastrando;
-                if (ctx && origen && origen !== id) ctx.soltarSobre(origen, id);
-              }}
-              className={ctx ? "cursor-grab active:cursor-grabbing" : ""}
-            >
-              {/*
-                Siempre el mismo <a>, oculta o no — nunca un <button> que la
-                sustituya. Si el elemento cambiara de tipo justo cuando la
-                pulsación mantenida dispara el ocultado, React lo desmonta y
-                monta uno nuevo en su lugar; el mouseup que sigue (el usuario
-                todavía no soltó) cae entonces sobre ESE elemento nuevo — el
-                "+ Título" que acaba de aparecer — y su clic la reabriría en
-                el acto, deshaciendo lo que la pulsación logró. Con un único
-                nodo estable, el clic que cierra el gesto siempre golpea el
-                mismo elemento cuyo estado (disparada) ya se conoce.
-
-                Oculta: un clic navega a un href que ya no lleva a ningún
-                sitio visible, así que se intercepta y reabre. Visible: un
-                clic navega de verdad; ocultarla pide una intención más clara
-                (doble clic o mantener pulsado 3 segundos), para no confundir
-                "quiero leerla" con "quiero quitarla de en medio". El prefijo
-                "+" repite el idioma que ya usan los "+ Agregar…" del informe.
-              */}
-              <a
-                href={`#${id}`}
-                draggable={false}
-                aria-current={!oculto && activa === id ? "true" : undefined}
-                aria-label={
-                  oculto
-                    ? `Mostrar «${titulo}», oculta actualmente`
-                    : `${titulo} — doble clic o mantener pulsado para ocultar`
-                }
-                onMouseDown={() => {
-                  if (!oculto) iniciarPulsacion(id);
-                }}
-                onMouseUp={soltarPulsacion}
-                onMouseLeave={soltarPulsacion}
-                onDoubleClick={(e) => {
-                  if (oculto) return;
-                  e.preventDefault();
-                  ctx?.ocultar(id);
-                }}
-                onClick={(e) => alHacerClic(ctx, id, oculto, e)}
-                className={claseComun}
-              >
-                {oculto ? `+ ${titulo}` : titulo}
-              </a>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
-  );
-}
-
-function IndiceMovil({
-  secciones,
-  activa,
-}: {
-  secciones: SeccionIndice[];
-  activa: string;
-}) {
-  const ctx = useOrden();
-  const [abierto, setAbierto] = useState(false);
-  const contenedorRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function manejarClickFuera(evento: MouseEvent) {
-      if (
-        contenedorRef.current &&
-        !contenedorRef.current.contains(evento.target as Node)
-      ) {
-        setAbierto(false);
-      }
-    }
-    document.addEventListener("mousedown", manejarClickFuera);
-    return () => document.removeEventListener("mousedown", manejarClickFuera);
-  }, []);
-
-  const tituloActivo =
-    secciones.find((s) => s.id === activa)?.titulo ?? "Ir a…";
-
-  return (
-    <div ref={contenedorRef} className="relative mb-4 print:hidden lg:hidden">
-      <button
-        type="button"
-        onClick={() => setAbierto((v) => !v)}
-        aria-expanded={abierto}
-        className="flex w-full items-center justify-between rounded border border-divider bg-surface px-3 py-2 text-sm text-ink"
-      >
-        <span>
-          Ir a: <span className="text-ink-muted">{tituloActivo}</span>
-        </span>
-        <span aria-hidden="true" className="text-ink-muted">
-          {abierto ? "▲" : "▼"}
-        </span>
-      </button>
-      {abierto && (
-        <ul className="absolute z-10 mt-1 w-full rounded border border-divider bg-surface py-1 shadow-md">
-          {secciones.map(({ id, titulo }) => {
-            const oculto = ctx?.oculta(id) ?? false;
-            return (
-              <li key={id}>
-                {oculto ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      reabrirSeccion(ctx, id);
-                      setAbierto(false);
-                    }}
-                    className="block w-full px-3 py-2 text-left text-sm text-ink-muted"
-                  >
-                    + {titulo}
-                  </button>
-                ) : (
-                  // Aquí el clic vuelve a ser solo navegación: el doble
-                  // clic / mantener pulsado del índice lateral no tiene un
-                  // equivalente táctil fiable, y en móvil el "✕" de la
-                  // tarjeta ya está siempre visible (ver globals.css,
-                  // @media (hover: none)), así que no hace falta un atajo
-                  // más aquí.
-                  <a
-                    href={`#${id}`}
-                    onClick={() => setAbierto(false)}
-                    className={`block px-3 py-2 text-sm ${
-                      activa === id ? "font-medium text-accent" : "text-ink"
-                    }`}
-                  >
-                    {titulo}
-                  </a>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
     </div>
   );
 }
@@ -547,16 +237,13 @@ function PrintOnlyDisclaimer({
 }
 
 /**
- * Leyenda de confianza flotante: se queda fija en pantalla mientras el
- * usuario scrollea el informe. Se puede minimizar/reabrir con el ícono.
- *
- * Es un recordatorio, no la definición: una línea por nivel y un enlace a la
- * tarjeta «Niveles de confianza», que es donde vive el texto completo. Antes
- * repetía las definiciones largas aquí, y un panel flotante con tres párrafos
- * tapa el informe justo cuando se está leyendo.
+ * Leyenda flotante del grado de apoyo. Arranca plegada: es un recordatorio que
+ * se abre cuando hace falta, no un panel que tape el informe mientras se lee.
+ * La definición completa vive en la pestaña Revisión.
  */
-function LeyendaConfianzaFlotante() {
-  const [abierta, setAbierta] = useState(true);
+function LeyendaApoyoFlotante() {
+  const [abierta, setAbierta] = useState(false);
+  const pestanas = usePestanas();
 
   return (
     <div className="fixed bottom-4 right-4 z-30 print:hidden">
@@ -564,20 +251,20 @@ function LeyendaConfianzaFlotante() {
         <div className="w-64 rounded-md border border-divider bg-surface p-4 shadow-lg">
           <div className="mb-2 flex items-center justify-between">
             <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-              Niveles de confianza
+              Grado de apoyo en la nota
             </p>
             <button
               type="button"
               onClick={() => setAbierta(false)}
-              aria-label="Minimizar leyenda de confianza"
+              aria-label="Cerrar la leyenda del grado de apoyo"
               className="rounded p-1 text-ink-muted transition-colors hover:bg-canvas hover:text-ink"
             >
               ✕
             </button>
           </div>
           <ul className="space-y-1.5">
-            {NIVELES_CONFIANZA.map(({ nivel, etiqueta, clase, corta }) => (
-              <li key={nivel} className="flex items-baseline gap-2">
+            {NIVELES_APOYO.map(({ grado, etiqueta, clase, corta }) => (
+              <li key={grado} className="flex items-baseline gap-2">
                 <span
                   aria-hidden="true"
                   className={`h-2 w-2 shrink-0 translate-y-[-1px] rounded-full ${clase}`}
@@ -594,9 +281,7 @@ function LeyendaConfianzaFlotante() {
               href="#niveles-confianza"
               onClick={(evento) => {
                 evento.preventDefault();
-                document
-                  .getElementById("niveles-confianza")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                irAlAncla(pestanas, "niveles-confianza");
               }}
               className="text-xs text-accent transition-colors hover:underline"
             >
@@ -608,8 +293,8 @@ function LeyendaConfianzaFlotante() {
         <button
           type="button"
           onClick={() => setAbierta(true)}
-          aria-label="Mostrar leyenda de niveles de confianza"
-          title="Niveles de confianza"
+          aria-label="Mostrar la leyenda del grado de apoyo"
+          title="Grado de apoyo en la nota"
           className="flex h-10 w-10 items-center justify-center rounded-full border border-divider bg-surface text-accent shadow-lg transition-colors hover:bg-canvas"
         >
           <span aria-hidden="true" className="font-serif text-base font-semibold">
@@ -621,20 +306,7 @@ function LeyendaConfianzaFlotante() {
   );
 }
 
-/**
- * El proveedor va fuera del cuerpo del informe para que tanto los bloques como
- * el índice lean el mismo orden: el índice lo necesita desde arriba, y un
- * componente no puede consumir un contexto que él mismo abre.
- */
-export default function ReportView(props: ReportViewProps) {
-  return (
-    <ProveedorOrden idsPorDefecto={IDS_SECCIONES}>
-      <InformeOrdenable {...props} />
-    </ProveedorOrden>
-  );
-}
-
-function InformeOrdenable({
+export default function ReportView({
   analisis,
   referenciaCaso,
   onReferenciaCasoChange,
@@ -643,20 +315,20 @@ function InformeOrdenable({
   onAnalisisActualizado,
   onEditarSeccion,
 }: ReportViewProps) {
-  const orden = useOrden();
-
-  // El índice enseña los bloques en el orden en que están en pantalla, no en el
-  // de fábrica: si el clínico sube «Riesgo», también sube en el índice.
-  const seccionesVisibles = useMemo(() => {
-    const visibles = SECCIONES.filter((s) => bloqueVisible(analisis, s.id));
-    if (!orden) return visibles;
-    return orden
-      .ordenar(visibles.map((s) => s.id))
-      .map((id) => visibles.find((s) => s.id === id))
-      .filter((s): s is SeccionIndice => s !== undefined);
-  }, [analisis, orden]);
-  const ids = useMemo(() => seccionesVisibles.map((s) => s.id), [seccionesVisibles]);
-  const activa = useSeccionActiva(ids);
+  // En un análisis parcial, una pestaña sin nada que enseñar no aparece.
+  const seccionesVisibles = useMemo(
+    () => SECCIONES.filter((s) => bloqueVisible(analisis, s.id)),
+    [analisis]
+  );
+  const [pestanaElegida, setPestanaElegida] = useState<IdSeccion>("sintesis");
+  // Si la elegida deja de existir (un reanálisis parcial), se cae en la primera.
+  const pestana = seccionesVisibles.some((s) => s.id === pestanaElegida)
+    ? pestanaElegida
+    : (seccionesVisibles[0]?.id ?? "sintesis");
+  const valorPestanas = useMemo(
+    () => ({ activa: pestana, elegir: setPestanaElegida }),
+    [pestana]
+  );
 
   /*
     La lente vive en localStorage y no en el estado del componente: es una
@@ -692,6 +364,7 @@ function InformeOrdenable({
     <ReanalisisContext.Provider
       value={{ notaOriginal, analisis, onAnalisisActualizado }}
     >
+    <PestanasContext.Provider value={valorPestanas}>
     <ProveedorEdicion valor={valorEdicion}>
     <div className="rounded-md border border-divider bg-surface px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-12 lg:py-10 print:rounded-none print:border-none print:px-0 print:py-0 print:shadow-none">
       <PrintOnlyHeader referenciaCaso={referenciaCaso} fecha={fecha} meta={analisis.meta} />
@@ -747,29 +420,11 @@ function InformeOrdenable({
             </p>
           )}
         </div>
-        <div className="mt-4 border-t border-divider pt-4">
-          <SelectorDeLente
-            activa={pestanaActiva}
-            onChange={elegirLente}
-            habilitaLecturas={grafoBaseDisponible}
-          />
-        </div>
-        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-          <p className="text-xs text-ink-muted">
-            Puedes arrastrar los bloques para ordenarlos a tu gusto.
-          </p>
-          <BotonRestaurarOrden />
-        </div>
       </header>
 
-      <IndiceMovil secciones={seccionesVisibles} activa={activa} />
+      <BarraPestanas pestanas={seccionesVisibles} />
 
-      <div className="lg:flex lg:items-start lg:gap-10">
-        <IndiceLateral secciones={seccionesVisibles} activa={activa} />
-
-        {/* flex-col: los bloques se reordenan con `order` de CSS, sin moverse
-            del árbol de React. Ver components/ordenBloques.tsx. */}
-        <div className="flex min-w-0 flex-1 flex-col">
+      <div className="min-w-0">
           <BloqueSintesis
             visible={bloqueVisible(analisis, "sintesis")}
             analisis={analisis}
@@ -783,6 +438,13 @@ function InformeOrdenable({
             analisis={analisis}
             notaOriginal={notaOriginal}
             estilo={pestanaActiva}
+            selectorEstilo={
+              <SelectorDeLente
+                activa={pestanaActiva}
+                onChange={elegirLente}
+                habilitaLecturas={grafoBaseDisponible}
+              />
+            }
             onEditarSeccion={onEditarSeccion}
           />
 
@@ -805,8 +467,6 @@ function InformeOrdenable({
             analisis={analisis}
             onEditarSeccion={onEditarSeccion}
           />
-
-        </div>
       </div>
 
       <footer className="mt-6 rounded-md border border-divider bg-canvas p-4 text-xs leading-relaxed text-ink-muted print:hidden">
@@ -817,9 +477,10 @@ function InformeOrdenable({
       </footer>
 
       <PrintOnlyDisclaimer fecha={fecha} meta={analisis.meta} />
-      <LeyendaConfianzaFlotante />
+      <LeyendaApoyoFlotante />
     </div>
     </ProveedorEdicion>
+    </PestanasContext.Provider>
     </ReanalisisContext.Provider>
   );
 }

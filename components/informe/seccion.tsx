@@ -24,17 +24,17 @@ import type { AnalisisFuncional } from "@/lib/types";
 import {
   ANCLAS_DE_BLOQUE,
   TITULO_DE_ANCLA,
-  bloqueDeAncla,
   type IdAncla,
   type IdSeccion,
 } from "@/lib/secciones";
 import { agruparAlertas } from "@/lib/validadores";
+import { traducirMensajeAlerta } from "@/lib/gradoApoyo";
 import { construirReporteFallo } from "@/lib/reporteFallo";
 import {
   contieneDatosIdentificables,
   enmascararDatosIdentificables,
 } from "@/lib/pii";
-import { useOrden } from "../ordenBloques";
+import { irAlAncla, usePestanas } from "./pestanas";
 import { MarcaEditado, useEdicion } from "../edicionManual";
 import { SeccionInforme } from "./primitivas";
 
@@ -85,24 +85,6 @@ export function anclaVisible(analisis: AnalisisFuncional, id: IdAncla): boolean 
 export function bloqueVisible(analisis: AnalisisFuncional, id: IdSeccion): boolean {
   if (analisis.campos_generados.length === 0) return true;
   return ANCLAS_DE_BLOQUE[id].some((a) => anclaVisible(analisis, a));
-}
-
-/**
- * Lleva a un ancla, reabriendo antes su bloque si estaba oculto.
- *
- * Desde que el bloque es la unidad que se oculta, un ancla puede existir en el
- * árbol y no estar pintada. Un aviso que enlazara a `#hipotesis-principal` con
- * el bloque «Cabecera» oculto no haría nada al pulsarlo: ni error, ni scroll,
- * ni explicación. Se reabre el bloque primero y se salta después.
- */
-function irAlAncla(ctx: ReturnType<typeof useOrden>, ancla: string) {
-  const bloque = bloqueDeAncla(ancla);
-  if (bloque && ctx?.oculta(bloque)) ctx.mostrar(bloque);
-  requestAnimationFrame(() => {
-    document
-      .getElementById(ancla)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
 }
 
 export interface ReanalisisContextValor {
@@ -300,7 +282,7 @@ export function BloqueReanalisis({
  * es dónde se leen, no qué dicen.
  */
 export function ListaAlertas({ analisis }: { analisis: AnalisisFuncional }) {
-  const orden = useOrden();
+  const orden = usePestanas();
   return (
       <ul className="space-y-5">
         {agruparAlertas(analisis.alertas).map((g, i) => {
@@ -347,7 +329,7 @@ export function ListaAlertas({ analisis }: { analisis: AnalisisFuncional }) {
                   que se lea antes que las propuestas y el enlace de
                   abajo, que son apoyo, no la conclusión. */}
               <p className="mt-2 text-[15px] font-medium leading-relaxed text-ink">
-                {g.mensaje}
+                {traducirMensajeAlerta(g.mensaje)}
               </p>
               {/* El motivo va arriba una vez; debajo, a qué alcanza. */}
               {g.elementos.length > 0 && (

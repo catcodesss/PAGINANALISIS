@@ -1,6 +1,11 @@
 /**
  * Los cinco bloques del informe, y las anclas que viven dentro de cada uno.
  *
+ * Desde la reorganización en pestañas, cada bloque ES una pestaña (ver
+ * components/informe/pestanas.tsx). Los ids no cambian —son los que guardan
+ * `secciones_editadas` y los enlaces—; cambian los títulos, y «preguntas» pasa
+ * al Resumen porque es lo que se lleva a la próxima sesión.
+ *
  * QUÉ CAMBIÓ Y POR QUÉ. Hasta aquí había diecisiete secciones, cada una una
  * unidad del índice, del orden y del arrastre. Diecisiete entradas no son un
  * índice: son una lista que se lee una vez y luego se ignora. Y peor que eso,
@@ -27,11 +32,11 @@
  */
 
 export const SECCIONES_INFORME = [
-  { id: "sintesis", titulo: "Cabecera: riesgo y síntesis" },
+  { id: "sintesis", titulo: "Resumen" },
   { id: "que-pasa", titulo: "Análisis funcional" },
-  { id: "mantenimiento", titulo: "Formulación integrada" },
+  { id: "mantenimiento", titulo: "Formulación" },
   { id: "plan", titulo: "Plan" },
-  { id: "pendientes", titulo: "Control de calidad" },
+  { id: "pendientes", titulo: "Revisión" },
 ] as const satisfies readonly { id: string; titulo: string }[];
 
 export type IdSeccion = (typeof SECCIONES_INFORME)[number]["id"];
@@ -47,7 +52,9 @@ export type IdSeccion = (typeof SECCIONES_INFORME)[number]["id"];
 export const ANCLAS_INFORME = [
   { id: "riesgo", titulo: "Riesgo", bloque: "sintesis" },
   { id: "resumen", titulo: "Resumen clínico", bloque: "sintesis" },
-  { id: "hipotesis-principal", titulo: "Formulación destacada", bloque: "sintesis" },
+  { id: "hipotesis-principal", titulo: "Formulación principal", bloque: "sintesis" },
+  { id: "prioridades", titulo: "Tres prioridades", bloque: "sintesis" },
+  { id: "preguntas", titulo: "Preguntas para la próxima sesión", bloque: "sintesis" },
   { id: "conductas", titulo: "Repertorio conductual", bloque: "que-pasa" },
   { id: "variables-moduladoras", titulo: "Contexto y variables moduladoras", bloque: "que-pasa" },
   { id: "situaciones", titulo: "Análisis por situaciones", bloque: "que-pasa" },
@@ -60,8 +67,7 @@ export const ANCLAS_INFORME = [
   { id: "monitorizacion", titulo: "Plan de monitorización", bloque: "plan" },
   { id: "hipotesis-alternativas", titulo: "Hipótesis alternativas", bloque: "pendientes" },
   { id: "verificacion", titulo: "Datos faltantes y puntos a verificar", bloque: "pendientes" },
-  { id: "preguntas", titulo: "Preguntas para la próxima sesión", bloque: "pendientes" },
-  { id: "niveles-confianza", titulo: "Niveles de confianza", bloque: "pendientes" },
+  { id: "niveles-confianza", titulo: "Grado de apoyo", bloque: "pendientes" },
 ] as const satisfies readonly { id: string; titulo: string; bloque: IdSeccion }[];
 
 export type IdAncla = (typeof ANCLAS_INFORME)[number]["id"];

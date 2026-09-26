@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Bloque 5 · Control de calidad.
+ * Pestaña 5 · Revisión.
  *
  * Qué no sé y cómo podría estar equivocado: hipótesis alternativas, datos
  * faltantes, avisos del validador y las preguntas que se derivan de ellos. Es
@@ -10,14 +10,14 @@
  */
 
 import type { AnalisisFuncional } from "@/lib/types";
-import { BloqueBase, ListaEditable, SinHallazgos, SubSeccion } from "./primitivas";
+import { BloqueBase, SinHallazgos, SubSeccion } from "./primitivas";
 import { BloqueReanalisis, ListaAlertas, ReportarFallo, Seccion } from "./seccion";
 import { BotonAgregar, BotonBorrar, TextoEditable } from "../edicionManual";
 import {
-  INTRO_NIVELES_CONFIANZA,
-  NIVELES_CONFIANZA,
-  NOTA_PIE_NIVELES_CONFIANZA,
-} from "@/lib/nivelesConfianza";
+  INTRO_GRADO_APOYO,
+  NIVELES_APOYO,
+  NOTA_PIE_GRADO_APOYO,
+} from "@/lib/gradoApoyo";
 
 export default function BloquePendientes({
   visible,
@@ -214,19 +214,6 @@ export default function BloquePendientes({
         </section>
       )}
 
-      <Seccion id="preguntas" titulo="Preguntas para la próxima sesión" camposReanalisis={["preguntas_para_sesion"]}>
-        <ListaEditable
-          items={analisis.preguntas_para_sesion}
-          seccionId="preguntas"
-          etiqueta="pregunta"
-          onCambiar={(nuevos) =>
-            onEditarSeccion("preguntas", (c) => {
-              c.preguntas_para_sesion = nuevos;
-            })
-          }
-        />
-      </Seccion>
-
       {/* No usa <Seccion> a propósito: esta tarjeta no sale del análisis,
           así que no tiene nada que reanalizar ni ningún fallo del modelo
           que reportar. Solo necesita el envoltorio reordenable para
@@ -235,23 +222,23 @@ export default function BloquePendientes({
         <div className="mb-3 flex items-center gap-3">
           <span aria-hidden="true" className="h-5 w-1 rounded-full bg-accent" />
           <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
-            Niveles de confianza
+            Grado de apoyo en la nota
           </h2>
         </div>
         <p className="text-sm leading-relaxed text-ink-muted">
-          {INTRO_NIVELES_CONFIANZA}
+          {INTRO_GRADO_APOYO}
         </p>
         <ul className="mt-4 space-y-2">
-          {NIVELES_CONFIANZA.map(({ nivel, etiqueta, clase, variable, frase, resto }) => (
+          {NIVELES_APOYO.map(({ grado, etiqueta, clase, variable, frase, resto }) => (
             <li
-              key={nivel}
+              key={grado}
               style={{ borderLeft: `3px solid ${variable}` }}
               className="rounded-sm bg-canvas px-4 py-3"
             >
               {/* Dos columnas en pantalla ancha; apiladas en cuanto no
                   caben, que en un móvil es siempre. */}
               <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-4">
-                <p className="flex shrink-0 items-baseline gap-2 sm:w-24">
+                <p className="flex shrink-0 items-baseline gap-2 sm:w-32">
                   <span
                     aria-hidden="true"
                     className={`h-2 w-2 shrink-0 translate-y-[-1px] rounded-full ${clase}`}
@@ -266,7 +253,7 @@ export default function BloquePendientes({
           ))}
         </ul>
         <p className="mt-4 border-t border-divider pt-3 text-sm leading-relaxed text-ink-muted">
-          {NOTA_PIE_NIVELES_CONFIANZA}
+          {NOTA_PIE_GRADO_APOYO}
         </p>
       </section>
     </BloqueBase>
