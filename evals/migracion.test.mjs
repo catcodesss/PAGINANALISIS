@@ -61,6 +61,7 @@ const { derivarVistasProsa, formatearInformeTexto } = require(
 );
 const {
   actualizarEtiquetaNodo,
+  borrarNodo,
   apoyoCadena,
   construirNodosGrafo,
   derivarApoyo,
@@ -377,6 +378,16 @@ function guardadoEnV2() {
   a.capa_mc = JSON.parse(JSON.stringify(crudoV1().capa_mc));
   a.capa_act.reglas_verbales = a.reglas_verbales;
   delete a.reglas_verbales;
+  // Los procesos, como los guardaba la v2: texto libre y ancla por situación.
+  const originales = crudoV1().capa_act.procesos_act;
+  a.capa_act.procesos_act = a.capa_act.procesos_act.map((p, i) => ({
+    id: p.id,
+    proceso: originales[i].proceso,
+    vinculo_con_cadena: originales[i].vinculo_con_cadena,
+    situacion_id: a.situaciones[i]?.id ?? null,
+    eslabon_id: null,
+    evidencia: p.evidencia,
+  }));
   return a;
 }
 
@@ -447,6 +458,85 @@ prueba("los procedimientos migrados salen en el Plan exportado, no en una capa a
   assert.ok(!texto.includes("CAPA CONDUCTUAL"), "sigue la sección MC");
   assert.ok(texto.includes("Contingencia objetivo: R− que mantiene la evitación en reuniones."));
   assert.ok(texto.includes("Precauciones: Vigilar la aparición de conductas de seguridad"));
+});
+
+prueba("los procesos ACT pasan a anotaciones: enum, elemento y sin ancla por situación", () => {
+  for (const a of [normalizarAnalisis(crudoV1(), lineas), migrarAV3(guardadoEnV2())]) {
+    const [fusion, evitacion] = a.capa_act.procesos_act;
+    assert.equal(fusion.proceso, "fusion");
+    assert.equal(evitacion.proceso, "evitacion_experiencial");
+    assert.equal(fusion.elemento_objetivo, "Reuniones de equipo");
+    for (const p of a.capa_act.procesos_act) {
+      assert.ok(!("situacion_id" in p) && !("eslabon_id" in p) && !("vinculo_con_cadena" in p));
+      assert.ok(!p.revisar_proceso, "un proceso con nombre conocido no debe quedar para revisar");
+    }
+  }
+});
+
+prueba("un proceso que solo nombra una situación queda sin anclar, no en un nodo cualquiera", () => {
+  // «Reuniones de equipo» comparte palabras con el Ed de esa situación; engancharlo
+  // ahí sería la conjetura de la v2 en pequeño.
+  for (const a of [normalizarAnalisis(crudoV1(), lineas), migrarAV3(guardadoEnV2())]) {
+    assert.deepEqual(a.capa_act.procesos_act.map((p) => p.nodo_id), [null, null]);
+  }
+});
+
+prueba("un proceso cuyo elemento no casa con nada queda en null", () => {
+  const crudo = crudoV1();
+  crudo.capa_act.procesos_act = [{
+    proceso: "fusion", elemento_objetivo: "Contemplación del paisaje marítimo invernal",
+    justificacion_funcional: "x", evidencia: null,
+  }];
+  assert.equal(normalizarAnalisis(crudo, lineas).capa_act.procesos_act[0].nodo_id, null);
+});
+
+prueba("un proceso cuyo elemento es una conducta se ancla a esa conducta", () => {
+  const crudo = crudoV1();
+  const conducta = crudo.conductas_problema[0].descripcion;
+  crudo.capa_act.procesos_act = [{
+    proceso: "evitacion_experiencial", elemento_objetivo: conducta,
+    justificacion_funcional: "Se mantiene por el alivio del malestar pese al coste laboral.",
+    evidencia: null,
+  }];
+  const a = normalizarAnalisis(crudo, lineas);
+  assert.equal(a.capa_act.procesos_act[0].nodo_id, a.conductas_problema[0].id);
+});
+
+prueba("un proceso v2 anclado a un eslabón conserva ese nodo", () => {
+  const v2 = guardadoEnV2();
+  const eslabon = v2.situaciones.flatMap((s) => s.cadena_dbt?.eslabones ?? [])[0];
+  v2.capa_act.procesos_act[0].eslabon_id = eslabon.id;
+  assert.equal(migrarAV3(v2).capa_act.procesos_act[0].nodo_id, eslabon.id);
+});
+
+prueba("un proceso con nombre desconocido se conserva, marcado para revisar", () => {
+  const v2 = guardadoEnV2();
+  v2.capa_act.procesos_act[0].proceso = "Rigidez psicológica general";
+  const p = migrarAV3(v2).capa_act.procesos_act[0];
+  assert.equal(p.revisar_proceso, true);
+  assert.notEqual(p.proceso, "evitacion_experiencial", "el valor por defecto no puede afirmar evitación");
+  assert.ok(p.justificacion_funcional.includes("Rigidez psicológica general"));
+});
+
+prueba("borrar el nodo de un proceso lo deja sin anclar, no lo borra", () => {
+  const crudo = crudoV1();
+  crudo.capa_act.procesos_act = [{
+    proceso: "evitacion_experiencial", elemento_objetivo: crudo.conductas_problema[0].descripcion,
+    justificacion_funcional: "x", evidencia: null,
+  }];
+  const a = normalizarAnalisis(crudo, lineas);
+  borrarNodo(a, a.capa_act.procesos_act[0].nodo_id);
+  assert.equal(a.capa_act.procesos_act.length, 1);
+  assert.equal(a.capa_act.procesos_act[0].nodo_id, null);
+});
+
+prueba("el exportado da de cada proceso su elemento, su justificación y su cita", () => {
+  const texto = formatearInformeTexto(normalizarAnalisis(crudoV1(), lineas), "CASO-1", "fecha");
+  const lineasTexto = texto.split("\n");
+  const i = lineasTexto.findIndex((l) => l.startsWith("- Posible patrón de fusión — sobre: Reuniones de equipo (sin anclar"));
+  assert.ok(i >= 0, "falta el proceso con su elemento");
+  assert.ok(lineasTexto[i + 1].startsWith("  Justificación funcional: no declarada"));
+  assert.ok(lineasTexto[i + 2].startsWith("  De la nota: "));
 });
 
 console.log(

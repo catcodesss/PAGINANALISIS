@@ -115,6 +115,44 @@ conductas encubiertas. **SIN MEDIR**: la cuenta de OpenAI se quedó sin crédito
 (`429 You have no credits remaining`) al lanzar la corrida. Pendiente:
 `--reps=3` contra la 1.9.0 de arriba.
 
+### Fase 3 · Los procesos ACT pasan a ser anotaciones funcionales (prompt 1.11.0)
+
+- **Esquema**: `ProcesoACT` = `proceso` (enum `fusion | evitacion_experiencial |
+  presente | yo_conceptualizado | valores | accion`), `elemento_objetivo` (texto
+  del modelo), `nodo_id` (lo resuelve el servidor), `justificacion_funcional` y
+  `evidencia`. Fuera `situacion_id`, `eslabon_id` y `vinculo_con_cadena`: un
+  proceso se engancha a un elemento, no a una situación entera. `capa_act`
+  queda solo con `procesos_act`. Etiquetas y conversión en `lib/procesosACT.ts`.
+- **Anclaje** (`resolverNodosDeProcesos`, en `lib/identidad.ts`): mejor
+  coincidencia contra los nodos del grafo, menos los valores (su id es su
+  posición). **Un `elemento_objetivo` que solo nombra una situación queda sin
+  anclar**, aunque algún nodo de esa situación se le parezca: es lo que pasa
+  con los dos procesos de la maqueta («Reuniones de equipo», «Interacciones con
+  clientes»), que antes se pintaban en todos los nodos de su situación. Borrar
+  un nodo deja su proceso sin anclar, no lo borra.
+- **Migración**: el texto libre pasa al enum por palabras clave. Lo que no casa
+  se conserva en `justificacion_funcional`, recibe `fusion` y
+  `revisar_proceso: true`. El valor por defecto no es «evitación experiencial»
+  a propósito: la vista Matrix clasifica con ella, y caer ahí por defecto
+  afirmaría una función. `vinculo_con_cadena` → `elemento_objetivo`;
+  `eslabon_id` → `nodo_id`.
+- **Prompt** (`BLOQUE_ACT`): función, no topografía; el ejemplo de las dos
+  personas que piensan «voy a quedarme en blanco»; `justificacion_funcional`
+  dice qué controla el evento y qué dato lo sostiene, o que falta el contraste;
+  redacción de hipótesis.
+- **Interfaz**: en la vista AFC, etiqueta pequeña sobre su nodo con «posible»,
+  el proceso y el grado de apoyo (cita / parcial / inferencia), y aviso si no
+  hay justificación o hay que revisarlo. Los que no anclan se listan aparte,
+  «Procesos ACT sin anclar». No se crean nodos. La vista ACT ya lee solo
+  `nodo_id` (era imprescindible al cambiar el tipo; el resto de la vista es la
+  fase 4).
+- **Exportación**: cada proceso sale como «Posible patrón de …», con su
+  elemento (o «sin anclar»), su justificación (o «no declarada») y su cita.
+
+**Evals: PENDIENTES** (sin crédito). Comparar con `--reps=3` contra la 1.10.0,
+y contar procesos ACT sin justificación funcional. Referencia de hoy: 7 de 7
+(1.7.0) y 6 de 6 (1.8.0), todos sin ella porque el campo no existía.
+
 ## Plan por blanco (fase A: solo interfaz, sin tocar el prompt)
 
 El Plan eran tres listas por tipo de contenido —conductas alternativas, líneas

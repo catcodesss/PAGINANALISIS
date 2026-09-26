@@ -291,6 +291,11 @@ export function borrarNodo(analisis: AnalisisFuncional, id: string): void {
   analisis.variables_moduladoras = analisis.variables_moduladoras.filter((v) => v.id !== id);
   analisis.repertorio_disponible = analisis.repertorio_disponible.filter((r) => r.id !== id);
   analisis.reglas_verbales = analisis.reglas_verbales.filter((r) => r.id !== id);
+  // Un proceso ACT anclado a lo que se borra no se borra con ello: queda sin
+  // anclar, a la vista, en vez de desaparecer o saltar a otro nodo.
+  for (const p of analisis.capa_act.procesos_act) {
+    if (p.nodo_id === id) p.nodo_id = null;
+  }
   analisis.conductas_alternativas = analisis.conductas_alternativas.filter((a) => a.id !== id);
   const valor = /^valor_(\d+)$/.exec(id);
   if (valor) analisis.valores_y_metas.splice(Number(valor[1]) - 1, 1);

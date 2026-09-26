@@ -20,6 +20,7 @@ import {
   type TipoNodoGrafo,
 } from "@/lib/grafo";
 import VistaAFC from "./estilos/afc";
+import { EtiquetasProcesoACT, ProcesosSinAnclar } from "./AnotacionesACT";
 import VistaACT from "./estilos/act";
 import VistaDBT, { IconoNodo, subtipoDeNodo } from "./estilos/dbt";
 import s from "./afc.module.css";
@@ -566,18 +567,28 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
     />
   );
 
-  const renderNodoAFC = (n: NodoGrafo) => (
-    <Nodo
-      variante="afc"
-      nodo={n}
-      seleccionado={seleccionado === n.id}
-      atenuado={(filtro !== null && n.apoyo !== filtro) || (soloApoyado && n.apoyo < 3)}
-      conectando={modoConectar}
-      onSeleccionar={seleccionarNodo}
-      onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
-      onCita={irACita}
-    />
-  );
+  // Los procesos ACT se leen sobre su nodo, por id y solo por id. Lo que no
+  // ancla (o apunta a un nodo que ya no está) va a la lista «sin anclar».
+  const idsNodos = new Set(nodos.map((n) => n.id));
+  const procesosACT = analisis.capa_act.procesos_act;
+  const procesosSinAnclar = procesosACT.filter((p) => !p.nodo_id || !idsNodos.has(p.nodo_id));
+  const renderNodoAFC = (n: NodoGrafo) => {
+    const nodoAFC = (
+      <Nodo
+        variante="afc"
+        nodo={n}
+        seleccionado={seleccionado === n.id}
+        atenuado={(filtro !== null && n.apoyo !== filtro) || (soloApoyado && n.apoyo < 3)}
+        conectando={modoConectar}
+        onSeleccionar={seleccionarNodo}
+        onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
+        onCita={irACita}
+      />
+    );
+    const suyos = procesosACT.filter((p) => p.nodo_id === n.id);
+    if (suyos.length === 0) return nodoAFC;
+    return <div><EtiquetasProcesoACT procesos={suyos} />{nodoAFC}</div>;
+  };
   const renderAgregarAFC = (carril: CarrilGrafo, situacionId: string, alternativa: boolean) => (
     <BotonAgregarNodo
       variante="afc"
@@ -693,6 +704,9 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
                 if (texto) aplicar((copia) => agregarNodo(copia, situacionId, "funcion", texto));
               }}
             />
+          )}
+          {esAFC && procesosSinAnclar.length > 0 && (
+            <div className="mt-5"><ProcesosSinAnclar procesos={procesosSinAnclar} /></div>
           )}
         </div>
         </div>

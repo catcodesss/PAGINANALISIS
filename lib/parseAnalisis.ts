@@ -1,5 +1,6 @@
 import { resolverCita } from "./citas";
 import { migrarAV3 } from "./identidad";
+import { procesoAV3 } from "./procesosACT";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 import {
   CAMPOS_ANALISIS_FUNCIONAL,
@@ -432,14 +433,13 @@ function normalizarReglasVerbales(d: Record<string, unknown>): ReglaVerbal[] {
 function normalizarCapaAct(valor: unknown, lineas: string[]): CapaModalidadACT {
   const d = comoObjeto(valor);
   return {
+    // Acepta la forma v3 y la v2 (una respuesta o un JSON anterior): procesoAV3
+    // convierte la vieja y marca para revisar lo que no casa con el enum.
     procesos_act: comoArreglo<unknown>(d.procesos_act).map((p) => {
       const po = comoObjeto(p);
       return {
+        ...procesoAV3(po),
         id: typeof po.id === "string" ? po.id : SIN_ID,
-        proceso: comoTexto(po.proceso),
-        vinculo_con_cadena: comoTexto(po.vinculo_con_cadena),
-        situacion_id: comoIdONulo(po.situacion_id),
-        eslabon_id: comoIdONulo(po.eslabon_id),
         evidencia: resolverCita(lineas, po.evidencia),
       };
     }),

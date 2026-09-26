@@ -464,18 +464,37 @@ export interface ReglaVerbal {
   analisis: string;
 }
 
+/** Los seis polos de inflexibilidad del hexaflex. Etiquetas en lib/procesosACT.ts. */
+export type TipoProcesoACT =
+  | "fusion"
+  | "evitacion_experiencial"
+  | "presente"
+  | "yo_conceptualizado"
+  | "valores"
+  | "accion";
+
+/**
+ * Una anotación funcional sobre UN elemento del grafo, no una etiqueta sobre
+ * una situación entera (esquema v3). Ver lib/procesosACT.ts.
+ *
+ * `nodo_id` lo resuelve el servidor desde `elemento_objetivo`, una vez, en
+ * lib/identidad.ts. Si no resuelve queda en null y se enseña como «sin
+ * anclar»: nunca se engancha al primer nodo que se parezca.
+ */
 export interface ProcesoACT {
   id: Id;
-  proceso: string;
-  /**
-   * Cómo se engancha el proceso a la cadena, en prosa. A diferencia de las otras
-   * referencias, esta NO es redundante con lo que apunta: dice algo que el id no
-   * dice, así que los ids se añaden y el texto se queda.
-   */
-  vinculo_con_cadena: string;
-  situacion_id: Id | null;
-  eslabon_id: Id | null;
+  proceso: TipoProcesoACT;
+  /** El texto del nodo o de la relación, tal como lo escribe el modelo. */
+  elemento_objetivo: string;
+  nodo_id: Id | null;
+  /** Qué controla ese evento y qué dato de la nota lo sostiene. Vacío = sin base declarada. */
+  justificacion_funcional: string;
   evidencia: Cita;
+  /**
+   * Solo en procesos migrados de la v2 cuyo texto libre no casaba con ningún
+   * proceso: se asignó el valor por defecto y el clínico tiene que revisarlo.
+   */
+  revisar_proceso?: true;
 }
 
 /**

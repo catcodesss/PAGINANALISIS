@@ -36,6 +36,7 @@ import {
 import { terminoEnTexto } from "./terminos";
 import { hayCamino, idNodoSituacion } from "./aristas";
 import { apoyoCadena, construirNodosGrafo, type NodoGrafo } from "./grafo";
+import { ETIQUETA_PROCESO_ACT } from "./procesosACT";
 import {
   avisosDeTarjeta,
   construirPlanPorBlanco,
@@ -751,12 +752,24 @@ export function formatearInformeTexto(
 
   bloques["modalidad"] = (
     seccion(
-      "CAPA ACT — PROCESOS DE INFLEXIBILIDAD",
+      "CAPA ACT — PROCESOS DE INFLEXIBILIDAD (anotaciones funcionales; hipótesis)",
       analisis.capa_act.procesos_act
-        .map(
-          (p) =>
-            `- ${p.proceso}: ${p.vinculo_con_cadena}\n  De la nota: ${textoCita(p.evidencia)}`
-        )
+        .map((p) => {
+          // El elemento se dice con el texto del nodo al que quedó anclado;
+          // si no ancló, con las palabras del modelo y diciendo que no ancló.
+          const nodo = p.nodo_id ? nodos.find((n) => n.id === p.nodo_id) : undefined;
+          const sobre = nodo
+            ? `sobre: ${nodo.etiqueta}`
+            : `sobre: ${p.elemento_objetivo || "elemento no indicado"} (sin anclar a un elemento del grafo)`;
+          return [
+            `- Posible patrón de ${ETIQUETA_PROCESO_ACT[p.proceso].toLowerCase()} — ${sobre}`,
+            `  Justificación funcional: ${p.justificacion_funcional || "no declarada; la etiqueta sola no establece qué controla la conducta."}`,
+            `  De la nota: ${textoCita(p.evidencia)}`,
+            ...(p.revisar_proceso
+              ? ["  Pendiente de revisar: el proceso se asignó al migrar un informe anterior."]
+              : []),
+          ].join("\n");
+        })
         .join("\n")
     )
   );

@@ -8,6 +8,8 @@ import {
   type Situacion,
 } from "./types";
 import { materializarAristas } from "./aristas";
+import { construirNodosGrafo } from "./grafo";
+import { esProcesoV3, procesoAV3 } from "./procesosACT";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 
 /**
@@ -360,20 +362,61 @@ function resolverReferencias(a: AnalisisFuncional): void {
     }
   }
 
-  for (const p of a.capa_act.procesos_act) {
-    if (p.eslabon_id === null) {
-      p.eslabon_id = mejorCoincidencia(p.vinculo_con_cadena, eslabones);
-    }
-    if (p.situacion_id === null) {
-      // Si el eslabón resolvió, la situación sale de él y no se vuelve a
-      // adivinar: un eslabón pertenece a una sola situación, y deducirla del id
-      // es exacto donde la prosa sería otra conjetura.
-      p.situacion_id =
-        a.situaciones.find((s) =>
-          (s.cadena_dbt?.eslabones ?? []).some((e) => e.id === p.eslabon_id)
-        )?.id ?? mejorCoincidencia(p.vinculo_con_cadena, situaciones);
-    }
+  resolverNodosDeProcesos(a);
+}
+
+/**
+ * Cada proceso ACT se ancla al nodo del grafo que nombra su
+ * `elemento_objetivo`, o a ninguno.
+ *
+ * Un proceso que nombra una situación entera («Reuniones de equipo») se queda
+ * SIN ANCLAR aunque algún nodo de esa situación comparta palabras con el
+ * nombre: era exactamente la forma de la v2 —pintar el proceso en todos los
+ * nodos de la situación— y engancharlo al primero que se parezca sería la
+ * misma conjetura en pequeño. Se enseña aparte y el clínico lo coloca.
+ *
+ * Los valores quedan fuera como candidatos: su id sale de la posición en la
+ * lista, y borrar uno movería el ancla a otro sin que nada lo avisara.
+ */
+function resolverNodosDeProcesos(a: AnalisisFuncional): void {
+  const pendientes = a.capa_act.procesos_act.filter((p) => p.nodo_id === null);
+  if (pendientes.length === 0) return;
+
+  const vistos = new Set<Id>();
+  const candidatos: { id: Id; texto: string }[] = [];
+  for (const n of construirNodosGrafo(a)) {
+    if (n.tipo === "valor" || vistos.has(n.id)) continue;
+    vistos.add(n.id);
+    candidatos.push({ id: n.id, texto: n.etiqueta });
   }
+  const nombresDeSituacion = a.situaciones.map((s) => raicesSignificativas(s.nombre));
+
+  for (const p of pendientes) {
+    const raices = raicesSignificativas(p.elemento_objetivo);
+    const nombraSituacion =
+      raices.size > 0 &&
+      nombresDeSituacion.some((nombre) => [...raices].every((r) => nombre.has(r)));
+    if (nombraSituacion) continue;
+    p.nodo_id = mejorCoincidencia(p.elemento_objetivo, candidatos);
+  }
+}
+
+/**
+ * Los procesos ACT guardados en v2 (texto libre, `vinculo_con_cadena`, ancla
+ * por situación) pasan a la forma v3. La cita ya está resuelta y se conserva.
+ */
+function llevarProcesosAV3(analisis: AnalisisFuncional): void {
+  const capa = analisis.capa_act as unknown as Record<string, unknown> | undefined;
+  if (!capa || !Array.isArray(capa.procesos_act)) return;
+  capa.procesos_act = (capa.procesos_act as Record<string, unknown>[]).map((p) => {
+    if (!p || typeof p !== "object") return p;
+    if (esProcesoV3(p)) return p;
+    const evidencia =
+      p.evidencia && typeof p.evidencia === "object"
+        ? p.evidencia
+        : SIN_CITA("sin_referencia");
+    return { ...procesoAV3(p), evidencia };
+  });
 }
 
 /**
@@ -469,8 +512,9 @@ function subirReglasVerbales(analisis: AnalisisFuncional): void {
  * Lleva un análisis de cualquier versión anterior a la actual (v3).
  *
  * Primero cambia la forma de lo que la v3 reorganizó —la capa MC se funde en
- * las líneas de intervención y las reglas verbales suben al núcleo— y
- * después da identidad y resuelve referencias (migrarAV2). Es idempotente y no destructivo: sobre un análisis que ya es v3
+ * las líneas de intervención, las reglas verbales suben al núcleo y los
+ * procesos ACT pasan a anotaciones— y después da identidad y resuelve
+ * referencias (migrarAV2). Es idempotente y no destructivo: sobre un análisis que ya es v3
  * no cambia nada, y ningún texto se borra.
  *
  * Se aplica en tres sitios: al normalizar la respuesta del modelo
@@ -482,6 +526,7 @@ function subirReglasVerbales(analisis: AnalisisFuncional): void {
 export function migrarAV3(analisis: AnalisisFuncional): AnalisisFuncional {
   fundirCapaMc(analisis);
   subirReglasVerbales(analisis);
+  llevarProcesosAV3(analisis);
   return migrarAV2(analisis);
 }
 
