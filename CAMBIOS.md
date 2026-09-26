@@ -100,6 +100,21 @@ bloque ACT corto; ahora, el principio 30 de 30. Con una repetición no está
 probado. El encargo pedía moverla sin cambiar su contenido, así que no se ha
 compensado.
 
+Con `--reps=3` (27 informes por versión) la caída se confirma:
+
+| Prompt | Comprobaciones | Citas | Reglas | Informes con alguna regla |
+|---|---|---|---|---|
+| 1.8.0 | 123/141 | 171/171 (100%) | 14 | 14 de 27 |
+| 1.9.0 | 119/141 | 174/175 (99%) | 7 | 7 de 27 |
+
+**Prompt 1.10.0**: el principio 30 no cambia; la autoverificación del
+principio 12 gana la pregunta «¿La nota contiene reglas ("debo", "tengo que",
+"si hago X pasará Y", "no puedo") que controlan alguna conducta y NO registré
+ninguna en "reglas_verbales"?», el mismo patrón que ya funciona con las
+conductas encubiertas. **SIN MEDIR**: la cuenta de OpenAI se quedó sin crédito
+(`429 You have no credits remaining`) al lanzar la corrida. Pendiente:
+`--reps=3` contra la 1.9.0 de arriba.
+
 ## Plan por blanco (fase A: solo interfaz, sin tocar el prompt)
 
 El Plan eran tres listas por tipo de contenido —conductas alternativas, líneas

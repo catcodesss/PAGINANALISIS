@@ -4,7 +4,7 @@
  * principios numerados de forma que altere el análisis producido — no hace
  * falta subirla por ajustes de formato o de los bloques por modalidad.
  */
-export const VERSION_PROMPT = "1.9.0";
+export const VERSION_PROMPT = "1.10.0";
 
 const NUCLEO = `Eres un analista de conducta experto en análisis funcional clínico y formulación de casos, con formación rigurosa en análisis de conducta aplicado, contextualismo funcional y evaluación conductual. Lees notas clínicas desordenadas de un psicólogo y produces un análisis funcional estructurado de nivel experto.
 
@@ -57,6 +57,7 @@ PRINCIPIOS OBLIGATORIOS DEL NÚCLEO (aplican siempre, en cualquier modalidad):
 - ¿Fragmenté en situaciones distintas contingencias que son la misma?
 - ¿Alguna "descripcion" de conducta problema es en realidad una etiqueta o inferencia ("ansiedad", "resistencia") en vez de topografía observable?
 - ¿La nota describe rumiación, anticipación o repaso mental y NO registré ninguna conducta encubierta?
+- ¿La nota contiene reglas ("debo", "tengo que", "si hago X pasará Y", "no puedo") que controlan alguna conducta y NO registré ninguna en "reglas_verbales"?
 - ¿Propuse como intervención alguna conducta que en la nota ya funciona como evitación o conducta de seguridad?
 - ¿Clasifiqué como variable biológica algo que es consecuencia del problema (sueño, peso, fatiga) en vez de un dato médico?
 - ¿Alguien del entorno acomoda el problema y lo dejé fuera del análisis principal?
