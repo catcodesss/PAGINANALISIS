@@ -153,6 +153,30 @@ conductas encubiertas. **SIN MEDIR**: la cuenta de OpenAI se quedó sin crédito
 y contar procesos ACT sin justificación funcional. Referencia de hoy: 7 de 7
 (1.7.0) y 6 de 6 (1.8.0), todos sin ella porque el campo no existía.
 
+### Fase 4 · La vista ACT (Matrix) clasifica por función
+
+Qué va en cada cuadrante lo decide `lib/matrixACT.ts#clasificarMatrix`, una
+función pura con pruebas; `estilos/act.tsx` solo pinta.
+
+- **Malestar interior**: solo eventos privados (eslabones encubiertos y EC).
+  Fuera la OM, que altera el valor de un reforzador y no es malestar.
+- **Procesos**: solo por `nodo_id`, con la misma etiqueta que en AFC
+  («posible», grado de apoyo). Nada de coincidir por situación. Los que no
+  anclan, en «Procesos ACT sin anclar».
+- **Alejamiento**: solo conductas con base funcional, es decir, una situación
+  suya mantenida por refuerzo negativo o una anotación de evitación
+  experiencial **con justificación funcional y sin marca de revisar**. Una
+  anotación vacía o migrada de la v2 se enseña pero no clasifica. El resto de
+  conductas problema van a «Conductas sin función de alejamiento
+  establecida», no a un cuadrante por su tipo. Cada conducta sale una vez
+  aunque esté en dos situaciones.
+- **Reglas verbales**: la franja se queda, leyendo `analisis.reglas_verbales`.
+- **Textos**: el selector de lente decía «las cuatro vistas», y la cabecera
+  impresa, Configuración y la guía prometían una capa «conductual». Ahora
+  dicen tres vistas y capas ACT y DBT.
+
+Lo fija `evals/maqueta.test.mjs` (4 pruebas nuevas). Sin cambios en el prompt.
+
 ## Plan por blanco (fase A: solo interfaz, sin tocar el prompt)
 
 El Plan eran tres listas por tipo de contenido —conductas alternativas, líneas

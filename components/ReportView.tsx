@@ -132,7 +132,7 @@ function SelectorDeLente({
         })}
       </div>
       <p className="text-xs text-ink-muted">
-        Las cuatro vistas leen las mismas entidades y relaciones. La preferencia
+        Las tres vistas leen las mismas entidades y relaciones. La preferencia
         se recuerda por caso; la exportación siempre usa AFC.
       </p>
     </div>
@@ -172,7 +172,7 @@ function PrintOnlyHeader({
         </div>
         <div className="print-meta-item">
           <span className="print-meta-label">Modalidades incluidas</span>
-          <span className="print-meta-value">ACT · DBT · Conductual</span>
+          <span className="print-meta-value">AFC · ACT · DBT</span>
         </div>
         <div className="print-meta-item">
           <span className="print-meta-label">Páginas</span>

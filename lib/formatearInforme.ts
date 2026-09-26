@@ -313,7 +313,7 @@ const SALTO = "\n";
  * exportado salga en el orden que el clínico dejó en pantalla.
  *
  * Algunos bloques agrupan varios apartados del texto —«situaciones» arrastra
- * la acomodación del entorno, «modalidad» las tres capas— porque en pantalla
+ * la acomodación del entorno, «modalidad» las capas ACT y DBT— porque en pantalla
  * también se mueven juntos.
  */
 /** Se conserva el nombre porque lo importan la exportación a Word y el reordenado. */

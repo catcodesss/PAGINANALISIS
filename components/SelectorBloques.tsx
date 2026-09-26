@@ -17,7 +17,7 @@ const ORDEN_CATEGORIAS: CategoriaBloque[] = [
  *
  * Por qué existe: generar el informe completo cuesta tokens y tiempo. Si el
  * clínico solo quiere las conductas problema o la lectura ACT de un caso, no
- * tiene sentido producir las tres capas de modalidad.
+ * tiene sentido producir las dos capas de modalidad.
  *
  * Las dependencias entre secciones las resuelve lib/bloques.ts, no esta
  * interfaz: aquí solo se marcan bloques con sentido clínico, no campos sueltos.

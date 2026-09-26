@@ -31,6 +31,7 @@ execFileSync(
     "lib/maqueta.ts",
     "lib/formatearInforme.ts",
     "lib/parseAnalisis.ts",
+    "lib/matrixACT.ts",
     "--outDir", ".tmp-evals",
     "--rootDir", "lib",
     "--module", "commonjs",
@@ -152,6 +153,66 @@ prueba("el ejemplo enseña los antiguos procedimientos MC como intervenciones co
     assert.ok(texto.includes(`Contingencia objetivo: ${l.contingencia_objetivo}`));
   }
   assert.ok(!texto.includes("CAPA CONDUCTUAL"), "sigue la sección MC aparte");
+});
+
+/* ── Procesos ACT y vista Matrix ─────────────────────────────────────────── */
+
+const { construirNodosGrafo } = require(join(RAIZ, ".tmp-evals/grafo.js"));
+const { clasificarMatrix } = require(join(RAIZ, ".tmp-evals/matrixACT.js"));
+
+prueba("ningún proceso ACT del ejemplo se pinta en un nodo que no le corresponde", () => {
+  // Los dos procesos del ejemplo nombran una situación entera; en la v2 se
+  // pintaban en todos sus nodos. Ahora quedan sin anclar, a la vista.
+  const ids = new Set(construirNodosGrafo(ANALISIS_MINIMO).map((n) => n.id));
+  const procesos = ANALISIS_MINIMO.capa_act.procesos_act;
+  assert.ok(procesos.length > 0);
+  for (const p of procesos) {
+    assert.ok(p.nodo_id === null || ids.has(p.nodo_id), `ancla a un nodo inexistente: ${p.nodo_id}`);
+  }
+  assert.deepEqual(procesos.map((p) => p.nodo_id), [null, null]);
+});
+
+prueba("Matrix: el malestar interior solo tiene eventos privados", () => {
+  const m = clasificarMatrix(ANALISIS_MINIMO, construirNodosGrafo(ANALISIS_MINIMO));
+  assert.ok(m.interior.length > 0);
+  assert.ok(m.interior.every((n) => n.tipo === "encubierta" || n.tipo === "ec"), "se coló una OM u otro nodo");
+});
+
+prueba("Matrix: alejamiento solo con base funcional; el resto, en su fila", () => {
+  const a = structuredClone(ANALISIS_MINIMO);
+  for (const s of a.situaciones) if (s.cadena_operante) s.cadena_operante.tipo_contingencia = "refuerzo positivo";
+  a.capa_act.procesos_act = [];
+  const nodos = () => construirNodosGrafo(a);
+  let m = clasificarMatrix(a, nodos());
+  assert.equal(m.alejamiento.length, 0, "una conducta cayó en alejamiento solo por ser conducta problema");
+  assert.equal(m.sinFuncionEstablecida.length, a.conductas_problema.filter((c) =>
+    a.situaciones.some((s) => s.conductas_ids.includes(c.id))).length);
+
+  const objetivo = m.sinFuncionEstablecida[0];
+  const proceso = {
+    id: "pac_9", proceso: "evitacion_experiencial", elemento_objetivo: objetivo.etiqueta,
+    nodo_id: objetivo.id, justificacion_funcional: "", evidencia: { texto: null, verificada: false, motivo: "sin_referencia" },
+  };
+  a.capa_act.procesos_act = [proceso];
+  m = clasificarMatrix(a, nodos());
+  assert.equal(m.alejamiento.length, 0, "una anotación sin justificación no establece la función");
+
+  proceso.justificacion_funcional = "Reduce la activación y se mantiene pese al coste laboral.";
+  m = clasificarMatrix(a, nodos());
+  assert.deepEqual(m.alejamiento.map((n) => n.id), [objetivo.id]);
+
+  // Y el refuerzo negativo de su situación también la establece.
+  a.capa_act.procesos_act = [];
+  const suya = a.situaciones.find((s) => s.conductas_ids.includes(objetivo.id));
+  suya.cadena_operante.tipo_contingencia = "refuerzo negativo";
+  m = clasificarMatrix(a, nodos());
+  assert.ok(m.alejamiento.some((n) => n.id === objetivo.id));
+});
+
+prueba("Matrix: una conducta en dos situaciones sale una sola vez", () => {
+  const m = clasificarMatrix(ANALISIS_MINIMO, construirNodosGrafo(ANALISIS_MINIMO));
+  const ids = [...m.alejamiento, ...m.sinFuncionEstablecida].map((n) => n.id);
+  assert.equal(new Set(ids).size, ids.length);
 });
 
 console.log(`\n${pasadas} pruebas correctas\n`);

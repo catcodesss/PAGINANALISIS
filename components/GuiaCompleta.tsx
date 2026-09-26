@@ -66,7 +66,7 @@ const PREGUNTAS = [
   ],
   [
     "¿Por qué el análisis tarda tanto?",
-    "Por defecto genera el informe completo, incluidas las tres capas de modalidad (ACT, DBT y conductual), para que puedas alternar entre ellas después sin volver a consultar a la IA. Si solo necesitas una parte, usa la flecha del botón de generar y elige las secciones: es bastante más rápido y más barato.",
+    "Por defecto genera el informe completo, incluidas las dos capas de modalidad (ACT y DBT), para que puedas alternar entre ellas después sin volver a consultar a la IA. Si solo necesitas una parte, usa la flecha del botón de generar y elige las secciones: es bastante más rápido y más barato.",
   ],
   [
     "¿Puedo pedir solo una parte del informe?",

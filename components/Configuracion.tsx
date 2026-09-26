@@ -45,7 +45,7 @@ const ACENTOS: { valor: Acento; etiqueta: string; muestra: string }[] = [
 ];
 
 const PLAN_GRATIS = [
-  "Análisis funcional completo, con las tres capas (ACT, DBT y conductual)",
+  "Análisis funcional completo, con las capas ACT y DBT",
   "Citas verificables, validadores y datos faltantes",
   "Copiar, imprimir y exportar a Word",
   "Editar el informe a mano y reordenar sus bloques",

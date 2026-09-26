@@ -24,13 +24,13 @@ node --experimental-strip-types evals/razonamiento.test.mjs # 11
 node evals/validadores.test.mjs                             # 47
 node evals/reporteFallo.test.mjs                            #  7
 node evals/coherencia.test.mjs                              # 20
-node evals/maqueta.test.mjs                                 #  8
+node evals/maqueta.test.mjs                                 # 12
 node evals/migracion.test.mjs                               # 34
 node evals/plan.test.mjs                                    # 19
 npx eslint components lib app
 ```
 
-167 pruebas. `eslint` da 0 errores y 1 warning preexistente en
+171 pruebas. `eslint` da 0 errores y 1 warning preexistente en
 `PanelRecomendaciones.tsx`. Esta lista y `.github/workflows/evals.yml` **tienen
 que decir lo mismo**.
 
