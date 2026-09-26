@@ -397,7 +397,7 @@ function BotonAgregarNodo({
 export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const redibujar = useRef<() => void>(() => {});
-  const pila =useRef<AnalisisFuncional[]>([]);
+  const pila = useRef<AnalisisFuncional[]>([]);
   const rehacer = useRef<AnalisisFuncional[]>([]);
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   const [modoConectar, setModoConectar] = useState(false);
@@ -405,7 +405,6 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
   const [filtro, setFiltro] = useState<1 | 2 | 3 | null>(null);
   const [soloApoyado, setSoloApoyado] = useState(false);
   const [lineaActiva, setLineaActiva] = useState<number | null>(null);
-  const [bajoPuntero, setBajoPuntero] = useState<string | null>(null);
   const [trazos, setTrazos] = useState<Trazo[]>([]);
   const [puedeDeshacer, setPuedeDeshacer] = useState(false);
   const [puedeRehacer, setPuedeRehacer] = useState(false);
@@ -559,9 +558,6 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
     />
   );
 
-  // Las relaciones quedan tenues por defecto y se encienden las del nodo que
-  // se señala o se selecciona: así no dominan el tablero.
-  const enFoco = bajoPuntero ?? origenConexion ?? seleccionado;
   const esAFC = estilo === "afc";
 
   return (
@@ -601,37 +597,18 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
         <div
           ref={contenedorRef}
           className={esAFC ? `relative ${s.raiz} ${s.lienzo} ${poppinsAfc.variable} ${interAfc.variable}` : "relative min-w-0 print:hidden"}
-          onMouseOver={esAFC ? (evento) => {
-            const id = (evento.target as HTMLElement).closest<HTMLElement>("[data-nodo-id]")?.dataset.nodoId ?? null;
-            if (id !== bajoPuntero) setBajoPuntero(id);
-          } : undefined}
-          onMouseLeave={esAFC ? () => setBajoPuntero(null) : undefined}
         >
-          <svg className={`pointer-events-none absolute inset-0 h-full w-full overflow-visible ${esAFC ? "block" : "z-0 hidden md:block"}`} style={esAFC ? { zIndex: 1 } : undefined} aria-hidden="true">
-            <defs><marker id="punta-afc" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="currentColor" /></marker></defs>
-            {trazos.map((trazo) => {
-              if (!esAFC) {
-                return <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink-muted/60"} markerEnd="url(#punta-afc)" />;
-              }
-              const activa = enFoco !== null && (trazo.desde === enFoco || trazo.hasta === enFoco);
-              // Las que cruzan tableros siguen en el modelo y en la ficha; en
-              // el lienzo solo aparecen con uno de sus extremos en foco.
-              if (trazo.lejana && !activa) return null;
-              return (
-                <path
-                  key={trazo.id}
-                  d={trazo.d}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={activa ? 2.5 : 1.75}
-                  strokeDasharray={trazo.tipo === "moderadora" ? "5 4" : undefined}
-                  className={trazo.tipo === "bucle" ? "text-warn" : undefined}
-                  style={{ color: trazo.tipo === "bucle" ? undefined : "var(--afc-line)", opacity: activa ? 0.95 : modoConectar ? 0.55 : 0.26, transition: "opacity 150ms ease" }}
-                  markerEnd="url(#punta-afc)"
-                />
-              );
-            })}
-          </svg>
+          {/* En la vista AFC las relaciones ya se leen en las columnas y en la
+              Ficha ("Relaciones del nodo"); las líneas curvas encima del
+              tablero sobraban como trazo visual y no se dibujan aquí. */}
+          {!esAFC && (
+            <svg className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full overflow-visible md:block" aria-hidden="true">
+              <defs><marker id="punta-afc" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="currentColor" /></marker></defs>
+              {trazos.map((trazo) => (
+                <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink-muted/60"} markerEnd="url(#punta-afc)" />
+              ))}
+            </svg>
+          )}
 
           {estilo !== "afc" ? (
             <div className="relative z-10">
