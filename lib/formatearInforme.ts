@@ -1,4 +1,4 @@
-import { ETIQUETA_ESQUEMA, type AnalisisFuncional, type Cita, type Situacion } from "./types";
+import { ETIQUETA_ESQUEMA, type Alerta, type AnalisisFuncional, type Cita, type Situacion } from "./types";
 import { agruparAlertas } from "./validadores";
 import { situacionDeLaCadenaDBT } from "./identidad";
 import {
@@ -36,8 +36,25 @@ import {
 import { terminoEnTexto } from "./terminos";
 import { hayCamino, idNodoSituacion } from "./aristas";
 import { apoyoCadena, construirNodosGrafo, type NodoGrafo } from "./grafo";
+import {
+  alertasDeRuta,
+  construirPlanPorBlanco,
+  datosFaltantesDe,
+  enumerarDatosFaltantes,
+  estadoDeBlanco,
+  ETIQUETA_ESTADO_PLAN,
+  type AlternativaDeBlanco,
+} from "./plan";
 
 const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
+
+/** Un aviso del validador junto a la propuesta que señala. */
+function textoAvisos(alertas: readonly Alerta[], sangria: string): string[] {
+  return alertas.map(
+    (a) =>
+      `${sangria}⚠ ${a.gravedad === "alta" ? "Requiere revisión" : "Conviene revisar"}: ${traducirMensajeAlerta(a.mensaje)}`
+  );
+}
 
 /**
  * Lo que la sección "Hipótesis de origen" advierte de sí misma, en pantalla y
@@ -597,16 +614,76 @@ export function formatearInformeTexto(
     )
   );
 
-  bloques["conductas-alternativas"] = (
-    seccion(
-      "CONDUCTAS ALTERNATIVAS PROPUESTAS",
-      analisis.conductas_alternativas
-        .map(
-          (c) =>
-            `- [${c.situacion}] ${c.conducta_propuesta}\n  Consecuencia necesaria: ${c.consecuencia_necesaria}`
-        )
-        .join("\n")
-    )
+  // La misma estructura que en pantalla (ver lib/plan.ts): un documento que se
+  // lee fuera de la herramienta tiene que traer las conexiones hechas, y los
+  // avisos junto a la propuesta que señalan, no solo al final.
+  const plan = construirPlanPorBlanco(analisis);
+  const textoAlternativa = (a: AlternativaDeBlanco, sangria: string): string[] => {
+    const faltan = datosFaltantesDe(analisis, a.alertas);
+    return [
+      ...(faltan.length > 0
+        ? [`${sangria}Información insuficiente para darla por propuesta. Primero explorar: ${enumerarDatosFaltantes(faltan)}`]
+        : []),
+      `${sangria}${faltan.length > 0 ? "Propuesta condicional: " : ""}${a.alternativa.conducta_propuesta}`,
+      `${sangria}  Consecuencia necesaria: ${a.alternativa.consecuencia_necesaria}`,
+      ...textoAvisos(
+        a.alertas.filter(
+          (x) => x.codigo !== "intervencion_depende_de_dato_faltante" || faltan.length === 0
+        ),
+        sangria + "  "
+      ),
+    ];
+  };
+  bloques["conductas-alternativas"] = seccion(
+    "PLAN POR BLANCO",
+    [
+      ...plan.tarjetas.flatMap((t, n) => {
+        const avisos = [...t.alertasConducta, ...t.alternativas.flatMap((a) => a.alertas)];
+        const estado = estadoDeBlanco(analisis, t.conducta.id, avisos.length > 0);
+        const cabecera = `Blanco ${n + 1} · ${
+          t.prioridad ? `Prioridad ${t.prioridad}` : "Sin priorizar"
+        } · Estado: ${ETIQUETA_ESTADO_PLAN[estado]}`;
+        if (estado === "descartado") {
+          return [cabecera, `  ${t.conducta.descripcion}`, ""];
+        }
+        const funciones =
+          t.hipotesis.length > 0
+            ? t.hipotesis.map((h) => h.funcion || h.enunciado)
+            : t.funcionesDeSituacion;
+        return [
+          cabecera,
+          `  ${t.conducta.descripcion}`,
+          ...textoAvisos(t.alertasConducta, "  "),
+          ...(t.priorizacion?.justificacion
+            ? [`  Por qué se prioriza: ${t.priorizacion.justificacion}`]
+            : []),
+          `  Función hipotetizada: ${
+            funciones.length > 0
+              ? funciones.join(" / ")
+              : "sin función hipotetizada; explorar qué la mantiene antes de intervenir."
+          }`,
+          t.conducta.es_conducta_seguridad
+            ? "  Conducta alternativa: es conducta de seguridad, blanco de eliminación; no lleva alternativa propia."
+            : t.alternativas.length === 0
+              ? "  Conducta alternativa: el análisis no propone ninguna."
+              : "  Conducta alternativa:",
+          ...(t.conducta.es_conducta_seguridad
+            ? []
+            : t.alternativas.flatMap((a) => textoAlternativa(a, "  - "))),
+          "",
+        ];
+      }),
+      ...(plan.alternativasSinBlanco.length > 0
+        ? [
+            "Conductas alternativas sin blanco asignado:",
+            ...plan.alternativasSinBlanco.flatMap((a) =>
+              textoAlternativa(a, `- [${a.alternativa.situacion}] `)
+            ),
+          ]
+        : []),
+    ]
+      .join("\n")
+      .trim()
   );
 
   bloques["modalidad"] = (
@@ -732,7 +809,7 @@ export function formatearInformeTexto(
   // informe lo dice en vez de callarlo.
   const monitorizacion = analisis.plan_de_monitorizacion;
   bloques["monitorizacion"] = seccion(
-    "PLAN DE MONITORIZACIÓN",
+    "MONITORIZACIÓN DEL CASO",
     monitorizacion
       ? [
           `Qué se mide: ${monitorizacion.que_se_mide || "—"}`,
@@ -748,7 +825,20 @@ export function formatearInformeTexto(
 
   bloques["preguntas"] = seccion("PREGUNTAS PARA LA PRÓXIMA SESIÓN", listaOTexto(analisis.preguntas_para_sesion));
   bloques["intervencion"] = (
-    seccion("LÍNEAS DE INTERVENCIÓN TENTATIVAS", listaOTexto(analisis.lineas_de_intervencion_tentativas))
+    seccion(
+      "LÍNEAS DE INTERVENCIÓN (AÚN SIN ASIGNAR A UN BLANCO)",
+      analisis.lineas_de_intervencion_tentativas.length === 0
+        ? listaOTexto([])
+        : analisis.lineas_de_intervencion_tentativas
+            .flatMap((l, i) => [
+              `- ${l}`,
+              ...textoAvisos(
+                alertasDeRuta(analisis.alertas, `lineas_de_intervencion_tentativas[${i}]`),
+                "  "
+              ),
+            ])
+            .join("\n")
+    )
   );
 
   /*

@@ -69,13 +69,13 @@ export default function VistaEjemplo({
      se vuelven a pasar las comprobaciones deterministas, que no cuestan nada.
      Existe aquí para poder revisar también el aspecto de una sección editada. */
   function editarSeccion(
-    seccionId: string,
+    seccionId: string | null,
     mutar: (copia: AnalisisFuncional) => void
   ) {
     setAnalisis((previo) => {
       const copia: AnalisisFuncional = JSON.parse(JSON.stringify(previo));
       mutar(copia);
-      if (!copia.secciones_editadas.includes(seccionId)) {
+      if (seccionId !== null && !copia.secciones_editadas.includes(seccionId)) {
         copia.secciones_editadas = [...copia.secciones_editadas, seccionId];
       }
       copia.alertas = revalidarTrasEdicion(copia, nota);

@@ -46,7 +46,11 @@ interface ReportViewProps {
    * página es la dueña del estado y quien decide revalidar (ver
    * lib/validadores.ts#revalidarTrasEdicion).
    */
-  onEditarSeccion: (seccionId: string, mutar: (copia: AnalisisFuncional) => void) => void;
+  /**
+   * `seccionId` null: el cambio no es texto escrito a mano (p. ej. el estado de
+   * un blanco del plan) y no marca ninguna sección como editada.
+   */
+  onEditarSeccion: (seccionId: string | null, mutar: (copia: AnalisisFuncional) => void) => void;
 }
 
 interface SeccionIndice {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Cita as CitaVerificada } from "@/lib/types";
 import {
   ANCLAS_DE_BLOQUE,
@@ -111,6 +111,79 @@ export function Plegable({
       </button>
       <p className="hidden font-mono text-[10px] uppercase tracking-wide text-ink-muted print:block">{titulo}</p>
       <div className={`${abierto ? "" : "hidden print:block"} mt-2`}>{children}</div>
+    </div>
+  );
+}
+
+export interface AccionMenu {
+  etiqueta: string;
+  onElegir: () => void;
+}
+
+/**
+ * Las acciones secundarias de un apartado, detrás de un «⋯».
+ *
+ * «Reportar fallo», «Agregar nota y reanalizar» y «Borrar» se repetían debajo
+ * de cada apartado y de cada elemento: en un informe de cinco pestañas eran
+ * decenas de botones compitiendo con el contenido, que es lo que el terapeuta
+ * viene a leer. Siguen a un clic; solo dejan de estar a la vista.
+ */
+export function MenuAcciones({ acciones, etiqueta }: { acciones: AccionMenu[]; etiqueta: string }) {
+  const [abierto, setAbierto] = useState(false);
+  const raiz = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!abierto) return;
+    function fuera(e: MouseEvent) {
+      if (raiz.current && !raiz.current.contains(e.target as Node)) setAbierto(false);
+    }
+    function escape(e: KeyboardEvent) {
+      if (e.key === "Escape") setAbierto(false);
+    }
+    document.addEventListener("mousedown", fuera);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", fuera);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [abierto]);
+
+  if (acciones.length === 0) return null;
+
+  return (
+    <div ref={raiz} className="relative inline-block print:hidden">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={abierto}
+        aria-label={`Más acciones: ${etiqueta}`}
+        onClick={() => setAbierto((v) => !v)}
+        className="rounded px-2 py-0.5 font-mono text-sm leading-none text-ink-muted transition-colors hover:bg-canvas hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      >
+        ⋯
+      </button>
+      {abierto && (
+        <ul
+          role="menu"
+          className="absolute right-0 z-20 mt-1 min-w-[14rem] rounded-md border border-divider bg-surface py-1 shadow-lg"
+        >
+          {acciones.map((a) => (
+            <li key={a.etiqueta} role="none">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAbierto(false);
+                  a.onElegir();
+                }}
+                className="block w-full px-3 py-1.5 text-left text-sm text-ink transition-colors hover:bg-canvas focus-visible:bg-canvas focus-visible:outline-none"
+              >
+                {a.etiqueta}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -1,5 +1,61 @@
 # CAMBIOS
 
+## Plan por blanco (fase A: solo interfaz, sin tocar el prompt)
+
+El Plan eran tres listas por tipo de contenido —conductas alternativas, líneas
+de intervención, monitorización— y el terapeuta tenía que reconstruir de cabeza
+qué iba con qué. Ahora es **una tarjeta por conducta problema**, con la misma
+secuencia siempre: blanco → por qué se prioriza → función hipotetizada (con su
+grado de apoyo) → conducta alternativa → avisos.
+
+- **Las conexiones salen de ids, no de prosa** (`lib/plan.ts`):
+  `priorizacion.conducta_id`, `hipotesis.destino_id` y `alternativa.situacion_id
+  → situacion.conductas_ids`. Cada alternativa va a UNA tarjeta (la primera
+  conducta de su situación que no sea de seguridad); lo que no enlaza por id
+  queda en «sin blanco asignado» y se dice. Una conducta de seguridad no recibe
+  alternativa: es blanco de eliminación.
+- **Los avisos del validador van dentro de la tarjeta**, junto a la propuesta
+  que señalan (por su `ruta`), como «⚠ Requiere revisión». Siguen también en
+  Revisión, que es la lista completa. Un blanco con avisos arranca en estado
+  «Revisar», no «Propuesto por IA».
+- **Dependencia de un dato faltante → condicional.** Si V4 señala una
+  alternativa, lo primero que se lee es «Información insuficiente para darla
+  por propuesta. Primero explorar: X», y debajo la propuesta rotulada como
+  condicional. No se oculta: V4 empareja por palabras y ocultar contenido
+  sería decidir por el clínico.
+- **Estados por blanco**: Propuesto por IA / Revisar / Aprobado / En curso /
+  Descartado, en `AnalisisFuncional.estados_plan` (por id de conducta). Es una
+  decisión sobre la propuesta, no texto escrito: cambiarlo pasa `null` como
+  `seccionId` y **no** marca la sección como editada (invariante 6). El modelo
+  nunca lo envía; `migrarAV2` lo añade vacío a los informes guardados.
+- **Menú «⋯»**: «Reportar fallo» y «Agregar nota y reanalizar» salen del pie de
+  cada apartado a un menú en su encabezado (también en Riesgo y Verificación);
+  «Borrar» de cada propuesta del plan, también.
+- **El texto copiado y el Word** siguen la misma estructura por blanco, con el
+  estado y los avisos junto a cada propuesta.
+
+Lo fija `evals/plan.test.mjs` (13 pruebas, en CI): ninguna conducta sin tarjeta,
+ninguna alternativa perdida ni repetida, el aviso de la respiración en su
+tarjeta, todo aviso sobre el plan en el exportado, y los estados.
+
+### Fase B — pendiente, cambia el prompt
+
+Intervenciones y monitorización siguen **fuera de las tarjetas**, rotuladas «sin
+asignar» y «del caso», porque el esquema no dice a qué blanco pertenecen
+(`lineas_de_intervencion_tentativas: string[]`, un solo
+`plan_de_monitorizacion`). Repartirlas por palabras sería volver al
+emparejamiento por prosa que la v2 quitó. Para meterlas en la tarjeta:
+
+1. Intervención como objeto `{conducta, intervencion, porque, depende_de}` —el
+   `porque` es la razón visible («exposición porque el escape se mantiene por
+   alivio inmediato»)—, resuelta a `conducta_id` en el servidor.
+2. Monitorización y criterio de revisión por blanco.
+3. El ejemplo del principio 27 dice «tras seis ensayos de exposición»: es la
+   fuente probable de la precisión arbitraria («seis exposiciones», «cuatro
+   semanas»). Cambiarlo por uno sin cifra, o exigir justificación de toda cifra.
+
+Requiere migración de informes guardados y correr las evals (gasta API).
+
 ## Fase 4 — la prosa se deriva del grafo
 
 `lib/formatearInforme.ts#derivarVistasProsa` genera las hipótesis de

@@ -644,6 +644,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     meta: { modelo: "", version_prompt: "" },
     // Solo la escribe la interfaz cuando el clínico edita; el modelo nunca.
     secciones_editadas: [],
+    estados_plan: {},
   });
 }
 
@@ -737,6 +738,7 @@ const NORMALIZADORES_POR_CAMPO: {
   campos_generados: () => [],
   meta: () => ({ modelo: "", version_prompt: "" }),
   secciones_editadas: () => [],
+  estados_plan: () => ({}),
 };
 
 function esCampoDeAnalisis(campo: string): campo is keyof AnalisisFuncional {

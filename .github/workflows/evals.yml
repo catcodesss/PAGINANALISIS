@@ -56,6 +56,11 @@ jobs:
       - name: Un informe guardado en v1 se abre en v2 sin perder nada
         run: node evals/migracion.test.mjs
 
+      # El plan por blanco no pierde ni repite contenido, y todo aviso del
+      # validador sobre una propuesta llega a su tarjeta y al texto exportado.
+      - name: Plan por blanco sin perder contenido ni avisos
+        run: node evals/plan.test.mjs
+
       # El lint atrapa una clase de fallo que las pruebas no ven: estado que se
       # corrige a sí mismo dentro de un efecto, que produce renders en cascada
       # y un fotograma con el valor equivocado.

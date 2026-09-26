@@ -11,7 +11,7 @@
 
 import type { AnalisisFuncional } from "@/lib/types";
 import { BloqueBase, SinHallazgos, SubSeccion } from "./primitivas";
-import { BloqueReanalisis, ListaAlertas, ReportarFallo, Seccion } from "./seccion";
+import { ListaAlertas, Seccion, useAccionesSeccion } from "./seccion";
 import { BotonAgregar, BotonBorrar, TextoEditable } from "../edicionManual";
 import {
   INTRO_GRADO_APOYO,
@@ -31,6 +31,11 @@ export default function BloquePendientes({
     mutar: (copia: AnalisisFuncional) => void
   ) => void;
 }) {
+  const accionesVerificacion = useAccionesSeccion(
+    "verificacion",
+    "Datos faltantes y puntos a verificar",
+    ["datos_faltantes", "situaciones"]
+  );
   return (
     <BloqueBase id="pendientes" visible={visible}>
       <Seccion id="hipotesis-alternativas" titulo="Hipótesis alternativas" camposReanalisis={["hipotesis_alternativas"]}>
@@ -105,6 +110,7 @@ export default function BloquePendientes({
             <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
               Datos faltantes y puntos a verificar
             </h2>
+            <span className="ml-auto">{accionesVerificacion.menu}</span>
           </div>
           <p className="mb-5 text-sm text-ink-muted">
             Lo que hay que comprobar antes de dar este informe por bueno: lo
@@ -206,11 +212,7 @@ export default function BloquePendientes({
             )}
           </div>
 
-          <ReportarFallo seccionId="verificacion" />
-          <BloqueReanalisis
-            campos={["datos_faltantes", "situaciones"]}
-            seccionId="verificacion"
-          />
+          {accionesVerificacion.panel}
         </section>
       )}
 

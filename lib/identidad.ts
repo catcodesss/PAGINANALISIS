@@ -421,6 +421,10 @@ export function migrarAV2(analisis: AnalisisFuncional): AnalisisFuncional {
   // clínico y no se regenera. Solo los informes anteriores al grafo carecen de
   // la propiedad por completo.
   if (!teniaAristas) analisis.aristas = materializarAristas(analisis);
+  // Los informes guardados antes de los estados del plan no traen el campo.
+  if (!analisis.estados_plan || typeof analisis.estados_plan !== "object") {
+    analisis.estados_plan = {};
+  }
   analisis.version = VERSION_ANALISIS;
   return analisis;
 }

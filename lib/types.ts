@@ -394,6 +394,15 @@ export interface PlanDeMonitorizacion {
   criterio_de_revision: string;
 }
 
+/**
+ * En qué punto está cada blanco del plan, según el clínico. Ver lib/plan.ts.
+ *
+ * No es contenido del informe sino una decisión sobre él, así que cambiarlo no
+ * marca la sección como editada (invariante 6 habla de texto escrito a mano):
+ * aprobar una propuesta no la convierte en texto del clínico.
+ */
+export type EstadoPlan = "propuesto" | "revisar" | "aprobado" | "en_curso" | "descartado";
+
 export interface HipotesisAlternativa {
   enunciado: string;
   como_descartarla: string;
@@ -641,6 +650,12 @@ export interface AnalisisFuncional {
    * para el sentido inverso.
    */
   secciones_editadas: string[];
+  /**
+   * Estado de cada blanco del plan, por id de conducta problema. Solo guarda
+   * las decisiones explícitas del clínico; lo que no está aquí se deriva (ver
+   * lib/plan.ts#estadoDeBlanco). El modelo nunca lo envía.
+   */
+  estados_plan: Record<Id, EstadoPlan>;
 }
 
 /**
@@ -683,6 +698,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "campos_generados",
   "meta",
   "secciones_editadas",
+  "estados_plan",
 ] as const satisfies readonly (keyof AnalisisFuncional)[];
 
 type _TodasLasClavesCubiertas =

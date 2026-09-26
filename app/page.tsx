@@ -283,16 +283,17 @@ export default function Home() {
    * Ver lib/validadores.ts#revalidarTrasEdicion — avisa, nunca corrige.
    */
   function manejarEditarSeccion(
-    seccionId: string,
+    seccionId: string | null,
     mutar: (copia: AnalisisFuncional) => void
   ) {
     setAnalisis((previo) => {
       if (!previo) return previo;
       const copia = structuredClone(previo);
       mutar(copia);
-      copia.secciones_editadas = previo.secciones_editadas.includes(seccionId)
-        ? previo.secciones_editadas
-        : [...previo.secciones_editadas, seccionId];
+      // null = decisión sobre la propuesta (estado del plan), no texto propio.
+      if (seccionId !== null && !previo.secciones_editadas.includes(seccionId)) {
+        copia.secciones_editadas = [...previo.secciones_editadas, seccionId];
+      }
       copia.alertas = revalidarTrasEdicion(copia, ultimoTextoEnviado);
       return copia;
     });

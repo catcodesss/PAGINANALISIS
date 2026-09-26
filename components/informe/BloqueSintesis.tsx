@@ -23,7 +23,7 @@ import {
   SinHallazgos,
   Termino,
 } from "./primitivas";
-import { BloqueReanalisis, ReportarFallo, Seccion } from "./seccion";
+import { Seccion, useAccionesSeccion } from "./seccion";
 import { irAlAncla, usePestanas } from "./pestanas";
 import { TextoEditable } from "../edicionManual";
 
@@ -47,6 +47,7 @@ export default function BloqueSintesis({
   ) => void;
 }) {
   const pestanas = usePestanas();
+  const accionesRiesgo = useAccionesSeccion("riesgo", "Riesgo", ["riesgo"]);
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
   const prioridades = useMemo(
     () => priorizarBlancos(analisis).slice(0, PRIORIDADES_EN_RESUMEN),
@@ -62,6 +63,7 @@ export default function BloqueSintesis({
           <h2 className="section-title font-serif text-lg font-semibold text-ink sm:text-xl">
             Riesgo
           </h2>
+          <span className="ml-auto">{accionesRiesgo.menu}</span>
         </div>
         {!analisis.riesgo.evaluado ? (
           <p className="text-sm text-ink-muted">
@@ -86,8 +88,7 @@ export default function BloqueSintesis({
             }
           />
         )}
-        <ReportarFallo seccionId="riesgo" />
-        <BloqueReanalisis campos={["riesgo"]} seccionId="riesgo" />
+        {accionesRiesgo.panel}
       </section>
 
       {/*

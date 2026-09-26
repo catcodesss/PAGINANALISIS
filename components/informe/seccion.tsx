@@ -36,7 +36,7 @@ import {
 } from "@/lib/pii";
 import { irAlAncla, usePestanas } from "./pestanas";
 import { MarcaEditado, useEdicion } from "../edicionManual";
-import { SeccionInforme } from "./primitivas";
+import { MenuAcciones, SeccionInforme, type AccionMenu } from "./primitivas";
 
 /**
  * Qué bloque(s) de lib/bloques.ts hacen falta para que cada sección tenga
@@ -99,12 +99,18 @@ export const ReanalisisContext = createContext<ReanalisisContextValor | null>(nu
 export function BloqueReanalisis({
   campos,
   seccionId,
+  abiertoDeEntrada = false,
+  onCerrar,
 }: {
   campos: (keyof AnalisisFuncional)[];
   seccionId: string;
+  /** Abierto al montar: lo usa el menú «⋯», que monta el panel al elegirlo. */
+  abiertoDeEntrada?: boolean;
+  /** Si llega, el panel no pinta su propio botón: lo abre el menú. */
+  onCerrar?: () => void;
 }) {
   const contexto = useContext(ReanalisisContext);
-  const [abierto, setAbierto] = useState(false);
+  const [abierto, setAbierto] = useState(abiertoDeEntrada);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,6 +118,7 @@ export function BloqueReanalisis({
   const [fragmentoPendiente, setFragmentoPendiente] = useState<Partial<AnalisisFuncional> | null>(null);
 
   if (!contexto) return null;
+  if (!abierto && onCerrar) return null;
   const { notaOriginal, analisis, onAnalisisActualizado } = contexto;
 
   const contieneDatos = texto.trim().length > 0 && contieneDatosIdentificables(texto);
@@ -233,6 +240,7 @@ export function BloqueReanalisis({
                   setFragmentoPendiente(null);
                   setTexto("");
                   setAbierto(false);
+                  onCerrar?.();
                 }} className="rounded bg-accent px-3 py-1.5 text-xs font-medium texto-sobre-acento">Aplicar cambios</button>
                 <button type="button" onClick={() => setFragmentoPendiente(null)} className="rounded border border-divider px-3 py-1.5 text-xs text-ink">Descartar</button>
               </div>
@@ -259,6 +267,7 @@ export function BloqueReanalisis({
                 setError(null);
                 setConfirmandoSobrescritura(false);
                 setFragmentoPendiente(null);
+                onCerrar?.();
               }}
               disabled={enviando}
               className="rounded border border-divider px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-50"
@@ -380,6 +389,44 @@ export function ListaAlertas({ analisis }: { analisis: AnalisisFuncional }) {
 }
 
 /**
+ * El menú «⋯» de un apartado y el panel que abre. Lo devuelve por separado
+ * porque el menú va en el encabezado y el panel debajo del contenido, que es
+ * donde se lee lo que se va a reportar o reanalizar.
+ */
+export function useAccionesSeccion(
+  seccionId: string,
+  titulo: string,
+  camposReanalisis?: (keyof AnalisisFuncional)[]
+): { menu: ReactNode; panel: ReactNode } {
+  const contexto = useContext(ReanalisisContext);
+  const [panel, setPanel] = useState<"fallo" | "reanalisis" | null>(null);
+  if (!contexto) return { menu: null, panel: null };
+
+  const acciones: AccionMenu[] = [
+    ...(camposReanalisis
+      ? [{ etiqueta: "Agregar nota y reanalizar", onElegir: () => setPanel("reanalisis" as const) }]
+      : []),
+    { etiqueta: "Reportar fallo de la IA", onElegir: () => setPanel("fallo" as const) },
+  ];
+  const cerrar = () => setPanel(null);
+
+  return {
+    menu: <MenuAcciones etiqueta={titulo} acciones={acciones} />,
+    panel:
+      panel === "fallo" ? (
+        <ReportarFallo seccionId={seccionId} abiertoDeEntrada onCerrar={cerrar} />
+      ) : panel === "reanalisis" && camposReanalisis ? (
+        <BloqueReanalisis
+          campos={camposReanalisis}
+          seccionId={seccionId}
+          abiertoDeEntrada
+          onCerrar={cerrar}
+        />
+      ) : null,
+  };
+}
+
+/**
  * Un apartado dentro de un bloque. Conserva su id de siempre como ancla, así
  * que `#hipotesis-principal` y los enlaces guardados siguen llevando donde
  * llevaban, y `secciones_editadas` sigue hablando el mismo idioma (invariante
@@ -404,6 +451,7 @@ export function Seccion({
 }) {
   const contexto = useContext(ReanalisisContext);
   const edicion = useEdicion();
+  const { menu, panel } = useAccionesSeccion(id, titulo, camposReanalisis);
   // En un análisis parcial, los apartados no pedidos no se pintan vacíos.
   if (contexto && !anclaVisible(contexto.analisis, id)) return null;
 
@@ -415,15 +463,13 @@ export function Seccion({
       titulo={titulo}
       editada={editada}
       marcaEditada={<MarcaEditado />}
-      extra={extra}
-      pie={
-        <>
-          <ReportarFallo seccionId={id} />
-          {camposReanalisis && (
-            <BloqueReanalisis campos={camposReanalisis} seccionId={id} />
-          )}
-        </>
+      extra={
+        <span className="inline-flex items-center gap-2">
+          {extra}
+          {menu}
+        </span>
       }
+      pie={panel}
     >
       {children}
     </SeccionInforme>
@@ -435,13 +481,30 @@ export function Seccion({
  * NO incluye la nota clínica (ver lib/reporteFallo.ts): el clínico decide a
  * quién se lo manda.
  */
-export function ReportarFallo({ seccionId }: { seccionId: string }) {
+export function ReportarFallo({
+  seccionId,
+  abiertoDeEntrada = false,
+  onCerrar,
+}: {
+  seccionId: string;
+  abiertoDeEntrada?: boolean;
+  onCerrar?: () => void;
+}) {
   const contexto = useContext(ReanalisisContext);
-  const [abierto, setAbierto] = useState(false);
-  const [borrador, setBorrador] = useState("");
+  const [abierto, setAbierto] = useState(abiertoDeEntrada);
+  const [borrador, setBorrador] = useState(() =>
+    abiertoDeEntrada && contexto
+      ? construirReporteFallo(contexto.analisis, seccionId, "")
+      : ""
+  );
   const [copiado, setCopiado] = useState(false);
 
   if (!contexto) return null;
+
+  function cerrar() {
+    setAbierto(false);
+    onCerrar?.();
+  }
 
   function abrir() {
     setBorrador(construirReporteFallo(contexto!.analisis, seccionId, ""));
@@ -454,7 +517,7 @@ export function ReportarFallo({ seccionId }: { seccionId: string }) {
       setCopiado(true);
       setTimeout(() => {
         setCopiado(false);
-        setAbierto(false);
+        cerrar();
       }, 1800);
     } catch {
       setCopiado(false);
@@ -462,6 +525,7 @@ export function ReportarFallo({ seccionId }: { seccionId: string }) {
   }
 
   if (!abierto) {
+    if (onCerrar) return null;
     return (
       <button
         type="button"
@@ -506,7 +570,7 @@ export function ReportarFallo({ seccionId }: { seccionId: string }) {
         </button>
         <button
           type="button"
-          onClick={() => setAbierto(false)}
+          onClick={cerrar}
           className="rounded px-3 py-1 text-xs text-ink-muted transition-colors hover:text-ink"
         >
           Cancelar
