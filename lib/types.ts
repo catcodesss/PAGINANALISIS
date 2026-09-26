@@ -374,6 +374,33 @@ export interface PreguntaPrevia {
 }
 
 /**
+ * Una línea de intervención, atada a su blanco y con su razón.
+ *
+ * Hasta el prompt 1.7.0 era una cadena suelta («Entrenamiento en habilidades de
+ * afrontamiento»): no decía a qué conducta se dirigía ni sobre qué función
+ * actuaba, y el terapeuta tenía que emparejarla de cabeza con el resto del
+ * informe. Ahora el modelo nombra la conducta (el servidor la resuelve a id,
+ * como `priorizacion`) y el porqué funcional.
+ *
+ * `intervencion` vacía con `depende_de` es una respuesta válida y deliberada:
+ * «para este blanco no hay base para proponer nada hasta saber X» (principio
+ * 29). Es mejor que un plan completo apoyado en lo que falta.
+ *
+ * Los informes anteriores se migran con `conducta: ""` y `conducta_id: null`:
+ * no se intenta adivinar su blanco por las palabras de la intervención.
+ */
+export interface LineaIntervencion {
+  /** A qué conducta problema se dirige, con las palabras del modelo. "" si es común al caso. */
+  conducta: string;
+  conducta_id: Id | null;
+  intervencion: string;
+  /** Sobre qué función o contingencia actúa, y por qué esta intervención y no otra. */
+  porque: string;
+  /** El dato de `datos_faltantes` del que depende; null si no depende de ninguno. */
+  depende_de: string | null;
+}
+
+/**
  * Qué se mide, con qué, cada cuánto — y, sobre todo, qué habría que observar
  * para concluir que esta formulación estaba equivocada.
  *
@@ -384,10 +411,17 @@ export interface PreguntaPrevia {
  * cumple: tiene que nombrar la observación concreta que obligaría a rehacer el
  * análisis.
  *
- * `null` cuando la nota no da base para proponer ninguno; es preferible a un
- * plan de medición inventado que el clínico acabaría siguiendo.
+ * Sin entrada para un blanco cuando la nota no da base para proponerla; es
+ * preferible a un plan de medición inventado que el clínico acabaría siguiendo.
  */
 export interface PlanDeMonitorizacion {
+  /**
+   * De qué blanco es. Desde el prompt 1.7.0 hay uno por blanco: una sola tabla
+   * para exposición laboral, alcohol y asertividad mezclaba indicadores que se
+   * revisan por separado y con criterios distintos.
+   */
+  conducta: string;
+  conducta_id: Id | null;
   que_se_mide: string;
   con_que: string;
   cada_cuanto: string;
@@ -611,7 +645,7 @@ export interface AnalisisFuncional {
   capa_mc: CapaModalidadMC;
   hipotesis_alternativas: HipotesisAlternativa[];
   preguntas_para_sesion: string[];
-  lineas_de_intervencion_tentativas: string[];
+  lineas_de_intervencion_tentativas: LineaIntervencion[];
   datos_faltantes: DatoFaltante[];
   /** Principio 7: ciclos de acomodación del entorno, con quién y qué función. */
   acomodacion_entorno: Acomodacion[];
@@ -625,7 +659,8 @@ export interface AnalisisFuncional {
    */
   fortalezas_y_recursos: string[];
   /** Ver PlanDeMonitorizacion: qué desmentiría esta formulación, y cuándo se mira. */
-  plan_de_monitorizacion: PlanDeMonitorizacion | null;
+  /** Uno por blanco. Vacío cuando la nota no da base para ninguno. */
+  plan_de_monitorizacion: PlanDeMonitorizacion[];
   /** Principio 18: direcciones valiosas o metas que el consultante expresa. */
   valores_y_metas: string[];
   /** Principio 19: actividades reforzantes abandonadas y su papel en el mantenimiento. */

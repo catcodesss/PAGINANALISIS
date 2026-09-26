@@ -115,8 +115,14 @@ function textosDeIntervencion(
       texto: `${c.conducta_propuesta} ${c.consecuencia_necesaria}`,
     });
   });
+  // Solo la intervención, no su `porque`: el porqué nombra la función sobre la
+  // que actúa, y a menudo el propio mantenedor («se retira la respiración
+  // porque funciona como conducta de seguridad»). Compararlo haría saltar V3
+  // justo en la intervención que hace lo correcto. Una entrada sin
+  // intervención (principio 29: no hay base todavía) no propone nada.
   a.lineas_de_intervencion_tentativas.forEach((l, i) => {
-    salida.push({ ruta: `lineas_de_intervencion_tentativas[${i}]`, texto: l });
+    if (!l.intervencion.trim()) return;
+    salida.push({ ruta: `lineas_de_intervencion_tentativas[${i}]`, texto: l.intervencion });
   });
   a.capa_dbt.habilidades_sugeridas.forEach((h, i) => {
     salida.push({

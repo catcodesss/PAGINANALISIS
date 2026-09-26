@@ -37,13 +37,16 @@ import { terminoEnTexto } from "./terminos";
 import { hayCamino, idNodoSituacion } from "./aristas";
 import { apoyoCadena, construirNodosGrafo, type NodoGrafo } from "./grafo";
 import {
-  alertasDeRuta,
+  avisosDeTarjeta,
   construirPlanPorBlanco,
   datosFaltantesDe,
+  datosFaltantesDeIntervencion,
   enumerarDatosFaltantes,
   estadoDeBlanco,
   ETIQUETA_ESTADO_PLAN,
   type AlternativaDeBlanco,
+  type IntervencionDeBlanco,
+  type MonitorizacionDeBlanco,
 } from "./plan";
 
 const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
@@ -634,12 +637,45 @@ export function formatearInformeTexto(
       ),
     ];
   };
+  const textoIntervencion = (x: IntervencionDeBlanco, sangria: string): string[] => {
+    const faltan = datosFaltantesDeIntervencion(analisis, x);
+    if (!x.linea.intervencion.trim()) {
+      return [
+        `${sangria}Información insuficiente para proponer intervención. Primero explorar: ${enumerarDatosFaltantes(
+          faltan.length > 0 ? faltan : ["qué mantiene esta conducta"]
+        )}`,
+      ];
+    }
+    return [
+      ...(faltan.length > 0
+        ? [`${sangria}Información insuficiente para darla por propuesta. Primero explorar: ${enumerarDatosFaltantes(faltan)}`]
+        : []),
+      `${sangria}${faltan.length > 0 ? "Propuesta condicional: " : ""}${x.linea.intervencion}`,
+      `${sangria}  Por qué: ${x.linea.porque || "sin razón declarada; no consta sobre qué función actúa."}`,
+      ...textoAvisos(
+        x.alertas.filter(
+          (a) => a.codigo !== "intervencion_depende_de_dato_faltante" || faltan.length === 0
+        ),
+        sangria + "  "
+      ),
+    ];
+  };
+  // El criterio de revisión es lo que convierte la hipótesis en algo que se
+  // puede desmentir: si llega sin él, el informe lo dice en vez de callarlo.
+  const textoMonitorizacion = (m: MonitorizacionDeBlanco, sangria: string): string[] => [
+    `${sangria}Qué se mide: ${m.plan.que_se_mide || "—"}`,
+    `${sangria}Con qué: ${m.plan.con_que || "—"}`,
+    `${sangria}Cada cuánto: ${m.plan.cada_cuanto || "—"}`,
+    `${sangria}Revisar la hipótesis si: ${
+      m.plan.criterio_de_revision ||
+      "sin criterio de revisión; mientras no lo haya, nada de lo que se mida puede desmentir esta hipótesis."
+    }`,
+  ];
   bloques["conductas-alternativas"] = seccion(
     "PLAN POR BLANCO",
     [
       ...plan.tarjetas.flatMap((t, n) => {
-        const avisos = [...t.alertasConducta, ...t.alternativas.flatMap((a) => a.alertas)];
-        const estado = estadoDeBlanco(analisis, t.conducta.id, avisos.length > 0);
+        const estado = estadoDeBlanco(analisis, t.conducta.id, avisosDeTarjeta(t).length > 0);
         const cabecera = `Blanco ${n + 1} · ${
           t.prioridad ? `Prioridad ${t.prioridad}` : "Sin priorizar"
         } · Estado: ${ETIQUETA_ESTADO_PLAN[estado]}`;
@@ -670,6 +706,15 @@ export function formatearInformeTexto(
           ...(t.conducta.es_conducta_seguridad
             ? []
             : t.alternativas.flatMap((a) => textoAlternativa(a, "  - "))),
+          t.intervenciones.length === 0
+            ? funciones.length === 0
+              ? "  Intervención propuesta: información insuficiente para proponerla; primero explorar qué mantiene esta conducta."
+              : "  Intervención propuesta: el análisis no propone ninguna."
+            : "  Intervención propuesta:",
+          ...t.intervenciones.flatMap((x) => textoIntervencion(x, "  - ")),
+          ...(t.monitorizacion.length === 0
+            ? ["  Monitorización: sin monitorización propuesta para este blanco."]
+            : ["  Monitorización:", ...t.monitorizacion.flatMap((m) => textoMonitorizacion(m, "    "))]),
           "",
         ];
       }),
@@ -804,42 +849,36 @@ export function formatearInformeTexto(
     )
   );
 
-  // El criterio de revisión es lo que convierte la formulación en una
-  // hipótesis con fecha en vez de un documento: si el plan llega sin él, el
-  // informe lo dice en vez de callarlo.
-  const monitorizacion = analisis.plan_de_monitorizacion;
-  bloques["monitorizacion"] = seccion(
-    "MONITORIZACIÓN DEL CASO",
-    monitorizacion
-      ? [
-          `Qué se mide: ${monitorizacion.que_se_mide || "—"}`,
-          `Con qué: ${monitorizacion.con_que || "—"}`,
-          `Cada cuánto: ${monitorizacion.cada_cuanto || "—"}`,
-          "",
-          "Criterio de revisión (qué desmentiría esta formulación):",
-          monitorizacion.criterio_de_revision ||
-            "Sin criterio de revisión. Mientras no lo haya, esta formulación no se puede desmentir con lo que se mida: es un documento, no una hipótesis con fecha de revisión.",
-        ].join("\n")
-      : "La nota no daba base para proponer un plan de medición. Definir uno antes de aplicar el plan de intervención: sin él no hay forma de saber si la formulación se sostiene."
-  );
+  // Lo que no tiene blanco va aparte, y solo si existe: un apartado vacío en
+  // el documento diría «sin hallazgos» de algo que sí está, en las tarjetas.
+  bloques["monitorizacion"] =
+    analisis.plan_de_monitorizacion.length === 0
+      ? seccion(
+          "MONITORIZACIÓN",
+          "La nota no daba base para proponer un plan de medición. Definir uno antes de aplicar la intervención: sin él no hay forma de saber si la formulación se sostiene."
+        )
+      : plan.monitorizacionSinBlanco.length === 0
+        ? ""
+        : seccion(
+            "MONITORIZACIÓN SIN BLANCO",
+            plan.monitorizacionSinBlanco
+              .flatMap((m) => [
+                ...(m.plan.conducta ? [`[${m.plan.conducta}]`] : []),
+                ...textoMonitorizacion(m, ""),
+                "",
+              ])
+              .join("\n")
+              .trim()
+          );
 
   bloques["preguntas"] = seccion("PREGUNTAS PARA LA PRÓXIMA SESIÓN", listaOTexto(analisis.preguntas_para_sesion));
-  bloques["intervencion"] = (
-    seccion(
-      "LÍNEAS DE INTERVENCIÓN (AÚN SIN ASIGNAR A UN BLANCO)",
-      analisis.lineas_de_intervencion_tentativas.length === 0
-        ? listaOTexto([])
-        : analisis.lineas_de_intervencion_tentativas
-            .flatMap((l, i) => [
-              `- ${l}`,
-              ...textoAvisos(
-                alertasDeRuta(analisis.alertas, `lineas_de_intervencion_tentativas[${i}]`),
-                "  "
-              ),
-            ])
-            .join("\n")
-    )
-  );
+  bloques["intervencion"] =
+    plan.intervencionesSinBlanco.length === 0
+      ? ""
+      : seccion(
+          "INTERVENCIONES SIN BLANCO",
+          plan.intervencionesSinBlanco.flatMap((x) => textoIntervencion(x, "- ")).join("\n")
+        );
 
   /*
     El documento se recorre por bloque, y dentro de cada bloque por sus anclas

@@ -4,7 +4,8 @@
  * Bloque 4 · Plan.
  *
  * Una tarjeta por blanco clínico, con la misma secuencia en todas: blanco →
- * función → conducta alternativa → avisos. Antes eran tres listas por tipo de
+ * función → conducta alternativa → intervención (con su porqué) →
+ * monitorización → revisar la hipótesis si… Antes eran tres listas por tipo de
  * contenido y el terapeuta tenía que reconstruir de cabeza qué iba con qué; ver
  * lib/plan.ts para cómo se hacen las conexiones (por id, nunca por prosa).
  *
@@ -13,30 +14,38 @@
  * recomendación normal y, una pestaña después, como error. Siguen también en
  * Revisión, que es la lista completa: aquí se muestran, no se mueven.
  *
- * Intervenciones y monitorización quedan debajo, comunes al caso, porque el
- * esquema todavía no dice a qué blanco pertenecen. Se rotulan así en vez de
- * repartirlas por parecido de palabras.
+ * Debajo de las tarjetas queda lo que no tiene blanco: intervenciones comunes
+ * al caso (una coordinación médica, por ejemplo) y todo lo de los informes
+ * anteriores al prompt 1.7.0, que no decían a qué conducta se dirigían.
  */
 
 import { useMemo, useState } from "react";
-import type { Alerta, AnalisisFuncional, EstadoPlan } from "@/lib/types";
+import type {
+  Alerta,
+  AnalisisFuncional,
+  EstadoPlan,
+  LineaIntervencion,
+  PlanDeMonitorizacion,
+} from "@/lib/types";
 import { construirNodosGrafo } from "@/lib/grafo";
 import { gradoDeHipotesis, traducirMensajeAlerta } from "@/lib/gradoApoyo";
 import {
-  alertasDeRuta,
+  avisosDeTarjeta,
   construirPlanPorBlanco,
   datosFaltantesDe,
+  datosFaltantesDeIntervencion,
   enumerarDatosFaltantes,
   estadoDeBlanco,
   ESTADOS_PLAN,
   ETIQUETA_ESTADO_PLAN,
   type AlternativaDeBlanco,
+  type IntervencionDeBlanco,
+  type MonitorizacionDeBlanco,
   type TarjetaBlanco,
 } from "@/lib/plan";
 import { yaEnRepertorio } from "@/lib/validadores";
-import { Apoyo, BloqueBase, MenuAcciones, SinHallazgos, TablaCadena } from "./primitivas";
+import { Apoyo, BloqueBase, MenuAcciones, TablaCadena } from "./primitivas";
 import { Seccion } from "./seccion";
-import { irAlAncla, usePestanas } from "./pestanas";
 import { BotonAgregar, TextoEditable, useEdicion } from "../edicionManual";
 
 type EditarSeccion = (
@@ -55,19 +64,17 @@ export default function BloquePlan({
 }) {
   const plan = useMemo(() => construirPlanPorBlanco(analisis), [analisis]);
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
-  const orden = usePestanas();
-
-  const irA = (ancla: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    irAlAncla(orden, ancla);
-  };
 
   return (
     <BloqueBase id="plan" visible={visible}>
       <Seccion
         id="conductas-alternativas"
         titulo="Plan por blanco"
-        camposReanalisis={["conductas_alternativas"]}
+        camposReanalisis={[
+          "conductas_alternativas",
+          "lineas_de_intervencion_tentativas",
+          "plan_de_monitorizacion",
+        ]}
       >
         {plan.tarjetas.length === 0 ? (
           <p className="text-sm leading-relaxed text-ink-muted">
@@ -84,7 +91,6 @@ export default function BloquePlan({
                 analisis={analisis}
                 gradoFuncion={t.hipotesis.map((h) => gradoDeHipotesis(h, nodos))}
                 onEditarSeccion={onEditarSeccion}
-                irA={irA}
               />
             ))}
           </ol>
@@ -117,87 +123,64 @@ export default function BloquePlan({
 
       <Seccion
         id="intervencion"
-        titulo="Líneas de intervención sin asignar"
+        titulo="Intervenciones sin blanco"
         camposReanalisis={["lineas_de_intervencion_tentativas"]}
       >
-        <p className="mb-3 text-sm leading-relaxed text-ink-muted">
-          Todavía no indican a qué blanco se dirigen ni por qué, así que no se
-          reparten entre las tarjetas de arriba. Léelas contra la función de
-          cada blanco antes de adoptarlas.
-        </p>
-        <ListaIntervenciones analisis={analisis} onEditarSeccion={onEditarSeccion} />
+        {plan.intervencionesSinBlanco.length === 0 ? (
+          <p className="text-sm leading-relaxed text-ink-muted">
+            Todas las intervenciones propuestas están en la tarjeta de su
+            blanco.
+          </p>
+        ) : (
+          <>
+            <p className="mb-3 text-sm leading-relaxed text-ink-muted">
+              No dicen a qué conducta se dirigen, o la conducta que nombran no
+              se pudo enlazar: pueden ser comunes a todo el caso (una
+              coordinación médica, por ejemplo) o venir de un informe anterior
+              a que el plan se organizara por blanco. Léelas contra la función
+              de cada blanco antes de adoptarlas.
+            </p>
+            <ul className="space-y-4">
+              {plan.intervencionesSinBlanco.map((x) => (
+                <Intervencion
+                  key={x.indice}
+                  item={x}
+                  analisis={analisis}
+                  onEditarSeccion={onEditarSeccion}
+                />
+              ))}
+            </ul>
+          </>
+        )}
       </Seccion>
 
       <Seccion
         id="monitorizacion"
-        titulo="Monitorización del caso"
+        titulo="Monitorización sin blanco"
         camposReanalisis={["plan_de_monitorizacion"]}
       >
-        {analisis.plan_de_monitorizacion ? (
-          <div className="space-y-5">
-            <p className="text-sm leading-relaxed text-ink-muted">
-              Una sola para todo el caso: el análisis aún no la separa por
-              blanco. Si mezcla indicadores de blancos distintos, conviene
-              registrarlos por separado.
-            </p>
-            <TablaCadena
-              filas={[
-                {
-                  elemento: "Qué se mide",
-                  valor: analisis.plan_de_monitorizacion.que_se_mide || "—",
-                },
-                {
-                  elemento: "Con qué",
-                  valor: analisis.plan_de_monitorizacion.con_que || "—",
-                },
-                {
-                  elemento: "Cada cuánto",
-                  valor: analisis.plan_de_monitorizacion.cada_cuanto || "—",
-                },
-              ]}
-            />
-            {/*
-              El criterio de revisión va aparte y con más peso que los tres
-              campos de arriba: es el que convierte la formulación en una
-              hipótesis con fecha de revisión en lugar de un documento
-              archivado. Cuando falta, se dice — callarlo dejaría el plan con
-              aspecto de completo.
-            */}
-            <div className="rounded-md border border-divider bg-canvas p-4 print:border-black">
-              <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-                Revisar la hipótesis si… · qué desmentiría esta formulación
-              </p>
-              {analisis.plan_de_monitorizacion.criterio_de_revision ? (
-                <TextoEditable
-                  valor={analisis.plan_de_monitorizacion.criterio_de_revision}
-                  seccionId="monitorizacion"
-                  etiqueta="Criterio de revisión"
-                  className="mt-2 text-[15px] leading-relaxed text-ink"
-                  onCambio={(v) =>
-                    onEditarSeccion("monitorizacion", (c) => {
-                      if (!c.plan_de_monitorizacion) return;
-                      c.plan_de_monitorizacion = {
-                        ...c.plan_de_monitorizacion,
-                        criterio_de_revision: v,
-                      };
-                    })
-                  }
-                />
-              ) : (
-                <p className="mt-2 text-sm leading-relaxed text-warn">
-                  Sin criterio de revisión. Mientras no lo haya, nada de lo
-                  que se mida puede desmentir esta formulación: es un
-                  documento, no una hipótesis con fecha de revisión.
-                </p>
-              )}
-            </div>
-          </div>
-        ) : (
+        {plan.monitorizacionSinBlanco.length === 0 ? (
           <p className="text-sm leading-relaxed text-ink-muted">
-            La nota no daba base para proponer un plan de medición. Conviene
-            definir uno antes de aplicar el plan de intervención: sin él no
-            hay forma de saber si esta formulación se sostiene.
+            {analisis.plan_de_monitorizacion.length === 0
+              ? "La nota no daba base para proponer ningún plan de medición. Conviene definirlo antes de aplicar la intervención: sin él no hay forma de saber si la formulación se sostiene."
+              : "Toda la monitorización propuesta está en la tarjeta de su blanco."}
           </p>
+        ) : (
+          <>
+            <p className="mb-3 text-sm leading-relaxed text-ink-muted">
+              Sin blanco enlazado. Si mezcla indicadores de conductas
+              distintas, conviene registrarlos por separado.
+            </p>
+            <div className="space-y-6">
+              {plan.monitorizacionSinBlanco.map((m) => (
+                <Monitorizacion
+                  key={m.indice}
+                  item={m}
+                  onEditarSeccion={onEditarSeccion}
+                />
+              ))}
+            </div>
+          </>
         )}
       </Seccion>
     </BloqueBase>
@@ -233,32 +216,58 @@ function AvisoEnLinea({ alerta }: { alerta: Alerta }) {
   );
 }
 
+/** «Información insuficiente…»: encabeza una propuesta condicional. */
+function Insuficiente({ datos, que }: { datos: string[]; que: string }) {
+  return (
+    <p className="mb-1.5 rounded border-l-[3px] border-warn bg-warn/5 py-1.5 pl-3 pr-2 text-sm leading-relaxed text-ink">
+      <span className="font-medium text-warn">Información insuficiente para {que}.</span>{" "}
+      Primero explorar: {enumerarDatosFaltantes(datos)}
+    </p>
+  );
+}
+
 function TarjetaDeBlanco({
   numero,
   tarjeta,
   analisis,
   gradoFuncion,
   onEditarSeccion,
-  irA,
 }: {
   numero: number;
   tarjeta: TarjetaBlanco;
   analisis: AnalisisFuncional;
   gradoFuncion: ReturnType<typeof gradoDeHipotesis>[];
   onEditarSeccion: EditarSeccion;
-  irA: (ancla: string) => (e: React.MouseEvent) => void;
 }) {
   const edicion = useEdicion();
-  const { conducta, alternativas } = tarjeta;
-  const avisos = [...tarjeta.alertasConducta, ...alternativas.flatMap((a) => a.alertas)];
+  const { conducta, alternativas, intervenciones, monitorizacion } = tarjeta;
+  const avisos = avisosDeTarjeta(tarjeta);
   const estado = estadoDeBlanco(analisis, conducta.id, avisos.length > 0);
   const descartado = estado === "descartado";
+  const sinFuncion =
+    tarjeta.hipotesis.length === 0 && tarjeta.funcionesDeSituacion.length === 0;
 
   // Cambiar el estado es una decisión sobre la propuesta, no texto escrito a
   // mano: por eso va con `null` y no marca la sección como editada.
   function cambiarEstado(nuevo: EstadoPlan) {
     onEditarSeccion(null, (c) => {
       c.estados_plan = { ...c.estados_plan, [conducta.id]: nuevo };
+    });
+  }
+
+  // Lo que el clínico añade desde la tarjeta nace ya enlazado a este blanco.
+  function agregarIntervencion(texto: string) {
+    onEditarSeccion("intervencion", (c) => {
+      c.lineas_de_intervencion_tentativas = [
+        ...c.lineas_de_intervencion_tentativas,
+        {
+          conducta: conducta.descripcion,
+          conducta_id: conducta.id,
+          intervencion: texto,
+          porque: "",
+          depende_de: null,
+        },
+      ];
     });
   }
 
@@ -392,36 +401,217 @@ function TarjetaDeBlanco({
               )}
             </Paso>
 
-            {/*
-              Lo que el esquema aún no ata a este blanco se nombra en la
-              tarjeta —la secuencia tiene que leerse entera— pero se remite a
-              su sitio en vez de copiarlo aquí.
-            */}
-            <Paso titulo="Intervención · monitorización · revisar si…">
-              <p className="text-sm leading-relaxed text-ink-muted">
-                Aún comunes a todo el caso: ver{" "}
-                <a
-                  href="#intervencion"
-                  onClick={irA("intervencion")}
-                  className="text-accent underline underline-offset-2 print:no-underline"
-                >
-                  líneas de intervención
-                </a>{" "}
-                y{" "}
-                <a
-                  href="#monitorizacion"
-                  onClick={irA("monitorizacion")}
-                  className="text-accent underline underline-offset-2 print:no-underline"
-                >
-                  monitorización
-                </a>
-                .
-              </p>
+            <Paso titulo="Intervención propuesta">
+              {intervenciones.length === 0 ? (
+                <p className={`text-sm leading-relaxed ${sinFuncion ? "text-warn" : "text-ink-muted"}`}>
+                  {sinFuncion
+                    ? "Información insuficiente para proponer intervención: primero explorar qué mantiene esta conducta."
+                    : "El análisis no propone intervención para este blanco."}
+                </p>
+              ) : (
+                <ul className="space-y-4">
+                  {intervenciones.map((x) => (
+                    <Intervencion
+                      key={x.indice}
+                      item={x}
+                      analisis={analisis}
+                      onEditarSeccion={onEditarSeccion}
+                    />
+                  ))}
+                </ul>
+              )}
+              <BotonAgregar etiqueta="intervención" onAgregar={agregarIntervencion} />
             </Paso>
+
+            {monitorizacion.length === 0 ? (
+              <Paso titulo="Monitorización · revisar la hipótesis si…">
+                <p className="text-sm leading-relaxed text-ink-muted">
+                  Sin monitorización propuesta para este blanco: sin ella no hay
+                  forma de saber si su hipótesis se sostiene.
+                </p>
+              </Paso>
+            ) : (
+              monitorizacion.map((m) => (
+                <Monitorizacion key={m.indice} item={m} onEditarSeccion={onEditarSeccion} enTarjeta />
+              ))
+            )}
           </div>
         )}
       </article>
     </li>
+  );
+}
+
+/**
+ * Una intervención con su razón funcional. El porqué es lo que la separa de
+ * una etiqueta de tratamiento: «entrenamiento en afrontamiento» no dice sobre
+ * qué actúa; «exposición porque el escape se mantiene por alivio inmediato» sí,
+ * y es lo que el clínico contrasta con la función de la tarjeta.
+ */
+function Intervencion({
+  item,
+  analisis,
+  onEditarSeccion,
+}: {
+  item: IntervencionDeBlanco;
+  analisis: AnalisisFuncional;
+  onEditarSeccion: EditarSeccion;
+}) {
+  const edicion = useEdicion();
+  const [confirmando, setConfirmando] = useState(false);
+  const { indice: i, linea, alertas } = item;
+  const faltan = datosFaltantesDeIntervencion(analisis, item);
+  const otrosAvisos = alertas.filter(
+    (a) => a.codigo !== "intervencion_depende_de_dato_faltante" || faltan.length === 0
+  );
+  const cambiar = (parcial: Partial<LineaIntervencion>) =>
+    onEditarSeccion("intervencion", (c) => {
+      c.lineas_de_intervencion_tentativas[i] = {
+        ...c.lineas_de_intervencion_tentativas[i],
+        ...parcial,
+      };
+    });
+  const borrar = () =>
+    onEditarSeccion("intervencion", (c) => {
+      c.lineas_de_intervencion_tentativas = c.lineas_de_intervencion_tentativas.filter(
+        (_, j) => j !== i
+      );
+    });
+
+  return (
+    <li>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          {/*
+            Sin intervención: el modelo declaró que no hay base para proponer
+            ninguna hasta tener un dato (principio 29). Se dice eso y nada más,
+            en vez de un plan completo apoyado en lo que falta.
+          */}
+          {!linea.intervencion ? (
+            <Insuficiente datos={faltan.length > 0 ? faltan : ["qué mantiene esta conducta"]} que="proponer intervención" />
+          ) : (
+            <>
+              {faltan.length > 0 && <Insuficiente datos={faltan} que="darla por propuesta" />}
+              {faltan.length > 0 && (
+                <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                  Propuesta condicional
+                </p>
+              )}
+              <TextoEditable
+                valor={linea.intervencion}
+                seccionId="intervencion"
+                etiqueta="Intervención"
+                className={`text-[15px] leading-relaxed ${faltan.length > 0 ? "text-ink-muted" : "text-ink"}`}
+                onCambio={(v) => cambiar({ intervencion: v })}
+              />
+              {linea.porque ? (
+                <div className="mt-1 text-sm leading-relaxed text-ink-muted">
+                  <span className="font-medium text-ink">Por qué: </span>
+                  <TextoEditable
+                    valor={linea.porque}
+                    seccionId="intervencion"
+                    etiqueta="Por qué se propone"
+                    className="inline text-sm leading-relaxed text-ink-muted"
+                    onCambio={(v) => cambiar({ porque: v })}
+                  />
+                </div>
+              ) : (
+                <p className="mt-1 text-sm leading-relaxed text-warn">
+                  Sin razón declarada: no consta sobre qué función actúa, así
+                  que no se puede contrastar con la hipótesis del blanco.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+        {edicion && (
+          <MenuAcciones
+            etiqueta={`intervención: ${linea.intervencion || "sin propuesta"}`}
+            acciones={[{ etiqueta: "Borrar esta intervención", onElegir: () => setConfirmando(true) }]}
+          />
+        )}
+      </div>
+      {confirmando && (
+        <ConfirmarBorrado
+          pregunta="¿Borrar esta intervención?"
+          onSi={borrar}
+          onNo={() => setConfirmando(false)}
+        />
+      )}
+      {otrosAvisos.map((a, j) => (
+        <AvisoEnLinea key={j} alerta={a} />
+      ))}
+    </li>
+  );
+}
+
+/**
+ * Qué se mide y qué desmentiría la hipótesis. El criterio de revisión va
+ * aparte y con más peso: es lo que convierte la formulación en una hipótesis
+ * con fecha de revisión en lugar de un documento archivado. Cuando falta, se
+ * dice — callarlo dejaría el plan con aspecto de completo.
+ */
+function Monitorizacion({
+  item,
+  onEditarSeccion,
+  enTarjeta = false,
+}: {
+  item: MonitorizacionDeBlanco;
+  onEditarSeccion: EditarSeccion;
+  enTarjeta?: boolean;
+}) {
+  const { indice: i, plan } = item;
+  const cambiar = (parcial: Partial<PlanDeMonitorizacion>) =>
+    onEditarSeccion("monitorizacion", (c) => {
+      c.plan_de_monitorizacion[i] = { ...c.plan_de_monitorizacion[i], ...parcial };
+    });
+
+  const tabla = (
+    <TablaCadena
+      filas={[
+        { elemento: "Qué se mide", valor: plan.que_se_mide || "—" },
+        { elemento: "Con qué", valor: plan.con_que || "—" },
+        { elemento: "Cada cuánto", valor: plan.cada_cuanto || "—" },
+      ]}
+    />
+  );
+  const criterio = plan.criterio_de_revision ? (
+    <TextoEditable
+      valor={plan.criterio_de_revision}
+      seccionId="monitorizacion"
+      etiqueta="Criterio de revisión"
+      className="text-[15px] leading-relaxed text-ink"
+      onCambio={(v) => cambiar({ criterio_de_revision: v })}
+    />
+  ) : (
+    <p className="text-sm leading-relaxed text-warn">
+      Sin criterio de revisión. Mientras no lo haya, nada de lo que se mida
+      puede desmentir esta hipótesis: es un documento, no una hipótesis con
+      fecha de revisión.
+    </p>
+  );
+
+  if (enTarjeta) {
+    return (
+      <>
+        <Paso titulo="Monitorización">{tabla}</Paso>
+        <Paso titulo="Revisar la hipótesis si…">{criterio}</Paso>
+      </>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {plan.conducta && (
+        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">{plan.conducta}</p>
+      )}
+      {tabla}
+      <div className="rounded-md border border-divider bg-canvas p-4 print:border-black">
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+          Revisar la hipótesis si… · qué la desmentiría
+        </p>
+        {criterio}
+      </div>
+    </div>
   );
 }
 
@@ -551,92 +741,6 @@ function Alternativa({
           })
         }
       />
-    </li>
-  );
-}
-
-/**
- * Las líneas de intervención, cada una con sus avisos justo debajo.
- * ListaEditable no sabe de rutas, por eso esta lista es propia.
- */
-function ListaIntervenciones({
-  analisis,
-  onEditarSeccion,
-}: {
-  analisis: AnalisisFuncional;
-  onEditarSeccion: EditarSeccion;
-}) {
-  const lineas = analisis.lineas_de_intervencion_tentativas;
-  const cambiar = (nuevos: string[]) =>
-    onEditarSeccion("intervencion", (c) => {
-      c.lineas_de_intervencion_tentativas = nuevos;
-    });
-
-  return (
-    <>
-      {lineas.length === 0 ? (
-        <SinHallazgos />
-      ) : (
-        <ul className="list-disc space-y-3 pl-5">
-          {lineas.map((texto, i) => (
-            <LineaIntervencion
-              key={i}
-              texto={texto}
-              numero={i + 1}
-              alertas={alertasDeRuta(analisis.alertas, `lineas_de_intervencion_tentativas[${i}]`)}
-              onCambio={(v) => cambiar(lineas.map((l, j) => (j === i ? v : l)))}
-              onBorrar={() => cambiar(lineas.filter((_, j) => j !== i))}
-            />
-          ))}
-        </ul>
-      )}
-      <BotonAgregar etiqueta="línea de intervención" onAgregar={(t) => cambiar([...lineas, t])} />
-    </>
-  );
-}
-
-function LineaIntervencion({
-  texto,
-  numero,
-  alertas,
-  onCambio,
-  onBorrar,
-}: {
-  texto: string;
-  numero: number;
-  alertas: Alerta[];
-  onCambio: (v: string) => void;
-  onBorrar: () => void;
-}) {
-  const edicion = useEdicion();
-  const [confirmando, setConfirmando] = useState(false);
-  return (
-    <li>
-      <div className="flex items-start justify-between gap-2">
-        <TextoEditable
-          valor={texto}
-          seccionId="intervencion"
-          etiqueta={`línea de intervención ${numero}`}
-          className="min-w-0 flex-1 text-[15px] leading-relaxed text-ink"
-          onCambio={onCambio}
-        />
-        {edicion && (
-          <MenuAcciones
-            etiqueta={`línea de intervención ${numero}`}
-            acciones={[{ etiqueta: "Borrar esta línea", onElegir: () => setConfirmando(true) }]}
-          />
-        )}
-      </div>
-      {confirmando && (
-        <ConfirmarBorrado
-          pregunta="¿Borrar esta línea?"
-          onSi={onBorrar}
-          onNo={() => setConfirmando(false)}
-        />
-      )}
-      {alertas.map((a, j) => (
-        <AvisoEnLinea key={j} alerta={a} />
-      ))}
     </li>
   );
 }

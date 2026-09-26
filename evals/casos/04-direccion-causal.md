@@ -48,7 +48,7 @@ Su marido está en paro desde enero y ella refiere que ahora todo depende de su 
     "id": "derivacion-medica",
     "descripcion": "Debe señalarse la necesidad de coordinar con endocrinología antes de atribuir el cuadro solo a lo psicológico",
     "tipo": "debe_aparecer",
-    "ambito": "datos_faltantes|lineas_de_intervencion|hipotesis_alternativas",
+    "ambito": "datos_faltantes|lineas_de_intervencion_tentativas\\[\\d+\\](\\.intervencion)?$|hipotesis_alternativas",
     "patron": "endocrin|medic|analitic|tiroid|derivac"
   }
 ]

@@ -40,6 +40,7 @@ execFileSync(
     "lib/parseAnalisis.ts",
     "lib/validadores.ts",
     "lib/plan.ts",
+    "lib/formaPlan.ts",
     "lib/formatearInforme.ts",
     "--outDir", ".tmp-evals",
     "--rootDir", "lib",
@@ -168,7 +169,7 @@ prueba("todo aviso sobre el plan llega al texto exportado, junto a su propuesta"
   );
   assert.ok(delPlan.length > 0, "el fixture debería traer avisos sobre el plan");
   const plan = textoDelPlan(a);
-  const intervenciones = texto.slice(texto.indexOf("LÍNEAS DE INTERVENCIÓN (AÚN SIN ASIGNAR"));
+  const intervenciones = texto.slice(texto.indexOf("INTERVENCIONES SIN BLANCO"));
   for (const al of delPlan) {
     const donde = al.ruta.startsWith("lineas_") ? intervenciones : plan;
     const primeraFrase = al.mensaje.split(/(?<=\.)\s/)[0];
@@ -233,6 +234,114 @@ prueba("un informe guardado sin estados se abre con estados vacíos", () => {
 prueba("un informe nuevo no trae estados: el modelo nunca los decide", () => {
   const a = normalizarAnalisis({ ...crudo(), estados_plan: { x: "aprobado" } }, lineas);
   assert.deepEqual(a.estados_plan, {});
+});
+
+/* ── Fase B: intervención y monitorización por blanco (prompt 1.7.0) ───── */
+
+/** El crudo del caso 01 con el plan en la forma nueva, como lo emitiría el modelo. */
+function crudoConPlanPorBlanco() {
+  const c = crudo();
+  const reuniones = c.conductas_problema[0].descripcion;
+  const alcohol = c.conductas_problema[3].descripcion;
+  c.lineas_de_intervencion_tentativas = [
+    {
+      conducta: reuniones,
+      intervencion: "Exposición gradual a exponer en reuniones, retirando la salida al baño.",
+      porque: "La evitación parece mantenerse por el alivio inmediato de escapar de la evaluación.",
+      depende_de: null,
+    },
+    {
+      conducta: alcohol,
+      intervencion: "",
+      porque: "",
+      depende_de: c.datos_faltantes[1].dato,
+    },
+    {
+      conducta: "",
+      intervencion: "Coordinar con su médico de atención primaria.",
+      porque: "Descartar causas orgánicas de las palpitaciones.",
+      depende_de: null,
+    },
+  ];
+  c.plan_de_monitorizacion = [
+    {
+      conducta: reuniones,
+      que_se_mide: "Reuniones en que expone sin salir.",
+      con_que: "Autorregistro.",
+      cada_cuanto: "Tras cada reunión.",
+      criterio_de_revision: "Si al retirar la salida al baño la evitación no disminuye, revisar la función.",
+    },
+  ];
+  return c;
+}
+
+prueba("las intervenciones y la monitorización caen en la tarjeta de su conducta, por id", () => {
+  const a = validarAnalisis(normalizarAnalisis(crudoConPlanPorBlanco(), lineas), NOTA);
+  const plan = construirPlanPorBlanco(a);
+  const reuniones = plan.tarjetas.find((t) => t.conducta.id === a.conductas_problema[0].id);
+  const alcohol = plan.tarjetas.find((t) => t.conducta.id === a.conductas_problema[3].id);
+  assert.deepEqual(reuniones.intervenciones.map((x) => x.indice), [0]);
+  assert.deepEqual(reuniones.monitorizacion.map((x) => x.indice), [0]);
+  assert.deepEqual(alcohol.intervenciones.map((x) => x.indice), [1]);
+  // La coordinación médica es común al caso: no se cuelga de ninguna tarjeta.
+  assert.deepEqual(plan.intervencionesSinBlanco.map((x) => x.indice), [2]);
+});
+
+prueba("cada intervención sale una vez: en una tarjeta o sin blanco", () => {
+  const a = validarAnalisis(normalizarAnalisis(crudoConPlanPorBlanco(), lineas), NOTA);
+  const plan = construirPlanPorBlanco(a);
+  const indices = [
+    ...plan.tarjetas.flatMap((t) => t.intervenciones.map((x) => x.indice)),
+    ...plan.intervencionesSinBlanco.map((x) => x.indice),
+  ].sort();
+  assert.deepEqual(indices, a.lineas_de_intervencion_tentativas.map((_, i) => i));
+});
+
+prueba("sin base para intervenir, el exportado dice qué explorar y no propone nada", () => {
+  const a = validarAnalisis(normalizarAnalisis(crudoConPlanPorBlanco(), lineas), NOTA);
+  const texto = textoDelPlan(a);
+  assert.ok(
+    texto.includes("Información insuficiente para proponer intervención. Primero explorar: Impacto del consumo"),
+    "falta el «primero explorar» del blanco sin base"
+  );
+  assert.ok(texto.includes("Por qué: La evitación parece mantenerse por el alivio inmediato"));
+  assert.ok(texto.includes("Revisar la hipótesis si: Si al retirar la salida al baño"));
+  assert.ok(!texto.includes("[object Object]"));
+});
+
+prueba("una intervención con intervención vacía y sin dato del que dependa se descarta", () => {
+  const c = crudoConPlanPorBlanco();
+  c.lineas_de_intervencion_tentativas.push({ conducta: "x", intervencion: "  ", porque: "", depende_de: null });
+  const a = normalizarAnalisis(c, lineas);
+  assert.equal(a.lineas_de_intervencion_tentativas.length, 3);
+});
+
+prueba("un informe anterior (textos sueltos, un solo plan) se migra sin blanco y sin perder nada", () => {
+  const viejo = informe();
+  // Así lo guardaba el historial antes del 1.7.0.
+  viejo.lineas_de_intervencion_tentativas = ["Entrenamiento en asertividad.", "Reducir el consumo."];
+  viejo.plan_de_monitorizacion = {
+    que_se_mide: "Evitaciones.", con_que: "Autorregistro.", cada_cuanto: "Diario.", criterio_de_revision: "",
+  };
+  const a = migrarAV2(viejo);
+  assert.deepEqual(
+    a.lineas_de_intervencion_tentativas.map((l) => [l.intervencion, l.conducta_id]),
+    [["Entrenamiento en asertividad.", null], ["Reducir el consumo.", null]]
+  );
+  assert.equal(a.plan_de_monitorizacion.length, 1);
+  assert.equal(a.plan_de_monitorizacion[0].conducta_id, null);
+  const plan = construirPlanPorBlanco(a);
+  assert.equal(plan.intervencionesSinBlanco.length, 2);
+  assert.equal(plan.monitorizacionSinBlanco.length, 1);
+  // Y abrirlo dos veces no cambia nada.
+  assert.deepEqual(migrarAV2(structuredClone(a)).lineas_de_intervencion_tentativas, a.lineas_de_intervencion_tentativas);
+});
+
+prueba("sin ningún plan de medición, el exportado lo dice en vez de callarlo", () => {
+  const a = informe();
+  a.plan_de_monitorizacion = [];
+  const texto = formatearInformeTexto(a, "caso", "hoy");
+  assert.ok(texto.includes("La nota no daba base para proponer un plan de medición"));
 });
 
 console.log(`\n${pasadas} ok, ${fallos} fallos\n`);

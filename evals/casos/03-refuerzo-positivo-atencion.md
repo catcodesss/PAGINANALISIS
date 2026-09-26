@@ -42,7 +42,7 @@ Los fines de semana y en vacaciones no ha habido ningún episodio de dolor. Tamp
     "id": "intervencion-sobre-el-entorno",
     "descripcion": "La intervención debe incluir cambio de contingencias por parte de la madre",
     "tipo": "debe_aparecer",
-    "ambito": "lineas_de_intervencion|conductas_alternativas|consecuencia_necesaria",
+    "ambito": "lineas_de_intervencion_tentativas\\[\\d+\\](\\.intervencion)?$|conductas_alternativas|consecuencia_necesaria",
     "patron": "madre|contingencia|atencion"
   }
 ]

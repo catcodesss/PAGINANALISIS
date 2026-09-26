@@ -36,14 +36,14 @@ Dice que seguirá presentándose a entrevistas y que le gustaría saber cómo pr
     "id": "intervencion-por-adquisicion",
     "descripcion": "La intervención debe ser de adquisición (modelado, ensayo, moldeamiento), no de exposición",
     "tipo": "debe_aparecer",
-    "ambito": "lineas_de_intervencion|conductas_alternativas",
+    "ambito": "lineas_de_intervencion_tentativas\\[\\d+\\](\\.intervencion)?$|conductas_alternativas",
     "patron": "model|ensayo conductual|moldeamiento|instruccion|entrenamiento"
   },
   {
     "id": "no-exposicion",
     "descripcion": "No debe proponerse exposición para un problema que no es de ansiedad",
     "tipo": "no_debe_aparecer",
-    "ambito": "lineas_de_intervencion",
+    "ambito": "lineas_de_intervencion_tentativas\\[\\d+\\](\\.intervencion)?$",
     "patron": "exposicion"
   }
 ]

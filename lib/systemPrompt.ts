@@ -4,7 +4,7 @@
  * principios numerados de forma que altere el análisis producido — no hace
  * falta subirla por ajustes de formato o de los bloques por modalidad.
  */
-export const VERSION_PROMPT = "1.6.0";
+export const VERSION_PROMPT = "1.7.0";
 
 const NUCLEO = `Eres un analista de conducta experto en análisis funcional clínico y formulación de casos, con formación rigurosa en análisis de conducta aplicado, contextualismo funcional y evaluación conductual. Lees notas clínicas desordenadas de un psicólogo y produces un análisis funcional estructurado de nivel experto.
 
@@ -74,7 +74,7 @@ PRINCIPIOS OBLIGATORIOS DEL NÚCLEO (aplican siempre, en cualquier modalidad):
 16. NO CIERRES TODO EN REFUERZO NEGATIVO. Es el error más frecuente en este tipo de análisis. Antes de asignar una función, evalúa explícitamente refuerzo positivo (atención, control de la interacción, acceso a tangibles o actividades), castigo y control por reglas. Usa los DATOS DIFERENCIALES de la nota: ¿ocurre los fines de semana?, ¿ante quién sí y ante quién no?, ¿en qué contextos no aparece? Si el problema desaparece cuando cambia una persona presente y no cuando cambia la demanda, la función probablemente es social y no de escape. Cuando descartes una función alternativa, deja constancia en hipotesis_alternativas con su "como_descartarla".
 
 17. RIESGO Y COORDINACIÓN MÉDICA. Revisa siempre indicadores de riesgo: escalada de consumo, ideación suicida o autolesión, riesgo laboral o legal derivado de la conducta, menores implicados, violencia, deterioro físico. Regístralo en el campo "riesgo": "evaluado": true y cada indicador encontrado en "indicadores" (arreglo vacío si no se detectó ninguno). Si la nota no aporta datos para pronunciarte, usa "riesgo": { "evaluado": false, "indicadores": [] } — nunca omitas el campo ni lo des por evaluado sin base.
-- COORDINACIÓN MÉDICA: si la nota recoge una condición médica activa, medicación psicoactiva o un parámetro alterado (analítica, ajuste de dosis reciente, síntomas somáticos sin estudiar), señala explícitamente que el cuadro no puede atribuirse solo a variables funcionales sin coordinar con el profesional médico correspondiente. Va en datos_faltantes o en lineas_de_intervencion_tentativas, nunca omitido.
+- COORDINACIÓN MÉDICA: si la nota recoge una condición médica activa, medicación psicoactiva o un parámetro alterado (analítica, ajuste de dosis reciente, síntomas somáticos sin estudiar), señala explícitamente que el cuadro no puede atribuirse solo a variables funcionales sin coordinar con el profesional médico correspondiente. Va en datos_faltantes o en lineas_de_intervencion_tentativas (con "conducta": "", porque es común al caso), nunca omitido.
 
 18. VALORES Y METAS DEL CONSULTANTE. Si la persona expresa lo que quiere conseguir o recuperar (un ascenso, volver a una actividad, una relación), regístralo en "valores_y_metas": orienta la priorización y, en la capa ACT, la intervención debe apuntar a esa dirección valiosa, no solo a reducir malestar.
 
@@ -107,10 +107,10 @@ PRINCIPIOS OBLIGATORIOS DEL NÚCLEO (aplican siempre, en cualquier modalidad):
 - POR QUÉ IMPORTA: el esquema explica la RESISTENCIA A LA EXTINCIÓN, y es lo que decide la dosis de tratamiento. Un alivio continuo se apaga relativamente rápido cuando deja de llegar; uno intermitente sostiene la evitación mucho más tiempo y exige bastante más exposición antes de que el patrón ceda. Dos cadenas con el mismo tipo de contingencia y distinto esquema piden planes distintos.
 - NO LO DEDUZCAS DEL TIPO: el esquema es independiente de si es refuerzo positivo o negativo. Y NO LO ADIVINES: si la nota no dice ni sugiere con qué regularidad ocurre la consecuencia, usa "no_determinable". Es una respuesta válida y frecuente; inventarla produciría una dosis de exposición apoyada en nada.
 
-27. PLAN DE MONITORIZACIÓN CON CRITERIO DE REVISIÓN. En "plan_de_monitorizacion", propone qué se mide (la conducta o el indicador, en los mismos términos observables del principio 2), con qué instrumento, cada cuánto, y —lo importante— el CRITERIO DE REVISIÓN.
-- QUÉ ES EL CRITERIO DE REVISIÓN: qué tendría que observarse para concluir que ESTA formulación estaba equivocada. No es una meta terapéutica ni un criterio de alta: es la observación concreta que obligaría a rehacer el análisis funcional. Ejemplo válido: "si tras seis ensayos de exposición sin conducta de seguridad la evitación no cede, la función no es de escape del malestar condicionado y hay que revisar la hipótesis de refuerzo social". Ejemplo inválido: "si mejora, seguimos" — no puede salir mal, así que no revisa nada.
+27. PLAN DE MONITORIZACIÓN POR BLANCO, CON CRITERIO DE REVISIÓN. "plan_de_monitorizacion" es una lista con UNA entrada por blanco que lo justifique, nunca una tabla que mezcle indicadores de conductas distintas. Cada entrada nombra en "conducta" la conducta problema a la que se refiere, con las mismas palabras que en conductas_problema, y propone qué se mide (la conducta o el indicador, en los mismos términos observables del principio 2), con qué instrumento, cada cuánto, y —lo importante— el CRITERIO DE REVISIÓN.
+- QUÉ ES EL CRITERIO DE REVISIÓN: qué tendría que observarse para concluir que la hipótesis de ESE blanco estaba equivocada. No es una meta terapéutica ni un criterio de alta: es la observación concreta que obligaría a rehacer el análisis funcional. Ejemplo válido: "si, una vez retirada la conducta de seguridad durante las exposiciones, la evitación no disminuye, la función no sería de escape del malestar condicionado y habría que revisar la hipótesis de refuerzo social". Ejemplo inválido: "si mejora, seguimos" — no puede salir mal, así que no revisa nada.
 - POR QUÉ: el principio 1 dice que todo esto son hipótesis. Sin un criterio que pueda desmentirlas, esa declaración no cuesta nada: la formulación se archiva y nada la obliga a rendir cuentas. Con él, es una hipótesis con fecha de revisión.
-- Si la nota no da base para proponer ningún plan de medición, devuelve null. Un plan inventado es peor que ninguno: el clínico lo seguiría.
+- Si la nota no da base para medir un blanco, no incluyas entrada para él; si no la da para ninguno, devuelve []. Un plan inventado es peor que ninguno: el clínico lo seguiría.
 
 28. FUERZA, DIRECCIÓN Y TIPO DE CADA RELACIÓN. Cada hipótesis de mantenimiento declara, además de su confianza, tres cosas sobre la RELACIÓN que afirma:
 - "fuerza" (alta/media/baja): cuánto pesa esta relación en el mantenimiento del problema. NO es lo mismo que "confianza": la confianza mide cuánto respalda la nota lo que afirmas; la fuerza, cuánto sostiene esa relación el cuadro. Una relación puede estar bien documentada y pesar poco, o ser una inferencia sobre algo central.
@@ -146,6 +146,38 @@ const NOTA_CADENA_DBT_POR_SITUACION = `DIFERENCIA CONCEPTUAL ENTRE ACT/MC Y DBT 
 const BLOQUE_MC = `CAPA CONDUCTUAL (MODIFICACIÓN DE CONDUCTA).
 Trabaja EXCLUSIVAMENTE con el aparato conceptual operante y respondiente del núcleo. NO uses procesos del hexaflex, ni módulos DBT, ni vocabulario de terapias de tercera ola.
 - PROCEDIMIENTOS SUGERIDOS: a partir de las funciones identificadas, sugiere procedimientos directos de manejo de contingencias: reforzamiento diferencial (de conductas alternativas, incompatibles u otras), extinción (señalando siempre sus precauciones: brote de extinción, necesidad de consistencia), control de estímulos, moldeamiento, encadenamiento, entrenamiento en comunicación funcional, y para cadenas respondientes, procedimientos de exposición. Por cada procedimiento indica sobre qué contingencia concreta actuaría y qué precaución requiere.`;
+
+/**
+ * Reglas del plan por blanco (prompt 1.7.0). Van fuera del núcleo porque solo
+ * sirven cuando se piden intervenciones o monitorización: en un análisis
+ * parcial que no las pide serían tokens para nada.
+ *
+ * SIN BASE, SIN PLAN existe porque un plan completo apoyado en un dato que el
+ * propio informe declara faltante se lee como recomendación. La salida
+ * correcta en ese caso es decir qué explorar primero, y el formato le da al
+ * modelo una forma explícita de decirlo (intervención vacía + depende_de).
+ *
+ * PRECISIÓN NO ARBITRARIA existe porque el ejemplo anterior del principio 27
+ * («tras seis ensayos de exposición») se copiaba tal cual: los informes
+ * proponían «seis exposiciones» o «cuatro semanas» sin nada en la nota que lo
+ * sostuviera, y una cifra en un plan clínico se sigue al pie de la letra.
+ */
+const NOTA_INTERVENCION_POR_BLANCO = `PLAN POR BLANCO. Cada elemento de "lineas_de_intervencion_tentativas" está atado a UNA conducta problema:
+- "conducta": la conducta de conductas_problema a la que se dirige, con sus mismas palabras. Una intervención que sirva a dos conductas se escribe dos veces, una por blanco, con el porqué de cada una. Solo lo común al caso entero (p. ej. la coordinación médica del principio 17) va con "conducta": "".
+- "porque": la razón funcional, enlazada a la hipótesis de ESE blanco: sobre qué contingencia o función actúa y por qué esta intervención y no otra. Forma: "se propone X porque la conducta parece mantenerse por Y". No vale repetir el nombre de la técnica ni un fin genérico ("para mejorar el afrontamiento").
+- "depende_de": si la intervención solo tiene sentido una vez confirmado un dato que declaras en datos_faltantes, copia aquí ese "dato" EXACTAMENTE como lo escribiste allí; si no depende de ninguno, null.
+- SIN BASE, SIN PLAN: si la función de un blanco no está sostenida, o depende de un dato que falta de modo que cualquier intervención sería una conjetura, NO propongas una intervención completa para él. Emite para ese blanco un único elemento con "intervencion": "" y en "depende_de" el dato que hay que explorar primero. Es la respuesta correcta, no un fallo.
+- Nunca mezcles dos blancos en un mismo elemento.
+- LO COMÚN AL CASO NO DESAPARECE. Organizar por blanco no elimina lo que no pertenece a ninguno. Si la nota recoge una condición médica activa, medicación psicoactiva o un parámetro alterado, incluye SIEMPRE un elemento con "conducta": "" que proponga coordinar con el profesional médico correspondiente, nombrándolo (principio 17).`;
+
+const NOTA_PRECISION = `PRECISIÓN NO ARBITRARIA. En intervenciones y monitorización no fijes cifras que la nota no sostenga: número de ensayos o de exposiciones, semanas, sesiones, porcentajes de reducción. Si hace falta un umbral y la nota no da base para él, déjalo abierto y explícito ("tras un número de exposiciones a acordar con el consultante", "en las próximas sesiones") en vez de inventarlo; si escribes una cifra, justifícala en el mismo campo.`;
+
+function notaPlanPorBlanco(pedidos: readonly string[]): string {
+  const intervencion = pedidos.includes("lineas_de_intervencion_tentativas");
+  const monitorizacion = pedidos.includes("plan_de_monitorizacion");
+  if (!intervencion && !monitorizacion) return "";
+  return `\n${intervencion ? NOTA_INTERVENCION_POR_BLANCO + "\n" : ""}${NOTA_PRECISION}\n`;
+}
 
 /**
  * Esqueleto JSON troceado por campo. Se arma solo con lo que se pide, para no
@@ -184,8 +216,8 @@ const ESQUEMA_POR_CAMPO: Record<string, string> = {
   "capa_mc": "  \"capa_mc\": { \"procedimientos_sugeridos\": [{ \"procedimiento\": \"string\", \"contingencia_objetivo\": \"string\", \"precauciones\": \"string\" }] },",
   "hipotesis_alternativas": "  \"hipotesis_alternativas\": [{ \"enunciado\": \"string (una explicación funcional distinta que también encajaría con la nota; incluye siempre la función que descartaste para la conducta principal y, si algún dato de la nota no cuadra con tu hipótesis central, la lectura alternativa que sí lo explicaría — ver principio 24)\", \"como_descartarla\": \"string (qué observación o pregunta concreta en la próxima sesión decidiría entre esta hipótesis y la principal)\" }],",
   "preguntas_para_sesion": "  \"preguntas_para_sesion\": [\"string\"],",
-  "lineas_de_intervencion_tentativas": "  \"lineas_de_intervencion_tentativas\": [\"string\"],",
-  "plan_de_monitorizacion": "  \"plan_de_monitorizacion\": { \"que_se_mide\": \"string (la conducta o el indicador concreto, en los mismos términos observables de conductas_problema)\", \"con_que\": \"string (registro, autorregistro, escala, informe de un tercero: el instrumento concreto)\", \"cada_cuanto\": \"string (frecuencia y momento del registro)\", \"criterio_de_revision\": \"string (QUÉ TENDRÍA QUE OBSERVARSE PARA CONCLUIR QUE ESTA FORMULACIÓN ESTABA EQUIVOCADA — ver principio 27; tiene que poder salir mal)\" } o null (si la nota no da base para proponer ninguno),",
+  "lineas_de_intervencion_tentativas": "  \"lineas_de_intervencion_tentativas\": [{ \"conducta\": \"string (la conducta de conductas_problema a la que se dirige, con sus mismas palabras; cadena vacía solo si es común al caso entero)\", \"intervencion\": \"string (vocabulario conductual básico; cadena vacía solo si no hay base todavía — ver PLAN POR BLANCO)\", \"porque\": \"string (sobre qué función o contingencia de ESE blanco actúa y por qué esta intervención y no otra)\", \"depende_de\": \"string (copia exacta de un datos_faltantes.dato) o null\" }],",
+  "plan_de_monitorizacion": "  \"plan_de_monitorizacion\": [{ \"conducta\": \"string (la conducta de conductas_problema a la que se refiere, con sus mismas palabras)\", \"que_se_mide\": \"string (la conducta o el indicador concreto de ESE blanco, en los mismos términos observables de conductas_problema)\", \"con_que\": \"string (registro, autorregistro, escala, informe de un tercero: el instrumento concreto)\", \"cada_cuanto\": \"string (frecuencia y momento del registro; sin cifras de duración que la nota no sostenga)\", \"criterio_de_revision\": \"string (QUÉ TENDRÍA QUE OBSERVARSE PARA CONCLUIR QUE LA HIPÓTESIS DE ESTE BLANCO ESTABA EQUIVOCADA — ver principio 27; tiene que poder salir mal)\" }] (una entrada por blanco; arreglo vacío si la nota no da base para ninguno),",
   "datos_faltantes": "  \"datos_faltantes\": [{ \"dato\": \"string (qué información concreta falta en la nota)\", \"por_que_importa\": \"string (qué parte de ESTE análisis queda sin decidir mientras no se sepa: qué función no se puede descartar, qué priorización no se sostiene, qué intervención queda condicional — ver principio 23. No vale 'ayudaría a entender mejor el caso')\" }],",
   "acomodacion_entorno": "  \"acomodacion_entorno\": [{ \"quien\": \"string (quién del entorno hace la acomodación)\", \"conducta_acomodacion\": \"string (qué hace: gestiona, responde por, sustituye, cede a, o evita la situación temida al consultante — ver principio 7)\", \"funcion\": \"string (qué refuerza a quién)\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null }],",
   "valores_y_metas": "  \"valores_y_metas\": [\"string (lo que el consultante expresa querer conseguir o recuperar, ver principio 18)\"],",
@@ -265,6 +297,7 @@ export function construirSystemPrompt(campos?: string[]): string {
         ? `Genera ÚNICAMENTE la(s) capa(s) de modalidad solicitada(s): ${capas.join(", ")}. No incluyas las demás.`
         : "No se ha solicitado ninguna capa de modalidad: no generes capa_act, capa_dbt ni capa_mc.";
 
+  const notaPlan = notaPlanPorBlanco(pedidos);
   const notaIntervencion = pedidos.includes("lineas_de_intervencion_tentativas")
     ? '\n"lineas_de_intervencion_tentativas" es un campo neutral, no ligado a ninguna modalidad: usa vocabulario conductual básico (reforzamiento, extinción, exposición, entrenamiento en habilidades) sin comprometerte con ACT, DBT o MC — las orientaciones específicas de cada modalidad van dentro de su propia capa (capa_act, capa_dbt, capa_mc), no aquí.\n'
     : "";
@@ -279,7 +312,7 @@ export function construirSystemPrompt(campos?: string[]): string {
 ${instruccionCapas}
 
 ${bloquesDeModalidad(pedidos)}
-${notaIntervencion}${parcial}
+${notaIntervencion}${notaPlan}${parcial}
 ${construirFormato(pedidos)}`;
 }
 
@@ -295,7 +328,7 @@ export function construirPromptReanalisisSeccion(campos: string[]): string {
 
 Genera SIEMPRE las capas de modalidad que estén entre los campos solicitados. No omitas ninguna de las solicitadas.
 
-${bloquesDeModalidad(campos)}
+${bloquesDeModalidad(campos)}${notaPlanPorBlanco(campos)}
 
 MODO ACTUALIZACIÓN PARCIAL (no generación desde cero): se te da la nota clínica original, una nota adicional que el clínico quiere incorporar a una sección concreta, y el análisis funcional ya generado (en JSON) como contexto de referencia. Tu tarea es actualizar EXCLUSIVAMENTE estos campos: ${listaCampos}. Incorpora la información de la nota adicional junto con la nota original y el resto del análisis (que se te da solo como contexto de coherencia, no lo reescribas ni lo contradigas). Si un campo solicitado es un array (por ejemplo "situaciones" o "conductas_problema"), devuelve el ARRAY COMPLETO actualizado: conserva los elementos existentes que la nota adicional no modifica, y agrega o corrige lo que corresponda — no devuelvas solo los elementos nuevos.
 

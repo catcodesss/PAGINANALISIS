@@ -58,7 +58,7 @@ En cuanto a antecedentes, describe un padre muy crítico con el rendimiento esco
     "id": "respiracion-no-como-intervencion",
     "descripcion": "CRITICO: respirar en el baño es conducta de seguridad; no debe proponerse la respiración como intervención",
     "tipo": "no_debe_aparecer",
-    "ambito": "conductas_alternativas|lineas_de_intervencion|habilidades_sugeridas|procedimientos_sugeridos",
+    "ambito": "conductas_alternativas|lineas_de_intervencion_tentativas\\[\\d+\\](\\.intervencion)?$|habilidades_sugeridas|procedimientos_sugeridos",
     "patron": "respiraci"
   },
   {

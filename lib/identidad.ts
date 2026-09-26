@@ -8,6 +8,7 @@ import {
   type Situacion,
 } from "./types";
 import { materializarAristas } from "./aristas";
+import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 
 /**
  * Identidad de las entidades del análisis: asignarla y resolver las referencias
@@ -326,6 +327,21 @@ function resolverReferencias(a: AnalisisFuncional): void {
     }
   }
 
+  // Desde el prompt 1.7.0 cada intervención y cada plan de medición nombran su
+  // conducta, igual que la priorización, y se resuelven igual: una vez, aquí.
+  // Una entrada con `conducta` vacía (común al caso, o de un informe anterior)
+  // no se resuelve: mejorCoincidencia no empareja un texto vacío.
+  for (const l of a.lineas_de_intervencion_tentativas) {
+    if (l.conducta_id === null) {
+      l.conducta_id = mejorCoincidencia(l.conducta, conductas);
+    }
+  }
+  for (const m of a.plan_de_monitorizacion) {
+    if (m.conducta_id === null) {
+      m.conducta_id = mejorCoincidencia(m.conducta, conductas);
+    }
+  }
+
   for (const c of a.conductas_alternativas) {
     if (c.situacion_id === null) {
       c.situacion_id = mejorCoincidencia(c.situacion, situaciones);
@@ -414,6 +430,16 @@ export function migrarAV2(analisis: AnalisisFuncional): AnalisisFuncional {
     fundirAnalisisEnCadena(analisis.situaciones, capaDbt.analisis_en_cadena);
     delete capaDbt.analisis_en_cadena;
   }
+
+  // Antes de resolver: las intervenciones de un informe anterior al 1.7.0 son
+  // cadenas y el plan de medición un solo objeto. Se llevan a la forma nueva
+  // sin blanco (ver lib/formaPlan.ts); no se adivina a qué conducta iban.
+  analisis.lineas_de_intervencion_tentativas = normalizarLineasIntervencion(
+    analisis.lineas_de_intervencion_tentativas
+  );
+  analisis.plan_de_monitorizacion = normalizarPlanesMonitorizacion(
+    analisis.plan_de_monitorizacion
+  );
 
   analisis.siguiente_id = asignarIds(analisis);
   resolverReferencias(analisis);

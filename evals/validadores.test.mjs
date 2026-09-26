@@ -517,7 +517,7 @@ prueba("los coeficientes ausentes caen del lado que afirma menos", () => {
   assert.equal(normalizado.variables_moduladoras[0].modificabilidad, "baja");
 });
 
-prueba("un plan de monitorización vacío o ausente es null, no un plan a medias", () => {
+prueba("un plan de monitorización vacío o ausente es una lista vacía, no un plan a medias", () => {
   // Un plan inventado sería peor que ninguno: el clínico lo seguiría. El
   // objeto vacío que a veces devuelve el modelo tiene que caer del lado de
   // "no hay plan", no del de "hay plan con los campos en blanco".
@@ -525,7 +525,7 @@ prueba("un plan de monitorización vacío o ausente es null, no un plan a medias
     { ...fixture.analisis, plan_de_monitorizacion: undefined },
     lineas
   );
-  assert.equal(sinPlan.plan_de_monitorizacion, null);
+  assert.deepEqual(sinPlan.plan_de_monitorizacion, []);
 
   const vacio = normalizarAnalisis(
     {
@@ -539,7 +539,7 @@ prueba("un plan de monitorización vacío o ausente es null, no un plan a medias
     },
     lineas
   );
-  assert.equal(vacio.plan_de_monitorizacion, null);
+  assert.deepEqual(vacio.plan_de_monitorizacion, []);
 });
 
 prueba("un plan sin criterio de revisión se conserva, para poder señalar que falta", () => {
@@ -557,8 +557,37 @@ prueba("un plan sin criterio de revisión se conserva, para poder señalar que f
     },
     lineas
   );
-  assert.ok(parcial.plan_de_monitorizacion);
-  assert.equal(parcial.plan_de_monitorizacion.criterio_de_revision, "");
+  assert.equal(parcial.plan_de_monitorizacion.length, 1);
+  assert.equal(parcial.plan_de_monitorizacion[0].criterio_de_revision, "");
+});
+
+prueba("la razón de una intervención no dispara el aviso de conducta de seguridad", () => {
+  // El porqué nombra a menudo el propio mantenedor para retirarlo: «se retira
+  // la respiración porque funciona como conducta de seguridad». Si V3 mirara
+  // el porqué, avisaría justo en la intervención que hace lo correcto. En la
+  // intervención, en cambio, tiene que seguir avisando.
+  const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+  crudo.conductas_alternativas = [];
+  crudo.lineas_de_intervencion_tentativas = [
+    {
+      conducta: "Evita exponer resultados en reuniones",
+      intervencion: "Exposición gradual a exponer en reuniones sin salir de la sala.",
+      porque: "Se retira la respiración en el baño porque funciona como conducta de seguridad.",
+      depende_de: null,
+    },
+    {
+      conducta: "Evita exponer resultados en reuniones",
+      intervencion: "Respiración diafragmática antes de exponer.",
+      porque: "Para bajar la activación.",
+      depende_de: null,
+    },
+  ];
+  const a = validarAnalisis(normalizarAnalisis(crudo, lineas), nota);
+  const rutas = a.alertas
+    .filter((x) => x.codigo === "prescribe_conducta_seguridad")
+    .map((x) => x.ruta);
+  assert.ok(!rutas.includes("lineas_de_intervencion_tentativas[0]"), "salta por el porqué");
+  assert.ok(rutas.includes("lineas_de_intervencion_tentativas[1]"), "no salta en la intervención");
 });
 
 prueba("el análisis de soluciones pasa por la comprobación de conductas de seguridad", () => {

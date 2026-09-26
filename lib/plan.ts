@@ -8,17 +8,16 @@
  * información era correcta; las conexiones las ponía el lector.
  *
  * Aquí cada conducta problema es una tarjeta con la misma secuencia siempre:
- * blanco → función → alternativa → avisos. Las conexiones salen de ids que ya
- * existen (esquema v2), NUNCA de comparar prosa: `priorizacion.conducta_id`,
- * `hipotesis.destino_id` y `alternativa.situacion_id → situacion.conductas_ids`.
- * Lo que no resuelve por id no se asigna «a la más parecida»: se queda en
- * `alternativasSinBlanco` y la interfaz lo dice.
+ * blanco → función → alternativa → intervención → monitorización → revisar si.
+ * Las conexiones salen de ids, NUNCA de comparar prosa en el render:
+ * `priorizacion.conducta_id`, `hipotesis.destino_id`,
+ * `alternativa.situacion_id → situacion.conductas_ids`, y desde el prompt
+ * 1.7.0 `linea.conducta_id` y `monitorizacion.conducta_id`, que el servidor
+ * resuelve una sola vez al normalizar (lib/identidad.ts).
  *
- * LO QUE AÚN NO SE PUEDE ASIGNAR. `lineas_de_intervencion_tentativas` es una
- * lista de textos sueltos y `plan_de_monitorizacion` es uno solo para el caso:
- * no hay id que diga a qué blanco pertenecen. Repartirlos por palabras sería
- * volver al emparejamiento por prosa que el esquema v2 quitó. Siguen fuera de
- * las tarjetas hasta que el esquema los ate a un blanco.
+ * Lo que no resuelve por id no se asigna «a la más parecida»: se queda en los
+ * apartados «sin blanco» y la interfaz lo dice. Es el caso de todo informe
+ * anterior al 1.7.0, cuyas intervenciones eran textos sueltos sin conducta.
  */
 
 import type {
@@ -29,6 +28,8 @@ import type {
   EstadoPlan,
   HipotesisMantenimiento,
   Id,
+  LineaIntervencion,
+  PlanDeMonitorizacion,
   PriorizacionBlanco,
 } from "./types";
 
@@ -73,6 +74,19 @@ export interface AlternativaDeBlanco {
   alertas: Alerta[];
 }
 
+export interface IntervencionDeBlanco {
+  /** Posición en `lineas_de_intervencion_tentativas`. */
+  indice: number;
+  linea: LineaIntervencion;
+  alertas: Alerta[];
+}
+
+export interface MonitorizacionDeBlanco {
+  /** Posición en `plan_de_monitorizacion`. */
+  indice: number;
+  plan: PlanDeMonitorizacion;
+}
+
 export interface TarjetaBlanco {
   conducta: ConductaProblema;
   /** 1, 2… si el modelo la priorizó; null si no figura en la priorización. */
@@ -86,6 +100,8 @@ export interface TarjetaBlanco {
    */
   funcionesDeSituacion: string[];
   alternativas: AlternativaDeBlanco[];
+  intervenciones: IntervencionDeBlanco[];
+  monitorizacion: MonitorizacionDeBlanco[];
   /** Avisos sobre la propia conducta (p. ej. «sin cadena ni hipótesis»). */
   alertasConducta: Alerta[];
 }
@@ -93,6 +109,8 @@ export interface TarjetaBlanco {
 export interface PlanPorBlanco {
   tarjetas: TarjetaBlanco[];
   alternativasSinBlanco: AlternativaDeBlanco[];
+  intervencionesSinBlanco: IntervencionDeBlanco[];
+  monitorizacionSinBlanco: MonitorizacionDeBlanco[];
 }
 
 /** Alertas cuya ruta apunta exactamente a ese elemento. */
@@ -100,10 +118,20 @@ export function alertasDeRuta(alertas: readonly Alerta[], ruta: string): Alerta[
   return alertas.filter((a) => a.ruta === ruta);
 }
 
+/** Todos los avisos que caen dentro de una tarjeta: deciden su estado de partida. */
+export function avisosDeTarjeta(t: TarjetaBlanco): Alerta[] {
+  return [
+    ...t.alertasConducta,
+    ...t.alternativas.flatMap((a) => a.alertas),
+    ...t.intervenciones.flatMap((i) => i.alertas),
+  ];
+}
+
 const PESO_IMPORTANCIA = { alta: 0, media: 1, baja: 2 } as const;
 
 export function construirPlanPorBlanco(analisis: AnalisisFuncional): PlanPorBlanco {
   const priorizadas = analisis.formulacion.priorizacion;
+  const idsConducta = new Set(analisis.conductas_problema.map((c) => c.id));
 
   const ordenadas = analisis.conductas_problema
     .map((conducta, indice) => ({ conducta, indice }))
@@ -144,6 +172,20 @@ export function construirPlanPorBlanco(analisis: AnalisisFuncional): PlanPorBlan
     alertas: alertasDeRuta(analisis.alertas, `conductas_alternativas[${i}]`),
   });
 
+  const intervenciones = analisis.lineas_de_intervencion_tentativas.map(
+    (linea, i): IntervencionDeBlanco => ({
+      indice: i,
+      linea,
+      alertas: alertasDeRuta(analisis.alertas, `lineas_de_intervencion_tentativas[${i}]`),
+    })
+  );
+  const monitorizacion = analisis.plan_de_monitorizacion.map(
+    (plan, i): MonitorizacionDeBlanco => ({ indice: i, plan })
+  );
+  // Un id que ya no existe (la conducta se borró a mano) cuenta como sin blanco:
+  // la entrada no desaparece del informe por haber perdido su tarjeta.
+  const tieneBlanco = (id: Id | null) => id !== null && idsConducta.has(id);
+
   const tarjetas = ordenadas.map(({ conducta, indice }): TarjetaBlanco => {
     const p = priorizadas.findIndex((x) => x.conducta_id === conducta.id);
     return {
@@ -164,6 +206,8 @@ export function construirPlanPorBlanco(analisis: AnalisisFuncional): PlanPorBlan
         .map((_, i) => i)
         .filter((i) => duenoDeAlternativa.get(i) === conducta.id)
         .map(alternativaConAlertas),
+      intervenciones: intervenciones.filter((x) => x.linea.conducta_id === conducta.id),
+      monitorizacion: monitorizacion.filter((x) => x.plan.conducta_id === conducta.id),
       alertasConducta: alertasDeRuta(analisis.alertas, `conductas_problema[${indice}]`),
     };
   });
@@ -174,6 +218,8 @@ export function construirPlanPorBlanco(analisis: AnalisisFuncional): PlanPorBlan
       .map((_, i) => i)
       .filter((i) => !duenoDeAlternativa.has(i))
       .map(alternativaConAlertas),
+    intervencionesSinBlanco: intervenciones.filter((x) => !tieneBlanco(x.linea.conducta_id)),
+    monitorizacionSinBlanco: monitorizacion.filter((x) => !tieneBlanco(x.plan.conducta_id)),
   };
 }
 
@@ -194,6 +240,23 @@ export function datosFaltantesDe(
     .map((a) => analisis.datos_faltantes.find((d) => a.mensaje.includes(`"${d.dato}"`))?.dato)
     .filter((d): d is string => Boolean(d));
   return [...new Set(datos)];
+}
+
+/**
+ * De qué datos depende una intervención: lo que el modelo declaró en
+ * `depende_de` y lo que detectó el validador V4 por su cuenta. Las dos fuentes
+ * se suman a propósito: el validador existe para no depender de que el modelo
+ * lo declare (invariante 3), y el modelo puede ver una dependencia que el
+ * emparejamiento por palabras del validador no ve.
+ */
+export function datosFaltantesDeIntervencion(
+  analisis: AnalisisFuncional,
+  item: IntervencionDeBlanco
+): string[] {
+  const declarado = item.linea.depende_de?.trim();
+  return [
+    ...new Set([...(declarado ? [declarado] : []), ...datosFaltantesDe(analisis, item.alertas)]),
+  ];
 }
 
 /** «Primero explorar: …». Los datos suelen traer su punto final; no se duplica. */
