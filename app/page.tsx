@@ -1,7 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpenText, ChevronDown, Lock, Sparkles, SunMedium } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpenText,
+  ChevronDown,
+  Lock,
+  Moon,
+  PenLine,
+  Sparkles,
+  SunMedium,
+} from "lucide-react";
 import type { AnalisisFuncional, DatoFaltante, PreguntaPrevia } from "@/lib/types";
 import {
   contieneDatosIdentificables,
@@ -22,6 +31,7 @@ import { IDS_TODOS } from "@/lib/bloques";
 import EsqueletoInforme from "@/components/EsqueletoInforme";
 import Sidebar, { type Vista } from "@/components/Sidebar";
 import PanelRecomendaciones from "@/components/PanelRecomendaciones";
+import { usePreferencias } from "@/components/usePreferencias";
 import PreguntasDatosFaltantes, {
   type ResultadoPreguntas,
 } from "@/components/PreguntasDatosFaltantes";
@@ -69,6 +79,14 @@ export default function Home() {
   // mientras dura el paso de preguntas para poder anexarle las respuestas
   // confirmadas al terminar.
   const [textoPendiente, setTextoPendiente] = useState("");
+  const { preferencias, cambiar: cambiarPreferencias } = usePreferencias();
+
+  // Con el tema en "sistema" no se sabe en el servidor cuál se ve; se lee lo
+  // que el script de layout.tsx ya aplicó a <html>, que es lo que ve el usuario.
+  function alternarTema() {
+    const oscuroAhora = document.documentElement.dataset.tema === "oscuro";
+    cambiarPreferencias({ tema: oscuroAhora ? "claro" : "oscuro" });
+  }
 
   async function ejecutarAnalisis(
     texto: string,
@@ -357,13 +375,19 @@ export default function Home() {
             estado === "resultado" ? "max-w-[96rem]" : "max-w-6xl"
           }`}
         >
-          <header className="mb-6 flex flex-wrap items-start justify-between gap-4 print:hidden">
-            <div>
-              <h1 className="font-serif text-2xl font-semibold text-ink sm:text-3xl">
-{cabecera.titulo}
+          <header className="mb-8 flex flex-wrap items-start justify-between gap-4 print:hidden">
+            <div className="min-w-0">
+              {enAnalisis && (
+                <p className="mb-4 flex items-center gap-3 font-mono text-xs font-medium uppercase tracking-[0.25em] text-tierra">
+                  <span aria-hidden="true" className="h-px w-9 bg-dorado" />
+                  Bienvenida a ACIA
+                </p>
+              )}
+              <h1 className="font-serif text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl xl:text-5xl">
+                {cabecera.titulo}
               </h1>
-              <p className="mt-2 text-sm text-ink-muted sm:text-base">
-{cabecera.bajada}
+              <p className="mt-3 text-base text-ink-muted sm:text-lg">
+                {cabecera.bajada}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -381,30 +405,33 @@ export default function Home() {
               )}
               <button
                 type="button"
-                title="Próximamente"
-                aria-label="Cambiar tema"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-divider bg-surface text-ink-muted transition-colors hover:bg-canvas"
+                onClick={alternarTema}
+                title="Cambiar entre modo claro y oscuro"
+                aria-label="Cambiar entre modo claro y oscuro"
+                className="hidden h-12 w-12 items-center justify-center rounded-full border border-divider bg-surface text-tierra sm:flex shadow-sm transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
               >
-                <SunMedium className="h-4 w-4" aria-hidden="true" />
+                {preferencias.tema === "oscuro" ? (
+                  <Moon className="h-5 w-5" aria-hidden="true" />
+                ) : (
+                  <SunMedium className="h-5 w-5" aria-hidden="true" />
+                )}
               </button>
             </div>
           </header>
 
           {formularioVisible && (
-            <section className="grid gap-6 print:hidden lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_360px]">
+            <section className="grid gap-7 print:hidden lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_400px]">
               <div className="min-w-0">
-                <div className="rounded-2xl border border-divider bg-surface p-5 shadow-sm sm:p-6">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft">
-                      <Sparkles className="h-[18px] w-[18px] text-accent" aria-hidden="true" />
+                <div className="rounded-3xl border border-divider bg-surface p-5 shadow-[0_2px_10px_rgba(60,45,25,0.06)] sm:p-8">
+                  <div className="flex items-center gap-4">
+                    <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-tierra-soft">
+                      <PenLine className="h-6 w-6 text-tierra" aria-hidden="true" />
                     </span>
-                    <div>
-                      <p className="font-serif text-base font-semibold text-ink sm:text-lg">
-                        Describe la situación
-                      </p>
-                    </div>
+                    <p className="font-serif text-xl font-semibold text-ink sm:text-2xl">
+                      Describe la situación
+                    </p>
                   </div>
-                  <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+                  <p className="mt-4 text-sm leading-relaxed text-ink-muted sm:text-[15px]">
                     Pega aquí tus notas de sesión, registros u observaciones. No necesitan
                     estar ordenadas: describe situaciones, conductas, lo que la persona dice
                     y lo que ocurre después. Evita nombres reales.
@@ -425,7 +452,7 @@ export default function Home() {
                     maxLength={LONGITUD_MAXIMA}
                     rows={11}
                     placeholder={MARCADOR_NOTA}
-                    className="mt-4 w-full resize-y rounded-lg border border-divider bg-surface px-3 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-muted focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-5 w-full resize-y rounded-2xl border border-divider bg-surface px-5 py-4 text-[15px] leading-relaxed text-ink placeholder:text-ink-muted focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
                   />
 
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
@@ -437,18 +464,17 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="mt-4 flex items-start gap-3 rounded-xl border border-accent/20 bg-accent-soft p-4">
-                    <Lock className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
-                    <div>
-                      <p className="text-sm font-semibold text-ink">Privacidad</p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-ink-muted">
-                        Para generar el análisis, el texto de tus notas se envía a la
-                        API de OpenAI. ACIA no lo almacena en ningún servidor propio,
-                        pero OpenAI puede conservarlo temporalmente según su política
-                        de retención. No introduzcas nombres reales ni datos de
-                        contacto: usa iniciales o seudónimos.
-                      </p>
-                    </div>
+                  {/* No dice "de forma segura": sin DPA ni retención cero con
+                      OpenAI no se puede sostener (ver CLAUDE.md, limitaciones).
+                      Dice lo que pasa de verdad con el texto. */}
+                  <div className="mt-5 flex items-start gap-3 border-t border-divider pt-5">
+                    <Lock className="mt-0.5 h-4 w-4 shrink-0 text-tierra" aria-hidden="true" />
+                    <p className="text-xs leading-relaxed text-ink-muted">
+                      <span className="font-semibold text-ink">Privacidad:</span> el
+                      texto se envía a la API de OpenAI para generar el análisis. ACIA
+                      no lo guarda, pero OpenAI puede conservarlo temporalmente. No
+                      incluyas nombres reales ni datos identificables.
+                    </p>
                   </div>
 
                   {mensajeValidacion && (
@@ -505,26 +531,30 @@ export default function Home() {
                   {/* Botón partido: la acción principal a la izquierda y, a la
                       derecha, el desplegable para elegir qué partes generar. */}
                   {!avisoPII && (
-                    <div className="relative mt-5 flex">
+                    <div className="relative mt-6 flex rounded-2xl shadow-[0_6px_18px_rgba(15,90,67,0.22)]">
                       <button
                         type="button"
                         onClick={manejarGenerarClick}
                         disabled={formularioDeshabilitado}
-                        className="flex min-w-0 flex-1 items-center gap-3 rounded-l-xl bg-accent px-5 py-3.5 text-left texto-sobre-acento transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                        className="group flex min-w-0 flex-1 items-center gap-4 rounded-l-2xl bg-accent px-6 py-5 text-left texto-sobre-acento transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                       >
-                        <Sparkles className="h-5 w-5 shrink-0" aria-hidden="true" />
-                        <span className="min-w-0">
-                          <span className="block text-sm font-semibold">
+                        <Sparkles className="h-7 w-7 shrink-0 text-dorado" strokeWidth={1.5} aria-hidden="true" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-base font-semibold sm:text-lg">
                             {bloques.length === IDS_TODOS.length
                               ? "Generar análisis funcional"
                               : `Generar ${bloques.length} ${bloques.length === 1 ? "sección" : "secciones"}`}
                           </span>
-                          <span className="block text-xs text-white/75">
+                          <span className="mt-0.5 block text-xs text-white/75 sm:text-sm">
                             {bloques.length === IDS_TODOS.length
                               ? "La IA analizará tu información y te entregará un análisis estructurado."
                               : "Solo las partes que has elegido: más rápido y más barato."}
                           </span>
                         </span>
+                        <ArrowRight
+                          className="h-5 w-5 shrink-0 transition-transform group-hover:translate-x-1"
+                          aria-hidden="true"
+                        />
                       </button>
                       <button
                         type="button"
@@ -533,7 +563,7 @@ export default function Home() {
                         aria-expanded={selectorAbierto}
                         aria-label="Elegir qué partes del análisis generar"
                         title="Elegir qué partes generar"
-                        className="flex w-12 shrink-0 items-center justify-center rounded-r-xl border-l border-white/20 bg-accent texto-sobre-acento transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                        className="flex w-14 shrink-0 items-center justify-center rounded-r-2xl border-l border-white/20 bg-accent texto-sobre-acento transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                       >
                         <ChevronDown
                           className={`h-5 w-5 transition-transform ${selectorAbierto ? "rotate-180" : ""}`}
@@ -581,7 +611,7 @@ export default function Home() {
                 )}
               </div>
 
-              <PanelRecomendaciones />
+              <PanelRecomendaciones onAbrirGuia={() => setVista("guia")} />
             </section>
           )}
 

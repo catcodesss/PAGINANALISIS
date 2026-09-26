@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { HelpCircle, X } from "lucide-react";
+import { ArrowRight, HelpCircle, X } from "lucide-react";
 import type { DatoFaltante, PreguntaPrevia } from "@/lib/types";
 
 export interface RespuestaConfirmada {
@@ -111,48 +111,57 @@ export default function PreguntasDatosFaltantes({
         e.preventDefault();
         onCancelar();
       }}
-      className="m-auto w-[min(40rem,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-divider bg-surface p-5 text-ink shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm sm:p-6"
+      className="m-auto w-[min(44rem,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl border border-divider bg-surface p-6 text-ink shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-md sm:p-9"
     >
-      <div className="flex items-center gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft">
-          <HelpCircle className="h-[18px] w-[18px] text-accent" aria-hidden="true" />
+      <div className="flex items-center gap-4">
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-soft">
+          <HelpCircle className="h-7 w-7 text-accent" aria-hidden="true" />
         </span>
         <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <p className="font-sans text-xs font-medium uppercase tracking-[0.12em] text-ink-muted">
+              Pregunta {indice + 1} de {preguntas.length}
+            </p>
+            <span className="flex items-center gap-1.5" aria-hidden="true">
+              {preguntas.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-2 w-2 rounded-full transition-colors ${
+                    i === indice ? "bg-accent" : i < indice ? "bg-accent/50" : "bg-divider"
+                  }`}
+                />
+              ))}
+            </span>
+          </div>
           <h2
             id="titulo-preguntas-previas"
-            className="font-serif text-base font-semibold text-ink sm:text-lg"
+            className="mt-1 font-serif text-2xl font-semibold leading-tight text-ink sm:text-[28px]"
           >
             Antes de generar el análisis
           </h2>
-          <p className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
-            Pregunta {indice + 1} de {preguntas.length}
-          </p>
         </div>
         <button
           type="button"
           onClick={onCancelar}
           aria-label="Cerrar y volver a la nota"
           title="Cerrar y volver a la nota"
-          className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-canvas hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          className="ml-auto flex h-10 w-10 shrink-0 items-center justify-center self-start rounded-full text-ink-muted transition-colors hover:bg-canvas hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         >
-          <X className="h-[18px] w-[18px]" aria-hidden="true" />
+          <X className="h-6 w-6" aria-hidden="true" />
         </button>
       </div>
 
-      <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-        Tu nota no deja claro esto. Respóndelo de memoria si lo sabes: se suma
-        a la nota antes de analizar, así el informe no lo marca como
-        faltante ni hace falta reanalizar después para incorporarlo. Si no lo
-        sabes, dilo — el análisis sigue igual y quedará anotado para
-        confirmarlo en sesión.
+      <p className="mt-5 border-b border-divider pb-5 text-[15px] leading-relaxed text-ink-muted">
+        Tu nota no deja claro esto. Respóndelo si lo sabes; si no, pulsa «No
+        sé» y quedará anotado para la sesión.
       </p>
 
       {/* key={indice} remonta el bloque en cada pregunta nueva, que es lo que
           dispara la animación de entrada (ver app/globals.css). */}
-      <div key={indice} className="pregunta-entra mt-5">
+      <div key={indice} className="pregunta-entra mt-6">
         <label
           htmlFor="respuesta-dato-faltante"
-          className="block font-serif text-[17px] leading-relaxed text-ink"
+          className="block font-serif text-xl font-semibold leading-snug text-accent sm:text-[26px]"
         >
           {preguntaActual.pregunta}
         </label>
@@ -161,7 +170,7 @@ export default function PreguntasDatosFaltantes({
             es el mismo texto que acompañará al hueco en el informe si aquí se
             responde "No sé". */}
         {preguntaActual.por_que_importa && (
-          <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
+          <p className="mt-2 text-[15px] leading-relaxed text-ink-muted">
             {preguntaActual.por_que_importa}
           </p>
         )}
@@ -169,24 +178,25 @@ export default function PreguntasDatosFaltantes({
           id="respuesta-dato-faltante"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          rows={3}
+          rows={4}
           placeholder="Escribe tu respuesta…"
           autoFocus
-          className="mt-3 w-full resize-y rounded-lg border border-divider bg-surface px-3 py-2.5 text-[15px] leading-relaxed text-ink placeholder:text-ink-muted focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+          className="mt-5 w-full resize-y rounded-xl border border-divider bg-canvas px-4 py-3.5 text-base leading-relaxed text-ink placeholder:text-ink-muted focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
         />
-        <div className="mt-3 flex flex-wrap items-center gap-3">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={confirmar}
             disabled={!texto.trim()}
-            className="rounded bg-accent px-4 py-2 text-sm font-medium texto-sobre-acento transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="inline-flex items-center gap-3 rounded-xl bg-accent px-6 py-3 text-base font-medium texto-sobre-acento shadow-sm transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             Confirmar
+            <ArrowRight className="h-5 w-5" aria-hidden="true" />
           </button>
           <button
             type="button"
             onClick={noSe}
-            className="rounded border border-divider px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            className="rounded-xl border border-divider bg-surface px-6 py-3 text-base font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             No sé
           </button>
@@ -194,7 +204,7 @@ export default function PreguntasDatosFaltantes({
             <button
               type="button"
               onClick={omitirResto}
-              className="ml-auto text-xs text-ink-muted underline-offset-2 transition-colors hover:text-ink hover:underline"
+              className="ml-auto text-sm text-ink underline underline-offset-4 decoration-ink-muted/60 transition-colors hover:decoration-ink"
             >
               Omitir el resto y analizar
             </button>

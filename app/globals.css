@@ -1,18 +1,30 @@
 @import "tailwindcss";
 
 @theme {
-  --color-canvas: #f7f8f7;
-  --color-surface: #ffffff;
+  /* Papel cálido en vez de gris clínico: la herramienta sigue siendo seria,
+     pero deja de parecer un formulario de hospital. La tinta suave es un taupe
+     oscurecido lo justo para pasar AA (5,1:1) sobre el lienzo crema. */
+  --color-canvas: #f5f0e8;
+  --color-surface: #fbf8f2;
   --color-ink: #1f2a28;
-  --color-ink-muted: #5c6b67;
-  --color-accent: #2e5e4e;
+  --color-ink-muted: #6e6357;
+  --color-accent: #0f5a43;
   /* Derivado del acento: así un acento nuevo no obliga a calcular su tinte, y
      el mismo cálculo da un tinte claro sobre papel y uno oscuro en modo noche,
      porque --color-surface cambia con el tema. */
   --color-accent-soft: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
-  --color-sidebar: #1c3830;
+  --color-sidebar: #123a31;
   --color-sidebar-hover: color-mix(in srgb, var(--color-sidebar) 82%, white);
-  --color-divider: #e3e7e5;
+  --color-divider: #e8dfd2;
+  /*
+    Dorado y tierra: SOLO decoración de la pantalla de entrada (filete de la
+    cabecera, iconos de consejos). Nunca dentro del informe: la tierra es casi
+    el ámbar de --color-warn, y allí el ámbar significa "hay que revisarlo"
+    (MARCA.md §3). Usarlos en el informe haría ruido semántico.
+  */
+  --color-dorado: #c8a15a;
+  --color-tierra: #8a6b47;
+  --color-tierra-soft: color-mix(in srgb, var(--color-tierra) 12%, var(--color-surface));
   --color-warn: #8a6d3b;
   /* Confianza baja. Antes era `bg-ink-muted/50`, un gris que no se leía como
      parte de la escala: parecía "desactivado" en vez de "bajo". El terracota
@@ -85,6 +97,7 @@ html[data-tema="oscuro"] {
   /* Mismo motivo que el ámbar: el terracota de papel se apaga sobre el lienzo
      oscuro y deja de distinguirse del ocre. */
   --color-inferido: #d98058;
+  --color-tierra: #c4a27a;
   /* La barra lateral ya era oscura: en modo noche se funde con el lienzo si
      no se separa un punto. */
   --color-sidebar: color-mix(in srgb, var(--color-accent) 35%, #0d1113);

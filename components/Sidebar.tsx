@@ -8,7 +8,7 @@ import {
   FilePenLine,
   FolderOpen,
   Heart,
-  Layers,
+  Leaf,
   Library,
   Menu,
   Settings,
@@ -112,7 +112,7 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
 
       <aside
         id="menu-lateral"
-        className={`z-50 w-64 shrink-0 flex-col bg-sidebar px-4 py-6 text-white print:hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start lg:overflow-y-auto ${
+        className={`z-50 w-72 shrink-0 flex-col bg-sidebar px-5 py-7 text-white print:hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start lg:overflow-y-auto ${
           abierto
             ? "fixed inset-y-0 left-0 flex overflow-y-auto"
             : "hidden"
@@ -137,9 +137,13 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
               className="h-10 w-auto shrink-0"
             />
             <div className="min-w-0">
-              <p className="font-serif text-lg font-semibold leading-tight">ACIA</p>
-              <p className="truncate text-xs text-white/60">
-                Análisis de Conducta con IA
+              <p className="font-serif text-xl font-semibold leading-tight tracking-[0.2em]">
+                ACIA
+              </p>
+              <p className="text-xs leading-snug text-white/65">
+                Análisis de Conducta
+                <br />
+                asistido por IA
               </p>
             </div>
           </button>
@@ -164,13 +168,13 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
                 onClick={() => navegar(destino)}
                 aria-current={activo ? "page" : undefined}
                 title={destino ? undefined : "Próximamente"}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
+                className={`flex items-center gap-3.5 rounded-xl px-4 py-3 text-left text-[15px] transition-colors ${
                   activo
-                    ? "bg-white/15 font-medium text-white"
-                    : "text-white/65 hover:bg-white/5 hover:text-white/90"
+                    ? "bg-white/12 font-medium text-white shadow-sm"
+                    : "text-white/70 hover:bg-white/5 hover:text-white/90"
                 }`}
               >
-                <Icono className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+                <Icono className="h-5 w-5 shrink-0" aria-hidden="true" />
                 {etiqueta}
               </button>
             );
@@ -197,18 +201,19 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
           </Link>
         </nav>
 
-        <div className="relative mt-6 overflow-hidden rounded-2xl bg-white/10 p-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
-            <Heart className="h-4 w-4 text-white" aria-hidden="true" />
+        <div className="relative mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] p-5">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-dorado">
+            <Heart className="h-[18px] w-[18px] text-white" aria-hidden="true" />
           </span>
-          <p className="mt-3 text-sm font-semibold leading-snug">
+          <p className="relative mt-4 max-w-[11rem] font-serif text-base font-semibold leading-snug">
             Tu trabajo tiene impacto cada día
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-white/60">
+          <p className="relative mt-2 max-w-[10rem] text-xs leading-relaxed text-white/65">
             Gracias por acompañar procesos de cambio.
           </p>
-          <Layers
-            className="pointer-events-none absolute -bottom-2 -right-2 h-16 w-16 text-white/10"
+          <Leaf
+            className="pointer-events-none absolute -bottom-3 -right-3 h-24 w-24 -rotate-12 text-white/[0.08]"
+            strokeWidth={1.25}
             aria-hidden="true"
           />
         </div>

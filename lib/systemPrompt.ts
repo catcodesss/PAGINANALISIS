@@ -346,18 +346,24 @@ FORMATO DE RESPUESTA PARA ESTA ACTUALIZACIÓN PARCIAL: responde ÚNICAMENTE con 
  * después en "datos_faltantes" y obligar a un reanálisis para incorporarlos.
  */
 export function construirPromptDatosFaltantesPrevios(): string {
-  return `Eres un analista de conducta que revisa una nota clínica ANTES de que otro proceso genere el análisis funcional completo. Tu única tarea es detectar qué información importante falta para que ese análisis sea fiable, y convertir cada vacío en una pregunta breve y concreta que el terapeuta pueda responder de memoria, sin volver a consultar al paciente.
+  return `Eres un analista de conducta que revisa una nota clínica ANTES de que otro proceso genere el análisis funcional completo. Tu única tarea es decidir cuáles de estas tres categorías de información NO quedan respondidas en la nota, y señalar la conducta a la que se refieren:
 
-Prioriza los vacíos que cambiarían el análisis si se resolvieran: qué ocurre justo después de la conducta (qué la mantiene), ante quién sí y ante quién no aparece, desde cuándo, antecedentes médicos o consumo relevante, si alguien del entorno interviene o acomoda el problema, e indicadores de riesgo mencionados pero no aclarados. No preguntes por algo que la nota ya responde, aunque sea parcialmente. No preguntes por estilo, formato ni detalles que no cambian la función de la conducta.
+- "consecuencia": qué ocurre justo después de la conducta.
+- "contexto": qué estaba pasando justo antes de la conducta.
+- "frecuencia": con qué frecuencia y en qué situaciones se repite la conducta.
 
-Máximo 5 preguntas. Si la nota ya es razonablemente completa, responde con una lista vacía: no inventes preguntas para rellenar.
+No incluyas una categoría que la nota ya responde, aunque sea parcialmente. Como mucho una entrada por categoría, y solo sobre la conducta más relevante de la nota. Si la nota ya es razonablemente completa, responde con una lista vacía: no inventes preguntas para rellenar.
 
-Cada pregunta va acompañada de POR QUÉ IMPORTA: qué parte del análisis queda en el aire mientras no se sepa. No es una justificación de cortesía — es lo que le permite al terapeuta distinguir un matiz de un bloqueante, y es el texto que acompañará al hueco en el informe si responde "No sé". Di qué cambiaría en el análisis, no que "sería útil saberlo": "sin esto no se puede distinguir si la función es de escape o de atención" sirve; "ayuda a entender mejor el caso" no.
+Tú NO redactas las preguntas: el servidor las construye con una plantilla fija. Tú solo aportas tres datos, tomados de la nota:
+- "persona": cómo se nombra a la persona en la nota (su nombre si aparece; si no, "la persona").
+- "conducta_verbal": la conducta en tercera persona del presente, sin sujeto, lista para seguir a "la persona" (p. ej. "se levanta y sale de la reunión").
+- "conducta_nominal": la misma conducta en infinitivo o forma nominal (p. ej. "levantarse y salir de la reunión").
+Descríbela con las palabras de la nota; no la interpretes ni añadas emociones, motivos o funciones.
 
 FORMATO: responde ÚNICAMENTE con un objeto JSON, sin texto antes ni después, sin fences de markdown, con esta forma exacta:
 {
   "preguntas": [
-    { "pregunta": "string (breve y concreta, en español, dirigida directamente al terapeuta)", "por_que_importa": "string (qué parte del análisis queda sin decidir mientras no se sepa)" }
+    { "categoria": "consecuencia" | "contexto" | "frecuencia", "persona": "string", "conducta_verbal": "string", "conducta_nominal": "string" }
   ]
 }
 Si no falta nada relevante: { "preguntas": [] }`;
