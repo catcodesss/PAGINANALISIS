@@ -4,7 +4,6 @@ import { Fragment, useLayoutEffect, useRef, useState, type PointerEvent as Event
 import { ChartNoAxesColumnIncreasing, ClipboardList, GripVertical, Play, Target, type LucideIcon } from "lucide-react";
 import type { AnalisisFuncional } from "@/lib/types";
 import {
-  apoyoCadena,
   huecosDeSituacion,
   type CarrilGrafo,
   type HuecoGrafo,
@@ -12,7 +11,6 @@ import {
 } from "@/lib/grafo";
 import s from "../afc.module.css";
 import { TERMINOS, type IdTermino } from "@/lib/terminos";
-import { describirGrado, gradoDeNumero } from "@/lib/gradoApoyo";
 
 interface VistaAFCProps {
   analisis: AnalisisFuncional;
@@ -140,7 +138,6 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
     <div className={s.pila}>
       {analisis.situaciones.map((situacion) => {
         const deSituacion = nodos.filter((n) => n.situacion_id === situacion.id);
-        const apoyo = apoyoCadena(deSituacion);
         const huecos = huecosDeSituacion(analisis, situacion, nodos);
         // La función y la conducta alternativa tienen su propia banda: fuera
         // de las columnas para que cada nodo se pinte una sola vez.
@@ -156,11 +153,6 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
           <section key={situacion.id} className={s.situacion} data-situacion-id={situacion.id}>
             <header className={s.situacionCabecera}>
               <h4 className={s.situacionTitulo}>{situacion.nombre}</h4>
-              <span className={s.apoyo}>
-                Apoyo de la situación:
-                <span className="inline-block h-1 bg-accent" style={{ width: apoyo === 3 ? 34 : apoyo === 2 ? 23 : 11, opacity: apoyo === 3 ? 1 : apoyo === 2 ? .66 : .42 }} />
-                {describirGrado(gradoDeNumero(apoyo)).etiqueta} · lo marca el elemento peor apoyado
-              </span>
             </header>
 
             <div className={s.tablero}>
