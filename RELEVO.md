@@ -57,7 +57,21 @@ menciona—. Lo que se quitó eran copias literales del mismo dato.
 
 ## Lo que queda pendiente
 
-1. **El prompt está en v1.6.0 y NO se ha medido.** Es lo más importante de esta
+0. **Prompts 1.10.0 y 1.11.0 sin medir** (unificación AFC/ACT/MC, 26/09/2026).
+   La cuenta de OpenAI se quedó sin crédito. Con `npm run dev:evals` en una
+   consola, en la otra:
+
+   ```bash
+   node evals/run.mjs --endpoint=http://localhost:3000/api/analizar --reps=3
+   ```
+
+   Primero sobre `348337a` (1.10.0) y después sobre `HEAD` (1.11.0). Comparar
+   con la 1.9.0 (`--reps=3`: 119/141, citas 174/175, 7 reglas en 27 informes)
+   y, además, contar reglas verbales y procesos ACT sin
+   `justificacion_funcional`. Detalle en `CAMBIOS.md`, «Unificar AFC, ACT y MC».
+
+1. ~~**El prompt está en v1.6.0 y NO se ha medido.**~~ Medido el 26/09/2026
+   (ver `CAMBIOS.md`); lo que sigue es histórico. Es lo más importante de esta
    lista. `CLAUDE.md` exige correr las evals al tocar el prompt y anotar los dos
    números en el commit; las fases 0 y 4 lo tocaron y no se hizo. La marca
    vigente (v1.2.0: 43/47, integridad de citas 100%) ya no es comparable.
