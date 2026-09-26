@@ -1,5 +1,5 @@
 import { resolverCita } from "./citas";
-import { migrarAV2 } from "./identidad";
+import { migrarAV3 } from "./identidad";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 import {
   CAMPOS_ANALISIS_FUNCIONAL,
@@ -12,7 +12,6 @@ import {
   type CadenaRespondiente,
   type CapaModalidadACT,
   type CapaModalidadDBT,
-  type CapaModalidadMC,
   type ConductaAlternativa,
   type ConductaProblema,
   type Consecuencia,
@@ -121,7 +120,7 @@ function comoDeficitOInterferencia(valor: unknown): DeficitOInterferencia {
 /**
  * Los ids no se asignan aquí.
  *
- * Los normalizadores dejan el campo vacío y lib/identidad.ts#migrarAV2 lo
+ * Los normalizadores dejan el campo vacío y lib/identidad.ts#migrarAV3 lo
  * rellena al final, en un solo sitio. Repartir la asignación por cada
  * normalizador obligaría a pasarles el índice —y a los anidados, el del padre—,
  * y habría dos caminos capaces de producir un id: el de una respuesta recién
@@ -547,22 +546,6 @@ function normalizarRiesgo(valor: unknown): Riesgo {
   };
 }
 
-function normalizarCapaMc(valor: unknown): CapaModalidadMC {
-  const d = comoObjeto(valor);
-  return {
-    procedimientos_sugeridos: comoArreglo<unknown>(
-      d.procedimientos_sugeridos
-    ).map((p) => {
-      const po = comoObjeto(p);
-      return {
-        procedimiento: comoTexto(po.procedimiento),
-        contingencia_objetivo: comoTexto(po.contingencia_objetivo),
-        precauciones: comoTexto(po.precauciones),
-      };
-    }),
-  };
-}
-
 /**
  * Garantiza la forma completa de AnalisisFuncional aunque el modelo omita
  * claves: las listas ausentes se convierten en arreglos vacíos y los objetos
@@ -571,11 +554,11 @@ function normalizarCapaMc(valor: unknown): CapaModalidadMC {
 export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFuncional {
   const d = comoObjeto(json);
 
-  // migrarAV2 cierra el paso: asigna los ids que los normalizadores dejaron
+  // migrarAV3 cierra el paso: asigna los ids que los normalizadores dejaron
   // vacíos y resuelve las referencias por prosa una sola vez. Que la respuesta
   // recién llegada y el informe rescatado del historial pasen los dos por aquí
   // es lo que garantiza que un análisis no pueda existir sin identidad.
-  return migrarAV2({
+  const analisis: AnalisisFuncional = {
     version: VERSION_ANALISIS,
     siguiente_id: 1,
     // El modelo no conoce las aristas. El migrador las materializa después de
@@ -605,7 +588,6 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     ),
     capa_act: normalizarCapaAct(d.capa_act, lineas),
     capa_dbt: normalizarCapaDbt(d.capa_dbt),
-    capa_mc: normalizarCapaMc(d.capa_mc),
     hipotesis_alternativas: comoArreglo<unknown>(d.hipotesis_alternativas).map(
       normalizarHipotesisAlternativa
     ),
@@ -630,7 +612,15 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     // Solo la escribe la interfaz cuando el clínico edita; el modelo nunca.
     secciones_editadas: [],
     estados_plan: {},
-  });
+  };
+  // La capa MC ya no es parte del esquema, pero un JSON anterior a la v3 (el
+  // informe de ejemplo, o uno pegado a mano) la trae. Se pasa tal cual para
+  // que migrarAV3 funda sus procedimientos en el Plan: construir la salida
+  // clave por clave la perdería aquí sin avisar.
+  if ("capa_mc" in d) {
+    (analisis as unknown as Record<string, unknown>).capa_mc = d.capa_mc;
+  }
+  return migrarAV3(analisis);
 }
 
 /**
@@ -648,7 +638,7 @@ const NORMALIZADORES_POR_CAMPO: {
   ) => AnalisisFuncional[K];
 } = {
   // Ninguna de las dos viene del modelo ni se reanaliza por separado: las fija
-  // migrarAV2 sobre el análisis completo. Están aquí porque el tipo obliga a
+  // migrarAV3 sobre el análisis completo. Están aquí porque el tipo obliga a
   // que toda clave tenga normalizador, que es justo la red que queremos.
   version: () => VERSION_ANALISIS,
   siguiente_id: (d) =>
@@ -701,7 +691,6 @@ const NORMALIZADORES_POR_CAMPO: {
     ),
   capa_act: (d, lineas) => normalizarCapaAct(d.capa_act, lineas),
   capa_dbt: (d) => normalizarCapaDbt(d.capa_dbt),
-  capa_mc: (d) => normalizarCapaMc(d.capa_mc),
   hipotesis_alternativas: (d) =>
     comoArreglo<unknown>(d.hipotesis_alternativas).map(
       normalizarHipotesisAlternativa

@@ -3,7 +3,6 @@ import type { Cita } from "./citas";
 export type { Cita };
 
 export type NivelConfianza = "alta" | "media" | "baja";
-export type ModeloTerapeutico = "act" | "dbt" | "mc";
 export type TipoConducta = "manifiesta" | "encubierta";
 /**
  * Rejilla de contexto y procesos: dos ejes independientes en lugar de una sola
@@ -398,6 +397,15 @@ export interface LineaIntervencion {
   porque: string;
   /** El dato de `datos_faltantes` del que depende; null si no depende de ninguno. */
   depende_de: string | null;
+  /**
+   * Qué contingencia concreta pretende modificar. Viene de la antigua capa MC:
+   * sus procedimientos eran intervenciones con el mismo vocabulario operante, y
+   * en la maqueta salían dos listas de intervención para el mismo caso. Ahora
+   * hay una, y esto es lo que la capa MC añadía. null si no se declara.
+   */
+  contingencia_objetivo: string | null;
+  /** Brote de extinción, consistencia del entorno, conductas de seguridad… null si no hay. */
+  precauciones: string | null;
 }
 
 /**
@@ -442,8 +450,10 @@ export interface HipotesisAlternativa {
   como_descartarla: string;
 }
 
-// --- Capas de modalidad: las tres se generan siempre en la misma llamada,
-// para poder alternar entre ellas en pantalla sin volver a consultar la IA. ---
+// --- Capas de modalidad: ACT y DBT se generan en la misma llamada, para poder
+// alternar entre ellas en pantalla sin volver a consultar la IA. La antigua
+// capa MC no era una lente propia —era el AFC en tres columnas— y sus
+// procedimientos viven ahora en LineaIntervencion (esquema v3). ---
 
 export interface ReglaVerbal {
   id: Id;
@@ -559,16 +569,6 @@ export interface CapaModalidadDBT {
   eslabon_ausente: string | null;
 }
 
-export interface ProcedimientoSugeridoMC {
-  procedimiento: string;
-  contingencia_objetivo: string;
-  precauciones: string;
-}
-
-export interface CapaModalidadMC {
-  procedimientos_sugeridos: ProcedimientoSugeridoMC[];
-}
-
 /**
  * Aviso metodológico producido por los validadores del servidor (lib/validadores.ts),
  * NO por el modelo. Señala problemas de coherencia del propio informe.
@@ -615,10 +615,11 @@ export interface MetaGeneracion {
 
 /**
  * Versión del esquema del análisis. La 2 es la que da identidad a las entidades
- * (ver `Id`). Un informe guardado sin este campo es de la v1 y se migra al
- * leerlo; nunca se descarta. Ver lib/parseAnalisis.ts#migrarAV2.
+ * (ver `Id`); la 3 funde la capa MC en el Plan. Un informe guardado de una
+ * versión anterior se migra al leerlo; nunca se descarta. Ver
+ * lib/identidad.ts#migrarAV3.
  */
-export const VERSION_ANALISIS = 2;
+export const VERSION_ANALISIS = 3;
 
 export interface AnalisisFuncional {
   version: number;
@@ -642,7 +643,6 @@ export interface AnalisisFuncional {
   conductas_alternativas: ConductaAlternativa[];
   capa_act: CapaModalidadACT;
   capa_dbt: CapaModalidadDBT;
-  capa_mc: CapaModalidadMC;
   hipotesis_alternativas: HipotesisAlternativa[];
   preguntas_para_sesion: string[];
   lineas_de_intervencion_tentativas: LineaIntervencion[];
@@ -719,7 +719,6 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "conductas_alternativas",
   "capa_act",
   "capa_dbt",
-  "capa_mc",
   "hipotesis_alternativas",
   "preguntas_para_sesion",
   "lineas_de_intervencion_tentativas",

@@ -140,4 +140,18 @@ prueba("un informe normal no lleva el aviso por ninguna parte", () => {
   assert.ok(!texto.includes(AVISO_EJEMPLO));
 });
 
+prueba("el ejemplo enseña los antiguos procedimientos MC como intervenciones con su contingencia", () => {
+  // La maqueta es lo único que se revisa desde el móvil: si la fusión de MC en
+  // el Plan no se ve aquí, no se ve en ningún sitio.
+  const conContingencia = ANALISIS_MINIMO.lineas_de_intervencion_tentativas.filter(
+    (l) => l.contingencia_objetivo
+  );
+  assert.ok(conContingencia.length >= 2, "faltan las intervenciones con contingencia objetivo");
+  const texto = formatearInformeTexto(ANALISIS_MINIMO, "", "fecha");
+  for (const l of conContingencia) {
+    assert.ok(texto.includes(`Contingencia objetivo: ${l.contingencia_objetivo}`));
+  }
+  assert.ok(!texto.includes("CAPA CONDUCTUAL"), "sigue la sección MC aparte");
+});
+
 console.log(`\n${pasadas} pruebas correctas\n`);

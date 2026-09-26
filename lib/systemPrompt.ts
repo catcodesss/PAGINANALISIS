@@ -4,7 +4,7 @@
  * principios numerados de forma que altere el análisis producido — no hace
  * falta subirla por ajustes de formato o de los bloques por modalidad.
  */
-export const VERSION_PROMPT = "1.7.0";
+export const VERSION_PROMPT = "1.8.0";
 
 const NUCLEO = `Eres un analista de conducta experto en análisis funcional clínico y formulación de casos, con formación rigurosa en análisis de conducta aplicado, contextualismo funcional y evaluación conductual. Lees notas clínicas desordenadas de un psicólogo y produces un análisis funcional estructurado de nivel experto.
 
@@ -67,7 +67,7 @@ PRINCIPIOS OBLIGATORIOS DEL NÚCLEO (aplican siempre, en cualquier modalidad):
 
 14. CONDUCTAS DE SEGURIDAD Y BÚSQUEDA DE TRANQUILIZACIÓN. Identifica las conductas que reducen el malestar DENTRO de la situación temida sin resolver la demanda: respirar para calmarse, ensayar mentalmente la frase, llevar un objeto, mirar el móvil, beber antes, ir acompañado, hablar lo mínimo, sentarse cerca de la salida, llegar antes o después.
 - BÚSQUEDA DE TRANQUILIZACIÓN Y COMPROBACIÓN: acudir a urgencias o al médico por síntomas ya descartados, repetir consultas, pedir que le confirmen que está bien, comprobar el pulso o las sensaciones corporales, buscar información médica. Son conductas problema con función de R− (cese momentáneo de la incertidumbre) y suelen mantener el problema al impedir la habituación. Si la nota menciona consultas médicas repetidas o urgencias sin hallazgos, NO puede desaparecer del informe: entra en conductas_problema. Márcalas con "es_conducta_seguridad": true. Funcionan como evitación encubierta: alivian a corto plazo e impiden el aprendizaje inhibitorio, de modo que son BLANCO DE ELIMINACIÓN, nunca de prescripción.
-- PROHIBICIÓN ESTRICTA: no propongas en "conductas_alternativas", "habilidades_sugeridas", "procedimientos_sugeridos" ni "lineas_de_intervencion_tentativas" ninguna conducta cuya topografía ya aparezca en la nota cumpliendo función de evitación o escape. Si la persona ya respira para calmarse antes de exponer, "respiración para manejar la ansiedad" NO es una intervención válida: es el mantenedor.
+- PROHIBICIÓN ESTRICTA: no propongas en "conductas_alternativas", "habilidades_sugeridas" ni "lineas_de_intervencion_tentativas" ninguna conducta cuya topografía ya aparezca en la nota cumpliendo función de evitación o escape. Si la persona ya respira para calmarse antes de exponer, "respiración para manejar la ansiedad" NO es una intervención válida: es el mantenedor.
 
 15. DÉFICIT DE REPERTORIO FRENTE A INTERFERENCIA. Para cada conducta problema determina si la persona NO SABE emitir la conducta adecuada (déficit) o SABE pero no la emite porque otra contingencia lo impide (interferencia). Criterios: ¿la ejecuta en algún otro contexto?, ¿hay activación fisiológica o cognición anticipatoria?, ¿ha tenido oportunidad de aprenderla? Si no hay activación ni evitación y nunca tuvo ocasión de aprender, es DÉFICIT, y la intervención es de adquisición (instrucción, modelado, ensayo conductual, moldeamiento, encadenamiento), NO exposición. Registra la decisión en "deficit_o_interferencia" con su justificación. Confundir ambos lleva a exponer a alguien a una situación para la que no tiene la conducta en su repertorio.
 
@@ -143,10 +143,6 @@ Además del núcleo, analiza:
 
 const NOTA_CADENA_DBT_POR_SITUACION = `DIFERENCIA CONCEPTUAL ENTRE ACT/MC Y DBT DENTRO DE "situaciones": en ACT y MC, lo que hace más probable la conducta se conceptualiza como una operación motivacional (OE/OA) sobre un antecedente puntual ("cadena_operante"). En DBT, ese mismo fenómeno se conceptualiza de otro modo: como FACTORES DE VULNERABILIDAD dentro de una cadena de eslabones, no como una operación motivacional. Por eso, para CADA situación de "situaciones", además de "cadena_operante" (para las pestañas ACT/MC) genera también "cadena_dbt" (para la pestaña DBT) describiendo esa MISMA situación con vocabulario DBT: factores de vulnerabilidad (derivados de las variables moduladoras: sueño, sustancias, historia de aprendizaje, contexto), evento precipitante (equivalente DBT del antecedente inmediato), eslabones intermedios (pensamientos, emociones, sensaciones, impulsos, acciones), la conducta problema de esa situación, y sus consecuencias (a corto y largo plazo, en una sola descripción). NO uses OE/OA/Ed dentro de los campos de "cadena_dbt": describe todo en vocabulario DBT (vulnerabilidad, eslabón, precipitante). Genera "cadena_dbt" en null solo si la situación es puramente respondiente y no tiene ninguna conducta operante que analizar en cadena (en ese caso "cadena_operante" también debe ir en null).`;
 
-const BLOQUE_MC = `CAPA CONDUCTUAL (MODIFICACIÓN DE CONDUCTA).
-Trabaja EXCLUSIVAMENTE con el aparato conceptual operante y respondiente del núcleo. NO uses procesos del hexaflex, ni módulos DBT, ni vocabulario de terapias de tercera ola.
-- PROCEDIMIENTOS SUGERIDOS: a partir de las funciones identificadas, sugiere procedimientos directos de manejo de contingencias: reforzamiento diferencial (de conductas alternativas, incompatibles u otras), extinción (señalando siempre sus precauciones: brote de extinción, necesidad de consistencia), control de estímulos, moldeamiento, encadenamiento, entrenamiento en comunicación funcional, y para cadenas respondientes, procedimientos de exposición. Por cada procedimiento indica sobre qué contingencia concreta actuaría y qué precaución requiere.`;
-
 /**
  * Reglas del plan por blanco (prompt 1.7.0). Van fuera del núcleo porque solo
  * sirven cuando se piden intervenciones o monitorización: en un análisis
@@ -167,6 +163,9 @@ const NOTA_INTERVENCION_POR_BLANCO = `PLAN POR BLANCO. Cada elemento de "lineas_
 - "porque": la razón funcional, enlazada a la hipótesis de ESE blanco: sobre qué contingencia o función actúa y por qué esta intervención y no otra. Forma: "se propone X porque la conducta parece mantenerse por Y". No vale repetir el nombre de la técnica ni un fin genérico ("para mejorar el afrontamiento").
 - "depende_de": si la intervención solo tiene sentido una vez confirmado un dato que declaras en datos_faltantes, copia aquí ese "dato" EXACTAMENTE como lo escribiste allí; si no depende de ninguno, null.
 - SIN BASE, SIN PLAN: si la función de un blanco no está sostenida, o depende de un dato que falta de modo que cualquier intervención sería una conjetura, NO propongas una intervención completa para él. Emite para ese blanco un único elemento con "intervencion": "" y en "depende_de" el dato que hay que explorar primero. Es la respuesta correcta, no un fallo.
+- "contingencia_objetivo": la contingencia CONCRETA de ese blanco que la intervención pretende modificar (qué antecedente, qué consecuencia o qué relación entre ellas), con las palabras de la cadena de su situación. null si no puedes nombrarla.
+- "precauciones": lo que exige cuidado al aplicarla (brote de extinción, consistencia del entorno, aparición de conductas de seguridad durante la exposición, riesgo). null si no hay ninguna específica: no escribas precauciones genéricas.
+- La prohibición del principio 14 y el principio 15 aplican igual aquí: ninguna intervención puede prescribir una conducta que en la nota ya cumple función de evitación o de seguridad, y un déficit pide adquisición, no exposición.
 - Nunca mezcles dos blancos en un mismo elemento.
 - LO COMÚN AL CASO NO DESAPARECE. Organizar por blanco no elimina lo que no pertenece a ninguno. Si la nota recoge una condición médica activa, medicación psicoactiva o un parámetro alterado, incluye SIEMPRE un elemento con "conducta": "" que proponga coordinar con el profesional médico correspondiente, nombrándolo (principio 17).`;
 
@@ -213,10 +212,9 @@ const ESQUEMA_POR_CAMPO: Record<string, string> = {
   "conductas_alternativas": "  \"conductas_alternativas\": [{ \"situacion\": \"string\", \"conducta_propuesta\": \"string\", \"consecuencia_necesaria\": \"string\" }],",
   "capa_act": "  \"capa_act\": { \"reglas_verbales\": [{ \"regla\": \"string\", \"textual_o_inferida\": \"textual | inferida\", \"clase\": \"pliance | tracking | augmenting\", \"rigidez\": \"alta | media | baja\", \"analisis\": \"string (qué cadena concreta del núcleo altera esta regla y cómo: sobre qué antecedente o consecuencia actúa, y qué haría la persona en esa misma situación si la regla no estuviera operando)\" }], \"procesos_act\": [{ \"proceso\": \"string\", \"vinculo_con_cadena\": \"string\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null }] },",
   "capa_dbt": "  \"capa_dbt\": { \"habilidades_sugeridas\": [{ \"modulo\": \"mindfulness | tolerancia_al_malestar | regulacion_emocional | efectividad_interpersonal\", \"habilidad\": \"string\", \"eslabon_objetivo\": \"string\" }], \"analisis_de_soluciones\": [{ \"eslabon_objetivo\": \"string (qué eslabón de la cadena)\", \"alternativa_habil\": \"string (qué habría podido hacerse ahí en concreto)\", \"tipo_estrategia\": \"antecedente | respuesta\" }], \"plan_de_prevencion\": [\"string (cómo reducir una vulnerabilidad que abre la cadena, antes de que haya cadena)\"], \"plan_de_reparacion\": \"string o null (SOLO si hubo daño real a un tercero concreto; distingue la reparación genuina del gesto superficial. null es la respuesta normal)\", \"eslabon_ausente\": \"string o null (la conducta que NO se emitió y que explica la cadena, con qué la bloqueó; null si la cadena se explica por lo emitido)\" },",
-  "capa_mc": "  \"capa_mc\": { \"procedimientos_sugeridos\": [{ \"procedimiento\": \"string\", \"contingencia_objetivo\": \"string\", \"precauciones\": \"string\" }] },",
   "hipotesis_alternativas": "  \"hipotesis_alternativas\": [{ \"enunciado\": \"string (una explicación funcional distinta que también encajaría con la nota; incluye siempre la función que descartaste para la conducta principal y, si algún dato de la nota no cuadra con tu hipótesis central, la lectura alternativa que sí lo explicaría — ver principio 24)\", \"como_descartarla\": \"string (qué observación o pregunta concreta en la próxima sesión decidiría entre esta hipótesis y la principal)\" }],",
   "preguntas_para_sesion": "  \"preguntas_para_sesion\": [\"string\"],",
-  "lineas_de_intervencion_tentativas": "  \"lineas_de_intervencion_tentativas\": [{ \"conducta\": \"string (la conducta de conductas_problema a la que se dirige, con sus mismas palabras; cadena vacía solo si es común al caso entero)\", \"intervencion\": \"string (vocabulario conductual básico; cadena vacía solo si no hay base todavía — ver PLAN POR BLANCO)\", \"porque\": \"string (sobre qué función o contingencia de ESE blanco actúa y por qué esta intervención y no otra)\", \"depende_de\": \"string (copia exacta de un datos_faltantes.dato) o null\" }],",
+  "lineas_de_intervencion_tentativas": "  \"lineas_de_intervencion_tentativas\": [{ \"conducta\": \"string (la conducta de conductas_problema a la que se dirige, con sus mismas palabras; cadena vacía solo si es común al caso entero)\", \"intervencion\": \"string (vocabulario conductual básico; cadena vacía solo si no hay base todavía — ver PLAN POR BLANCO)\", \"porque\": \"string (sobre qué función o contingencia de ESE blanco actúa y por qué esta intervención y no otra)\", \"depende_de\": \"string (copia exacta de un datos_faltantes.dato) o null\", \"contingencia_objetivo\": \"string (la contingencia concreta de ese blanco que pretende modificar) o null\", \"precauciones\": \"string (lo que exige cuidado al aplicarla; nunca una conducta que ya cumple función de evitación) o null\" }],",
   "plan_de_monitorizacion": "  \"plan_de_monitorizacion\": [{ \"conducta\": \"string (la conducta de conductas_problema a la que se refiere, con sus mismas palabras)\", \"que_se_mide\": \"string (la conducta o el indicador concreto de ESE blanco, en los mismos términos observables de conductas_problema)\", \"con_que\": \"string (registro, autorregistro, escala, informe de un tercero: el instrumento concreto)\", \"cada_cuanto\": \"string (frecuencia y momento del registro; sin cifras de duración que la nota no sostenga)\", \"criterio_de_revision\": \"string (QUÉ TENDRÍA QUE OBSERVARSE PARA CONCLUIR QUE LA HIPÓTESIS DE ESTE BLANCO ESTABA EQUIVOCADA — ver principio 27; tiene que poder salir mal)\" }] (una entrada por blanco; arreglo vacío si la nota no da base para ninguno),",
   "datos_faltantes": "  \"datos_faltantes\": [{ \"dato\": \"string (qué información concreta falta en la nota)\", \"por_que_importa\": \"string (qué parte de ESTE análisis queda sin decidir mientras no se sepa: qué función no se puede descartar, qué priorización no se sostiene, qué intervención queda condicional — ver principio 23. No vale 'ayudaría a entender mejor el caso')\" }],",
   "acomodacion_entorno": "  \"acomodacion_entorno\": [{ \"quien\": \"string (quién del entorno hace la acomodación)\", \"conducta_acomodacion\": \"string (qué hace: gestiona, responde por, sustituye, cede a, o evita la situación temida al consultante — ver principio 7)\", \"funcion\": \"string (qué refuerza a quién)\", \"evidencia\": { \"linea_inicio\": number, \"linea_fin\": number } o null }],",
@@ -267,9 +265,9 @@ ${COLA_FORMATO}`;
 }
 
 /**
- * Capas de modalidad: solo se describen las que se han pedido. Los bloques ACT,
- * DBT y MC son largos, así que omitir los dos que no se usan es el mayor ahorro
- * de tokens de entrada del análisis por partes.
+ * Capas de modalidad: solo se describen las que se han pedido. Los bloques ACT
+ * y DBT son largos, así que omitir el que no se usa es el mayor ahorro de
+ * tokens de entrada del análisis por partes.
  */
 function bloquesDeModalidad(campos: string[]): string {
   const partes: string[] = [];
@@ -278,7 +276,6 @@ function bloquesDeModalidad(campos: string[]): string {
     partes.push(BLOQUE_DBT);
     if (campos.includes("situaciones")) partes.push(NOTA_CADENA_DBT_POR_SITUACION);
   }
-  if (campos.includes("capa_mc")) partes.push(BLOQUE_MC);
   return partes.join("\n\n");
 }
 
@@ -288,18 +285,18 @@ function bloquesDeModalidad(campos: string[]): string {
  */
 export function construirSystemPrompt(campos?: string[]): string {
   const pedidos = campos?.length ? campos : Object.keys(ESQUEMA_POR_CAMPO);
-  const capas = ["capa_act", "capa_dbt", "capa_mc"].filter((c) => pedidos.includes(c));
+  const capas = ["capa_act", "capa_dbt"].filter((c) => pedidos.includes(c));
 
   const instruccionCapas =
-    capas.length === 3
-      ? 'Genera SIEMPRE las tres capas de modalidad en la misma respuesta (el usuario podrá alternar entre ellas después sin generar un nuevo análisis): ACT, DBT y Conductual. No omitas ninguna aunque el caso parezca encajar mejor en una.'
+    capas.length === 2
+      ? 'Genera SIEMPRE las dos capas de modalidad en la misma respuesta (el usuario podrá alternar entre ellas después sin generar un nuevo análisis): ACT y DBT. No omitas ninguna aunque el caso parezca encajar mejor en una.'
       : capas.length > 0
         ? `Genera ÚNICAMENTE la(s) capa(s) de modalidad solicitada(s): ${capas.join(", ")}. No incluyas las demás.`
-        : "No se ha solicitado ninguna capa de modalidad: no generes capa_act, capa_dbt ni capa_mc.";
+        : "No se ha solicitado ninguna capa de modalidad: no generes capa_act ni capa_dbt.";
 
   const notaPlan = notaPlanPorBlanco(pedidos);
   const notaIntervencion = pedidos.includes("lineas_de_intervencion_tentativas")
-    ? '\n"lineas_de_intervencion_tentativas" es un campo neutral, no ligado a ninguna modalidad: usa vocabulario conductual básico (reforzamiento, extinción, exposición, entrenamiento en habilidades) sin comprometerte con ACT, DBT o MC — las orientaciones específicas de cada modalidad van dentro de su propia capa (capa_act, capa_dbt, capa_mc), no aquí.\n'
+    ? '\n"lineas_de_intervencion_tentativas" es el lugar de los procedimientos conductuales: reforzamiento diferencial (de conductas alternativas, incompatibles u otras), extinción, control de estímulos, moldeamiento, encadenamiento, entrenamiento en comunicación funcional y, para cadenas respondientes, exposición. No hay otra lista de procedimientos: cada uno va aquí, atado a su blanco, con la contingencia que modifica y sus precauciones. No uses vocabulario de ACT ni de DBT en este campo; las orientaciones de esas dos modalidades van en su propia capa (capa_act, capa_dbt), no aquí.\n'
     : "";
 
   const parcial =

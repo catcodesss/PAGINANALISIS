@@ -32,7 +32,7 @@ export const ESCALA_TEXTO: Record<TamanoTexto, number> = {
 };
 export type Acento = "verde" | "indigo" | "lavanda" | "teal" | "arena";
 export type Idioma = "es";
-export type EstiloGrafo = "afc" | "dbt" | "act" | "mc";
+export type EstiloGrafo = "afc" | "dbt" | "act";
 
 export const ESTILO_GRAFO_POR_DEFECTO: EstiloGrafo = "afc";
 export const CLAVE_ESTILO_GRAFO = "acia-estilo-grafo";

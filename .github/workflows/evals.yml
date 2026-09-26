@@ -53,7 +53,7 @@ jobs:
       # Ningún análisis guardado se pierde ni se degrada al migrarlo. El
       # historial es local: si un informe antiguo se rompe aquí, no hay copia
       # en ningún servidor con la que recuperarlo.
-      - name: Un informe guardado en v1 se abre en v2 sin perder nada
+      - name: Un informe guardado en v1 o v2 se abre en v3 sin perder nada
         run: node evals/migracion.test.mjs
 
       # El plan por blanco no pierde ni repite contenido, y todo aviso del

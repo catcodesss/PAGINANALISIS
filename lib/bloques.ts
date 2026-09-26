@@ -5,13 +5,13 @@ import type { AnalisisFuncional } from "./types";
  *
  * Por qué existe: generar el informe completo cuesta tokens y tiempo. Si alguien
  * solo quiere las conductas problema o solo la lectura ACT, no tiene sentido
- * producir las tres capas de modalidad y toda la formulación.
+ * producir las dos capas de modalidad y toda la formulación.
  *
  * El ahorro real está en dos sitios: el prompt no incluye los bloques de las
  * modalidades que no se piden (son largos), y la salida es mucho más corta.
  *
  * DEPENDENCIAS: las secciones no son independientes. Las hipótesis de
- * mantenimiento se apoyan en las situaciones, y las tres capas también. Pedir
+ * mantenimiento se apoyan en las situaciones, y las dos capas también. Pedir
  * "capa ACT" sin situaciones daría una capa hueca, así que cada bloque declara
  * todo lo que necesita y la unión se calcula aquí, no en la interfaz.
  */
@@ -169,14 +169,6 @@ export const BLOQUES: Bloque[] = [
     descripcion: "Análisis en cadena con habilidades sugeridas en cada eslabón.",
     categoria: "Capas de modalidad",
     campos: ["conductas_problema", "situaciones", "capa_dbt"],
-    peso: 4,
-  },
-  {
-    id: "mc",
-    etiqueta: "Capa conductual (MC)",
-    descripcion: "Procedimientos de manejo de contingencias.",
-    categoria: "Capas de modalidad",
-    campos: ["conductas_problema", "situaciones", "capa_mc"],
     peso: 4,
   },
 ];

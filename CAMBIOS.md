@@ -1,5 +1,57 @@
 # CAMBIOS
 
+## Unificar AFC, ACT y MC (esquema v3, prompt 1.8.0)
+
+Hay un solo análisis funcional y es la fuente de verdad. ACT es una capa de
+anotaciones sobre ese grafo, más la vista Matrix; MC no era una lente propia,
+sino el AFC dibujado en tres columnas. DBT no cambia.
+
+### Fase 1 · MC se funde en el Plan
+
+- **Esquema v3**: fuera `capa_mc`, `CapaModalidadMC` y `ProcedimientoSugeridoMC`.
+  `LineaIntervencion` gana `contingencia_objetivo` y `precauciones` (las dos
+  `string | null`): era lo único que la capa MC añadía. En la maqueta salían
+  dos listas de intervención para el mismo caso, con el mismo vocabulario
+  operante.
+- **Migración** (`migrarAV3`, en `lib/identidad.ts` junto a `migrarAV2`, que
+  deja de exportarse): cada procedimiento pasa a ser una línea de intervención
+  con `intervencion = procedimiento` y sus dos campos. **Sin blanco**, como
+  toda intervención antigua (`lib/formaPlan.ts`): el procedimiento no nombraba
+  conducta y deducirla de sus palabras es el emparejamiento por prosa que la
+  v2 retiró. Salen en «Intervenciones sin blanco». No se descartan aunque se
+  parezcan a una línea existente: un falso duplicado visible es mejor que un
+  dato perdido. `normalizarAnalisis` pasa la `capa_mc` cruda a la migración,
+  porque construir la salida clave por clave la perdería.
+- **Interfaz**: fuera `estilos/mc.tsx`, `"mc"` de `EstiloGrafo` y el bloque
+  `mc`. Una lente `"mc"` guardada cae a AFC (`useLente`, comprobado en el
+  navegador). La tarjeta de cada intervención enseña contingencia objetivo y
+  precauciones, editables.
+- **Prompt 1.8.0**: fuera `BLOQUE_MC` y la clave `capa_mc`; «dos capas» (ACT y
+  DBT); las líneas de intervención piden `contingencia_objetivo` y
+  `precauciones` con la prohibición del principio 14 y el principio 15, y la
+  nota que las llamaba «campo neutral» dice ahora que los procedimientos
+  conductuales viven ahí.
+- **Exportación**: fuera «CAPA CONDUCTUAL — PROCEDIMIENTOS SUGERIDOS»; los dos
+  campos salen dentro de cada intervención del Plan.
+- **V3** sigue revisando los procedimientos migrados, porque ahora son
+  `intervencion`. No revisa `contingencia_objetivo` ni `precauciones`, por la
+  misma razón que no revisa el `porque`: nombran lo que se quiere modificar, a
+  menudo el propio mantenedor. V5 y `riesgo` no dependían de `capa_mc`.
+
+**Medida** (0,2, 1 rep, 9 casos, 26/09/2026):
+
+| Prompt | Comprobaciones | Citas | Procesos ACT (sin justificación funcional) |
+|---|---|---|---|
+| 1.7.0 (antes) | 42/47 | 58/58 (100%) | 7 (7) |
+| 1.8.0, fase 1 | 41/47 | 56/56 (100%) | 6 (6) |
+
+La única diferencia es `riesgo-detecta-ideacion` (caso 09), y no es de este
+cambio: con `--reps=3` el 1.7.0 da `indicadores: []` en las tres, igual que el
+1.8.0. Es un fallo intermitente previo (1 de 4 ejecuciones pasa con el 1.7.0).
+V5 salta en todos esos casos. Queda anotado aparte: es grave y no es de este
+encargo. Intervenciones en los 9 informes: 13 antes y 11 después; 8 declaran
+contingencia objetivo y 7, precauciones.
+
 ## Plan por blanco (fase A: solo interfaz, sin tocar el prompt)
 
 El Plan eran tres listas por tipo de contenido —conductas alternativas, líneas

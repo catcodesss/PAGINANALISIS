@@ -55,7 +55,7 @@ execFileSync(
 const require = createRequire(import.meta.url);
 const { numerarNota } = require(join(RAIZ, ".tmp-evals/citas.js"));
 const { normalizarAnalisis } = require(join(RAIZ, ".tmp-evals/parseAnalisis.js"));
-const { migrarAV2 } = require(join(RAIZ, ".tmp-evals/identidad.js"));
+const { migrarAV3 } = require(join(RAIZ, ".tmp-evals/identidad.js"));
 const { validarAnalisis } = require(join(RAIZ, ".tmp-evals/validadores.js"));
 const {
   construirPlanPorBlanco,
@@ -226,7 +226,7 @@ prueba("el estado viaja al texto exportado", () => {
 prueba("un informe guardado sin estados se abre con estados vacíos", () => {
   const a = informe();
   delete a.estados_plan;
-  const migrado = migrarAV2(a);
+  const migrado = migrarAV3(a);
   assert.deepEqual(migrado.estados_plan, {});
   assert.doesNotThrow(() => construirPlanPorBlanco(migrado));
 });
@@ -241,6 +241,9 @@ prueba("un informe nuevo no trae estados: el modelo nunca los decide", () => {
 /** El crudo del caso 01 con el plan en la forma nueva, como lo emitiría el modelo. */
 function crudoConPlanPorBlanco() {
   const c = crudo();
+  // El modelo ya no emite capa MC (esquema v3). Su migración la fija
+  // migracion.test.mjs; aquí solo sumaría dos líneas sin blanco.
+  delete c.capa_mc;
   const reuniones = c.conductas_problema[0].descripcion;
   const alcohol = c.conductas_problema[3].descripcion;
   c.lineas_de_intervencion_tentativas = [
@@ -323,7 +326,7 @@ prueba("un informe anterior (textos sueltos, un solo plan) se migra sin blanco y
   viejo.plan_de_monitorizacion = {
     que_se_mide: "Evitaciones.", con_que: "Autorregistro.", cada_cuanto: "Diario.", criterio_de_revision: "",
   };
-  const a = migrarAV2(viejo);
+  const a = migrarAV3(viejo);
   assert.deepEqual(
     a.lineas_de_intervencion_tentativas.map((l) => [l.intervencion, l.conducta_id]),
     [["Entrenamiento en asertividad.", null], ["Reducir el consumo.", null]]
@@ -334,7 +337,7 @@ prueba("un informe anterior (textos sueltos, un solo plan) se migra sin blanco y
   assert.equal(plan.intervencionesSinBlanco.length, 2);
   assert.equal(plan.monitorizacionSinBlanco.length, 1);
   // Y abrirlo dos veces no cambia nada.
-  assert.deepEqual(migrarAV2(structuredClone(a)).lineas_de_intervencion_tentativas, a.lineas_de_intervencion_tentativas);
+  assert.deepEqual(migrarAV3(structuredClone(a)).lineas_de_intervencion_tentativas, a.lineas_de_intervencion_tentativas);
 });
 
 prueba("sin ningún plan de medición, el exportado lo dice en vez de callarlo", () => {

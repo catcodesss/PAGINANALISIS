@@ -30,7 +30,10 @@ export function normalizarLineasIntervencion(valor: unknown): LineaIntervencion[
   return valor.flatMap((v): LineaIntervencion[] => {
     if (typeof v === "string") {
       return v.trim()
-        ? [{ conducta: "", conducta_id: null, intervencion: v, porque: "", depende_de: null }]
+        ? [{
+            conducta: "", conducta_id: null, intervencion: v, porque: "", depende_de: null,
+            contingencia_objetivo: null, precauciones: null,
+          }]
         : [];
     }
     const d = objeto(v);
@@ -42,6 +45,8 @@ export function normalizarLineasIntervencion(valor: unknown): LineaIntervencion[
       intervencion: texto(d.intervencion),
       porque: texto(d.porque),
       depende_de: depende || null,
+      contingencia_objetivo: texto(d.contingencia_objetivo).trim() || null,
+      precauciones: texto(d.precauciones).trim() || null,
     };
     // Sin intervención solo vale si dice de qué dato depende: es la forma de
     // declarar «no hay base para proponer nada todavía». Sin eso es un hueco.

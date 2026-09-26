@@ -268,6 +268,8 @@ function TarjetaDeBlanco({
           intervencion: texto,
           porque: "",
           depende_de: null,
+          contingencia_objetivo: null,
+          precauciones: null,
         },
       ];
     });
@@ -524,6 +526,34 @@ function Intervencion({
                   Sin razón declarada: no consta sobre qué función actúa, así
                   que no se puede contrastar con la hipótesis del blanco.
                 </p>
+              )}
+              {linea.contingencia_objetivo && (
+                <>
+                  <p className="mt-1.5 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                    Contingencia objetivo
+                  </p>
+                  <TextoEditable
+                    valor={linea.contingencia_objetivo}
+                    seccionId="intervencion"
+                    etiqueta="Contingencia objetivo"
+                    className="text-sm leading-relaxed text-ink-muted"
+                    onCambio={(v) => cambiar({ contingencia_objetivo: v.trim() || null })}
+                  />
+                </>
+              )}
+              {linea.precauciones && (
+                <>
+                  <p className="mt-1.5 font-mono text-[10px] uppercase tracking-wide text-warn">
+                    Precauciones
+                  </p>
+                  <TextoEditable
+                    valor={linea.precauciones}
+                    seccionId="intervencion"
+                    etiqueta="Precauciones"
+                    className="text-sm leading-relaxed text-ink-muted"
+                    onCambio={(v) => cambiar({ precauciones: v.trim() || null })}
+                  />
+                </>
               )}
             </>
           )}

@@ -408,18 +408,76 @@ export function situacionDeLaCadenaDBT(
 }
 
 /**
- * Lleva un análisis de cualquier versión anterior a la v2.
+ * Cada procedimiento de la antigua `capa_mc` pasa a ser una línea de
+ * intervención. Se añaden al final aunque se parezcan a una línea existente:
+ * un falso duplicado visible es mejor que un dato perdido en silencio.
  *
- * Es idempotente y no destructivo: sobre un análisis que ya es v2 no cambia
- * nada, y sobre uno antiguo solo AÑADE —ids, referencias resueltas, la cadena
- * DBT fundida en su situación—. Ningún texto se borra.
+ * SIN BLANCO, como toda intervención antigua (ver lib/formaPlan.ts): el
+ * procedimiento no nombraba conducta, y deducirla de sus palabras sería el
+ * emparejamiento por prosa que la v2 retiró. Sale en «Intervenciones sin
+ * blanco» y el clínico la coloca.
+ */
+function fundirCapaMc(analisis: AnalisisFuncional): void {
+  const crudo = analisis as unknown as Record<string, unknown>;
+  if (!("capa_mc" in crudo)) return;
+  const capa = crudo.capa_mc as Record<string, unknown> | null;
+  const procedimientos = Array.isArray(capa?.procedimientos_sugeridos)
+    ? (capa.procedimientos_sugeridos as Record<string, unknown>[])
+    : [];
+  const texto = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const lineas: unknown[] = Array.isArray(analisis.lineas_de_intervencion_tentativas)
+    ? [...analisis.lineas_de_intervencion_tentativas]
+    : [];
+  for (const p of procedimientos) {
+    if (!p || typeof p !== "object") continue;
+    const intervencion = texto(p.procedimiento);
+    const contingencia = texto(p.contingencia_objetivo);
+    const precauciones = texto(p.precauciones);
+    if (!intervencion && !contingencia && !precauciones) continue;
+    lineas.push({
+      conducta: "",
+      conducta_id: null,
+      // Un procedimiento sin nombre pero con contingencia sigue siendo contenido;
+      // se conserva con la contingencia como texto visible en vez de perderlo.
+      intervencion: intervencion || contingencia,
+      porque: "",
+      depende_de: null,
+      contingencia_objetivo: contingencia || null,
+      precauciones: precauciones || null,
+    });
+  }
+  analisis.lineas_de_intervencion_tentativas = lineas as AnalisisFuncional["lineas_de_intervencion_tentativas"];
+  delete crudo.capa_mc;
+}
+
+/**
+ * Lleva un análisis de cualquier versión anterior a la actual (v3).
+ *
+ * Primero cambia la forma de lo que la v3 reorganizó —la capa MC se funde en
+ * las líneas de intervención— y después da identidad y resuelve referencias
+ * (migrarAV2). Es idempotente y no destructivo: sobre un análisis que ya es v3
+ * no cambia nada, y ningún texto se borra.
  *
  * Se aplica en tres sitios: al normalizar la respuesta del modelo
  * (lib/parseAnalisis.ts), al leer del historial (lib/repositorio.ts) y al
- * cargar el informe de ejemplo (lib/maquetaInforme.ts). Un informe guardado
- * antes de la v2 se abre igual que siempre; lo fija evals/migracion.test.mjs.
+ * cargar el informe de ejemplo (lib/maquetaInforme.ts, vía el normalizador).
+ * Un informe guardado en v1 o v2 se abre igual que siempre; lo fija
+ * evals/migracion.test.mjs.
  */
-export function migrarAV2(analisis: AnalisisFuncional): AnalisisFuncional {
+export function migrarAV3(analisis: AnalisisFuncional): AnalisisFuncional {
+  fundirCapaMc(analisis);
+  return migrarAV2(analisis);
+}
+
+/**
+ * Da identidad y resuelve referencias: lo que hacía llegar a la v2. No se
+ * exporta: sin el paso de forma de migrarAV3, un informe v2 conservaría su
+ * `capa_mc` como una clave que nada pinta.
+ *
+ * Sobre un análisis antiguo solo AÑADE —ids, referencias resueltas, la cadena
+ * DBT fundida en su situación—. Ningún texto se borra.
+ */
+function migrarAV2(analisis: AnalisisFuncional): AnalisisFuncional {
   const teniaAristas = Array.isArray(
     (analisis as unknown as Record<string, unknown>).aristas
   );

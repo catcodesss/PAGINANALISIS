@@ -62,7 +62,6 @@ const ETIQUETA_ESTILO: Record<EstiloGrafo, string> = {
   afc: "AFC",
   dbt: "DBT",
   act: "ACT",
-  mc: "Conductual (MC)",
 };
 
 /**
@@ -73,7 +72,7 @@ const ETIQUETA_ESTILO: Record<EstiloGrafo, string> = {
 const SECCIONES: readonly SeccionIndice[] = SECCIONES_INFORME;
 
 
-const ESTILOS_GRAFO: EstiloGrafo[] = ["afc", "dbt", "act", "mc"];
+const ESTILOS_GRAFO: EstiloGrafo[] = ["afc", "dbt", "act"];
 
 /**
  * El selector de lente: UNO, arriba del informe.

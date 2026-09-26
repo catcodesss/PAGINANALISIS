@@ -22,7 +22,6 @@ import {
 import VistaAFC from "./estilos/afc";
 import VistaACT from "./estilos/act";
 import VistaDBT, { IconoNodo, subtipoDeNodo } from "./estilos/dbt";
-import VistaMC from "./estilos/mc";
 import s from "./afc.module.css";
 import { TERMINOS, terminoDeContingencia, terminoEnTexto, type IdTermino } from "@/lib/terminos";
 import { describirGrado, gradoDeNumero } from "@/lib/gradoApoyo";
@@ -680,7 +679,6 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
                 />
               )}
               {estilo === "act" && <VistaACT analisis={analisis} nodos={nodos} renderNodo={renderNodo} />}
-              {estilo === "mc" && <VistaMC analisis={analisis} nodos={nodos} renderNodo={renderNodo} />}
             </div>
           ) : (
             <VistaAFC

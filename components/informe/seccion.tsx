@@ -71,7 +71,7 @@ const BLOQUE_DE_SECCION: Partial<Record<IdAncla, string[]>> = {
 export function anclaVisible(analisis: AnalisisFuncional, id: IdAncla): boolean {
   if (analisis.campos_generados.length === 0) return true;
   if (id === "modalidad") {
-    return ["act", "dbt", "mc"].some((m) => analisis.campos_generados.includes(m));
+    return ["act", "dbt"].some((m) => analisis.campos_generados.includes(m));
   }
   const bloques = BLOQUE_DE_SECCION[id];
   return !bloques || bloques.some((b) => analisis.campos_generados.includes(b));

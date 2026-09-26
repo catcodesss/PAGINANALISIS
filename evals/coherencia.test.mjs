@@ -72,7 +72,7 @@ const fuentesInforme = readdirSync(join(RAIZ, "components/informe"))
   .map((f) => readFileSync(join(RAIZ, "components/informe", f), "utf8"));
 const codigoInforme = [reportView, ...fuentesInforme].join("\n");
 const grafoAFC = readFileSync(join(RAIZ, "components/grafo/GrafoAFC.tsx"), "utf8");
-const estilosGrafo = ["dbt", "act", "mc"].map((estilo) =>
+const estilosGrafo = ["dbt", "act"].map((estilo) =>
   readFileSync(join(RAIZ, `components/grafo/estilos/${estilo}.tsx`), "utf8")
 );
 

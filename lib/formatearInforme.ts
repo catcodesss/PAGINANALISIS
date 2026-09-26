@@ -652,6 +652,8 @@ export function formatearInformeTexto(
         : []),
       `${sangria}${faltan.length > 0 ? "Propuesta condicional: " : ""}${x.linea.intervencion}`,
       `${sangria}  Por qué: ${x.linea.porque || "sin razón declarada; no consta sobre qué función actúa."}`,
+      ...(x.linea.contingencia_objetivo ? [`${sangria}  Contingencia objetivo: ${x.linea.contingencia_objetivo}`] : []),
+      ...(x.linea.precauciones ? [`${sangria}  Precauciones: ${x.linea.precauciones}`] : []),
       ...textoAvisos(
         x.alertas.filter(
           (a) => a.codigo !== "intervencion_depende_de_dato_faltante" || faltan.length === 0
@@ -823,18 +825,6 @@ export function formatearInformeTexto(
         .map(
           (h) =>
             `- [${h.modulo}] ${h.habilidad}\n  Eslabón objetivo: ${h.eslabon_objetivo}`
-        )
-        .join("\n")
-    )
-  );
-
-  bloques["modalidad"] += SALTO + (
-    seccion(
-      "CAPA CONDUCTUAL — PROCEDIMIENTOS SUGERIDOS",
-      analisis.capa_mc.procedimientos_sugeridos
-        .map(
-          (p) =>
-            `- ${p.procedimiento}\n  Contingencia objetivo: ${p.contingencia_objetivo}\n  Precauciones: ${p.precauciones}`
         )
         .join("\n")
     )

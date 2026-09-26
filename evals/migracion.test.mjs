@@ -51,7 +51,7 @@ execFileSync(
 const require = createRequire(import.meta.url);
 const { numerarNota } = require(join(RAIZ, ".tmp-evals/citas.js"));
 const { normalizarAnalisis } = require(join(RAIZ, ".tmp-evals/parseAnalisis.js"));
-const { migrarAV2, todosLosIds, situacionDeLaCadenaDBT } = require(
+const { migrarAV3, todosLosIds, situacionDeLaCadenaDBT } = require(
   join(RAIZ, ".tmp-evals/identidad.js")
 );
 const { construirRedFuncional } = require(join(RAIZ, ".tmp-evals/redFuncional.js"));
@@ -95,9 +95,9 @@ function prueba(nombre, fn) {
 
 console.log("\nMigración v1 → v2\n");
 
-prueba("un informe v1 se abre sin lanzar y queda marcado como v2", () => {
+prueba("un informe v1 se abre sin lanzar y queda marcado con la versión actual", () => {
   const a = normalizarAnalisis(crudoV1(), lineas);
-  assert.equal(a.version, 2);
+  assert.equal(a.version, 3);
   assert.ok(a.siguiente_id > 1, "siguiente_id debe quedar por encima de los asignados");
 });
 
@@ -238,7 +238,7 @@ prueba("las consecuencias quedan envueltas, conservando su texto", () => {
 
 prueba("migrar dos veces da exactamente lo mismo", () => {
   const una = normalizarAnalisis(crudoV1(), lineas);
-  const dos = migrarAV2(JSON.parse(JSON.stringify(una)));
+  const dos = migrarAV3(JSON.parse(JSON.stringify(una)));
   assert.deepEqual(dos, una);
 });
 
@@ -250,7 +250,7 @@ prueba("un informe anterior al grafo materializa aristas una sola vez", () => {
   // Vaciar el grafo es una edición válida. El migrador no puede reconstruirlo
   // después y deshacer lo que trazó el profesional.
   a.aristas = [];
-  assert.deepEqual(migrarAV2(JSON.parse(JSON.stringify(a))).aristas, []);
+  assert.deepEqual(migrarAV3(JSON.parse(JSON.stringify(a))).aristas, []);
 });
 
 prueba("una franja completa exige una cita verificada", () => {
@@ -358,6 +358,73 @@ prueba("la formulación destacada derivada viaja al texto y al Word", () => {
   const texto = formatearInformeTexto(a, "CASO-1", "fecha");
   assert.ok(texto.includes("FORMULACIÓN FUNCIONAL DESTACADA"));
   assert.ok(texto.includes(derivarVistasProsa(a).destacada.enunciado));
+});
+
+console.log("\nMigración v2 → v3\n");
+
+/**
+ * Un informe tal como lo guardaba el historial en v2: ya con ids y aristas,
+ * y todavía con su capa MC. Se reconstruye a partir del normalizado porque
+ * el normalizador de hoy ya no produce esa forma.
+ */
+function guardadoEnV2() {
+  const a = JSON.parse(JSON.stringify(normalizarAnalisis(crudoV1(), lineas)));
+  a.version = 2;
+  a.lineas_de_intervencion_tentativas = a.lineas_de_intervencion_tentativas.filter(
+    (l) => l.contingencia_objetivo === null
+  );
+  a.capa_mc = JSON.parse(JSON.stringify(crudoV1().capa_mc));
+  return a;
+}
+
+prueba("ningún procedimiento MC se pierde: cada uno es una línea de intervención", () => {
+  const procedimientos = crudoV1().capa_mc.procedimientos_sugeridos;
+  for (const a of [normalizarAnalisis(crudoV1(), lineas), migrarAV3(guardadoEnV2())]) {
+    assert.ok(!("capa_mc" in a), "la capa MC sigue en el informe");
+    for (const p of procedimientos) {
+      const linea = a.lineas_de_intervencion_tentativas.find(
+        (l) => l.intervencion === p.procedimiento
+      );
+      assert.ok(linea, `se perdió «${p.procedimiento}»`);
+      assert.equal(linea.contingencia_objetivo, p.contingencia_objetivo);
+      assert.equal(linea.precauciones, p.precauciones);
+    }
+  }
+});
+
+prueba("un procedimiento MC migrado no se asigna a un blanco por sus palabras", () => {
+  const a = migrarAV3(guardadoEnV2());
+  const migradas = a.lineas_de_intervencion_tentativas.filter((l) => l.contingencia_objetivo);
+  assert.equal(migradas.length, 2);
+  assert.ok(migradas.every((l) => l.conducta === "" && l.conducta_id === null));
+});
+
+prueba("un procedimiento MC parecido a una línea existente no se descarta", () => {
+  const a = guardadoEnV2();
+  const antes = a.lineas_de_intervencion_tentativas.length;
+  a.lineas_de_intervencion_tentativas.push({
+    conducta: "", conducta_id: null, intervencion: "Exposición graduada",
+    porque: "", depende_de: null, contingencia_objetivo: null, precauciones: null,
+  });
+  const migrado = migrarAV3(a);
+  assert.equal(migrado.lineas_de_intervencion_tentativas.length, antes + 1 + 2);
+  assert.equal(
+    migrado.lineas_de_intervencion_tentativas.filter((l) => l.intervencion === "Exposición graduada").length,
+    2
+  );
+});
+
+prueba("migrar un informe v2 a v3 dos veces da lo mismo, y queda en v3", () => {
+  const una = migrarAV3(guardadoEnV2());
+  assert.equal(una.version, 3);
+  assert.deepEqual(migrarAV3(JSON.parse(JSON.stringify(una))), una);
+});
+
+prueba("los procedimientos migrados salen en el Plan exportado, no en una capa aparte", () => {
+  const texto = formatearInformeTexto(migrarAV3(guardadoEnV2()), "CASO-1", "fecha");
+  assert.ok(!texto.includes("CAPA CONDUCTUAL"), "sigue la sección MC");
+  assert.ok(texto.includes("Contingencia objetivo: R− que mantiene la evitación en reuniones."));
+  assert.ok(texto.includes("Precauciones: Vigilar la aparición de conductas de seguridad"));
 });
 
 console.log(

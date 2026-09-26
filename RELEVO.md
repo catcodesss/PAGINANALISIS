@@ -24,13 +24,13 @@ node --experimental-strip-types evals/razonamiento.test.mjs # 11
 node evals/validadores.test.mjs                             # 47
 node evals/reporteFallo.test.mjs                            #  7
 node evals/coherencia.test.mjs                              # 20
-node evals/maqueta.test.mjs                                 #  7
-node evals/migracion.test.mjs                               # 19
+node evals/maqueta.test.mjs                                 #  8
+node evals/migracion.test.mjs                               # 24
 node evals/plan.test.mjs                                    # 19
 npx eslint components lib app
 ```
 
-151 pruebas. `eslint` da 0 errores y 1 warning preexistente en
+157 pruebas. `eslint` da 0 errores y 1 warning preexistente en
 `PanelRecomendaciones.tsx`. Esta lista y `.github/workflows/evals.yml` **tienen
 que decir lo mismo**.
 
@@ -73,7 +73,11 @@ menciona—. Lo que se quitó eran copias literales del mismo dato.
    sintaxis `VAR=x comando` de bash falla la asignación y ejecuta el resto
    igual, así que las evals correrían a la temperatura que no era.
 
-2. **`capa_mc` se añadió como cuarto estilo sin consultarlo.** El encargo pedía
+2. ~~**`capa_mc` se añadió como cuarto estilo sin consultarlo.**~~ Resuelto en
+   el esquema v3: MC ya no es una lente, y sus procedimientos son líneas de
+   intervención del Plan (ver «Unificar AFC, ACT y MC» en `CAMBIOS.md`). V5 y
+   `riesgo` no dependían de `capa_mc` y siguen igual. Lo que decía antes:
+   el encargo pedía
    preguntar. La decisión parece razonable —MC es una lectura más sobre las
    mismas entidades— pero conviene confirmarla, porque arrastra al validador V5
    y al campo `riesgo`, que venían en el mismo paquete (`CAMBIOS.md`, pendiente

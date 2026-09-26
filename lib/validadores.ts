@@ -118,8 +118,12 @@ function textosDeIntervencion(
   // Solo la intervención, no su `porque`: el porqué nombra la función sobre la
   // que actúa, y a menudo el propio mantenedor («se retira la respiración
   // porque funciona como conducta de seguridad»). Compararlo haría saltar V3
-  // justo en la intervención que hace lo correcto. Una entrada sin
-  // intervención (principio 29: no hay base todavía) no propone nada.
+  // justo en la intervención que hace lo correcto. Lo mismo vale para
+  // `contingencia_objetivo` y `precauciones`, que desde la v3 recogen lo que
+  // era la capa MC: nombran lo que se quiere modificar, no lo que se propone.
+  // Los procedimientos MC migrados siguen revisados: son `intervencion` aquí.
+  // Una entrada sin intervención (principio 29: no hay base todavía) no
+  // propone nada.
   a.lineas_de_intervencion_tentativas.forEach((l, i) => {
     if (!l.intervencion.trim()) return;
     salida.push({ ruta: `lineas_de_intervencion_tentativas[${i}]`, texto: l.intervencion });
@@ -142,12 +146,6 @@ function textosDeIntervencion(
   });
   a.capa_dbt.plan_de_prevencion.forEach((p, i) => {
     salida.push({ ruta: `capa_dbt.plan_de_prevencion[${i}]`, texto: p });
-  });
-  a.capa_mc.procedimientos_sugeridos.forEach((p, i) => {
-    salida.push({
-      ruta: `capa_mc.procedimientos_sugeridos[${i}]`,
-      texto: `${p.procedimiento} ${p.contingencia_objetivo}`,
-    });
   });
 
   return salida;
@@ -406,7 +404,6 @@ export function seccionDeRuta(ruta: string): IdAncla | null {
       return "monitorizacion";
     case "capa_act":
     case "capa_dbt":
-    case "capa_mc":
       return "modalidad";
     case "hipotesis_alternativas":
       return "hipotesis-alternativas";
