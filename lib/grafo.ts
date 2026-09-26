@@ -187,7 +187,7 @@ export function construirNodosGrafo(analisis: AnalisisFuncional): NodoGrafo[] {
       detalle: repertorio.contexto_en_que_ocurre,
     }));
   }
-  for (const regla of analisis.capa_act.reglas_verbales) {
+  for (const regla of analisis.reglas_verbales) {
     salida.push(nodo({
       id: regla.id, tipo: "regla_verbal", carril: "antecedente",
       etiqueta: regla.regla, situacion_id: null, alternativa: false,
@@ -262,7 +262,7 @@ export function actualizarEtiquetaNodo(
   if (variable) variable.descripcion = etiqueta;
   const repertorio = analisis.repertorio_disponible.find((r) => r.id === id);
   if (repertorio) repertorio.descripcion = etiqueta;
-  const regla = analisis.capa_act.reglas_verbales.find((r) => r.id === id);
+  const regla = analisis.reglas_verbales.find((r) => r.id === id);
   if (regla) regla.regla = etiqueta;
   const alternativa = analisis.conductas_alternativas.find((a) => a.id === id);
   if (alternativa) alternativa.conducta_propuesta = etiqueta;
@@ -290,7 +290,7 @@ export function borrarNodo(analisis: AnalisisFuncional, id: string): void {
   analisis.conductas_problema = analisis.conductas_problema.filter((c) => c.id !== id);
   analisis.variables_moduladoras = analisis.variables_moduladoras.filter((v) => v.id !== id);
   analisis.repertorio_disponible = analisis.repertorio_disponible.filter((r) => r.id !== id);
-  analisis.capa_act.reglas_verbales = analisis.capa_act.reglas_verbales.filter((r) => r.id !== id);
+  analisis.reglas_verbales = analisis.reglas_verbales.filter((r) => r.id !== id);
   analisis.conductas_alternativas = analisis.conductas_alternativas.filter((a) => a.id !== id);
   const valor = /^valor_(\d+)$/.exec(id);
   if (valor) analisis.valores_y_metas.splice(Number(valor[1]) - 1, 1);
@@ -350,7 +350,7 @@ export function agregarNodo(
     return;
   }
   if (tipo === "regla_verbal") {
-    analisis.capa_act.reglas_verbales.push({ id: nuevoId(analisis, "rvb"), regla: etiqueta, textual_o_inferida: "inferida", clase: "tracking", rigidez: "baja", analisis: "" });
+    analisis.reglas_verbales.push({ id: nuevoId(analisis, "rvb"), regla: etiqueta, textual_o_inferida: "inferida", clase: "tracking", rigidez: "baja", analisis: "" });
     return;
   }
   if (tipo === "valor") {

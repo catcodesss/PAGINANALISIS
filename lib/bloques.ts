@@ -73,7 +73,7 @@ export const BLOQUES: Bloque[] = [
     etiqueta: "Análisis por situaciones",
     descripcion: "Encadena estímulo, respuesta y consecuencia en cada situación concreta.",
     categoria: "Análisis funcional",
-    campos: ["conductas_problema", "situaciones", "acomodacion_entorno"],
+    campos: ["conductas_problema", "situaciones", "acomodacion_entorno", "reglas_verbales"],
     peso: 3,
   },
   {
@@ -158,9 +158,10 @@ export const BLOQUES: Bloque[] = [
   {
     id: "act",
     etiqueta: "Capa ACT",
-    descripcion: "Reglas verbales y procesos de inflexibilidad psicológica.",
+    descripcion: "Procesos de inflexibilidad psicológica, anotados sobre el análisis funcional.",
     categoria: "Capas de modalidad",
-    campos: ["conductas_problema", "situaciones", "capa_act"],
+    // Las reglas verbales son del núcleo, pero la vista Matrix las enseña.
+    campos: ["conductas_problema", "situaciones", "reglas_verbales", "capa_act"],
     peso: 4,
   },
   {

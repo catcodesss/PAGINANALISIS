@@ -46,6 +46,7 @@ export default function BloqueAnalisisFuncional({
           "conductas_problema",
           "repertorio_disponible",
           "variables_moduladoras",
+          "reglas_verbales",
           "situaciones",
           "conductas_alternativas",
           "acomodacion_entorno",

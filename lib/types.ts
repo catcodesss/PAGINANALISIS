@@ -478,8 +478,12 @@ export interface ProcesoACT {
   evidencia: Cita;
 }
 
+/**
+ * Desde el esquema v3 la capa ACT solo anota: las reglas verbales subieron al
+ * núcleo (AnalisisFuncional.reglas_verbales), porque la conducta gobernada por
+ * reglas es análisis conductual general y no específico de ACT.
+ */
 export interface CapaModalidadACT {
-  reglas_verbales: ReglaVerbal[];
   procesos_act: ProcesoACT[];
 }
 
@@ -636,6 +640,11 @@ export interface AnalisisFuncional {
   /** La tercera columna del repertorio. Ver RepertorioDisponible. */
   repertorio_disponible: RepertorioDisponible[];
   variables_moduladoras: VariableModuladora[];
+  /**
+   * Conducta gobernada por reglas (pliance, tracking, augmenting). Estaba en
+   * `capa_act` hasta la v2; se mueve con sus ids. Ver migrarAV3.
+   */
+  reglas_verbales: ReglaVerbal[];
   situaciones: Situacion[];
   hipotesis_mantenimiento: HipotesisMantenimiento[];
   hipotesis_origen: string[];
@@ -712,6 +721,11 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "repertorio_disponible",
   "variables_moduladoras",
   "situaciones",
+  // Detrás de las situaciones y no junto a variables_moduladoras: este orden es
+  // el del JSON que emite el modelo, y el análisis de cada regla dice qué
+  // cadena altera. Delante de las situaciones analizaba cadenas aún no
+  // escritas (medido en el caso 08: ver CAMBIOS.md, fase 2).
+  "reglas_verbales",
   "hipotesis_mantenimiento",
   "hipotesis_origen",
   "formulacion",

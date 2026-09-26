@@ -540,6 +540,22 @@ export function formatearInformeTexto(
     )
   );
 
+  // Conducta gobernada por reglas: es análisis conductual general, no de ACT,
+  // así que va con el AFC. Sin comillas: una regla no lleva cita, y aunque el
+  // modelo la marque «textual» nada lo ha comprobado contra la nota
+  // (invariante 2).
+  bloques["situaciones"] += SALTO + (
+    seccion(
+      "REGLAS VERBALES",
+      analisis.reglas_verbales
+        .map(
+          (r) =>
+            `- [${r.clase}, ${r.textual_o_inferida}, rigidez ${r.rigidez}] ${r.regla}\n  ${r.analisis}`
+        )
+        .join("\n")
+    )
+  );
+
   bloques["hipotesis-mantenimiento"] = (
     seccion(
       "HIPÓTESIS DE MANTENIMIENTO",
@@ -734,17 +750,6 @@ export function formatearInformeTexto(
   );
 
   bloques["modalidad"] = (
-    seccion(
-      "CAPA ACT — REGLAS VERBALES",
-      analisis.capa_act.reglas_verbales
-        .map(
-          (r) =>
-            `- [${r.clase}, ${r.textual_o_inferida}, rigidez ${r.rigidez}] "${r.regla}"\n  ${r.analisis}`
-        )
-        .join("\n")
-    )
-  );
-  bloques["modalidad"] += SALTO + (
     seccion(
       "CAPA ACT — PROCESOS DE INFLEXIBILIDAD",
       analisis.capa_act.procesos_act

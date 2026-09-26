@@ -389,6 +389,8 @@ export function seccionDeRuta(ruta: string): IdAncla | null {
       return "conductas";
     case "variables_moduladoras":
       return "variables-moduladoras";
+    case "reglas_verbales":
+      return "situaciones";
     case "situaciones":
       return "situaciones";
     case "formulacion":

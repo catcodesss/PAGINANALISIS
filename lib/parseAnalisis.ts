@@ -23,6 +23,7 @@ import {
   type HipotesisAlternativa,
   type HipotesisMantenimiento,
   type NivelConfianza,
+  type ReglaVerbal,
   type NivelVariable,
   type PriorizacionBlanco,
   type RepertorioDisponible,
@@ -401,24 +402,36 @@ function normalizarHipotesisAlternativa(valor: unknown): HipotesisAlternativa {
   };
 }
 
+/**
+ * Acepta las reglas donde vengan: arriba (esquema v3) o dentro de `capa_act`
+ * (una respuesta o un JSON anterior). Las dos listas se concatenan; ninguna se
+ * pierde por venir del sitio viejo.
+ */
+function normalizarReglasVerbales(d: Record<string, unknown>): ReglaVerbal[] {
+  const capa = comoObjeto(d.capa_act);
+  return [
+    ...comoArreglo<unknown>(d.reglas_verbales),
+    ...comoArreglo<unknown>(capa.reglas_verbales),
+  ].map((r) => {
+    const ro = comoObjeto(r);
+    return {
+      id: typeof ro.id === "string" ? ro.id : SIN_ID,
+      regla: comoTexto(ro.regla),
+      textual_o_inferida:
+        ro.textual_o_inferida === "inferida" ? "inferida" : "textual",
+      clase:
+        ro.clase === "tracking" || ro.clase === "augmenting"
+          ? ro.clase
+          : "pliance",
+      rigidez: comoConfianza(ro.rigidez),
+      analisis: comoTexto(ro.analisis),
+    };
+  });
+}
+
 function normalizarCapaAct(valor: unknown, lineas: string[]): CapaModalidadACT {
   const d = comoObjeto(valor);
   return {
-    reglas_verbales: comoArreglo<unknown>(d.reglas_verbales).map((r) => {
-      const ro = comoObjeto(r);
-      return {
-        id: typeof ro.id === "string" ? ro.id : SIN_ID,
-        regla: comoTexto(ro.regla),
-        textual_o_inferida:
-          ro.textual_o_inferida === "inferida" ? "inferida" : "textual",
-        clase:
-          ro.clase === "tracking" || ro.clase === "augmenting"
-            ? ro.clase
-            : "pliance",
-        rigidez: comoConfianza(ro.rigidez),
-        analisis: comoTexto(ro.analisis),
-      };
-    }),
     procesos_act: comoArreglo<unknown>(d.procesos_act).map((p) => {
       const po = comoObjeto(p);
       return {
@@ -574,6 +587,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     variables_moduladoras: comoArreglo<unknown>(d.variables_moduladoras).map((v) =>
       normalizarVariableModuladora(v, lineas)
     ),
+    reglas_verbales: normalizarReglasVerbales(d),
     situaciones: comoArreglo<unknown>(d.situaciones).map((s, i) =>
       normalizarSituacion(s, i, lineas)
     ),
@@ -674,6 +688,7 @@ const NORMALIZADORES_POR_CAMPO: {
     comoArreglo<unknown>(d.variables_moduladoras).map((v) =>
       normalizarVariableModuladora(v, lineas)
     ),
+  reglas_verbales: (d) => normalizarReglasVerbales(d),
   situaciones: (d, lineas) =>
     comoArreglo<unknown>(d.situaciones).map((s, i) =>
       normalizarSituacion(s, i, lineas)

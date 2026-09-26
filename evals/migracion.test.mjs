@@ -109,7 +109,7 @@ prueba("no se pierde ni una entidad por el camino", () => {
   assert.equal(a.variables_moduladoras.length, v1.variables_moduladoras.length);
   assert.equal(a.hipotesis_mantenimiento.length, v1.hipotesis_mantenimiento.length);
   assert.equal(a.conductas_alternativas.length, v1.conductas_alternativas.length);
-  assert.equal(a.capa_act.reglas_verbales.length, v1.capa_act.reglas_verbales.length);
+  assert.equal(a.reglas_verbales.length, v1.capa_act.reglas_verbales.length);
   assert.equal(
     a.capa_dbt.habilidades_sugeridas.length,
     v1.capa_dbt.habilidades_sugeridas.length
@@ -364,8 +364,9 @@ console.log("\nMigración v2 → v3\n");
 
 /**
  * Un informe tal como lo guardaba el historial en v2: ya con ids y aristas,
- * y todavía con su capa MC. Se reconstruye a partir del normalizado porque
- * el normalizador de hoy ya no produce esa forma.
+ * y todavía con su capa MC y las reglas verbales dentro de `capa_act`. Se
+ * reconstruye a partir del normalizado porque el normalizador de hoy ya no
+ * produce esa forma.
  */
 function guardadoEnV2() {
   const a = JSON.parse(JSON.stringify(normalizarAnalisis(crudoV1(), lineas)));
@@ -374,8 +375,29 @@ function guardadoEnV2() {
     (l) => l.contingencia_objetivo === null
   );
   a.capa_mc = JSON.parse(JSON.stringify(crudoV1().capa_mc));
+  a.capa_act.reglas_verbales = a.reglas_verbales;
+  delete a.reglas_verbales;
   return a;
 }
+
+prueba("las reglas verbales suben al núcleo y conservan su id", () => {
+  const v2 = guardadoEnV2();
+  const antes = v2.capa_act.reglas_verbales.map((r) => [r.id, r.regla]);
+  assert.ok(antes.length > 0 && antes.every(([id]) => id), "el v2 de prueba no trae reglas con id");
+  const a = migrarAV3(v2);
+  assert.deepEqual(a.reglas_verbales.map((r) => [r.id, r.regla]), antes);
+  assert.ok(!("reglas_verbales" in a.capa_act), "las reglas siguen también en capa_act");
+  // Y el grafo las sigue pintando con el mismo id: una arista hacia rvb_N no se rompe.
+  const ids = new Set(construirNodosGrafo(a).map((n) => n.id));
+  for (const [id] of antes) assert.ok(ids.has(id), `el nodo ${id} desapareció del grafo`);
+});
+
+prueba("un JSON con reglas arriba y dentro de capa_act no pierde ninguna", () => {
+  const crudo = crudoV1();
+  crudo.reglas_verbales = [{ regla: "Si lo digo mal, me juzgarán.", textual_o_inferida: "inferida", clase: "tracking", rigidez: "media", analisis: "" }];
+  const a = normalizarAnalisis(crudo, lineas);
+  assert.equal(a.reglas_verbales.length, 1 + crudoV1().capa_act.reglas_verbales.length);
+});
 
 prueba("ningún procedimiento MC se pierde: cada uno es una línea de intervención", () => {
   const procedimientos = crudoV1().capa_mc.procedimientos_sugeridos;

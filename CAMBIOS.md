@@ -52,6 +52,54 @@ V5 salta en todos esos casos. Queda anotado aparte: es grave y no es de este
 encargo. Intervenciones en los 9 informes: 13 antes y 11 después; 8 declaran
 contingencia objetivo y 7, precauciones.
 
+### Fase 2 · Las reglas verbales suben al núcleo (prompt 1.9.0)
+
+- **Esquema**: `capa_act.reglas_verbales` pasa a `AnalisisFuncional.reglas_verbales`;
+  `ReglaVerbal` no cambia. `capa_act` queda con `procesos_act`.
+- **Migración**: `migrarAV3` las sube con su id (`rvb_N`), de modo que las
+  aristas que apuntaban a ellas siguen valiendo. El normalizador acepta reglas
+  arriba y dentro de `capa_act`, y concatena las dos listas.
+- **Código**: grafo (construir, editar, borrar, alta de nodos), identidad,
+  ruta de alertas, campos de reanálisis del bloque 2 y bloques `situaciones` y
+  `act` (la vista Matrix las enseña). En DBT, una línea de `dbt.tsx` cambia de
+  ruta (`analisis.reglas_verbales`) con el mismo comportamiento; lo pidió la
+  compilación y se aprobó antes de tocarla.
+- **Exportación**: la sección «REGLAS VERBALES» sale con el análisis por
+  situaciones, no en la capa ACT. Y **sin comillas**: antes cada regla iba
+  entrecomillada aunque fuera `inferida`, y ninguna regla lleva cita
+  (invariante 2).
+- **Prompt**: la instrucción de conducta gobernada por reglas sale de
+  `BLOQUE_ACT` y pasa al núcleo como principio 30, con el mismo texto.
+- **Orden en el JSON**: `reglas_verbales` va **detrás de `situaciones`**, no
+  junto a `variables_moduladoras`. Su campo `analisis` dice qué cadena altera la
+  regla, y delante de las situaciones analizaba cadenas aún no escritas. Con
+  esa colocación, el caso 08 con `--reps=3` perdió 2 citas en 4 ejecuciones
+  (la 1.8.0, ninguna); detrás volvió a 18/18. Son pocas muestras para
+  atribuírselo, pero el razonamiento se sostiene solo.
+
+**Medida** (0,2, 1 rep, 9 casos):
+
+| Prompt | Comprobaciones | Citas | Reglas verbales generadas |
+|---|---|---|---|
+| 1.7.0 | 42/47 | 58/58 | 7 |
+| 1.8.0 | 41/47 | 56/56 | 5 |
+| 1.9.0, reglas antes de situaciones | 42/47 | 58/59 (98%) | 3 |
+| 1.9.0, reglas tras situaciones (la que queda) | 40/47 | 57/57 (100%) | 2 |
+
+Los fallos nuevos de la última corrida (`explora-refuerzo-positivo` en el 01,
+`riesgo-detecta-escalada-consumo` en el 09) pasaron en corridas anteriores
+del mismo prompt o son el fallo de riesgo previo de la fase 1.
+`ciclo-mutuo-no-solo-culpa-a-uno` (08) sale 2/3 en las dos colocaciones, y una
+de las que falla describe un ciclo mutuo auténtico con otras palabras: la
+comprobación exige «refuerza la evitación/retirada».
+
+**Vigilar: la cobertura de reglas baja** (7 y 5 frente a 3 y 2). El caso 08
+no emite ninguna en ninguna versión, así que no explica lo de arriba, pero la
+tendencia encaja con el cambio: antes las reglas eran una de dos tareas de un
+bloque ACT corto; ahora, el principio 30 de 30. Con una repetición no está
+probado. El encargo pedía moverla sin cambiar su contenido, así que no se ha
+compensado.
+
 ## Plan por blanco (fase A: solo interfaz, sin tocar el prompt)
 
 El Plan eran tres listas por tipo de contenido —conductas alternativas, líneas

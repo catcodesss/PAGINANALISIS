@@ -211,7 +211,7 @@ function asignarIds(a: AnalisisFuncional): number {
   a.acomodacion_entorno.forEach((x, i) => ponerId(x, idDe("acm", i)));
   a.hipotesis_mantenimiento.forEach((h, i) => ponerId(h, idDe("hip", i)));
   a.conductas_alternativas.forEach((x, i) => ponerId(x, idDe("alt", i)));
-  a.capa_act.reglas_verbales.forEach((r, i) => ponerId(r, idDe("rvb", i)));
+  a.reglas_verbales.forEach((r, i) => ponerId(r, idDe("rvb", i)));
   a.capa_act.procesos_act.forEach((p, i) => ponerId(p, idDe("pac", i)));
   a.capa_dbt.analisis_de_soluciones.forEach((s, i) => ponerId(s, idDe("sol", i)));
 
@@ -250,7 +250,7 @@ export function todosLosIds(a: AnalisisFuncional): Id[] {
     ...a.acomodacion_entorno.map((x) => x.id),
     ...a.hipotesis_mantenimiento.map((h) => h.id),
     ...a.conductas_alternativas.map((x) => x.id),
-    ...a.capa_act.reglas_verbales.map((r) => r.id),
+    ...a.reglas_verbales.map((r) => r.id),
     ...a.capa_act.procesos_act.map((p) => p.id),
     ...a.capa_dbt.analisis_de_soluciones.map((s) => s.id),
     ...a.situaciones.map((s) => s.id),
@@ -451,11 +451,26 @@ function fundirCapaMc(analisis: AnalisisFuncional): void {
 }
 
 /**
+ * Las reglas verbales salen de `capa_act` y suben al núcleo, con su id: una
+ * arista o una alerta que apuntaba a `rvb_2` sigue apuntando a la misma regla.
+ * Se añaden detrás de las que ya estuvieran arriba, sin fusionar parecidas.
+ */
+function subirReglasVerbales(analisis: AnalisisFuncional): void {
+  const capa = analisis.capa_act as unknown as Record<string, unknown> | undefined;
+  const abajo = capa && Array.isArray(capa.reglas_verbales)
+    ? (capa.reglas_verbales as AnalisisFuncional["reglas_verbales"])
+    : [];
+  const arriba = Array.isArray(analisis.reglas_verbales) ? analisis.reglas_verbales : [];
+  analisis.reglas_verbales = [...arriba, ...abajo];
+  if (capa) delete capa.reglas_verbales;
+}
+
+/**
  * Lleva un análisis de cualquier versión anterior a la actual (v3).
  *
  * Primero cambia la forma de lo que la v3 reorganizó —la capa MC se funde en
- * las líneas de intervención— y después da identidad y resuelve referencias
- * (migrarAV2). Es idempotente y no destructivo: sobre un análisis que ya es v3
+ * las líneas de intervención y las reglas verbales suben al núcleo— y
+ * después da identidad y resuelve referencias (migrarAV2). Es idempotente y no destructivo: sobre un análisis que ya es v3
  * no cambia nada, y ningún texto se borra.
  *
  * Se aplica en tres sitios: al normalizar la respuesta del modelo
@@ -466,6 +481,7 @@ function fundirCapaMc(analisis: AnalisisFuncional): void {
  */
 export function migrarAV3(analisis: AnalisisFuncional): AnalisisFuncional {
   fundirCapaMc(analisis);
+  subirReglasVerbales(analisis);
   return migrarAV2(analisis);
 }
 

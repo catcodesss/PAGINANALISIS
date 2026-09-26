@@ -450,7 +450,7 @@ export default function VistaDBT({
   };
 
   const faseSel = nodoSel ? faseDe.get(nodoSel.id) : undefined;
-  const reglaSel = nodoSel?.tipo === "regla_verbal" ? analisis.capa_act.reglas_verbales.find((r) => r.id === nodoSel.id) : null;
+  const reglaSel = nodoSel?.tipo === "regla_verbal" ? analisis.reglas_verbales.find((r) => r.id === nodoSel.id) : null;
   const intervencionesSel = nodoSel ? intervencionesDe(nodoSel) : [];
   const nodosIntervencion = faseSel === 3 ? alternativas : faseSel === 4 ? necesarias : [];
 
