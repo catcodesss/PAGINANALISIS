@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useLayoutEffect, useRef, useState, type PointerEvent as EventoPuntero, type ReactNode } from "react";
-import { GripVertical } from "lucide-react";
+import { ChartNoAxesColumnIncreasing, ClipboardList, GripVertical, Play, Target, type LucideIcon } from "lucide-react";
 import type { AnalisisFuncional } from "@/lib/types";
 import {
   apoyoCadena,
@@ -108,10 +108,15 @@ export const COLUMNA_DE_CARRIL: Record<CarrilGrafo, "om" | "ant" | "con" | "csq"
   demorada: "csq",
 };
 
-function Columna({ clase, titulo, termino, children }: { clase: string; titulo: string; termino?: IdTermino; children: ReactNode }) {
+/** Los iconos viven solo en las cabeceras: las tarjetas son texto puro, porque las entidades clínicas no tienen pictograma. */
+function Columna({ clase, titulo, codigo, icono: Icono, termino, children }: { clase: string; titulo: string; codigo: string; icono: LucideIcon; termino?: IdTermino; children: ReactNode }) {
   return (
     <section className={`${s.columna} ${clase}`} aria-label={titulo}>
-      <header className={s.columnaCabecera}><h5 className={s.columnaTitulo} title={termino ? TERMINOS[termino].definicion : undefined}>{titulo}{termino && <abbr className="ml-1.5 font-mono text-[9px] no-underline opacity-70">{TERMINOS[termino].tecnico}</abbr>}</h5></header>
+      <header className={s.columnaCabecera}>
+        <Icono className={s.columnaIcono} strokeWidth={1.8} aria-hidden="true" />
+        <h5 className={s.columnaTitulo} title={termino ? TERMINOS[termino].definicion : undefined}>{titulo}</h5>
+        <abbr className={s.columnaCodigo} title={termino ? TERMINOS[termino].tecnico : undefined}>{codigo}</abbr>
+      </header>
       <div className={s.columnaCuerpo}>{children}</div>
     </section>
   );
@@ -159,17 +164,17 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
             </header>
 
             <div className={s.tablero}>
-              <Columna clase={s.om} titulo={TERMINOS.om.claro} termino="om">
+              <Columna clase={s.om} titulo={TERMINOS.om.claro} codigo="OM" icono={Target} termino="om">
                 <Lista nodos={enCarril("contexto")} huecos={huecosDe("contexto")} renderNodo={renderNodo} />
                 {renderAgregar("contexto", situacion.id, false)}
               </Columna>
 
-              <Columna clase={s.ant} titulo="Antecedente">
+              <Columna clase={s.ant} titulo="Antecedente" codigo="A" icono={ClipboardList}>
                 <Lista nodos={enCarril("antecedente")} huecos={huecosDe("antecedente")} renderNodo={renderNodo} />
                 {renderAgregar("antecedente", situacion.id, false)}
               </Columna>
 
-              <Columna clase={s.con} titulo="Conducta">
+              <Columna clase={s.con} titulo="Conducta" codigo="C" icono={Play}>
                 <section className={s.encubiertas} aria-label="Respuestas encubiertas">
                   <div className={s.subgrupoCabecera}>
                     <h6 className={s.subgrupoTitulo}>Respuestas encubiertas</h6>
@@ -184,7 +189,7 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
                 </section>
               </Columna>
 
-              <Columna clase={s.csq} titulo="Consecuencias">
+              <Columna clase={s.csq} titulo="Consecuencias" codigo="C" icono={ChartNoAxesColumnIncreasing}>
                 {(["inmediata", "demorada"] as const).map((carril) => (
                   <div key={carril} className={s.consecuencias}>
                     <p className={s.subzonaTitulo}>{carril === "inmediata" ? "Consecuencia inmediata" : "Consecuencia demorada"}</p>
@@ -212,7 +217,7 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
             <div className={s.funcionFila}>
               {funciones.map((n) => (
                 <button key={n.id} type="button" data-nodo-id={n.id} onClick={() => onSeleccionar(n)} className={s.funcion}>
-                  <span title={TERMINOS.funcion.definicion}>{TERMINOS.funcion.claro}</span><span>{n.etiqueta}</span>
+                  <span title={TERMINOS.funcion.definicion}>{TERMINOS.funcion.claro}</span><span className={s.funcionTexto}>{n.etiqueta}</span>
                 </button>
               ))}
               {funciones.length === 0 && (

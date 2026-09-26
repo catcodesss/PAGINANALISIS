@@ -35,7 +35,7 @@ export const TERMINOS = {
     definicion: "Provoca la reacción de forma automática, por asociación aprendida.",
   },
   om: {
-    claro: "Qué lo hace más probable hoy",
+    claro: "Operador motivador",
     tecnico: "OM / OE",
     definicion:
       "Estado o contexto que, por un tiempo, cambia cuánto importa la consecuencia y con ello la probabilidad de la conducta.",

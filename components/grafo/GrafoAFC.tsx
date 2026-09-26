@@ -19,27 +19,6 @@ import {
   type NodoGrafo,
   type TipoNodoGrafo,
 } from "@/lib/grafo";
-import {
-  Activity,
-  ArrowBigRightDash,
-  Brain,
-  CircleDot,
-  Clock3,
-  Cloud,
-  Compass,
-  Footprints,
-  HeartPulse,
-  MessageSquareQuote,
-  PersonStanding,
-  Signpost,
-  SlidersHorizontal,
-  Smile,
-  Sprout,
-  Target,
-  TrendingDown,
-  Wrench,
-  Zap,
-} from "lucide-react";
 import VistaAFC from "./estilos/afc";
 import VistaACT from "./estilos/act";
 import VistaDBT from "./estilos/dbt";
@@ -171,34 +150,6 @@ const CLASE_TIPO: Record<TipoNodoGrafo, string> = {
   valor: "border-l-teal-500",
 };
 
-/** Solo apoyo visual para escanear: el texto del nodo dice lo que es. */
-function IconoNodo({ nodo }: { nodo: NodoGrafo }) {
-  const props = { className: s.icono, strokeWidth: 2.25, "aria-hidden": true } as const;
-  switch (nodo.tipo) {
-    case "om": return <Activity {...props} />;
-    case "moduladora": return <SlidersHorizontal {...props} />;
-    case "ed": return <Signpost {...props} />;
-    case "ec": return <Zap {...props} />;
-    case "regla_verbal": return <MessageSquareQuote {...props} />;
-    case "encubierta":
-      switch (nodo.detalle) {
-        case "sensacion": return <HeartPulse {...props} />;
-        case "pensamiento": return <Cloud {...props} />;
-        case "emocion": return <Smile {...props} />;
-        case "impulso": return <ArrowBigRightDash {...props} />;
-        case "accion": return <Footprints {...props} />;
-        default: return <Brain {...props} />;
-      }
-    case "conducta": return <PersonStanding {...props} />;
-    case "repertorio": return <Wrench {...props} />;
-    case "alternativa": return <Sprout {...props} />;
-    case "consecuencia": return nodo.carril === "demorada" ? <TrendingDown {...props} /> : <Clock3 {...props} />;
-    case "consecuencia_alternativa": return <Target {...props} />;
-    case "valor": return <Compass {...props} />;
-    default: return <CircleDot {...props} />;
-  }
-}
-
 function etiquetaApoyo(apoyo: 1 | 2 | 3) {
   return describirGrado(gradoDeNumero(apoyo)).etiqueta;
 }
@@ -301,7 +252,6 @@ function Nodo({
       <article {...comunes} className={clases}>
         {barraApoyo(s.barraApoyo)}
         <div className={s.nodoCuerpo}>
-          <IconoNodo nodo={nodo} />
           <div className={s.nodoTexto}>
             <span className={s.chip}>{ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} /></span>
             {editando ? editor(s.editor) : <p className={s.etiqueta}>{nodo.etiqueta}</p>}
