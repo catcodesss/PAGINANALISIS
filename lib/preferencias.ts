@@ -83,15 +83,6 @@ export function normalizarPreferencias(crudo: unknown): Preferencias {
   };
 }
 
-export function leerPreferencias(): Preferencias {
-  try {
-    const crudo = localStorage.getItem(CLAVE_PREFERENCIAS);
-    return normalizarPreferencias(crudo ? JSON.parse(crudo) : null);
-  } catch {
-    return PREFERENCIAS_POR_DEFECTO;
-  }
-}
-
 /**
  * Escribe los atributos que lee el CSS. El tema "sistema" se resuelve aquí
  * contra la preferencia del sistema operativo, para que el CSS solo tenga que

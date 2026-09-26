@@ -99,8 +99,3 @@ export function resolverCita(lineas: string[], valor: unknown): Cita {
 
   return { texto, linea_inicio: desde, linea_fin: hasta, verificada: true };
 }
-
-/** Para la degradación de confianza en el validador: ¿esta cita sostiene una afirmación? */
-export function citaSostiene(cita: Cita): boolean {
-  return cita.verificada && cita.texto.trim().length > 0;
-}

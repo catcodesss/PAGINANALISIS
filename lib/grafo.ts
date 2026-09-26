@@ -51,19 +51,6 @@ export interface HuecoGrafo {
   etiqueta: string;
 }
 
-export const CARRILES_GRAFO: readonly {
-  id: CarrilGrafo;
-  titulo: string;
-  subtitulo: string;
-}[] = [
-  { id: "contexto", titulo: "Contexto / OM", subtitulo: "Operaciones motivacionales" },
-  { id: "antecedente", titulo: "Antecedente", subtitulo: "Ed · EΔ · EC · regla" },
-  { id: "encubierto", titulo: "Encadenamiento", subtitulo: "Eventos encubiertos" },
-  { id: "conducta", titulo: "Conducta", subtitulo: "Respuesta observable" },
-  { id: "inmediata", titulo: "Consec. inmediata", subtitulo: "Lo que mantiene ahora" },
-  { id: "demorada", titulo: "Consec. demorada", subtitulo: "Coste a medio y largo plazo" },
-] as const;
-
 function evidenciaDeclarada(cita: Cita | null): boolean {
   if (!cita || !("motivo" in cita)) return false;
   return cita.motivo !== "sin_referencia";

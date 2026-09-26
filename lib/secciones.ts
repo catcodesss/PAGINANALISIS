@@ -100,18 +100,3 @@ export const ANCLAS_DE_BLOQUE = Object.fromEntries(
     ANCLAS_INFORME.filter((a) => a.bloque === b).map((a) => a.id),
   ])
 ) as Record<IdSeccion, IdAncla[]>;
-
-const POSICION_DE_BLOQUE = new Map<string, number>(
-  SECCIONES_INFORME.map((s, i) => [s.id, i])
-);
-
-/**
- * Posición de fábrica de un bloque, para conciliar el orden guardado.
- *
- * Antes esto resolvía el grupo de una sección; ahora el bloque ES el grupo, así
- * que es una consulta directa. Un id desconocido —el orden guardado con las
- * diecisiete secciones viejas— cae detrás de todo en vez de colarse en medio.
- */
-export function posicionDeGrupo(id: string): number {
-  return POSICION_DE_BLOQUE.get(id) ?? SECCIONES_INFORME.length;
-}

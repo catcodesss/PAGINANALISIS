@@ -399,9 +399,7 @@ html[data-texto="mayor"] { --escala-texto: 1.3; }
      TARJETAS Y CADENAS
      ══════════════════════════════════════ */
 
-  .sit-card,
   .hipotesis-card,
-  .cycle-box,
   .formulacion-destacada,
   .print-only-disclaimer {
     page-break-inside: avoid;
@@ -418,15 +416,6 @@ html[data-texto="mayor"] { --escala-texto: 1.3; }
 
   .chain-table .el-label {
     color: #2e5e4e;
-  }
-
-  .chain-formula {
-    font-size: 11pt;
-  }
-
-  .chain-natural {
-    font-size: 9pt;
-    color: #333;
   }
 
   /* ══════════════════════════════════════
