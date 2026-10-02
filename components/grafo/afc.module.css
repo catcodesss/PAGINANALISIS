@@ -39,6 +39,9 @@
   --afc-forest: #1F4A3A;
   --afc-brown: #7A5C32;
   --afc-alt-accent: #7F9488;
+  --afc-apoyo-cita: #15705A;
+  --afc-apoyo-parcial: #B58A35;
+  --afc-apoyo-inferencia: #AAA59D;
 
   --afc-card: #FFFFFF;
   --afc-card-border: rgba(60, 60, 40, .07);
@@ -201,13 +204,6 @@
   letter-spacing: -0.01em;
   color: var(--afc-text-title);
 }
-.columnaCodigo {
-  margin-left: auto;
-  font-size: .8125rem;
-  font-weight: 500;
-  text-decoration: none;
-  color: var(--afc-text-secondary);
-}
 .columnaCuerpo {
   flex: 1;
   display: flex;
@@ -216,29 +212,12 @@
   padding: 16px;
 }
 
-/* ---------- Subgrupos ---------- */
-.subgrupoCabecera {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  flex-wrap: wrap;
-}
-.subgrupoTitulo {
-  margin: 0;
-  font-size: .9375rem;
-  font-weight: 700;
-  line-height: 1.3;
-  color: var(--afc-forest);
-}
-.subgrupoCabecera > :last-child:not(:first-child) { margin-left: auto; }
-
-.encubiertas,
+/* ---------- Conducta ---------- */
 .manifiesta {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.encubiertas { padding-bottom: 16px; border-bottom: 1px solid var(--afc-con-border); }
 
 .consecuencias { display: flex; flex-direction: column; gap: 12px; }
 .consecuencias + .consecuencias {
@@ -262,10 +241,9 @@
   z-index: 2;
   min-width: 0;
   min-height: 58px;
-  padding: 12px 14px;
+  padding: 12px 14px 12px 20px;
   background: var(--afc-card);
   border: 1px solid var(--afc-card-border);
-  border-top: 2.5px solid var(--afc-acento, var(--afc-line));
   border-radius: 11px;
   box-shadow: var(--afc-shadow);
   cursor: pointer;
@@ -322,20 +300,23 @@
   font-size: .95rem;
 }
 
-/* Barra de respaldo en la nota: la longitud y la opacidad codifican el nivel
-   (lib/grafo.ts). Usa el acento de la app, no el color de la columna. */
+/* Respaldo en la nota: franja vertical en el borde izquierdo. El color lo dice
+   todo (verde = cita, oro = parcial, gris = inferencia; la leyenda lo explica),
+   sin texto. El valor es nodo.apoyo (lib/grafo.ts), el mismo de siempre. */
 .barraApoyo {
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 10px;
+  inset: 0 auto 0 0;
+  width: 10px;
   padding: 0;
   border: 0;
   background: transparent;
-  border-radius: 12px 12px 0 0;
+  border-radius: 11px 0 0 11px;
   overflow: hidden;
   cursor: pointer;
 }
-.barraApoyo > span { display: block; height: 3px; }
+.bandaApoyo { display: block; width: 5px; height: 100%; background: var(--afc-apoyo-inferencia); }
+.bandaApoyo[data-apoyo="3"] { background: var(--afc-apoyo-cita); }
+.bandaApoyo[data-apoyo="2"] { background: var(--afc-apoyo-parcial); }
 
 .hueco {
   padding: 10px 12px;

@@ -221,10 +221,7 @@ function Nodo({
         onCita(nodo);
       }}
     >
-      <span
-        className="block h-1 bg-accent"
-        style={{ width: `${nodo.apoyo === 3 ? 100 : nodo.apoyo === 2 ? 66 : 33}%`, opacity: nodo.apoyo === 3 ? 1 : nodo.apoyo === 2 ? 0.66 : 0.42 }}
-      />
+      <span className={s.bandaApoyo} data-apoyo={nodo.apoyo} />
     </button>
   );
 
@@ -250,11 +247,11 @@ function Nodo({
       atenuado ? s.atenuado : "",
     ].join(" ");
     return (
-      <article {...comunes} className={clases}>
+      <article {...comunes} aria-label={`${nodo.tipo === "encubierta" ? ETIQUETA_TIPO.conducta : ETIQUETA_TIPO[nodo.tipo]}: ${nodo.etiqueta}${conectando ? ". Seleccionar para conectar" : ""}`} className={clases}>
         {barraApoyo(s.barraApoyo)}
         <div className={s.nodoCuerpo}>
           <div className={s.nodoTexto}>
-            <span className={s.chip}>{ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} /></span>
+            <span className={s.chip}>{nodo.tipo === "encubierta" ? ETIQUETA_TIPO.conducta : ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} /></span>
             {editando ? editor(s.editor) : <p className={s.etiqueta}>{nodo.etiqueta}</p>}
             {detalle && <p className={s.detalle} title={detalle.definicion}>{detalle.texto}</p>}
           </div>

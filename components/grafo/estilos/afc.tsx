@@ -107,13 +107,12 @@ export const COLUMNA_DE_CARRIL: Record<CarrilGrafo, "om" | "ant" | "con" | "csq"
 };
 
 /** Los iconos viven solo en las cabeceras: las tarjetas son texto puro, porque las entidades clínicas no tienen pictograma. */
-function Columna({ clase, titulo, codigo, icono: Icono, termino, children }: { clase: string; titulo: string; codigo: string; icono: LucideIcon; termino?: IdTermino; children: ReactNode }) {
+function Columna({ clase, titulo, icono: Icono, termino, children }: { clase: string; titulo: string; icono: LucideIcon; termino?: IdTermino; children: ReactNode }) {
   return (
     <section className={`${s.columna} ${clase}`} aria-label={titulo}>
       <header className={s.columnaCabecera}>
         <Icono className={s.columnaIcono} strokeWidth={1.8} aria-hidden="true" />
         <h5 className={s.columnaTitulo} title={termino ? TERMINOS[termino].definicion : undefined}>{titulo}</h5>
-        <abbr className={s.columnaCodigo} title={termino ? TERMINOS[termino].tecnico : undefined}>{codigo}</abbr>
       </header>
       <div className={s.columnaCuerpo}>{children}</div>
     </section>
@@ -147,7 +146,6 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
         const alternativas = deSituacion.filter((n) => n.alternativa && n.carril !== "inmediata");
         const necesarias = deSituacion.filter((n) => n.alternativa && n.carril === "inmediata");
         const funciones = deSituacion.filter((n) => n.tipo === "funcion");
-        const agregarEncubierta = renderAgregar("encubierto", situacion.id, false);
 
         return (
           <section key={situacion.id} className={s.situacion} data-situacion-id={situacion.id}>
@@ -156,32 +154,25 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
             </header>
 
             <div className={s.tablero}>
-              <Columna clase={s.om} titulo={TERMINOS.om.claro} codigo="OM" icono={Target} termino="om">
+              <Columna clase={s.om} titulo={TERMINOS.om.claro} icono={Target} termino="om">
                 <Lista nodos={enCarril("contexto")} huecos={huecosDe("contexto")} renderNodo={renderNodo} />
                 {renderAgregar("contexto", situacion.id, false)}
               </Columna>
 
-              <Columna clase={s.ant} titulo="Antecedente" codigo="A" icono={ClipboardList}>
+              <Columna clase={s.ant} titulo="Antecedente" icono={ClipboardList}>
                 <Lista nodos={enCarril("antecedente")} huecos={huecosDe("antecedente")} renderNodo={renderNodo} />
                 {renderAgregar("antecedente", situacion.id, false)}
               </Columna>
 
-              <Columna clase={s.con} titulo="Conducta" codigo="C" icono={Play}>
-                <section className={s.encubiertas} aria-label="Respuestas encubiertas">
-                  <div className={s.subgrupoCabecera}>
-                    <h6 className={s.subgrupoTitulo}>Respuestas encubiertas</h6>
-                    {agregarEncubierta}
-                  </div>
-                  <Lista nodos={enCarril("encubierto")} huecos={huecosDe("encubierto")} renderNodo={renderNodo} />
-                </section>
-                <section className={s.manifiesta} aria-label="Conducta manifiesta">
-                  <h6 className={s.subgrupoTitulo}>Conducta manifiesta</h6>
-                  <Lista nodos={enCarril("conducta")} huecos={huecosDe("conducta")} renderNodo={renderNodo} />
+              <Columna clase={s.con} titulo="Conducta" icono={Play}>
+                {/* Sin rótulo encubierta/manifiesta: la descripción de cada conducta ya lo dice. */}
+                <div className={s.manifiesta}>
+                  <Lista nodos={[...enCarril("encubierto"), ...enCarril("conducta")]} huecos={[...huecosDe("encubierto"), ...huecosDe("conducta")]} renderNodo={renderNodo} />
                   {renderAgregar("conducta", situacion.id, false)}
-                </section>
+                </div>
               </Columna>
 
-              <Columna clase={s.csq} titulo="Consecuencias" codigo="C" icono={ChartNoAxesColumnIncreasing}>
+              <Columna clase={s.csq} titulo="Consecuencias" icono={ChartNoAxesColumnIncreasing}>
                 {(["inmediata", "demorada"] as const).map((carril) => (
                   <div key={carril} className={s.consecuencias}>
                     <p className={s.subzonaTitulo}>{carril === "inmediata" ? "Consecuencia inmediata" : "Consecuencia demorada"}</p>
