@@ -39,9 +39,6 @@
   --afc-forest: #1F4A3A;
   --afc-brown: #7A5C32;
   --afc-alt-accent: #7F9488;
-  --afc-apoyo-cita: #15705A;
-  --afc-apoyo-parcial: #B58A35;
-  --afc-apoyo-inferencia: #AAA59D;
 
   --afc-card: #FFFFFF;
   --afc-card-border: rgba(60, 60, 40, .07);
@@ -314,6 +311,17 @@
   overflow: hidden;
   cursor: pointer;
 }
+/* Los tres colores del respaldo viven aquí y no en .raiz porque la leyenda y la
+   barra de las vistas DBT/ACT están fuera del tablero AFC y los necesitan igual. */
+.raiz, .marcaApoyo {
+  --afc-apoyo-cita: #15705A;
+  --afc-apoyo-parcial: #B58A35;
+  --afc-apoyo-inferencia: #AAA59D;
+}
+/* Mismo grosor y forma para los tres grados: solo cambia el color. */
+.marcaApoyo { display: inline-block; width: 24px; height: 4px; background: var(--afc-apoyo-inferencia); }
+.marcaApoyo[data-apoyo="3"] { background: var(--afc-apoyo-cita); }
+.marcaApoyo[data-apoyo="2"] { background: var(--afc-apoyo-parcial); }
 .bandaApoyo { display: block; width: 5px; height: 100%; background: var(--afc-apoyo-inferencia); }
 .bandaApoyo[data-apoyo="3"] { background: var(--afc-apoyo-cita); }
 .bandaApoyo[data-apoyo="2"] { background: var(--afc-apoyo-parcial); }

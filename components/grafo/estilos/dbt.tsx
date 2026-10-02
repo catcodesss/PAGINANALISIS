@@ -27,6 +27,7 @@ import {
 import type { AnalisisFuncional, TipoEslabonDBT } from "@/lib/types";
 import { apoyoCadena, type NodoGrafo } from "@/lib/grafo";
 import { describirGrado, gradoDeNumero } from "@/lib/gradoApoyo";
+import s from "../afc.module.css";
 import { Cita } from "@/components/informe/primitivas";
 
 /*
@@ -128,7 +129,7 @@ function Bloque({ titulo, children }: { titulo: string; children: ReactNode }) {
 
 function PildoraApoyo({ apoyo }: { apoyo: 1 | 2 | 3 }) {
   const d = describirGrado(gradoDeNumero(apoyo));
-  return <span title={d.corta} className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-divider bg-canvas px-2 py-0.5 text-[11px] text-ink-muted"><span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${d.clase}`} />{d.etiqueta}</span>;
+  return <span title={d.corta} className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-divider bg-canvas px-2 py-0.5 text-[11px] text-ink-muted"><span aria-hidden="true" data-apoyo={apoyo} className={`${s.marcaApoyo} !h-1.5 !w-1.5 rounded-full`} />{d.etiqueta}</span>;
 }
 
 /**

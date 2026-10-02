@@ -278,7 +278,7 @@ function Nodo({
         }}
         className={`${clase} items-center gap-1.5 whitespace-nowrap rounded-full border border-divider bg-canvas px-2 py-0.5 text-[11px] text-ink-muted`}
       >
-        <span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${grado.clase}`} />
+        <span aria-hidden="true" data-apoyo={nodo.apoyo} className={`${s.marcaApoyo} !h-1.5 !w-1.5 rounded-full`} />
         {grado.etiqueta}
       </button>
     );
@@ -326,8 +326,8 @@ function Nodo({
         }}
       >
         <span
-          className="block h-1 bg-accent"
-          style={{ width: `${nodo.apoyo === 3 ? 100 : nodo.apoyo === 2 ? 66 : 33}%`, opacity: nodo.apoyo === 3 ? 1 : nodo.apoyo === 2 ? 0.66 : 0.42 }}
+          className={`${s.marcaApoyo} !block !w-full`}
+          data-apoyo={nodo.apoyo}
         />
       </button>
       <p className="mt-1 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
@@ -642,7 +642,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
         <span className="font-medium text-ink">Apoyo en la nota</span>
         {([3, 2, 1] as const).map((nivel) => (
           <button key={nivel} type="button" aria-pressed={filtro === nivel} onClick={() => setFiltro(filtro === nivel ? null : nivel)} className="rounded-full border border-divider px-2.5 py-1 text-ink-muted aria-pressed:border-accent aria-pressed:text-accent">
-            <span className="mr-1 inline-block h-1 bg-accent align-middle" style={{ width: nivel === 3 ? 24 : nivel === 2 ? 16 : 8, opacity: nivel === 3 ? 1 : nivel === 2 ? .66 : .42 }} />
+            <span className={`${s.marcaApoyo} mr-1 align-middle`} data-apoyo={nivel} aria-hidden="true" />
             {etiquetaApoyo(nivel)}
           </button>
         ))}
