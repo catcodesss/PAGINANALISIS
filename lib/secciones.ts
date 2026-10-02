@@ -32,8 +32,8 @@
  */
 
 export const SECCIONES_INFORME = [
-  { id: "sintesis", titulo: "Resumen" },
   { id: "que-pasa", titulo: "Análisis funcional" },
+  { id: "sintesis", titulo: "Resumen" },
   { id: "mantenimiento", titulo: "Formulación" },
   { id: "plan", titulo: "Plan" },
   { id: "pendientes", titulo: "Revisión" },
