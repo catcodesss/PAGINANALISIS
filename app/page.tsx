@@ -70,8 +70,6 @@ export default function Home() {
   const [copiado, setCopiado] = useState(false);
   const [vista, setVista] = useState<Vista>("analisis");
   const [selectorAbierto, setSelectorAbierto] = useState(false);
-  // Vacío en la práctica significa "todos": se manda la lista completa.
-  const [bloques, setBloques] = useState<string[]>(IDS_TODOS);
   // Preguntas del paso previo (ver lib/datosFaltantesPrevios.ts). null = no se
   // está preguntando nada; array = mostrando PreguntasDatosFaltantes.
   const [preguntas, setPreguntas] = useState<PreguntaPrevia[] | null>(null);
@@ -90,7 +88,7 @@ export default function Home() {
 
   async function ejecutarAnalisis(
     texto: string,
-    bloquesPedidos: string[] = bloques,
+    bloquesPedidos: string[] = IDS_TODOS,
     datosFaltantesDeclarados: DatoFaltante[] = []
   ) {
     setUltimoTextoEnviado(texto);
@@ -211,7 +209,7 @@ export default function Home() {
       textoFinal = `${textoFinal}\n\n--- Información adicional confirmada por el terapeuta ---\n${apendice}`;
     }
     setPreguntas(null);
-    void ejecutarAnalisis(textoFinal, bloques, omitidas);
+    void ejecutarAnalisis(textoFinal, IDS_TODOS, omitidas);
   }
 
   /** Cerrar la ventana de preguntas: no se analiza nada y la nota queda intacta. */
@@ -541,14 +539,10 @@ export default function Home() {
                         <Sparkles className="h-7 w-7 shrink-0 text-dorado" strokeWidth={1.5} aria-hidden="true" />
                         <span className="min-w-0 flex-1">
                           <span className="block text-base font-semibold sm:text-lg">
-                            {bloques.length === IDS_TODOS.length
-                              ? "Generar análisis funcional"
-                              : `Generar ${bloques.length} ${bloques.length === 1 ? "sección" : "secciones"}`}
+                            Generar análisis funcional
                           </span>
                           <span className="mt-0.5 block text-xs text-white/75 sm:text-sm">
-                            {bloques.length === IDS_TODOS.length
-                              ? "La IA analizará tu información y te entregará un análisis estructurado."
-                              : "Solo las partes que has elegido: más rápido y más barato."}
+                            La IA analizará tu información y te entregará un análisis estructurado.
                           </span>
                         </span>
                         <ArrowRight
@@ -572,13 +566,7 @@ export default function Home() {
                       </button>
 
                       {selectorAbierto && (
-                        <SelectorBloques
-                          seleccion={bloques}
-                          onCambiar={setBloques}
-                          onGenerar={manejarGenerarClick}
-                          onCerrar={() => setSelectorAbierto(false)}
-                          deshabilitado={formularioDeshabilitado}
-                        />
+                        <SelectorBloques onCerrar={() => setSelectorAbierto(false)} />
                       )}
                     </div>
                   )}

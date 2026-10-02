@@ -1,45 +1,27 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Check } from "lucide-react";
-import { BLOQUES, IDS_TODOS, pesoDe, type CategoriaBloque } from "@/lib/bloques";
 import { SECCIONES_INFORME, type IdSeccion } from "@/lib/secciones";
 import { usePestanasOcultas } from "./usePestanasOcultas";
 
-/** Orden fijo de categorías en el panel; no depende del orden de BLOQUES. */
-const ORDEN_CATEGORIAS: CategoriaBloque[] = [
-  "Descripción",
-  "Análisis funcional",
-  "Formulación y plan",
-  "Capas de modalidad",
-];
-
 /**
- * Panel para elegir qué partes del informe generar.
+ * Panel para elegir qué pestañas del informe se ven.
  *
- * Por qué existe: generar el informe completo cuesta tokens y tiempo. Si el
- * clínico solo quiere las conductas problema o la lectura ACT de un caso, no
- * tiene sentido producir las dos capas de modalidad.
+ * Antes también dejaba elegir qué bloques generar. Esa lista se quitó: no
+ * correspondía a lo que el informe enseña desde la reorganización en pestañas,
+ * y se genera siempre el informe completo. `lib/bloques.ts` y el parámetro
+ * `bloques` de /api/analizar siguen ahí, sin cambios, para los reanálisis
+ * parciales.
  *
- * Las dependencias entre secciones las resuelve lib/bloques.ts, no esta
- * interfaz: aquí solo se marcan bloques con sentido clínico, no campos sueltos.
+ * Las pestañas se guardan al instante, sin pasar por «Generar»: son una
+ * preferencia de lectura y el informe abierto las refleja en vivo.
  */
 
 interface SelectorBloquesProps {
-  seleccion: string[];
-  onCambiar: (ids: string[]) => void;
-  onGenerar: () => void;
   onCerrar: () => void;
-  deshabilitado: boolean;
 }
 
-export default function SelectorBloques({
-  seleccion,
-  onCambiar,
-  onGenerar,
-  onCerrar,
-  deshabilitado,
-}: SelectorBloquesProps) {
+export default function SelectorBloques({ onCerrar }: SelectorBloquesProps) {
   const panel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,152 +37,62 @@ export default function SelectorBloques({
     };
   }, [onCerrar]);
 
-  const alternar = (id: string) =>
-    onCambiar(
-      seleccion.includes(id) ? seleccion.filter((x) => x !== id) : [...seleccion, id]
-    );
+  const { ocultas, guardar } = usePestanasOcultas();
+  const total = SECCIONES_INFORME.length;
 
-  // Las pestañas se guardan al instante, sin pasar por «Generar»: son una
-  // preferencia de lectura y el informe abierto las refleja en vivo.
-  const { ocultas, guardar: guardarOcultas } = usePestanasOcultas();
-  const alternarPestana = (id: IdSeccion) => {
-    if (ocultas.includes(id)) return guardarOcultas(ocultas.filter((x) => x !== id));
+  const alternar = (id: IdSeccion) => {
+    if (ocultas.includes(id)) return guardar(ocultas.filter((x) => x !== id));
     // Al menos una pestaña tiene que quedar a la vista.
-    if (ocultas.length < SECCIONES_INFORME.length - 1) guardarOcultas([...ocultas, id]);
+    if (ocultas.length < total - 1) guardar([...ocultas, id]);
   };
-
-  const todos = seleccion.length === IDS_TODOS.length;
-  const peso = pesoDe(seleccion);
 
   return (
     <div
       ref={panel}
       role="dialog"
-      aria-label="Elegir partes del análisis"
-      className="absolute bottom-full right-0 z-30 mb-2 w-[min(34rem,calc(100vw-2rem))] rounded-2xl border border-divider bg-surface p-5 shadow-xl"
+      aria-label="Elegir qué pestañas mostrar"
+      className="absolute bottom-full right-0 z-30 mb-2 w-[min(26rem,calc(100vw-2rem))] rounded-2xl border border-divider bg-surface p-5 shadow-xl"
     >
-      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-serif text-lg font-semibold text-ink">
-          Elige qué generar
-        </h3>
-        <button
-          type="button"
-          onClick={() => onCambiar(todos ? [] : IDS_TODOS)}
-          className="text-sm text-accent hover:underline"
-        >
-          {todos ? "Quitar todo" : "Seleccionar todo"}
-        </button>
-      </div>
-      <p className="mb-4 text-sm leading-relaxed text-ink-muted">
-        Generar menos secciones es más rápido y más barato. El resumen clínico y
-        los datos faltantes se incluyen siempre.
+      <h3 className="font-serif text-lg font-semibold text-ink">Elige qué mostrar</h3>
+      <p className="mb-4 mt-1 text-sm leading-relaxed text-ink-muted">
+        Activa o desactiva las pestañas del informe. Solo cambia lo que ves: el
+        informe impreso o copiado las incluye todas.
       </p>
 
-      <div className="mb-4 max-h-[50vh] space-y-3 overflow-y-auto">
-        <div>
-          <h4 className="mb-1 font-mono text-[11px] uppercase tracking-wide text-ink-muted">
-            Pestañas visibles · {SECCIONES_INFORME.length - ocultas.length} de{" "}
-            {SECCIONES_INFORME.length}
-          </h4>
-          <p className="mb-1.5 text-xs leading-snug text-ink-muted">
-            Solo cambia lo que ves: el informe impreso o copiado las incluye todas.
-          </p>
-          <ul className="grid gap-1 sm:grid-cols-2">
-            {SECCIONES_INFORME.map((s) => {
-              const activa = !ocultas.includes(s.id);
-              return (
-                <li key={s.id}>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={activa}
-                    onClick={() => alternarPestana(s.id)}
-                    className="flex w-full items-center justify-between gap-3 rounded-lg border border-transparent p-2.5 text-left transition-colors hover:bg-canvas"
-                  >
-                    <span className="text-sm font-medium text-ink">{s.titulo}</span>
-                    <span
-                      aria-hidden="true"
-                      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                        activa ? "bg-accent" : "bg-divider"
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
-                          activa ? "left-[1.125rem]" : "left-0.5"
-                        }`}
-                      />
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        {ORDEN_CATEGORIAS.map((categoria) => {
-          const bloquesCategoria = BLOQUES.filter((b) => b.categoria === categoria);
-          if (bloquesCategoria.length === 0) return null;
+      <ul className="space-y-1">
+        {SECCIONES_INFORME.map((s) => {
+          const activa = !ocultas.includes(s.id);
           return (
-            <div key={categoria}>
-              <h4 className="mb-1 font-mono text-[11px] uppercase tracking-wide text-ink-muted">
-                {categoria}
-              </h4>
-              <ul className="grid gap-1 sm:grid-cols-2">
-                {bloquesCategoria.map((bloque) => {
-                  const marcado = seleccion.includes(bloque.id);
-                  return (
-                    <li key={bloque.id}>
-                      <button
-                        type="button"
-                        onClick={() => alternar(bloque.id)}
-                        aria-pressed={marcado}
-                        className={`flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors ${
-                          marcado
-                            ? "border-accent/40 bg-accent-soft"
-                            : "border-transparent hover:bg-canvas"
-                        }`}
-                      >
-                        <span
-                          aria-hidden="true"
-                          className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                            marcado ? "border-accent bg-accent" : "border-divider bg-canvas"
-                          }`}
-                        >
-                          {marcado && <Check className="h-3 w-3 text-white" />}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-sm font-medium text-ink">
-                            {bloque.etiqueta}
-                          </span>
-                          <span className="block text-xs leading-snug text-ink-muted">
-                            {bloque.descripcion}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+            <li key={s.id}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={activa}
+                onClick={() => alternar(s.id)}
+                className="flex w-full items-center justify-between gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+              >
+                <span className="text-sm font-medium text-ink">{s.titulo}</span>
+                <span
+                  aria-hidden="true"
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                    activa ? "bg-accent" : "bg-divider"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
+                      activa ? "left-[1.125rem]" : "left-0.5"
+                    }`}
+                  />
+                </span>
+              </button>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-divider pt-4">
-        <p className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
-          {seleccion.length === 0
-            ? "Nada seleccionado"
-            : `${seleccion.length} de ${IDS_TODOS.length} · ~${peso}% del informe`}
-        </p>
-        <button
-          type="button"
-          onClick={onGenerar}
-          disabled={deshabilitado || seleccion.length === 0}
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium texto-sobre-acento transition-colors hover:bg-accent/90 disabled:opacity-50"
-        >
-          Generar lo seleccionado
-        </button>
-      </div>
+      <p className="mt-3 border-t border-divider pt-3 font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+        {total - ocultas.length} de {total} visibles
+      </p>
     </div>
   );
 }
