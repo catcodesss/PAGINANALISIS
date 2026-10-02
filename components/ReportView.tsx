@@ -14,6 +14,8 @@ import {
 } from "@/lib/secciones";
 import { NIVELES_APOYO } from "@/lib/gradoApoyo";
 import { useLente } from "./useLente";
+import { usePestanasOcultas } from "./usePestanasOcultas";
+import { ElegirPestanas } from "./informe/ElegirPestanas";
 import {
   BarraPestanas,
   irAlAncla,
@@ -318,9 +320,13 @@ export default function ReportView({
   onEditarSeccion,
 }: ReportViewProps) {
   // En un análisis parcial, una pestaña sin nada que enseñar no aparece.
+  const { ocultas, guardar: guardarOcultas } = usePestanasOcultas();
   const seccionesVisibles = useMemo(
-    () => SECCIONES.filter((s) => bloqueVisible(analisis, s.id)),
-    [analisis]
+    () =>
+      SECCIONES.filter(
+        (s) => bloqueVisible(analisis, s.id) && !ocultas.includes(s.id)
+      ),
+    [analisis, ocultas]
   );
   const [pestanaElegida, setPestanaElegida] = useState<IdSeccion>("que-pasa");
   // Si la elegida deja de existir (un reanálisis parcial), se cae en la primera.
@@ -410,7 +416,10 @@ export default function ReportView({
         </div>
       </header>
 
-      <BarraPestanas pestanas={seccionesVisibles} />
+      <BarraPestanas
+        pestanas={seccionesVisibles}
+        extremo={<ElegirPestanas ocultas={ocultas} onGuardar={guardarOcultas} />}
+      />
 
       <div className="min-w-0">
           <BloqueAnalisisFuncional

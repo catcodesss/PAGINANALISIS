@@ -65,8 +65,11 @@ export function PanelPestana({ id, children }: { id: IdSeccion; children: ReactN
 
 export function BarraPestanas({
   pestanas,
+  extremo,
 }: {
   pestanas: { id: IdSeccion; titulo: string; contador?: number }[];
+  /** Control al final de la barra (elegir qué pestañas se ven). */
+  extremo?: ReactNode;
 }) {
   const ctx = usePestanas();
   if (!ctx) return null;
@@ -83,6 +86,7 @@ export function BarraPestanas({
     // overflow-x-auto dentro de la barra, no en la página: a 400 px las cinco
     // pestañas no caben, y el informe no puede desplazarse de lado por eso.
     <div className="sticky top-0 z-20 -mx-5 mb-6 overflow-x-auto border-b border-divider bg-surface px-5 sm:-mx-8 sm:px-8 lg:-mx-12 lg:px-12 print:hidden">
+      <div className="flex min-w-max items-center justify-between gap-4">
       <div role="tablist" aria-label="Partes del análisis" className="flex min-w-max gap-1">
         {pestanas.map((p, i) => {
           const activa = ctx.activa === p.id;
@@ -115,6 +119,8 @@ export function BarraPestanas({
             </button>
           );
         })}
+      </div>
+      {extremo}
       </div>
     </div>
   );
