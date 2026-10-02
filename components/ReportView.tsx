@@ -428,14 +428,6 @@ export default function ReportView({
       <BarraPestanas pestanas={seccionesVisibles} />
 
       <div className="min-w-0">
-          <BloqueSintesis
-            visible={bloqueVisible(analisis, "sintesis")}
-            analisis={analisis}
-            destacada={hipotesisDestacada}
-            resumen={prosaDerivada.resumen}
-            onEditarSeccion={onEditarSeccion}
-          />
-
           <BloqueAnalisisFuncional
             visible={bloqueVisible(analisis, "que-pasa")}
             analisis={analisis}
@@ -448,6 +440,14 @@ export default function ReportView({
                 habilitaLecturas={grafoBaseDisponible}
               />
             }
+            onEditarSeccion={onEditarSeccion}
+          />
+
+          <BloqueSintesis
+            visible={bloqueVisible(analisis, "sintesis")}
+            analisis={analisis}
+            destacada={hipotesisDestacada}
+            resumen={prosaDerivada.resumen}
             onEditarSeccion={onEditarSeccion}
           />
 

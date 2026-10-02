@@ -50,15 +50,15 @@ export type IdSeccion = (typeof SECCIONES_INFORME)[number]["id"];
  * el compilador vigile lo que ninguna prueba mira.
  */
 export const ANCLAS_INFORME = [
+  { id: "conductas", titulo: "Repertorio conductual", bloque: "que-pasa" },
+  { id: "variables-moduladoras", titulo: "Contexto y variables moduladoras", bloque: "que-pasa" },
+  { id: "situaciones", titulo: "Análisis por situaciones", bloque: "que-pasa" },
+  { id: "modalidad", titulo: "Detalle según modelo terapéutico", bloque: "que-pasa" },
   { id: "riesgo", titulo: "Riesgo", bloque: "sintesis" },
   { id: "resumen", titulo: "Resumen clínico", bloque: "sintesis" },
   { id: "hipotesis-principal", titulo: "Formulación principal", bloque: "sintesis" },
   { id: "prioridades", titulo: "Tres prioridades", bloque: "sintesis" },
   { id: "preguntas", titulo: "Preguntas para la próxima sesión", bloque: "sintesis" },
-  { id: "conductas", titulo: "Repertorio conductual", bloque: "que-pasa" },
-  { id: "variables-moduladoras", titulo: "Contexto y variables moduladoras", bloque: "que-pasa" },
-  { id: "situaciones", titulo: "Análisis por situaciones", bloque: "que-pasa" },
-  { id: "modalidad", titulo: "Detalle según modelo terapéutico", bloque: "que-pasa" },
   { id: "hipotesis-mantenimiento", titulo: "Hipótesis de mantenimiento", bloque: "mantenimiento" },
   { id: "hipotesis-origen", titulo: "Hipótesis de origen", bloque: "mantenimiento" },
   { id: "formulacion", titulo: "Formulación del caso", bloque: "mantenimiento" },
