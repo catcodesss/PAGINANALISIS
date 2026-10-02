@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useLayoutEffect, useRef, useState, type PointerEvent as EventoPuntero, type ReactNode } from "react";
-import { ChartNoAxesColumnIncreasing, ClipboardList, GripVertical, Play, Target, type LucideIcon } from "lucide-react";
+import { ArrowLeftRight, ChartNoAxesColumnIncreasing, ClipboardList, GripVertical, Play, Target, type LucideIcon } from "lucide-react";
 import type { AnalisisFuncional } from "@/lib/types";
 import {
   huecosDeSituacion,
@@ -193,7 +193,7 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
             </div>
 
             <div className={`${s.alternativa} ${s.alt}`}>
-              <p className={s.alternativaCabecera}><strong>Conducta alternativa</strong> · compite por la misma contingencia</p>
+              <p className={s.alternativaCabecera}><ArrowLeftRight className={s.alternativaIcono} strokeWidth={1.8} aria-hidden="true" /><strong>Conducta alternativa</strong> · compite por la misma contingencia</p>
               <div className={s.alternativaFila}>
                 <div className={s.lista}>
                   {alternativas.map((n) => <Fragment key={n.id}>{renderNodo(n)}</Fragment>)}

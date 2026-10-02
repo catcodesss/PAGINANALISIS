@@ -12,52 +12,44 @@
 
 .raiz {
   --afc-bg: #FBF9F4;
-  --afc-text-title: #18212D;
-  --afc-text: #18212D;
-  --afc-text-secondary: #626A73;
-  --afc-text-tertiary: #777F86;
-  --afc-line: #718398;
+  --afc-text-title: #17382D;
+  --afc-text: #1F2A28;
+  --afc-text-secondary: #66706A;
+  --afc-text-tertiary: #7C857F;
+  --afc-line: #7F9488;
 
-  --afc-blue-header: #DCEEFF;
-  --afc-blue-bg: #F0F7FD;
-  --afc-blue-accent: #4C91C9;
-  --afc-blue-border: #A9D4F5;
-  --afc-blue-chip: #D7EFFE;
-
-  --afc-yellow-header: #FFF0CE;
-  --afc-yellow-bg: #FFF8EA;
-  --afc-yellow-accent: #C58A24;
-  --afc-yellow-border: #F3D893;
-  --afc-yellow-chip: #FFF0C5;
-
-  --afc-green-header: #D9F1E7;
-  --afc-green-bg: #EFF9F5;
-  --afc-green-accent: #328D73;
-  --afc-green-border: #A4DAC8;
-  --afc-green-dark: #1B6B56;
-  --afc-green-chip: #CDEFE2;
-  --afc-green-soft: #DFF5EA;
-
-  --afc-pink-header: #FADDE2;
-  --afc-pink-bg: #FFF1F3;
-  --afc-pink-accent: #BE5E70;
-  --afc-pink-border: #F2B5C0;
-  --afc-pink-dark: #A3283B;
-  --afc-pink-chip: #FDE0E5;
-
-  --afc-slate-accent: #7B8BA3;
-  --afc-slate-chip: #E6ECF3;
+  /* Una sola identidad: bosque + salvia + dorado apagado + beige. Las columnas
+     se distinguen por matiz (verde, dorado, verde, beige), no por color. */
+  --afc-om-header: #E1EBE3;
+  --afc-om-bg: #F3F7F3;
+  --afc-om-accent: #2F5D4A;
+  --afc-om-border: #D3E0D6;
+  --afc-ant-header: #F2E8CE;
+  --afc-ant-bg: #FBF7EC;
+  --afc-ant-accent: #B8933F;
+  --afc-ant-border: #E9DDBC;
+  --afc-con-header: #DCE9DD;
+  --afc-con-bg: #EDF4EE;
+  --afc-con-accent: #3F7A5F;
+  --afc-con-border: #C9DCCD;
+  --afc-csq-header: #EDE1C9;
+  --afc-csq-bg: #F8F3EA;
+  --afc-csq-accent: #9A7B4F;
+  --afc-csq-border: #E5D8C0;
+  --afc-forest: #1F4A3A;
+  --afc-brown: #7A5C32;
+  --afc-alt-accent: #7F9488;
 
   --afc-card: #FFFFFF;
-  --afc-card-border: rgba(30, 40, 50, .06);
-  --afc-neutral-bg: rgba(246, 248, 253, .65);
-  --afc-neutral-border: #E2DED7;
-  --afc-alt-bg: #F6F8FD;
-  --afc-alt-border: #D9DFEC;
-  --afc-legend-bg: #F2F6FA;
-  --afc-legend-border: #DDE5EC;
-  --afc-shadow: 0 2px 7px rgba(25, 35, 45, .05);
-  --afc-shadow-hover: 0 3px 10px rgba(25, 35, 45, .08);
+  --afc-card-border: rgba(60, 60, 40, .07);
+  --afc-neutral-bg: rgba(247, 245, 238, .7);
+  --afc-neutral-border: #E5E0D4;
+  --afc-alt-bg: #FDFBF6;
+  --afc-alt-border: #D7E0D8;
+  --afc-legend-bg: #F4F6F1;
+  --afc-legend-border: #DCE4DC;
+  --afc-shadow: 0 1px 3px rgba(30, 45, 35, .05);
+  --afc-shadow-hover: 0 2px 8px rgba(30, 45, 35, .08);
 
   font-family: var(--afc-fuente-texto), var(--font-sans);
   color: var(--afc-text);
@@ -71,7 +63,7 @@
   --afc-text: var(--color-ink);
   --afc-text-secondary: var(--color-ink-muted);
   --afc-text-tertiary: var(--color-ink-muted);
-  --afc-line: #A9B7C9;
+  --afc-line: #9DB3A5;
   --afc-alt-border: var(--color-divider);
   --afc-card: var(--color-canvas);
   --afc-card-border: var(--color-divider);
@@ -81,26 +73,24 @@
   --afc-legend-bg: var(--color-canvas);
   --afc-legend-border: var(--color-divider);
 
-  --afc-blue-header: color-mix(in srgb, #2196F3 30%, var(--color-surface));
-  --afc-blue-bg: color-mix(in srgb, #2196F3 6%, var(--color-surface));
-  --afc-blue-border: color-mix(in srgb, #2196F3 55%, var(--color-surface));
-  --afc-blue-chip: color-mix(in srgb, #2196F3 22%, var(--color-surface));
-  --afc-yellow-header: color-mix(in srgb, #FAB11A 30%, var(--color-surface));
-  --afc-yellow-bg: color-mix(in srgb, #FAB11A 6%, var(--color-surface));
-  --afc-yellow-border: color-mix(in srgb, #FAB11A 55%, var(--color-surface));
-  --afc-yellow-chip: color-mix(in srgb, #FAB11A 22%, var(--color-surface));
-  --afc-green-header: color-mix(in srgb, #22A66F 32%, var(--color-surface));
-  --afc-green-bg: color-mix(in srgb, #22A66F 6%, var(--color-surface));
-  --afc-green-border: color-mix(in srgb, #22A66F 60%, var(--color-surface));
-  --afc-green-dark: #7FD9AE;
-  --afc-green-chip: color-mix(in srgb, #22A66F 24%, var(--color-surface));
-  --afc-green-soft: color-mix(in srgb, #22A66F 12%, var(--color-surface));
-  --afc-pink-header: color-mix(in srgb, #E95C6D 30%, var(--color-surface));
-  --afc-pink-bg: color-mix(in srgb, #E95C6D 6%, var(--color-surface));
-  --afc-pink-border: color-mix(in srgb, #E95C6D 55%, var(--color-surface));
-  --afc-pink-dark: #F5A3AF;
-  --afc-pink-chip: color-mix(in srgb, #E95C6D 22%, var(--color-surface));
-  --afc-slate-chip: color-mix(in srgb, #7B8BA3 25%, var(--color-surface));
+  --afc-om-header: color-mix(in srgb, #5E8F76 26%, var(--color-surface));
+  --afc-om-bg: color-mix(in srgb, #5E8F76 6%, var(--color-surface));
+  --afc-om-border: color-mix(in srgb, #5E8F76 40%, var(--color-surface));
+  --afc-om-accent: #7FB79B;
+  --afc-ant-header: color-mix(in srgb, #C9A650 26%, var(--color-surface));
+  --afc-ant-bg: color-mix(in srgb, #C9A650 6%, var(--color-surface));
+  --afc-ant-border: color-mix(in srgb, #C9A650 40%, var(--color-surface));
+  --afc-ant-accent: #D4B565;
+  --afc-con-header: color-mix(in srgb, #4E9A78 28%, var(--color-surface));
+  --afc-con-bg: color-mix(in srgb, #4E9A78 7%, var(--color-surface));
+  --afc-con-border: color-mix(in srgb, #4E9A78 42%, var(--color-surface));
+  --afc-con-accent: #6FB594;
+  --afc-csq-header: color-mix(in srgb, #B08D5C 26%, var(--color-surface));
+  --afc-csq-bg: color-mix(in srgb, #B08D5C 6%, var(--color-surface));
+  --afc-csq-border: color-mix(in srgb, #B08D5C 40%, var(--color-surface));
+  --afc-csq-accent: #C9A678;
+  --afc-forest: #9ED2B8;
+  --afc-brown: #D9BC8C;
   --afc-shadow: 0 1px 3px rgba(0, 0, 0, .35);
   --afc-shadow-hover: 0 2px 8px rgba(0, 0, 0, .45);
 }
@@ -157,7 +147,7 @@
 .tablero {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: 22px;
   align-items: stretch;
 }
 
@@ -170,39 +160,38 @@
   border: 1px solid var(--afc-col-border);
   border-radius: 12px;
 }
-.om  { --afc-col-bg: var(--afc-blue-bg);   --afc-col-border: var(--afc-blue-border);   --afc-col-head: var(--afc-blue-header);   --afc-acento: var(--afc-blue-accent);   --afc-chip: var(--afc-blue-chip); }
-.ant { --afc-col-bg: var(--afc-yellow-bg); --afc-col-border: var(--afc-yellow-border); --afc-col-head: var(--afc-yellow-header); --afc-acento: var(--afc-yellow-accent); --afc-chip: var(--afc-yellow-chip); }
-.con { --afc-col-bg: var(--afc-green-bg);  --afc-col-border: var(--afc-green-border);  --afc-col-head: var(--afc-green-header);  --afc-acento: var(--afc-green-accent);  --afc-chip: var(--afc-green-chip); }
-.csq { --afc-col-bg: var(--afc-pink-bg);   --afc-col-border: var(--afc-pink-border);   --afc-col-head: var(--afc-pink-header);   --afc-acento: var(--afc-pink-accent);   --afc-chip: var(--afc-pink-chip); }
-.alt { --afc-acento: var(--afc-slate-accent); --afc-chip: var(--afc-slate-chip); }
+.om  { --afc-col-bg: var(--afc-om-bg);  --afc-col-border: var(--afc-om-border);  --afc-col-head: var(--afc-om-header);  --afc-acento: var(--afc-om-accent); }
+.ant { --afc-col-bg: var(--afc-ant-bg); --afc-col-border: var(--afc-ant-border); --afc-col-head: var(--afc-ant-header); --afc-acento: var(--afc-ant-accent); }
+.con { --afc-col-bg: var(--afc-con-bg); --afc-col-border: var(--afc-con-border); --afc-col-head: var(--afc-con-header); --afc-acento: var(--afc-con-accent); }
+.csq { --afc-col-bg: var(--afc-csq-bg); --afc-col-border: var(--afc-csq-border); --afc-col-head: var(--afc-csq-header); --afc-acento: var(--afc-csq-accent); }
+.alt { --afc-acento: var(--afc-alt-accent); }
 
-/* Chevrons discretos entre columnas: uno a la altura de la cabecera y otro a
-   media altura. Solo orientan la lectura; no son relaciones reales. */
-.columna:not(:last-child)::before,
+/* Un solo chevron entre cada par de columnas, centrado en el hueco y a media
+   altura. Solo orienta la lectura; no es una relación real. */
 .columna:not(:last-child)::after {
   content: "";
   position: absolute;
-  right: -11px;
+  top: 50%;
+  right: -14px;
   width: 6px;
   height: 6px;
+  margin-top: -3px;
   border-top: 1.5px solid var(--afc-line);
   border-right: 1.5px solid var(--afc-line);
   transform: rotate(45deg);
   pointer-events: none;
 }
-.columna:not(:last-child)::before { top: 22px; }
-.columna:not(:last-child)::after { top: 50%; }
 
 .columnaCabecera {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 50px;
-  padding: 0 16px;
+  min-height: 54px;
+  padding: 0 18px;
   background: var(--afc-col-head);
   border-radius: 11px 11px 0 0;
 }
-.columnaIcono { flex: none; width: 26px; height: 26px; color: var(--afc-text-title); }
+.columnaIcono { flex: none; width: 24px; height: 24px; color: var(--afc-text-title); }
 .columnaTitulo {
   margin: 0;
   font-family: var(--afc-fuente-titulo), var(--font-sans);
@@ -223,8 +212,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px;
+  gap: 12px;
+  padding: 16px;
 }
 
 /* ---------- Subgrupos ---------- */
@@ -236,10 +225,10 @@
 }
 .subgrupoTitulo {
   margin: 0;
-  font-size: .8125rem;
-  font-weight: 600;
+  font-size: .9375rem;
+  font-weight: 700;
   line-height: 1.3;
-  color: var(--afc-green-dark);
+  color: var(--afc-forest);
 }
 .subgrupoCabecera > :last-child:not(:first-child) { margin-left: auto; }
 
@@ -247,25 +236,24 @@
 .manifiesta {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
-.encubiertas { padding-bottom: 12px; border-bottom: 1px dashed var(--afc-green-border); }
+.encubiertas { padding-bottom: 16px; border-bottom: 1px solid var(--afc-con-border); }
 
-.consecuencias { display: flex; flex-direction: column; gap: 10px; }
+.consecuencias { display: flex; flex-direction: column; gap: 12px; }
 .consecuencias + .consecuencias {
-  padding-top: 12px;
-  border-top: 1px dashed var(--afc-pink-border);
+  padding-top: 16px;
+  border-top: 1px dashed var(--afc-csq-border);
 }
 .subzonaTitulo {
   margin: 0;
-  font-size: .72rem;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--afc-pink-dark);
+  font-size: .9375rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--afc-brown);
 }
 
-.lista { display: flex; flex-direction: column; gap: 10px; }
+.lista { display: flex; flex-direction: column; gap: 12px; }
 
 /* ---------- Nodos ---------- */
 .nodo {
@@ -277,7 +265,8 @@
   padding: 12px 14px;
   background: var(--afc-card);
   border: 1px solid var(--afc-card-border);
-  border-radius: 10px;
+  border-top: 2.5px solid var(--afc-acento, var(--afc-line));
+  border-radius: 11px;
   box-shadow: var(--afc-shadow);
   cursor: pointer;
   transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease, opacity 150ms ease;
@@ -359,9 +348,9 @@
 /* ---------- Controles «+» ---------- */
 .agregar { display: flex; flex-wrap: wrap; gap: 6px; }
 .agregarBoton {
-  padding: 7px 12px;
-  border: 1px dashed var(--afc-acento, var(--afc-line));
-  border-radius: 6px;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--afc-acento, var(--afc-line)) 45%, transparent);
+  border-radius: 8px;
   background: transparent;
   color: var(--afc-acento, var(--afc-text-secondary));
   font: inherit;
@@ -370,7 +359,7 @@
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
 }
-.agregarBoton:hover { background: color-mix(in srgb, var(--afc-acento, var(--afc-line)) 10%, transparent); }
+.agregarBoton:hover { background: color-mix(in srgb, var(--afc-acento, var(--afc-line)) 12%, transparent); }
 .agregarBoton:focus-visible {
   outline: 2px solid var(--afc-line);
   outline-offset: 2px;
@@ -378,21 +367,22 @@
 
 /* ---------- Conducta alternativa ---------- */
 .alternativa {
-  margin-top: 14px;
-  padding: 12px 16px 14px;
+  margin-top: 16px;
+  padding: 14px 18px 16px;
   background: var(--afc-alt-bg);
   border: 1px solid var(--afc-alt-border);
   border-radius: 12px;
 }
 .alternativaCabecera {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: .5rem;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font-size: .8125rem;
   color: var(--afc-text-secondary);
 }
-.alternativaCabecera strong { color: var(--afc-text-title); font-size: .9375rem; font-weight: 700; }
+.alternativaCabecera strong { color: var(--afc-forest); font-size: 1rem; font-weight: 700; }
+.alternativaIcono { flex: none; width: 20px; height: 20px; color: var(--afc-line); }
 .alternativaFila {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -411,7 +401,7 @@
   width: 100%;
   padding: 8px 12px;
   background: var(--afc-neutral-bg);
-  border: 1px solid #DDE2EB;
+  border: 1px solid var(--afc-neutral-border);
   border-radius: 8px;
   font: inherit;
   font-size: .75rem;
