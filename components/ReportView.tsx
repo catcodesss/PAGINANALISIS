@@ -323,11 +323,11 @@ export default function ReportView({
     () => SECCIONES.filter((s) => bloqueVisible(analisis, s.id)),
     [analisis]
   );
-  const [pestanaElegida, setPestanaElegida] = useState<IdSeccion>("sintesis");
+  const [pestanaElegida, setPestanaElegida] = useState<IdSeccion>("que-pasa");
   // Si la elegida deja de existir (un reanálisis parcial), se cae en la primera.
   const pestana = seccionesVisibles.some((s) => s.id === pestanaElegida)
     ? pestanaElegida
-    : (seccionesVisibles[0]?.id ?? "sintesis");
+    : (seccionesVisibles[0]?.id ?? "que-pasa");
   const valorPestanas = useMemo(
     () => ({ activa: pestana, elegir: setPestanaElegida }),
     [pestana]
