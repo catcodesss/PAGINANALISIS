@@ -13,7 +13,6 @@ import {
   type IdSeccion,
 } from "@/lib/secciones";
 import { NIVELES_APOYO } from "@/lib/gradoApoyo";
-import FranjaDocumento from "./FranjaDocumento";
 import { useLente } from "./useLente";
 import {
   BarraPestanas,
@@ -372,20 +371,6 @@ export default function ReportView({
     <div className="rounded-md border border-divider bg-surface px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-12 lg:py-10 print:rounded-none print:border-none print:px-0 print:py-0 print:shadow-none">
       <PrintOnlyHeader referenciaCaso={referenciaCaso} fecha={fecha} meta={analisis.meta} />
       <PrintOnlyFooter />
-
-      {/* Va dentro del informe y no en la página que lo envuelve para que
-          acompañe a todo informe, sea el real o el de ejemplo, sin depender de
-          que quien monte una pantalla nueva se acuerde de ponerlo. Los
-          márgenes negativos lo sacan del acolchado de la tarjeta: la franja
-          llega de borde a borde, como la de ejemplo. */}
-      <div className="-mx-5 -mt-6 mb-6 sm:-mx-8 sm:-mt-8 lg:-mx-12 lg:-mt-10 print:mx-0 print:mt-0">
-        <FranjaDocumento rotulo="ACIA — documento generado con IA">
-          Documento de apoyo a la formulación clínica, generado con asistencia
-          de IA a partir de la información registrada por el profesional. No
-          constituye un diagnóstico ni sustituye el juicio clínico: requiere
-          validación profesional antes de cualquier uso terapéutico.
-        </FranjaDocumento>
-      </div>
 
       <header className="mb-6 border-b border-divider pb-5 print:hidden">
         <p className="font-mono text-xs uppercase tracking-[0.15em] text-accent">
