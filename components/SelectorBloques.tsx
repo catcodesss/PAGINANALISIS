@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { Check } from "lucide-react";
 import { BLOQUES, IDS_TODOS, pesoDe, type CategoriaBloque } from "@/lib/bloques";
+import { SECCIONES_INFORME, type IdSeccion } from "@/lib/secciones";
+import { usePestanasOcultas } from "./usePestanasOcultas";
 
 /** Orden fijo de categorías en el panel; no depende del orden de BLOQUES. */
 const ORDEN_CATEGORIAS: CategoriaBloque[] = [
@@ -58,6 +60,15 @@ export default function SelectorBloques({
       seleccion.includes(id) ? seleccion.filter((x) => x !== id) : [...seleccion, id]
     );
 
+  // Las pestañas se guardan al instante, sin pasar por «Generar»: son una
+  // preferencia de lectura y el informe abierto las refleja en vivo.
+  const { ocultas, guardar: guardarOcultas } = usePestanasOcultas();
+  const alternarPestana = (id: IdSeccion) => {
+    if (ocultas.includes(id)) return guardarOcultas(ocultas.filter((x) => x !== id));
+    // Al menos una pestaña tiene que quedar a la vista.
+    if (ocultas.length < SECCIONES_INFORME.length - 1) guardarOcultas([...ocultas, id]);
+  };
+
   const todos = seleccion.length === IDS_TODOS.length;
   const peso = pesoDe(seleccion);
 
@@ -86,6 +97,46 @@ export default function SelectorBloques({
       </p>
 
       <div className="mb-4 max-h-[50vh] space-y-3 overflow-y-auto">
+        <div>
+          <h4 className="mb-1 font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+            Pestañas visibles · {SECCIONES_INFORME.length - ocultas.length} de{" "}
+            {SECCIONES_INFORME.length}
+          </h4>
+          <p className="mb-1.5 text-xs leading-snug text-ink-muted">
+            Solo cambia lo que ves: el informe impreso o copiado las incluye todas.
+          </p>
+          <ul className="grid gap-1 sm:grid-cols-2">
+            {SECCIONES_INFORME.map((s) => {
+              const activa = !ocultas.includes(s.id);
+              return (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={activa}
+                    onClick={() => alternarPestana(s.id)}
+                    className="flex w-full items-center justify-between gap-3 rounded-lg border border-transparent p-2.5 text-left transition-colors hover:bg-canvas"
+                  >
+                    <span className="text-sm font-medium text-ink">{s.titulo}</span>
+                    <span
+                      aria-hidden="true"
+                      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                        activa ? "bg-accent" : "bg-divider"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
+                          activa ? "left-[1.125rem]" : "left-0.5"
+                        }`}
+                      />
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
         {ORDEN_CATEGORIAS.map((categoria) => {
           const bloquesCategoria = BLOQUES.filter((b) => b.categoria === categoria);
           if (bloquesCategoria.length === 0) return null;
