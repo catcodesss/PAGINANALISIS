@@ -113,7 +113,7 @@ export default function Home() {
 
       if (!respuesta.ok || !datos?.analisis) {
         // La ruta ya redacta un mensaje distinto por causa (nota larga, cuota
-        // de OpenAI, respuesta truncada, clave rechazada) y son textos fijos
+        // del proveedor, respuesta truncada, clave rechazada) y son textos fijos
         // sin nada de la nota. Se muestran tal cual: antes se descartaban
         // todos y el usuario veía "intenta nuevamente" pasara lo que pasara,
         // incluso cuando reintentar no podía funcionar.
@@ -463,15 +463,14 @@ export default function Home() {
                   </div>
 
                   {/* No dice "de forma segura": sin DPA ni retención cero con
-                      OpenAI no se puede sostener (ver CLAUDE.md, limitaciones).
+                      el proveedor del modelo no se puede sostener (ver CLAUDE.md, limitaciones).
                       Dice lo que pasa de verdad con el texto. */}
                   <div className="mt-5 flex items-start gap-3 border-t border-divider pt-5">
                     <Lock className="mt-0.5 h-4 w-4 shrink-0 text-tierra" aria-hidden="true" />
                     <p className="text-xs leading-relaxed text-ink-muted">
                       <span className="font-semibold text-ink">Privacidad:</span> el
-                      texto se envía a la API de OpenAI para generar el análisis. ACIA
-                      no lo guarda, pero OpenAI puede conservarlo temporalmente. No
-                      incluyas nombres reales ni datos identificables.
+                      ACIA no guarda el texto de tus notas. No incluyas nombres
+                      reales ni datos identificables.
                     </p>
                   </div>
 

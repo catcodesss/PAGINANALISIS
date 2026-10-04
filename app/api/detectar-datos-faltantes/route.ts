@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { detectarDatosFaltantesPrevios } from "@/lib/datosFaltantesPrevios";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
 import { maquetaActivada } from "@/lib/maqueta";
+import { MOTOR_IA_ACTIVO } from "@/lib/motorIA";
 
 const RUTA = "detectar-datos-faltantes";
 const LIMITE_PETICIONES = Number(process.env.LIMITE_DETECCION_POR_VENTANA ?? 10);
@@ -23,6 +24,10 @@ export async function POST(request: Request) {
   // maqueta el informe ya es uno guardado, así que nunca hay nada que
   // preguntar antes de generarlo.
   if (maquetaActivada()) {
+    return NextResponse.json({ preguntas: [] });
+  }
+
+  if (!MOTOR_IA_ACTIVO) {
     return NextResponse.json({ preguntas: [] });
   }
 

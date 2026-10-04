@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { MENSAJE_MOTOR_DESACTIVADO, MOTOR_IA_ACTIVO } from "@/lib/motorIA";
 import { construirSystemPrompt, VERSION_PROMPT } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarAnalisis } from "@/lib/parseAnalisis";
 import { numerarNota, normalizarTexto } from "@/lib/citas";
@@ -115,6 +116,10 @@ export async function POST(request: Request) {
   */
   if (maquetaActivada()) {
     return NextResponse.json({ analisis: informeDeMaqueta().analisis });
+  }
+
+  if (!MOTOR_IA_ACTIVO) {
+    return respuestaError("motor_desactivado", MENSAJE_MOTOR_DESACTIVADO, 503);
   }
 
   // Ruta pública sin autenticación: sin límite, cualquiera puede consumir el

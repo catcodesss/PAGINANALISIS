@@ -252,8 +252,7 @@ export function BloqueQueEscribir() {
       </div>
 
       <Aviso>
-        Escribe en prosa, no en viñetas sueltas. Y usa iniciales o seudónimos: el
-        texto se envía a la API de OpenAI para generar el análisis.
+        Escribe en prosa, no en viñetas sueltas. Y usa iniciales o seudónimos.
       </Aviso>
     </div>
   );

@@ -54,7 +54,7 @@ const GLOSARIO = [
 const PREGUNTAS = [
   [
     "¿Puedo usar notas de pacientes reales?",
-    "Usa siempre iniciales o seudónimos, nunca nombres ni datos de contacto. El texto se envía a la API de OpenAI para generar el análisis, así que trátalo como cualquier otra comunicación de datos clínicos a un tercero.",
+    "Usa siempre iniciales o seudónimos, nunca nombres ni datos de contacto. Trátalo como cualquier otra comunicación de datos clínicos.",
   ],
   [
     "¿Por qué a veces dice «Inferido» en vez de mostrar una cita?",
@@ -130,9 +130,7 @@ export default function GuiaCompleta() {
         <Tarjeta id="privacidad" titulo="Privacidad" icono={Lock}>
           <div className="space-y-4">
             <p className="text-sm leading-relaxed text-ink-muted">
-              Para generar el análisis, el texto de tus notas se envía a la API de
-              OpenAI. ACIA no lo almacena en ningún servidor propio, pero OpenAI
-              puede conservarlo temporalmente según su política de retención.
+              ACIA no almacena el texto de tus notas en ningún servidor propio.
             </p>
             <p className="text-sm leading-relaxed text-ink-muted">
               Antes de enviar, la aplicación detecta correos, teléfonos,

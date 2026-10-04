@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { MENSAJE_MOTOR_DESACTIVADO, MOTOR_IA_ACTIVO } from "@/lib/motorIA";
 import { construirPromptReanalisisSeccion } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarFragmento } from "@/lib/parseAnalisis";
 import { numerarNota } from "@/lib/citas";
@@ -37,6 +38,10 @@ function respuestaError(error: string, message: string, status: number) {
 }
 
 export async function POST(request: Request) {
+  if (!MOTOR_IA_ACTIVO) {
+    return respuestaError("motor_desactivado", MENSAJE_MOTOR_DESACTIVADO, 503);
+  }
+
   // Ruta pública sin autenticación: sin límite, cualquiera puede consumir el
   // saldo de OpenAI del propietario. Ver lib/limitePeticiones.ts.
   const limite = comprobarLimite(`${RUTA}:${ipDe(request)}`, LIMITE_PETICIONES, VENTANA_MS);
