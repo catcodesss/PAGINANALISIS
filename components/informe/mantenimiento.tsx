@@ -46,6 +46,12 @@ export function SelloNoModificable() {
   );
 }
 
+const HOLGURA_ARISTA = 4;
+
+// El rombo es un cuadrado girado 45°: su vértice llega a radio·√2.
+const alcanceNodo = (n: { tipo: "conducta" | "variable"; radio: number }) =>
+  (n.tipo === "variable" ? n.radio * Math.SQRT2 : n.radio) + HOLGURA_ARISTA;
+
 /**
  * La red funcional, dibujada.
  *
@@ -155,9 +161,27 @@ export function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
             // en medio y no se sabría de dónde a dónde va.
             const mismaColumna = desde.x === hasta.x;
             const desvio = desde.x > red.ancho / 2 ? 110 : -110;
-            const d = mismaColumna
-              ? `M ${desde.x} ${desde.y} Q ${desde.x + desvio} ${(desde.y + hasta.y) / 2} ${hasta.x} ${hasta.y}`
-              : `M ${desde.x} ${desde.y} L ${hasta.x} ${hasta.y}`;
+
+            let d: string;
+            if (mismaColumna) {
+              // La curva sale por el lado exterior de ambos nodos.
+              const signo = desvio > 0 ? 1 : -1;
+              const x1 = desde.x + signo * alcanceNodo(desde);
+              const x2 = hasta.x + signo * alcanceNodo(hasta);
+              d = `M ${x1} ${desde.y} Q ${desde.x + desvio} ${(desde.y + hasta.y) / 2} ${x2} ${hasta.y}`;
+            } else {
+              // Recta recortada en ambos extremos a lo largo de su dirección.
+              const dx = hasta.x - desde.x;
+              const dy = hasta.y - desde.y;
+              const largo = Math.hypot(dx, dy) || 1;
+              const ux = dx / largo;
+              const uy = dy / largo;
+              const ini = alcanceNodo(desde);
+              const fin = alcanceNodo(hasta);
+              d =
+                `M ${desde.x + ux * ini} ${desde.y + uy * ini} ` +
+                `L ${hasta.x - ux * fin} ${hasta.y - uy * fin}`;
+            }
 
             return (
               <path
