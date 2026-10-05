@@ -153,6 +153,13 @@ const CLASE_TIPO: Record<TipoNodoGrafo, string> = {
   valor: "border-l-teal-500",
 };
 
+/** El tipo de relación en palabras, para la Ficha. */
+const TIPO_RELACION: Record<TipoArista, string> = {
+  secuencial: "secuencia",
+  moderadora: "modula",
+  bucle: "bucle",
+};
+
 /** Un eslabón «acción» no se rotula como encubierto: es conducta observable. */
 function etiquetaTipoNodo(nodo: NodoGrafo): string {
   return nodo.tipo === "encubierta" && nodo.detalle === "accion" ? "Eslabón · acción" : ETIQUETA_TIPO[nodo.tipo];
@@ -457,6 +464,23 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
   const nodoSeleccionado = nodos.find((n) => n.id === seleccionado) ?? null;
   const alertasDeNodo = useMemo(() => alertasPorNodo(analisis), [analisis]);
+  const notaRef = useRef<HTMLDivElement>(null);
+  const [cajonAbierto, setCajonAbierto] = useState(false);
+  const citaSeleccionada = nodoSeleccionado?.evidencia?.verificada ? nodoSeleccionado.evidencia : null;
+  const relacionesSeleccionado = nodoSeleccionado
+    ? analisis.aristas
+        .filter((a) => a.desde === nodoSeleccionado.id || a.hasta === nodoSeleccionado.id)
+        .map((a) => {
+          const sale = a.desde === nodoSeleccionado.id;
+          const otro = nodos.find((n) => n.id === (sale ? a.hasta : a.desde));
+          return {
+            id: a.id,
+            sentido: sale ? "Lleva a" : "Recibe de",
+            tipo: TIPO_RELACION[a.tipo],
+            etiqueta: otro ? `${etiquetaTipoNodo(otro)}: ${otro.etiqueta}` : "[elemento sin etiqueta]",
+          };
+        })
+    : [];
   const avisos = (id: string) => alertasDeNodo.get(id) ?? [];
   const lineas = useMemo(() => notaOriginal.replace(/\r\n/g, "\n").split("\n"), [notaOriginal]);
 
@@ -496,6 +520,9 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
   function seleccionarNodo(nodo: NodoGrafo) {
     if (!modoConectar) {
       setSeleccionado(nodo.id);
+      setCajonAbierto(true);
+      // La cita del nodo se resalta sola en la nota del panel.
+      if (nodo.evidencia?.verificada) enfocarLinea(nodo.evidencia.linea_inicio);
       return;
     }
     if (!origenConexion) {
@@ -508,12 +535,20 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
     setSeleccionado(nodo.id);
   }
 
+  /** Lleva la nota del panel a una línea sin mover la página. */
+  function enfocarLinea(linea: number) {
+    requestAnimationFrame(() => {
+      const nota = notaRef.current;
+      const el = nota?.querySelector<HTMLElement>(`#nota-linea-${linea}`);
+      if (nota && el) nota.scrollTop = el.offsetTop - nota.clientHeight / 2;
+    });
+  }
+
   function irACita(nodo: NodoGrafo) {
     if (!nodo.evidencia?.verificada) return;
     setLineaActiva(nodo.evidencia.linea_inicio);
-    requestAnimationFrame(() => {
-      document.getElementById(`nota-linea-${nodo.evidencia?.verificada ? nodo.evidencia.linea_inicio : 0}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
+    setCajonAbierto(true);
+    enfocarLinea(nodo.evidencia.linea_inicio);
   }
 
   useLayoutEffect(() => {
@@ -669,7 +704,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
         </label>
       </div>
 
-      <div className="grid min-w-0 gap-5 print:block">
+      <div className={`grid min-w-0 gap-5 print:block ${esDBT ? "" : "xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start 2xl:grid-cols-[minmax(0,1fr)_24rem]"}`}>
         <div className={esAFC ? `${s.scroll} min-w-0 print:hidden` : "contents"}>
         <div
           ref={contenedorRef}
@@ -725,9 +760,31 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
         </div>
         </div>
 
-        {!esDBT && <aside className="grid min-w-0 gap-5 rounded-lg border border-divider bg-canvas p-3 md:grid-cols-2 print:hidden">
+        {/* Abajo de 1280 px, la Ficha es un cajón: un fondo para cerrarlo y,
+            cerrado, un botón fijo que lo abre sin tener que seleccionar nada. */}
+        {!esDBT && cajonAbierto && <div className="fixed inset-0 z-40 bg-ink/20 xl:hidden print:hidden" onClick={() => setCajonAbierto(false)} aria-hidden="true" />}
+        {!esDBT && !cajonAbierto && (
+          <button type="button" onClick={() => setCajonAbierto(true)} className="fixed bottom-4 right-4 z-30 rounded-full border border-divider bg-surface px-4 py-2 text-xs font-medium text-ink shadow-lg xl:hidden print:hidden">
+            Ficha y nota ▴
+          </button>
+        )}
+        {/*
+          Seleccionar y leer en la misma pantalla. La Ficha vivía debajo del
+          grafo: a 1600 px empezaba en y≈3.600 con los nodos entre 700 y 3.000,
+          y seleccionar actualizaba un panel que no se veía (mesa-clínica §A.5).
+          Desde 1280 px es una columna fija con scroll propio; por debajo, un
+          cajón que sube desde abajo.
+        */}
+        {!esDBT && <aside
+          aria-label="Ficha y nota"
+          className={`${cajonAbierto ? "fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-2xl border-t shadow-xl" : "hidden"} min-w-0 border-divider bg-canvas p-3 print:hidden xl:sticky xl:top-4 xl:z-auto xl:flex xl:max-h-[calc(100vh-2rem)] xl:flex-col xl:rounded-lg xl:border xl:shadow-none`}
+        >
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto">
           <div>
-          <h4 className="font-serif text-base font-semibold text-ink">Ficha</h4>
+          <header className="flex items-center justify-between gap-2">
+            <h4 className="font-serif text-base font-semibold text-ink">Ficha</h4>
+            <button type="button" onClick={() => setCajonAbierto(false)} aria-label="Cerrar la ficha" className="rounded px-2 py-0.5 text-sm text-ink-muted hover:text-ink xl:hidden">✕</button>
+          </header>
           {nodoSeleccionado ? <div className="mt-3 space-y-3">
             <AvisosDelNodo alertas={avisos(nodoSeleccionado.id)} />
             <label className="block text-xs text-ink-muted">Etiqueta
@@ -737,11 +794,30 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
               }} rows={3} className="mt-1 w-full rounded border border-divider bg-surface p-2 text-sm text-ink" />
             </label>
             <dl className="space-y-1 text-xs"><div><dt className="inline text-ink-muted">Tipo: </dt><dd className="inline text-ink">{etiquetaTipoNodo(nodoSeleccionado)}</dd></div><div><dt className="inline text-ink-muted">Apoyo en la nota: </dt><dd className="inline text-ink">{etiquetaApoyo(nodoSeleccionado.apoyo)}</dd></div></dl>
-            <button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar nodo" : "La estructura se edita en la vista AFC"} onClick={() => aplicar((copia) => borrarNodo(copia, nodoSeleccionado.id))} className="rounded border border-warn/50 px-2 py-1 text-xs text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar nodo</button>
-            <div className="border-t border-divider pt-3"><p className="mb-2 text-xs font-medium text-ink">Relaciones del nodo</p>{analisis.aristas.filter((a) => a.desde === nodoSeleccionado.id || a.hasta === nodoSeleccionado.id).map((a) => <div key={a.id} className="mb-1 flex items-center gap-2 text-[11px] text-ink-muted"><span className="min-w-0 flex-1 truncate">{a.desde} → {a.hasta}</span><button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar relación" : "Las relaciones se editan en la vista AFC"} aria-label={`Borrar relación ${a.id}`} onClick={() => aplicar((copia) => { copia.aristas = copia.aristas.filter((actual) => actual.id !== a.id); })} className="text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar</button></div>)}</div>
+            {citaSeleccionada
+              ? <button type="button" onClick={() => irACita(nodoSeleccionado)} className="text-xs text-accent underline underline-offset-2">Ver en la nota · {citaSeleccionada.linea_inicio === citaSeleccionada.linea_fin ? `L${citaSeleccionada.linea_inicio}` : `L${citaSeleccionada.linea_inicio}–L${citaSeleccionada.linea_fin}`}</button>
+              : <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Inferido — sin cita literal en la nota</p>}
+            <button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar nodo" : "La estructura se edita en la vista AFC"} onClick={() => aplicar((copia) => borrarNodo(copia, nodoSeleccionado.id))} className="block rounded border border-warn/50 px-2 py-1 text-xs text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar nodo</button>
+            <div className="border-t border-divider pt-3">
+              <p className="mb-2 text-xs font-medium text-ink">Relaciones del nodo</p>
+              {/* La etiqueta del otro extremo y el tipo de relación: los ids
+                  (alt_1 → alt_1_consecuencia) son internos y no dicen nada. */}
+              {relacionesSeleccionado.length === 0 && <p className="text-[11px] text-ink-muted">Sin relaciones trazadas.</p>}
+              {relacionesSeleccionado.map((r) => (
+                <div key={r.id} className="mb-1.5 flex items-start gap-2 text-[11px] text-ink-muted">
+                  <span className="min-w-0 flex-1">{r.sentido} · {r.tipo}: <span className="text-ink">{r.etiqueta}</span></span>
+                  <button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar relación" : "Las relaciones se editan en la vista AFC"} aria-label={`Borrar la relación con ${r.etiqueta}`} onClick={() => aplicar((copia) => { copia.aristas = copia.aristas.filter((actual) => actual.id !== r.id); })} className="text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar</button>
+                </div>
+              ))}
+            </div>
           </div> : <p className="mt-3 text-sm text-ink-muted">Selecciona un nodo. Doble clic sobre su etiqueta para editarla en el grafo.</p>}
           </div>
-          <div><h5 className="font-serif text-sm font-semibold text-ink">Nota en bruto</h5><div className="mt-2 max-h-80 overflow-y-auto rounded border border-divider bg-surface p-2 font-mono text-[11px] leading-relaxed">{lineas.map((linea, indice) => <p id={`nota-linea-${indice + 1}`} key={indice} className={`rounded px-1 ${lineaActiva === indice + 1 ? "bg-warn/20 text-ink ring-1 ring-warn/40" : "text-ink-muted"}`}><span className="mr-2 select-none text-ink-muted">L{indice + 1}</span>{linea || " "}</p>)}</div></div>
+          <div><h5 className="font-serif text-sm font-semibold text-ink">Nota numerada</h5><div ref={notaRef} className="relative mt-2 max-h-80 overflow-y-auto rounded border border-divider bg-surface p-2 font-mono text-[11px] leading-relaxed xl:max-h-[45vh]">{lineas.map((linea, indice) => {
+            const n = indice + 1;
+            const citada = citaSeleccionada && n >= citaSeleccionada.linea_inicio && n <= citaSeleccionada.linea_fin;
+            return <p id={`nota-linea-${n}`} key={indice} className={`rounded px-1 ${lineaActiva === n ? "bg-warn/20 text-ink ring-1 ring-warn/40" : citada ? "bg-warn/10 text-ink" : "text-ink-muted"}`}><span className="mr-2 select-none text-ink-muted">L{n}</span>{linea || " "}</p>;
+          })}</div></div>
+          </div>
         </aside>}
       </div>
 

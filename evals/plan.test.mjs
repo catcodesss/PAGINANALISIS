@@ -55,7 +55,7 @@ execFileSync(
 const require = createRequire(import.meta.url);
 const { numerarNota } = require(join(RAIZ, ".tmp-evals/citas.js"));
 const { normalizarAnalisis } = require(join(RAIZ, ".tmp-evals/parseAnalisis.js"));
-const { migrarAV4 } = require(join(RAIZ, ".tmp-evals/identidad.js"));
+const { migrarAV4, sugerirConducta } = require(join(RAIZ, ".tmp-evals/identidad.js"));
 const { validarAnalisis } = require(join(RAIZ, ".tmp-evals/validadores.js"));
 const {
   construirPlanPorBlanco,
@@ -345,6 +345,18 @@ prueba("sin ningún plan de medición, el exportado lo dice en vez de callarlo",
   a.plan_de_monitorizacion = [];
   const texto = formatearInformeTexto(a, "caso", "hoy");
   assert.ok(texto.includes("La nota no daba base para proponer un plan de medición"));
+});
+
+prueba("huérfanas: se sugiere un blanco, pero nada se asigna solo", () => {
+  const a = informe();
+  const plan = construirPlanPorBlanco(a);
+  const rd = plan.intervencionesSinBlanco.find((x) => x.linea.intervencion.startsWith("Reforzamiento diferencial"));
+  assert.ok(rd, "la intervención debería seguir sin blanco tras normalizar");
+  assert.equal(rd.linea.conducta_id, null);
+  const l = rd.linea;
+  assert.equal(sugerirConducta(a, [l.intervencion, l.porque, l.contingencia_objetivo, l.precauciones, l.depende_de]), "cnd_1");
+  // Sin candidato con dos raíces en común, no hay sugerencia que inventar.
+  assert.equal(sugerirConducta(a, ["Exposición graduada"]), null);
 });
 
 console.log(`\n${pasadas} ok, ${fallos} fallos\n`);

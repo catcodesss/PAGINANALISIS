@@ -105,6 +105,35 @@ function todasLasCoincidencias(
 }
 
 /**
+ * El blanco que PODRÍA corresponder a una intervención o un plan de medición
+ * sin blanco, para PROPONÉRSELO al clínico. Nunca se escribe solo: la
+ * resolución de `resolverReferencias` ya se rindió con esa entrada (su campo
+ * `conducta` venía vacío), y asignar ahora por parecido de palabras sería el
+ * emparejamiento por prosa que la v2 retiró. Aquí solo se sugiere, y la
+ * interfaz pide confirmación.
+ *
+ * Se compara contra la conducta y las situaciones donde aparece, porque una
+ * intervención suele nombrar el contexto («la evitación en reuniones») más que
+ * la topografía exacta. Misma regla que el resto: dos raíces en común como
+ * mínimo, y el empate lo gana la primera conducta.
+ */
+export function sugerirConducta(
+  analisis: AnalisisFuncional,
+  textos: readonly (string | null | undefined)[]
+): Id | null {
+  const candidatos = analisis.conductas_problema.map((c) => ({
+    id: c.id,
+    texto: [
+      c.descripcion,
+      ...analisis.situaciones
+        .filter((s) => s.conductas_ids.includes(c.id))
+        .map(textoDeSituacion),
+    ].join(" "),
+  }));
+  return mejorCoincidencia(textos.filter(Boolean).join(" "), candidatos);
+}
+
+/**
  * Todo lo que una situación dice y de lo que se puede deducir qué conducta
  * analiza. Se mira la cadena entera porque el nombre de la situación suele ser
  * una etiqueta funcional («Demandas sociales evaluativas») que no repite la

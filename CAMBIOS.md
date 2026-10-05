@@ -1,5 +1,21 @@
 # CAMBIOS
 
+## Rediseño · fase 1B: verificar en la misma pantalla
+
+- **Ficha y nota en panel lateral** (AFC y ACT; DBT ya lo tenía): desde
+  1280 px, columna fija con scroll propio (20rem, 24rem desde 1536 px); por
+  debajo, un cajón que sube desde abajo, con un botón «Ficha y nota» para
+  abrirlo. Seleccionar un nodo o pulsar su cita resalta la línea en la nota del
+  panel, sin mover la página. A 1280 px el tablero AFC hace scroll horizontal
+  dentro de su columna.
+- **Relaciones del nodo sin ids**: «Lleva a · secuencia: Consecuencia
+  necesaria: …», nunca `alt_1 → alt_1_consecuencia`.
+- **Huérfanas con blanco sugerido** (`identidad.ts#sugerirConducta`, misma
+  regla de dos raíces): «¿Asignar a Blanco N?» con Asignar, Elegir otro y Dejar
+  sin blanco. Nunca se asigna sola; asignar escribe `conducta_id` sin marcar la
+  sección como editada, como `estados_plan`. «Dejar sin blanco» dura la sesión:
+  recordarlo pediría un campo nuevo.
+
 ## Rediseño · fase 1A: seguridad clínica (esquema v4, sin cambio de prompt)
 
 - **Relación inferida.** Ninguna relación entre extremos tiene cita propia, así

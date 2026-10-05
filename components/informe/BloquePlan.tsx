@@ -19,7 +19,7 @@
  * anteriores al prompt 1.7.0, que no decían a qué conducta se dirigían.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type {
   Alerta,
   AnalisisFuncional,
@@ -44,6 +44,7 @@ import {
   type TarjetaBlanco,
 } from "@/lib/plan";
 import { yaEnRepertorio } from "@/lib/validadores";
+import { sugerirConducta } from "@/lib/identidad";
 import { Apoyo, BloqueBase, MenuAcciones, TablaCadena } from "./primitivas";
 import { Seccion } from "./seccion";
 import { BotonAgregar, TextoEditable, useEdicion } from "../edicionManual";
@@ -64,6 +65,18 @@ export default function BloquePlan({
 }) {
   const plan = useMemo(() => construirPlanPorBlanco(analisis), [analisis]);
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
+  const blancos = plan.tarjetas.map((t, n) => ({ id: t.conducta.id, numero: n + 1, etiqueta: t.conducta.descripcion }));
+  // Asignar un blanco es una decisión del clínico sobre a qué se dirige una
+  // propuesta, no texto suyo: como los estados del plan, no marca la sección
+  // como editada (invariante 6 habla de autoría del texto).
+  const asignarIntervencion = (indice: number) => (conductaId: string) =>
+    onEditarSeccion(null, (c) => {
+      c.lineas_de_intervencion_tentativas[indice] = { ...c.lineas_de_intervencion_tentativas[indice], conducta_id: conductaId };
+    });
+  const asignarMonitorizacion = (indice: number) => (conductaId: string) =>
+    onEditarSeccion(null, (c) => {
+      c.plan_de_monitorizacion[indice] = { ...c.plan_de_monitorizacion[indice], conducta_id: conductaId };
+    });
 
   return (
     <BloqueBase id="plan" visible={visible}>
@@ -149,6 +162,13 @@ export default function BloquePlan({
                   item={x}
                   analisis={analisis}
                   onEditarSeccion={onEditarSeccion}
+                  sugerencia={
+                    <SugerenciaBlanco
+                      blancos={blancos}
+                      sugerido={sugerirConducta(analisis, [x.linea.intervencion, x.linea.porque, x.linea.contingencia_objetivo, x.linea.precauciones, x.linea.depende_de])}
+                      onAsignar={asignarIntervencion(x.indice)}
+                    />
+                  }
                 />
               ))}
             </ul>
@@ -179,6 +199,13 @@ export default function BloquePlan({
                   key={m.indice}
                   item={m}
                   onEditarSeccion={onEditarSeccion}
+                  sugerencia={
+                    <SugerenciaBlanco
+                      blancos={blancos}
+                      sugerido={sugerirConducta(analisis, [m.plan.que_se_mide, m.plan.criterio_de_revision])}
+                      onAsignar={asignarMonitorizacion(m.indice)}
+                    />
+                  }
                 />
               ))}
             </div>
@@ -186,6 +213,82 @@ export default function BloquePlan({
         )}
       </Seccion>
     </BloqueBase>
+  );
+}
+
+interface BlancoElegible {
+  id: string;
+  numero: number;
+  etiqueta: string;
+}
+
+/**
+ * «¿Asignar a Blanco N?» para lo que quedó sin blanco. La sugerencia sale de
+ * lib/identidad.ts#sugerirConducta y NUNCA se aplica sola: es parecido de
+ * palabras, y quien decide a qué se dirige una propuesta es el clínico.
+ *
+ * «Dejar sin blanco» solo oculta la sugerencia en esta sesión: recordarlo
+ * pediría un campo nuevo en el esquema, y lo que se pierde al recargar es una
+ * pregunta, no un dato.
+ */
+function SugerenciaBlanco({
+  blancos,
+  sugerido,
+  onAsignar,
+}: {
+  blancos: readonly BlancoElegible[];
+  sugerido: string | null;
+  onAsignar: (conductaId: string) => void;
+}) {
+  const [modo, setModo] = useState<"sugerencia" | "elegir" | "descartada">("sugerencia");
+  const candidato = blancos.find((b) => b.id === sugerido) ?? null;
+  if (blancos.length === 0 || modo === "descartada") return null;
+  const boton = "rounded border px-2.5 py-1 text-xs transition";
+
+  if (modo === "elegir" || !candidato) {
+    return (
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md bg-canvas px-3 py-2 text-sm print:hidden">
+        <label className="flex flex-wrap items-center gap-2 text-ink-muted">
+          Asignar a
+          <select
+            defaultValue=""
+            onChange={(e) => e.target.value && onAsignar(e.target.value)}
+            className="max-w-full rounded border border-divider bg-surface px-2 py-1 text-xs text-ink"
+          >
+            <option value="" disabled>Elige un blanco…</option>
+            {blancos.map((b) => (
+              <option key={b.id} value={b.id}>Blanco {b.numero}: {b.etiqueta}</option>
+            ))}
+          </select>
+        </label>
+        {candidato && (
+          <button type="button" onClick={() => setModo("sugerencia")} className={`${boton} border-divider text-ink-muted hover:text-ink`}>
+            Volver a la sugerencia
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-3 rounded-md bg-canvas px-3 py-2 text-sm print:hidden">
+      <p className="text-ink">
+        ¿Asignar a <strong>Blanco {candidato.numero}</strong>?{" "}
+        <span className="text-ink-muted">{candidato.etiqueta}</span>
+      </p>
+      <p className="mt-0.5 text-xs text-ink-muted">Sugerido por parecido de palabras. No se asigna hasta que lo confirmes.</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button type="button" onClick={() => onAsignar(candidato.id)} className={`${boton} border-accent/50 bg-accent-soft font-medium text-accent hover:border-accent`}>
+          Asignar
+        </button>
+        <button type="button" onClick={() => setModo("elegir")} className={`${boton} border-divider text-ink hover:border-ink-muted/60`}>
+          Elegir otro
+        </button>
+        <button type="button" onClick={() => setModo("descartada")} className={`${boton} border-divider text-ink-muted hover:text-ink`}>
+          Dejar sin blanco
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -456,10 +559,12 @@ function Intervencion({
   item,
   analisis,
   onEditarSeccion,
+  sugerencia,
 }: {
   item: IntervencionDeBlanco;
   analisis: AnalisisFuncional;
   onEditarSeccion: EditarSeccion;
+  sugerencia?: ReactNode;
 }) {
   const edicion = useEdicion();
   const [confirmando, setConfirmando] = useState(false);
@@ -484,6 +589,7 @@ function Intervencion({
 
   return (
     <li>
+      {sugerencia}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           {/*
@@ -589,10 +695,12 @@ function Monitorizacion({
   item,
   onEditarSeccion,
   enTarjeta = false,
+  sugerencia,
 }: {
   item: MonitorizacionDeBlanco;
   onEditarSeccion: EditarSeccion;
   enTarjeta?: boolean;
+  sugerencia?: ReactNode;
 }) {
   const { indice: i, plan } = item;
   const cambiar = (parcial: Partial<PlanDeMonitorizacion>) =>
@@ -635,6 +743,7 @@ function Monitorizacion({
   }
   return (
     <div className="space-y-3">
+      {sugerencia}
       {plan.conducta && (
         <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">{plan.conducta}</p>
       )}
