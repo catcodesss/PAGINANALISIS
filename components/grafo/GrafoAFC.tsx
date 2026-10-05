@@ -466,6 +466,8 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
   const alertasDeNodo = useMemo(() => alertasPorNodo(analisis), [analisis]);
   const notaRef = useRef<HTMLDivElement>(null);
   const [cajonAbierto, setCajonAbierto] = useState(false);
+  // Solo escritorio (≥1280 px): la Ficha ocupa su columna del grid o la cede.
+  const [fichaVisible, setFichaVisible] = useState(true);
   const citaSeleccionada = nodoSeleccionado?.evidencia?.verificada ? nodoSeleccionado.evidencia : null;
   const relacionesSeleccionado = nodoSeleccionado
     ? analisis.aristas
@@ -702,9 +704,12 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
           <input type="checkbox" checked={soloApoyado} onChange={(e) => setSoloApoyado(e.target.checked)} />
           Ver solo lo apoyado por la nota
         </label>
+        {!esDBT && !fichaVisible && (
+          <button type="button" onClick={() => setFichaVisible(true)} aria-label="Mostrar la ficha" title="Mostrar la ficha" className="ml-auto hidden h-6 w-6 items-center justify-center rounded-full border border-divider bg-surface text-sm leading-none text-ink-muted hover:text-ink xl:flex">›</button>
+        )}
       </div>
 
-      <div className={`grid min-w-0 gap-5 print:block ${esDBT ? "" : "xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start 2xl:grid-cols-[minmax(0,1fr)_24rem]"}`}>
+      <div className={`grid min-w-0 print:block ${esDBT ? "gap-5" : `xl:items-start xl:transition-[grid-template-columns,column-gap] xl:duration-200 ${fichaVisible ? "xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-5 min-[1536px]:grid-cols-[minmax(0,1fr)_24rem]" : "xl:grid-cols-[minmax(0,1fr)_0rem] xl:gap-0"}`}`}>
         <div className={esAFC ? `${s.scroll} min-w-0 print:hidden` : "contents"}>
         <div
           ref={contenedorRef}
@@ -777,8 +782,9 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
         */}
         {!esDBT && <aside
           aria-label="Ficha y nota"
-          className={`${cajonAbierto ? "fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-2xl border-t shadow-xl" : "hidden"} min-w-0 border-divider bg-canvas p-3 print:hidden xl:sticky xl:top-4 xl:z-auto xl:flex xl:max-h-[calc(100vh-2rem)] xl:flex-col xl:rounded-lg xl:border xl:shadow-none`}
+          className={`${cajonAbierto ? "fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-2xl border-t shadow-xl" : "hidden"} min-w-0 border-divider bg-canvas p-3 print:hidden xl:sticky xl:top-4 xl:z-auto xl:max-h-[calc(100vh-2rem)] xl:flex-col xl:rounded-lg xl:border xl:shadow-none ${fichaVisible ? "xl:flex" : "xl:hidden"}`}
         >
+          <button type="button" onClick={() => setFichaVisible(false)} aria-label="Ocultar la ficha" title="Ocultar la ficha" className="absolute -left-3 top-3 hidden h-6 w-6 items-center justify-center rounded-full border border-divider bg-surface text-sm leading-none text-ink-muted shadow-sm hover:text-ink xl:flex">‹</button>
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto">
           <div>
           <header className="flex items-center justify-between gap-2">

@@ -102,9 +102,10 @@
   overscroll-behavior-inline: contain;
   padding-bottom: 4px;
 }
-/* El informe deja ~1090 px en un escritorio de 1600: el mínimo cabe ahí sin
-   scroll y solo por debajo aparece la barra horizontal. */
-.lienzo { min-width: 1040px; }
+/* Cuatro columnas de ~200 px más sus huecos. Con la Ficha abierta en un
+   portátil el área principal ronda los 800 px: un mínimo mayor obligaba a
+   scroll horizontal y dejaba "Consecuencias" fuera de vista. */
+.lienzo { min-width: 840px; }
 
 .pila { display: flex; flex-direction: column; gap: 1.25rem; }
 
