@@ -15,6 +15,7 @@ import type { AnalisisFuncional } from "@/lib/types";
 import type { EstiloGrafo } from "@/lib/preferencias";
 import GrafoAFC from "../grafo/GrafoAFC";
 import { SinHallazgos } from "./primitivas";
+import { estadoVacio } from "@/lib/vacios";
 import { BloqueBase } from "./primitivas";
 import { Seccion } from "./seccion";
 
@@ -61,7 +62,7 @@ export default function BloqueAnalisisFuncional({
         <span id="modalidad" className="scroll-mt-24" />
         <div className="mb-5">{selectorEstilo}</div>
         {analisis.situaciones.length === 0 ? (
-          <SinHallazgos />
+          <SinHallazgos estado={estadoVacio(analisis, "situaciones")} />
         ) : (
           <GrafoAFC
             analisis={analisis}

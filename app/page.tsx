@@ -32,6 +32,7 @@ import EsqueletoInforme from "@/components/EsqueletoInforme";
 import Sidebar, { type Vista } from "@/components/Sidebar";
 import PanelRecomendaciones from "@/components/PanelRecomendaciones";
 import { usePreferencias } from "@/components/usePreferencias";
+import { ausentesTrasReanalisis } from "@/lib/vacios";
 import PreguntasDatosFaltantes, {
   type ResultadoPreguntas,
 } from "@/components/PreguntasDatosFaltantes";
@@ -329,6 +330,7 @@ export default function Home() {
       if (!previo) return previo;
       const actualizado = structuredClone(previo);
       Object.assign(actualizado, fragmento);
+      actualizado.campos_ausentes = ausentesTrasReanalisis(previo, fragmento);
       actualizado.alertas = revalidarTrasReanalisis(actualizado, ultimoTextoEnviado);
       return actualizado;
     });

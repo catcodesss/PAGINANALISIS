@@ -1,5 +1,5 @@
 import { resolverCita } from "./citas";
-import { migrarAV3 } from "./identidad";
+import { migrarAV4 } from "./identidad";
 import { procesoAV3 } from "./procesosACT";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 import {
@@ -559,6 +559,37 @@ function normalizarRiesgo(valor: unknown): Riesgo {
   };
 }
 
+/** Las claves que no emite el modelo: su ausencia en la respuesta no dice nada. */
+const CAMPOS_DEL_SERVIDOR = new Set<string>([
+  "version",
+  "siguiente_id",
+  "aristas",
+  "alertas",
+  "campos_generados",
+  "campos_ausentes",
+  "meta",
+  "secciones_editadas",
+  "estados_plan",
+]);
+
+/**
+ * Qué claves de contenido no traía la respuesta, antes de que el normalizador
+ * las convierta en un arreglo vacío indistinguible de «no encontró nada». Ver
+ * lib/vacios.ts. Un JSON que ya es un informe normalizado trae la lista y se
+ * respeta: todas sus claves están, aunque fueran ausentes en origen.
+ */
+function camposAusentes(d: Record<string, unknown>): string[] {
+  if (Array.isArray(d.campos_ausentes)) return comoArregloDeTexto(d.campos_ausentes);
+  return CAMPOS_ANALISIS_FUNCIONAL.filter((campo) => {
+    if (CAMPOS_DEL_SERVIDOR.has(campo)) return false;
+    // Las reglas verbales vivían dentro de capa_act hasta la v3.
+    if (campo === "reglas_verbales") {
+      return d.reglas_verbales == null && comoObjeto(d.capa_act).reglas_verbales == null;
+    }
+    return d[campo] == null;
+  });
+}
+
 /**
  * Garantiza la forma completa de AnalisisFuncional aunque el modelo omita
  * claves: las listas ausentes se convierten en arreglos vacíos y los objetos
@@ -567,7 +598,7 @@ function normalizarRiesgo(valor: unknown): Riesgo {
 export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFuncional {
   const d = comoObjeto(json);
 
-  // migrarAV3 cierra el paso: asigna los ids que los normalizadores dejaron
+  // migrarAV4 cierra el paso: asigna los ids que los normalizadores dejaron
   // vacíos y resuelve las referencias por prosa una sola vez. Que la respuesta
   // recién llegada y el informe rescatado del historial pasen los dos por aquí
   // es lo que garantiza que un análisis no pueda existir sin identidad.
@@ -621,6 +652,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     alertas: [],
     // Lo fija la ruta según lo que se haya pedido, no el modelo.
     campos_generados: [],
+    campos_ausentes: camposAusentes(d),
     // Lo fija la ruta tras la llamada a OpenAI (ver app/api/analizar/route.ts).
     meta: { modelo: "", version_prompt: "" },
     // Solo la escribe la interfaz cuando el clínico edita; el modelo nunca.
@@ -634,7 +666,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
   if ("capa_mc" in d) {
     (analisis as unknown as Record<string, unknown>).capa_mc = d.capa_mc;
   }
-  return migrarAV3(analisis);
+  return migrarAV4(analisis);
 }
 
 /**
@@ -725,6 +757,7 @@ const NORMALIZADORES_POR_CAMPO: {
   riesgo: (d) => normalizarRiesgo(d.riesgo),
   alertas: () => [],
   campos_generados: () => [],
+  campos_ausentes: () => [],
   meta: () => ({ modelo: "", version_prompt: "" }),
   secciones_editadas: () => [],
   estados_plan: () => ({}),

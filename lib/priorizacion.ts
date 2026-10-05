@@ -1,3 +1,4 @@
+import { relacionInferida } from "./gradoApoyo";
 import type { AnalisisFuncional, Id, NivelConfianza } from "./types";
 
 /**
@@ -60,6 +61,14 @@ export interface PalancaBlanco {
   modificabilidad: NivelConfianza;
   /** Cuánto pesa la relación de esa variable con esta conducta. */
   fuerza: NivelConfianza;
+  /** La confianza que el modelo declaró para la relación que trae la palanca. */
+  confianza: NivelConfianza;
+  /**
+   * Si ninguna línea de la nota sostiene la relación variable → conducta (ver
+   * gradoApoyo.ts#relacionInferida). La cita de la variable respalda el dato,
+   * no su papel: una palanca así se enseña marcada y no puntúa en el orden.
+   */
+  relacion_inferida: boolean;
 }
 
 export interface BlancoPriorizado {
@@ -74,7 +83,11 @@ export interface BlancoPriorizado {
    * presentar igual.
    */
   palanca: PalancaBlanco | null;
-  /** importancia × modificabilidad de la palanca. null si no hay palanca. */
+  /**
+   * importancia × modificabilidad de la palanca. null si no hay palanca, o si
+   * la única que hay viene de una relación inferida: una inferencia no puede
+   * ordenar el plan como si fuera un dato.
+   */
   rendimiento: number | null;
   /** Cuántas hipótesis de mantenimiento apuntan a esta conducta. */
   relaciones: number;
@@ -101,6 +114,12 @@ function laMayor(a: NivelConfianza, b: NivelConfianza): NivelConfianza {
  * del enunciado con la descripción de la variable, en cada render, así que la
  * misma variable entraba o salía del ranking según cómo estuviera redactada la
  * hipótesis.
+ *
+ * Una palanca traída por una relación apoyada gana a cualquiera inferida,
+ * aunque sea menos modificable. Si todas son inferidas, la palanca se conserva
+ * para enseñarla (marcada), pero el blanco ordena como uno sin palanca. Hasta
+ * que las relaciones tengan apoyo propio eso es todo blanco, y el orden queda
+ * en el del análisis: es el precio de no ordenar el plan por una inferencia.
  */
 export function priorizarBlancos(analisis: AnalisisFuncional): BlancoPriorizado[] {
   const variables = new Map(
@@ -121,16 +140,19 @@ export function priorizarBlancos(analisis: AnalisisFuncional): BlancoPriorizado[
       relaciones += 1;
       const variable = h.origen_id ? variables.get(h.origen_id) : undefined;
       if (!variable) continue;
-      if (
-        !palanca ||
-        laMayor(palanca.modificabilidad, variable.modificabilidad) ===
-          variable.modificabilidad
-      ) {
+      const inferida = relacionInferida(h);
+      const mejora = !palanca
+        || (palanca.relacion_inferida && !inferida)
+        || (palanca.relacion_inferida === inferida
+          && laMayor(palanca.modificabilidad, variable.modificabilidad) === variable.modificabilidad);
+      if (mejora) {
         palanca = {
           id: variable.id,
           etiqueta: variable.descripcion,
           modificabilidad: variable.modificabilidad,
           fuerza: h.fuerza,
+          confianza: h.confianza,
+          relacion_inferida: inferida,
         };
       }
     }
@@ -140,7 +162,7 @@ export function priorizarBlancos(analisis: AnalisisFuncional): BlancoPriorizado[
       etiqueta: conducta.descripcion,
       importancia: conducta.importancia,
       palanca,
-      rendimiento: palanca
+      rendimiento: palanca && !palanca.relacion_inferida
         ? VALOR_CUALITATIVO[conducta.importancia] *
           VALOR_CUALITATIVO[palanca.modificabilidad]
         : null,
@@ -227,4 +249,17 @@ export function criteriosDeBlanco(
     modificabilidad: blanco.palanca?.modificabilidad ?? null,
     evidencia: NIVEL_DE_APOYO[apoyoConducta],
   };
+}
+
+/**
+ * Lo que dice el criterio de modificabilidad cuando sale de una palanca cuya
+ * relación con la conducta es inferida. Pantalla y exportación usan esta misma
+ * frase: el documento que se archiva no puede afirmar más que la pantalla.
+ */
+export const NOTA_MODIFICABILIDAD_INFERIDA = "estimada desde una relación inferida";
+
+export function rotuloPalanca(palanca: PalancaBlanco): string {
+  return palanca.relacion_inferida
+    ? "Por dónde moverla (relación inferida)"
+    : "Por dónde moverla";
 }

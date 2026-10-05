@@ -23,6 +23,7 @@ import {
   SinHallazgos,
   Termino,
 } from "./primitivas";
+import { estadoVacio, TEXTO_RIESGO_NO_EVALUADO, TEXTO_RIESGO_SIN_INDICADORES } from "@/lib/vacios";
 import { Seccion, useAccionesSeccion } from "./seccion";
 import { irAlAncla, usePestanas } from "./pestanas";
 import { TextoEditable } from "../edicionManual";
@@ -65,12 +66,10 @@ export default function BloqueSintesis({
           </h2>
           <span className="ml-auto">{accionesRiesgo.menu}</span>
         </div>
+        {/* No enumera lo que la nota «no dice»: el análisis no lo comprobó, y en
+            el caso de ejemplo la nota sí habla de alcohol. */}
         {!analisis.riesgo.evaluado ? (
-          <p className="text-sm text-ink-muted">
-            La nota no da base para valorar el riesgo: no dice nada sobre
-            consumo, ideación, riesgo laboral o legal, menores implicados u
-            otros indicadores. No significa que no lo haya.
-          </p>
+          <p className="text-sm text-ink-muted">{TEXTO_RIESGO_NO_EVALUADO}</p>
         ) : (
           <ListaEditable
             items={analisis.riesgo.indicadores}
@@ -82,9 +81,7 @@ export default function BloqueSintesis({
               })
             }
             vacio={
-              <p className="text-sm text-ink-muted">
-                La nota no recoge indicadores de riesgo.
-              </p>
+              <p className="text-sm text-ink-muted">{TEXTO_RIESGO_SIN_INDICADORES}</p>
             }
           />
         )}
@@ -127,7 +124,7 @@ export default function BloqueSintesis({
             </a>
           </div>
         ) : (
-          <SinHallazgos />
+          <SinHallazgos estado={estadoVacio(analisis, "hipotesis_mantenimiento")} />
         )}
       </section>
 
@@ -138,7 +135,7 @@ export default function BloqueSintesis({
       */}
       <Seccion id="prioridades" titulo="Tres prioridades">
         {prioridades.length === 0 ? (
-          <SinHallazgos />
+          <SinHallazgos estado={estadoVacio(analisis, "conductas_problema")} />
         ) : (
           <>
             <ol className="list-decimal space-y-2 pl-5">
@@ -171,6 +168,7 @@ export default function BloqueSintesis({
           items={analisis.preguntas_para_sesion}
           seccionId="preguntas"
           etiqueta="pregunta"
+          estadoVacio={estadoVacio(analisis, "preguntas_para_sesion")}
           onCambiar={(nuevos) =>
             onEditarSeccion("preguntas", (c) => {
               c.preguntas_para_sesion = nuevos;
@@ -194,7 +192,7 @@ export default function BloqueSintesis({
             />
           </Plegable>
         ) : (
-          <SinHallazgos />
+          <SinHallazgos estado={estadoVacio(analisis, "resumen_clinico")} />
         )}
       </Seccion>
     </BloqueBase>

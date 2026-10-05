@@ -135,6 +135,25 @@ export function gradoDeHipotesis(
 }
 
 /**
+ * Si la RELACIÓN de una hipótesis (su origen → su conducta) está apoyada por
+ * alguna línea de la nota. Hoy, nunca: el esquema no da cita a ninguna
+ * relación, y la `confianza` que la acompaña la declara el modelo sin señalar
+ * línea. En el caso de ejemplo, «duerme mal los domingos» respalda el DATO del
+ * sueño con cita textual; que el sueño mantenga la evitación no lo dice
+ * ninguna línea, y aun así acababa de «por dónde moverla» con aspecto de
+ * citado (mesa-clínica §A.4).
+ *
+ * Por eso todo lo que se deriva de una relación —la palanca de un blanco, un
+ * bucle, la formulación— tiene que decir que se apoya en una inferencia. Se
+ * escribe como la regla general —sin cita propia, la relación es inferida—
+ * porque es el punto que cambiará cuando las relaciones tengan apoyo propio
+ * (fase 3 del rediseño).
+ */
+export function relacionInferida(h: HipotesisMantenimiento): boolean {
+  return !("evidencia" in h);
+}
+
+/**
  * El vocabulario de relaciones en pantalla: dos verbos y nada más.
  *
  * «Causal», «mediadora», «moderadora» y la fuerza son distinciones que el

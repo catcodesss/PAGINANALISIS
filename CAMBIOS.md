@@ -1,5 +1,26 @@
 # CAMBIOS
 
+## Rediseño · fase 1A: seguridad clínica (esquema v4, sin cambio de prompt)
+
+- **Relación inferida.** Ninguna relación entre extremos tiene cita propia, así
+  que toda hipótesis cuenta como relación inferida hasta la fase 3
+  (`gradoApoyo.ts#relacionInferida`). La palanca de un blanco se enseña como
+  «Por dónde moverla (relación inferida)», con marca gris, y no puntúa: el
+  ranking queda en el orden del análisis. Modificabilidad dice «estimada desde
+  una relación inferida». Los bucles y la formulación derivada lo dicen.
+- **Prosa derivada sin comillas** en etiquetas del modelo; un extremo vacío
+  sale como «[origen no trazado]», nunca «».
+- **Alertas en el nodo** (AFC, ACT, DBT y Ficha), resueltas por `ruta`
+  (`lib/alertasNodo.ts`). ▲ rellena para alta, ◆ contorno para media.
+- **Vacíos en dos estados** (`lib/vacios.ts`): «no se generó» y «la IA no
+  encontró nada». Para distinguirlos, `campos_ausentes` (esquema v4,
+  `migrarAV4`; los informes guardados reciben `[]`). Riesgo no evaluado: «El
+  análisis no evaluó el riesgo. No significa que no lo haya.»
+- **El eslabón «acción»** no es evento privado (`grafo.ts#esEventoPrivado`): no
+  va a «Malestar interior» ni se rotula encubierto.
+- Queda: la tarjeta de hipótesis sigue mostrando `gradoDeHipotesis` (dato
+  parcial) junto a «relación inferida»; se resuelve con el apoyo en aristas.
+
 ## Unificar AFC, ACT y MC (esquema v3, prompt 1.8.0)
 
 Hay un solo análisis funcional y es la fuente de verdad. ACT es una capa de

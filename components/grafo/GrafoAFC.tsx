@@ -7,7 +7,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import type { AnalisisFuncional, TipoArista } from "@/lib/types";
+import type { Alerta, AnalisisFuncional, TipoArista } from "@/lib/types";
 import type { EstiloGrafo } from "@/lib/preferencias";
 import {
   agregarArista,
@@ -28,6 +28,8 @@ import { TERMINOS, terminoDeContingencia, terminoEnTexto, type IdTermino } from 
 import { describirGrado, gradoDeNumero } from "@/lib/gradoApoyo";
 import { interAfc, poppinsAfc } from "./fuentesAfc";
 import { ChevronRight } from "lucide-react";
+import { alertasPorNodo } from "@/lib/alertasNodo";
+import { AvisosDelNodo, InsigniaAlerta } from "./InsigniaAlerta";
 
 interface GrafoAFCProps {
   analisis: AnalisisFuncional;
@@ -151,6 +153,11 @@ const CLASE_TIPO: Record<TipoNodoGrafo, string> = {
   valor: "border-l-teal-500",
 };
 
+/** Un eslabón «acción» no se rotula como encubierto: es conducta observable. */
+function etiquetaTipoNodo(nodo: NodoGrafo): string {
+  return nodo.tipo === "encubierta" && nodo.detalle === "accion" ? "Eslabón · acción" : ETIQUETA_TIPO[nodo.tipo];
+}
+
 function etiquetaApoyo(apoyo: 1 | 2 | 3) {
   return describirGrado(gradoDeNumero(apoyo)).etiqueta;
 }
@@ -164,6 +171,7 @@ function Nodo({
   onEditar,
   onCita,
   variante,
+  alertas = [],
 }: {
   nodo: NodoGrafo;
   seleccionado: boolean;
@@ -173,6 +181,7 @@ function Nodo({
   onEditar: (nodo: NodoGrafo, texto: string) => void;
   onCita: (nodo: NodoGrafo) => void;
   variante?: "afc" | "dbt";
+  alertas?: readonly Alerta[];
 }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(nodo.etiqueta);
@@ -252,6 +261,7 @@ function Nodo({
         <div className={s.nodoCuerpo}>
           <div className={s.nodoTexto}>
             <span className={s.chip}>{nodo.tipo === "encubierta" ? ETIQUETA_TIPO.conducta : ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} /></span>
+            {alertas.length > 0 && <InsigniaAlerta alertas={alertas} className="mt-1 self-start" />}
             {editando ? editor(s.editor) : <p className={s.etiqueta}>{nodo.etiqueta}</p>}
             {detalle && <p className={s.detalle} title={detalle.definicion}>{detalle.texto}</p>}
           </div>
@@ -289,6 +299,7 @@ function Nodo({
       >
         <IconoNodo nodo={nodo} className={`h-5 w-5 flex-none ${seleccionado ? "text-accent" : "text-ink-muted"}`} />
         <div className="min-w-0 flex-1">
+          {alertas.length > 0 && <InsigniaAlerta alertas={alertas} className="mb-1" />}
           {editando
             ? editor("w-full rounded border border-accent bg-canvas px-1.5 py-1 text-sm text-ink outline-none")
             : <p className={`break-words text-sm leading-snug text-ink ${conducta ? "font-medium" : ""}`}>{nodo.etiqueta}</p>}
@@ -307,7 +318,7 @@ function Nodo({
       data-nodo-id={nodo.id}
       role="button"
       tabIndex={0}
-      aria-label={`${ETIQUETA_TIPO[nodo.tipo]}: ${nodo.etiqueta}${conectando ? ". Seleccionar para conectar" : ""}`}
+      aria-label={`${etiquetaTipoNodo(nodo)}: ${nodo.etiqueta}${conectando ? ". Seleccionar para conectar" : ""}`}
       onClick={() => onSeleccionar(nodo)}
       onDoubleClick={() => {
         setTexto(nodo.etiqueta);
@@ -331,8 +342,9 @@ function Nodo({
         />
       </button>
       <p className="mt-1 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-        {ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} />
+        {etiquetaTipoNodo(nodo)}<SiglaTipo tipo={nodo.tipo} />
       </p>
+      {alertas.length > 0 && <InsigniaAlerta alertas={alertas} className="mt-1" />}
       {editando ? (
         <input
           autoFocus
@@ -444,6 +456,8 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
   const [puedeRehacer, setPuedeRehacer] = useState(false);
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
   const nodoSeleccionado = nodos.find((n) => n.id === seleccionado) ?? null;
+  const alertasDeNodo = useMemo(() => alertasPorNodo(analisis), [analisis]);
+  const avisos = (id: string) => alertasDeNodo.get(id) ?? [];
   const lineas = useMemo(() => notaOriginal.replace(/\r\n/g, "\n").split("\n"), [notaOriginal]);
 
   function aplicar(mutacion: (copia: AnalisisFuncional) => void) {
@@ -561,6 +575,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
       onSeleccionar={seleccionarNodo}
       onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
       onCita={irACita}
+      alertas={avisos(n.id)}
     />
   );
 
@@ -580,6 +595,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
         onSeleccionar={seleccionarNodo}
         onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
         onCita={irACita}
+        alertas={avisos(n.id)}
       />
     );
     const suyos = procesosACT.filter((p) => p.nodo_id === n.id);
@@ -617,6 +633,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
       onSeleccionar={seleccionarNodo}
       onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
       onCita={irACita}
+      alertas={avisos(n.id)}
     />
   );
 
@@ -712,13 +729,14 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
           <div>
           <h4 className="font-serif text-base font-semibold text-ink">Ficha</h4>
           {nodoSeleccionado ? <div className="mt-3 space-y-3">
+            <AvisosDelNodo alertas={avisos(nodoSeleccionado.id)} />
             <label className="block text-xs text-ink-muted">Etiqueta
               <textarea key={nodoSeleccionado.id + nodoSeleccionado.etiqueta} defaultValue={nodoSeleccionado.etiqueta} onBlur={(e) => {
                 const valor = e.target.value.trim();
                 if (valor && valor !== nodoSeleccionado.etiqueta) aplicar((copia) => actualizarEtiquetaNodo(copia, nodoSeleccionado.id, valor));
               }} rows={3} className="mt-1 w-full rounded border border-divider bg-surface p-2 text-sm text-ink" />
             </label>
-            <dl className="space-y-1 text-xs"><div><dt className="inline text-ink-muted">Tipo: </dt><dd className="inline text-ink">{ETIQUETA_TIPO[nodoSeleccionado.tipo]}</dd></div><div><dt className="inline text-ink-muted">Apoyo en la nota: </dt><dd className="inline text-ink">{etiquetaApoyo(nodoSeleccionado.apoyo)}</dd></div></dl>
+            <dl className="space-y-1 text-xs"><div><dt className="inline text-ink-muted">Tipo: </dt><dd className="inline text-ink">{etiquetaTipoNodo(nodoSeleccionado)}</dd></div><div><dt className="inline text-ink-muted">Apoyo en la nota: </dt><dd className="inline text-ink">{etiquetaApoyo(nodoSeleccionado.apoyo)}</dd></div></dl>
             <button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar nodo" : "La estructura se edita en la vista AFC"} onClick={() => aplicar((copia) => borrarNodo(copia, nodoSeleccionado.id))} className="rounded border border-warn/50 px-2 py-1 text-xs text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar nodo</button>
             <div className="border-t border-divider pt-3"><p className="mb-2 text-xs font-medium text-ink">Relaciones del nodo</p>{analisis.aristas.filter((a) => a.desde === nodoSeleccionado.id || a.hasta === nodoSeleccionado.id).map((a) => <div key={a.id} className="mb-1 flex items-center gap-2 text-[11px] text-ink-muted"><span className="min-w-0 flex-1 truncate">{a.desde} → {a.hasta}</span><button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar relación" : "Las relaciones se editan en la vista AFC"} aria-label={`Borrar relación ${a.id}`} onClick={() => aplicar((copia) => { copia.aristas = copia.aristas.filter((actual) => actual.id !== a.id); })} className="text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar</button></div>)}</div>
           </div> : <p className="mt-3 text-sm text-ink-muted">Selecciona un nodo. Doble clic sobre su etiqueta para editarla en el grafo.</p>}

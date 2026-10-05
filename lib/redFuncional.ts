@@ -1,3 +1,4 @@
+import { relacionInferida } from "./gradoApoyo";
 import type { AnalisisFuncional, NivelConfianza, TipoRelacion } from "./types";
 
 /**
@@ -50,6 +51,8 @@ export interface AristaRed {
   tipo_relacion: TipoRelacion;
   /** Si esta arista forma parte de un ciclo cerrado del grafo. */
   enBucle: boolean;
+  /** Ninguna línea de la nota sostiene esta relación (gradoApoyo.ts#relacionInferida). */
+  inferida: boolean;
   /** La hipótesis que la originó, para el nombre accesible. */
   enunciado: string;
 }
@@ -61,6 +64,13 @@ export interface RedFuncional {
   alto: number;
   /** Los ciclos encontrados, ya en palabras: "A → B → A". */
   bucles: string[];
+  /**
+   * Por cada bucle, en el mismo orden, si alguno de sus tramos es una relación
+   * inferida. Un bucle no está mejor apoyado que su tramo más débil: si uno es
+   * una inferencia, el ciclo entero lo es, y el plan no puede tratarlo como
+   * un hecho que hay que romper.
+   */
+  buclesConRelacionInferida: boolean[];
   /**
    * Cuántas hipótesis de mantenimiento no se pudieron situar en la red porque
    * les falta uno de los dos extremos. Antes desaparecían sin dejar rastro; se
@@ -113,7 +123,7 @@ const MARGEN_SUPERIOR = 46;
 function detectarBucles(
   nodos: string[],
   aristas: AristaRed[]
-): { aristasEnBucle: Set<number>; ciclos: string[][] } {
+): { aristasEnBucle: Set<number>; ciclos: string[][]; aristasDeCiclo: number[][] } {
   const salientes = new Map<string, { indice: number; hasta: string }[]>();
   for (const id of nodos) salientes.set(id, []);
   aristas.forEach((a, indice) => {
@@ -123,6 +133,7 @@ function detectarBucles(
 
   const aristasEnBucle = new Set<number>();
   const ciclos: string[][] = [];
+  const aristasDeCiclo: number[][] = [];
   const vistos = new Set<string>();
 
   function explorar(actual: string, camino: string[], aristasCamino: number[]) {
@@ -135,6 +146,7 @@ function detectarBucles(
       if (!vistos.has(firma)) {
         vistos.add(firma);
         ciclos.push(ciclo);
+        aristasDeCiclo.push(aristasCamino.slice(yaEnCamino));
         for (const i of aristasCamino.slice(yaEnCamino)) aristasEnBucle.add(i);
       }
       return;
@@ -147,7 +159,7 @@ function detectarBucles(
   }
 
   for (const id of nodos) explorar(id, [], []);
-  return { aristasEnBucle, ciclos };
+  return { aristasEnBucle, ciclos, aristasDeCiclo };
 }
 
 export function construirRedFuncional(analisis: AnalisisFuncional): RedFuncional {
@@ -170,6 +182,7 @@ export function construirRedFuncional(analisis: AnalisisFuncional): RedFuncional
     ancho: ANCHO,
     alto: 0,
     bucles: [],
+    buclesConRelacionInferida: [],
     sinResolver,
     motivoVacio: motivo,
   });
@@ -210,6 +223,7 @@ export function construirRedFuncional(analisis: AnalisisFuncional): RedFuncional
       bidireccional: h.direccion === "bidireccional",
       tipo_relacion: h.tipo_relacion,
       enBucle: false,
+      inferida: relacionInferida(h),
       enunciado: h.enunciado,
     });
   }
@@ -230,7 +244,7 @@ export function construirRedFuncional(analisis: AnalisisFuncional): RedFuncional
   const columnaVariables = variables.filter((v) => usados.has(v.id));
   const columnaConductas = conductas.filter((c) => usados.has(c.id));
 
-  const { aristasEnBucle, ciclos } = detectarBucles(
+  const { aristasEnBucle, ciclos, aristasDeCiclo } = detectarBucles(
     [...usados],
     aristas
   );
@@ -281,6 +295,9 @@ export function construirRedFuncional(analisis: AnalisisFuncional): RedFuncional
     // impreso en blanco y negro.
     bucles: ciclos.map((ciclo) =>
       ciclo.map((id) => etiquetaDe.get(id) ?? id).join(" → ")
+    ),
+    buclesConRelacionInferida: aristasDeCiclo.map((indices) =>
+      indices.some((i) => aristas[i].inferida)
     ),
     sinResolver,
     motivoVacio: null,

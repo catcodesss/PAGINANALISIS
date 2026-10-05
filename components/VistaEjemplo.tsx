@@ -13,6 +13,7 @@ import { descargarDocx } from "@/lib/exportarDocx";
 import { leerOrdenGuardado } from "./ordenBloques";
 import { revalidarTrasEdicion } from "@/lib/validadores";
 import type { AnalisisFuncional } from "@/lib/types";
+import { ausentesTrasReanalisis } from "@/lib/vacios";
 
 /**
  * El informe de ejemplo, tal y como se ve en la herramienta.
@@ -133,7 +134,11 @@ export default function VistaEjemplo({
           fecha={fecha}
           notaOriginal={nota}
           onAnalisisActualizado={(fragmento) =>
-            setAnalisis((previo) => ({ ...previo, ...fragmento }))
+            setAnalisis((previo) => ({
+              ...previo,
+              ...fragmento,
+              campos_ausentes: ausentesTrasReanalisis(previo, fragmento),
+            }))
           }
           onEditarSeccion={editarSeccion}
         />

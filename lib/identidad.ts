@@ -509,7 +509,26 @@ function subirReglasVerbales(analisis: AnalisisFuncional): void {
 }
 
 /**
- * Lleva un análisis de cualquier versión anterior a la actual (v3).
+ * Lleva un análisis de cualquier versión anterior a la actual (v4).
+ *
+ * La v4 solo añade `campos_ausentes`, que un informe guardado antes no tiene
+ * y no puede reconstruirse: se le da vacío, que se lee como «se generó y salió
+ * vacío» — el estado que no culpa a la nota (ver lib/vacios.ts). Idempotente:
+ * una lista que ya existe no se toca.
+ *
+ * Se aplica en tres sitios: al normalizar la respuesta del modelo
+ * (lib/parseAnalisis.ts), al leer del historial (lib/repositorio.ts) y al
+ * cargar el informe de ejemplo (lib/maquetaInforme.ts, vía el normalizador).
+ */
+export function migrarAV4(analisis: AnalisisFuncional): AnalisisFuncional {
+  migrarAV3(analisis);
+  if (!Array.isArray(analisis.campos_ausentes)) analisis.campos_ausentes = [];
+  analisis.version = VERSION_ANALISIS;
+  return analisis;
+}
+
+/**
+ * Lleva un análisis de cualquier versión anterior a la v3.
  *
  * Primero cambia la forma de lo que la v3 reorganizó —la capa MC se funde en
  * las líneas de intervención, las reglas verbales suben al núcleo y los
@@ -517,13 +536,11 @@ function subirReglasVerbales(analisis: AnalisisFuncional): void {
  * referencias (migrarAV2). Es idempotente y no destructivo: sobre un análisis que ya es v3
  * no cambia nada, y ningún texto se borra.
  *
- * Se aplica en tres sitios: al normalizar la respuesta del modelo
- * (lib/parseAnalisis.ts), al leer del historial (lib/repositorio.ts) y al
- * cargar el informe de ejemplo (lib/maquetaInforme.ts, vía el normalizador).
- * Un informe guardado en v1 o v2 se abre igual que siempre; lo fija
- * evals/migracion.test.mjs.
+ * No se exporta: sin el paso de migrarAV4, un informe quedaría sin
+ * `campos_ausentes`. Un informe guardado en v1 o v2 se abre igual que siempre;
+ * lo fija evals/migracion.test.mjs.
  */
-export function migrarAV3(analisis: AnalisisFuncional): AnalisisFuncional {
+function migrarAV3(analisis: AnalisisFuncional): AnalisisFuncional {
   fundirCapaMc(analisis);
   subirReglasVerbales(analisis);
   llevarProcesosAV3(analisis);

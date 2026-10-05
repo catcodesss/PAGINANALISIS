@@ -24,11 +24,13 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import type { AnalisisFuncional, TipoEslabonDBT } from "@/lib/types";
+import type { Alerta, AnalisisFuncional, TipoEslabonDBT } from "@/lib/types";
 import { apoyoCadena, type NodoGrafo } from "@/lib/grafo";
 import { describirGrado, gradoDeNumero } from "@/lib/gradoApoyo";
 import s from "../afc.module.css";
 import { Cita } from "@/components/informe/primitivas";
+import { alertasPorNodo } from "@/lib/alertasNodo";
+import { AvisosDelNodo, InsigniaAlerta } from "../InsigniaAlerta";
 
 /*
   Vista DBT: análisis en cadena de arriba abajo, con el detalle del eslabón
@@ -136,7 +138,7 @@ function PildoraApoyo({ apoyo }: { apoyo: 1 | 2 | 3 }) {
  * El paso de un eslabón al siguiente. La intervención se dibuja aquí, entre los
  * dos, porque eso es lo que intenta cambiar: qué pasa después de este eslabón.
  */
-function Enlace({ total, flecha, onAbrir }: { total: number; flecha: boolean; onAbrir: () => void }) {
+function Enlace({ total, flecha, onAbrir, avisos = [] }: { total: number; flecha: boolean; onAbrir: () => void; avisos?: readonly Alerta[] }) {
   return (
     <div className="flex min-h-8 items-stretch gap-2.5 pl-5">
       {flecha && (
@@ -146,12 +148,16 @@ function Enlace({ total, flecha, onAbrir }: { total: number; flecha: boolean; on
         </span>
       )}
       <span className="flex items-center py-1">
-        {total > 0 ? (
+        {total > 0 && (
           <button type="button" onClick={onAbrir} className="inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent-soft px-2.5 py-0.5 text-[11px] font-medium text-accent transition hover:border-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50">
             <Crosshair className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
             Punto de intervención{total > 1 ? ` · ${total}` : ""}
           </button>
-        ) : (
+        )}
+        {/* La alternativa no es un paso de la cadena y solo se ve al abrir el
+            punto de intervención: su aviso se adelanta aquí para no esconderlo. */}
+        {total > 0 && avisos.length > 0 && <InsigniaAlerta alertas={avisos} className="ml-2" />}
+        {total === 0 && (
           <span className="inline-flex items-center gap-1.5 text-[11px] text-ink-muted/80">
             <Circle className="h-2.5 w-2.5" strokeWidth={1.8} aria-hidden="true" />
             Sin intervención
@@ -215,6 +221,7 @@ export default function VistaDBT({
   const reglasSueltas = reglas.filter((r) => !reglaVinculada(r.id));
 
   const alternativas = deSituacion.filter((n) => n.tipo === "alternativa");
+  const alertasDeNodo = alertasPorNodo(analisis);
   const necesarias = deSituacion.filter((n) => n.tipo === "consecuencia_alternativa");
   const idsConNodo = new Set(nodos.map((n) => n.id));
 
@@ -398,7 +405,7 @@ export default function VistaDBT({
                         return (
                           <Fragment key={n.id}>
                             {renderNodo(n)}
-                            {(!ultimo || total > 0) && <Enlace total={total} flecha={!ultimo} onAbrir={() => onSeleccionar(n)} />}
+                            {(!ultimo || total > 0) && <Enlace total={total} flecha={!ultimo} onAbrir={() => onSeleccionar(n)} avisos={faseDe.get(n.id) === 3 ? alternativas.flatMap((a) => alertasDeNodo.get(a.id) ?? []) : []} />}
                           </Fragment>
                         );
                       })}
@@ -465,6 +472,8 @@ export default function VistaDBT({
         </div>
         <PildoraApoyo apoyo={nodoSel.apoyo} />
       </div>
+
+      <AvisosDelNodo alertas={alertasDeNodo.get(nodoSel.id) ?? []} />
 
       <section>
         <h5 className="font-serif text-sm font-semibold text-ink">Evidencia en la nota</h5>

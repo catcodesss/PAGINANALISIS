@@ -178,6 +178,15 @@ prueba("Matrix: el malestar interior solo tiene eventos privados", () => {
   assert.ok(m.interior.every((n) => n.tipo === "encubierta" || n.tipo === "ec"), "se coló una OM u otro nodo");
 });
 
+prueba("Matrix: un eslabón de tipo acción no va a malestar interior", () => {
+  const a = structuredClone(ANALISIS_MINIMO);
+  const situacion = a.situaciones.find((s) => s.cadena_dbt);
+  situacion.cadena_dbt.eslabones.push({ id: "esl_accion", tipo: "accion", descripcion: "Pide ir al baño" });
+  const m = clasificarMatrix(a, construirNodosGrafo(a));
+  assert.ok(!m.interior.some((n) => n.id === "esl_accion"), "la acción se clasificó como evento privado");
+  assert.ok(m.interior.length > 0, "se perdieron los eslabones encubiertos");
+});
+
 prueba("Matrix: alejamiento solo con base funcional; el resto, en su fila", () => {
   const a = structuredClone(ANALISIS_MINIMO);
   for (const s of a.situaciones) if (s.cadena_operante) s.cadena_operante.tipo_contingencia = "refuerzo positivo";

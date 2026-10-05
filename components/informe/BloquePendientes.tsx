@@ -11,6 +11,7 @@
 
 import type { AnalisisFuncional } from "@/lib/types";
 import { BloqueBase, SinHallazgos, SubSeccion } from "./primitivas";
+import { estadoVacio } from "@/lib/vacios";
 import { ListaAlertas, Seccion, useAccionesSeccion } from "./seccion";
 import { BotonAgregar, BotonBorrar, TextoEditable } from "../edicionManual";
 import {
@@ -40,7 +41,7 @@ export default function BloquePendientes({
     <BloqueBase id="pendientes" visible={visible}>
       <Seccion id="hipotesis-alternativas" titulo="Hipótesis alternativas" camposReanalisis={["hipotesis_alternativas"]}>
         {analisis.hipotesis_alternativas.length === 0 ? (
-          <SinHallazgos />
+          <SinHallazgos estado={estadoVacio(analisis, "hipotesis_alternativas")} />
         ) : (
           <ul className="space-y-4">
             {analisis.hipotesis_alternativas.map((h, i) => (

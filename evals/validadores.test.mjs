@@ -333,6 +333,10 @@ prueba("la priorización cruza importancia con modificabilidad, no una sola", ()
   // Se sigue LA MISMA conducta en las tres corridas, buscándola por la palanca
   // que se está moviendo. Tomar "la primera con palanca" compararía conductas
   // distintas, porque cambiar la modificabilidad cambia el propio orden.
+  //
+  // Solo puntúa una palanca cuya relación con la conducta tiene apoyo propio
+  // (ver gradoApoyo.ts#relacionInferida). Hoy ninguna lo tiene, así que la
+  // prueba da a las relaciones una cita: fija el cálculo para cuando la haya.
   const idPalanca = normalizarAnalisis(
     JSON.parse(JSON.stringify(fixture.analisis)),
     lineas
@@ -342,6 +346,9 @@ prueba("la priorización cruza importancia con modificabilidad, no una sola", ()
     const crudo = JSON.parse(JSON.stringify(fixture.analisis));
     crudo.variables_moduladoras[0].modificabilidad = nivel;
     const analisis = normalizarAnalisis(crudo, lineas);
+    for (const h of analisis.hipotesis_mantenimiento) {
+      h.evidencia = { texto: "cita de prueba", verificada: true, linea_inicio: 1, linea_fin: 1 };
+    }
     const blanco = priorizarBlancos(analisis).find(
       (b) => b.palanca?.id === idPalanca
     );
@@ -379,8 +386,11 @@ prueba("una conducta sin palanca trazada no recibe un rendimiento inventado", ()
   for (const b of blancos) {
     if (b.palanca === null) {
       assert.equal(b.rendimiento, null, "rendimiento inventado sin palanca");
+    } else if (b.palanca.relacion_inferida) {
+      // Se enseña, marcada, pero una inferencia no ordena el plan.
+      assert.equal(b.rendimiento, null, "una palanca de relación inferida puntuó");
     } else {
-      assert.ok(b.rendimiento > 0, "una palanca trazada tiene que puntuar");
+      assert.ok(b.rendimiento > 0, "una palanca con relación apoyada tiene que puntuar");
     }
   }
 

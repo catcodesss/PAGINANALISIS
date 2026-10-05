@@ -7,7 +7,10 @@
  * en «malestar interior» por ser contexto. Ahora:
  *
  * - Malestar interior: solo eventos privados (eslabones encubiertos y estímulos
- *   condicionados). La OM altera el valor de un reforzador; no es malestar.
+ *   condicionados). La OM altera el valor de un reforzador; no es malestar. Un
+ *   eslabón de tipo «acción» tampoco: es conducta observable. No va a ningún
+ *   cuadrante, porque la Matrix clasifica por función y el eslabón no la
+ *   tiene; la conducta problema que describe ya está en su fila.
  * - Alejamiento: una conducta cuya función de alejarse está establecida, por
  *   una anotación de evitación experiencial con justificación funcional o por
  *   una situación suya mantenida por refuerzo negativo.
@@ -15,7 +18,7 @@
  *   saber su función es un dato, no una razón para darla por evitación.
  */
 
-import type { NodoGrafo } from "./grafo";
+import { esEventoPrivado, type NodoGrafo } from "./grafo";
 import { tieneBaseFuncional } from "./procesosACT";
 import type { AnalisisFuncional, Id } from "./types";
 
@@ -58,7 +61,7 @@ export function clasificarMatrix(
     alejamiento: conductas.filter((n) => esAlejamiento(analisis, n.id)),
     sinFuncionEstablecida: conductas.filter((n) => !esAlejamiento(analisis, n.id)),
     acercamiento: unicos(nodos.filter((n) => n.tipo === "alternativa" || n.tipo === "repertorio")),
-    interior: unicos(nodos.filter((n) => n.tipo === "encubierta" || n.tipo === "ec")),
+    interior: unicos(nodos.filter(esEventoPrivado)),
     valores: unicos(nodos.filter((n) => n.tipo === "valor")),
     reglas: unicos(nodos.filter((n) => n.tipo === "regla_verbal")),
   };

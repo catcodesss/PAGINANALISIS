@@ -205,6 +205,18 @@ export function construirNodosGrafo(analisis: AnalisisFuncional): NodoGrafo[] {
   return salida;
 }
 
+/**
+ * Si un nodo es un evento privado: un estímulo condicionado o un eslabón DBT
+ * que no es una acción. Todo eslabón se guarda como nodo «encubierta» porque
+ * comparte carril en la cadena, pero el eslabón de tipo «acción» («pide ir al
+ * baño y evita exponer») es conducta observable: tratarlo como malestar
+ * interior mezcla topografía con experiencia privada, justo la confusión que
+ * el grafo tiene que ayudar a deshacer.
+ */
+export function esEventoPrivado(nodo: NodoGrafo): boolean {
+  return nodo.tipo === "ec" || (nodo.tipo === "encubierta" && nodo.detalle !== "accion");
+}
+
 /** Las lecturas clínicas especializadas requieren al menos una conducta relacionada. */
 export function hayGrafoBase(analisis: AnalisisFuncional): boolean {
   const idsConducta = new Set(analisis.conductas_problema.map((conducta) => conducta.id));

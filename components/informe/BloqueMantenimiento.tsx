@@ -12,8 +12,9 @@
 import { useMemo } from "react";
 import type { AnalisisFuncional, HipotesisMantenimiento } from "@/lib/types";
 import { construirNodosGrafo } from "@/lib/grafo";
-import { gradoDeHipotesis, verboRelacion } from "@/lib/gradoApoyo";
-import { Apoyo, BloqueBase, Chip, ListaEditable, SinHallazgos, SubSeccion, Termino } from "./primitivas";
+import { gradoDeHipotesis, relacionInferida, verboRelacion } from "@/lib/gradoApoyo";
+import { Apoyo, BloqueBase, Chip, EtiquetaModelo, ListaEditable, SinHallazgos, SubSeccion, Termino } from "./primitivas";
+import { estadoVacio } from "@/lib/vacios";
 import { Seccion } from "./seccion";
 import { TextoEditable } from "../edicionManual";
 import { PriorizacionEstimada, RedFuncionalSVG, SelloNoModificable } from "./mantenimiento";
@@ -44,14 +45,14 @@ export default function BloqueMantenimiento({
         camposReanalisis={["hipotesis_mantenimiento"]}
       >
         {prosaDerivada.hipotesis.length === 0 ? (
-          <SinHallazgos />
+          <SinHallazgos estado={estadoVacio(analisis, "hipotesis_mantenimiento")} />
         ) : (
           <ul className="space-y-4">
             {prosaDerivada.hipotesis.map((h, i) => (
               <li key={i} className="hipotesis-card rounded border border-divider p-4">
                 {/*
                   Sin rótulo con la conducta encima: el enunciado derivado
-                  la nombra dentro («…se observa «X»…»), y tenerla también
+                  la nombra dentro («…conducta: X…»), y tenerla también
                   aquí escribía el mismo dato dos veces por tarjeta. Con
                   cinco hipótesis sobre la misma conducta eso eran cinco
                   repeticiones que no añadían nada.
@@ -86,8 +87,9 @@ export default function BloqueMantenimiento({
                   que nadie hizo (ver lib/gradoApoyo.ts#verboRelacion).
                 */}
                 {h.origen && h.conducta && (
-                  <p className="mt-1.5 text-sm text-ink-muted">
-                    «{h.origen}» {verboRelacion(h.direccion)} «{h.conducta}»
+                  <p className="mt-1.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-sm leading-relaxed text-ink-muted">
+                    <EtiquetaModelo>{h.origen}</EtiquetaModelo> {verboRelacion(h.direccion)} <EtiquetaModelo>{h.conducta}</EtiquetaModelo>
+                    {relacionInferida(h) && <span className="ml-1 inline-flex items-baseline gap-2">· relación inferida <Apoyo grado="inferencia" /></span>}
                   </p>
                 )}
               </li>
@@ -117,6 +119,7 @@ export default function BloqueMantenimiento({
           items={analisis.hipotesis_origen}
           seccionId="hipotesis-origen"
           etiqueta="hipótesis de origen"
+          estadoVacio={estadoVacio(analisis, "hipotesis_origen")}
           claseItem="text-sm italic leading-relaxed text-ink-muted"
           onCambiar={(nuevos) =>
             onEditarSeccion("hipotesis-origen", (c) => {
@@ -139,7 +142,7 @@ export default function BloqueMantenimiento({
         <div className="space-y-5">
           <SubSeccion titulo="Relaciones entre problemas">
             {analisis.formulacion.relaciones_entre_problemas.length === 0 ? (
-              <SinHallazgos />
+              <SinHallazgos estado={estadoVacio(analisis, "formulacion")} />
             ) : (
               <ul className="list-disc space-y-2 pl-5">
                 {analisis.formulacion.relaciones_entre_problemas.map(
@@ -190,11 +193,15 @@ export default function BloqueMantenimiento({
                 })
               }
               vacio={
-                <p className="text-sm text-ink-muted">
-                  La nota no sostiene ninguna fortaleza ni recurso concreto.
-                  No significa que no los haya: significa que no están
-                  escritos, y conviene preguntarlos en sesión.
-                </p>
+                estadoVacio(analisis, "fortalezas_y_recursos") === "no_generado" ? (
+                  <SinHallazgos estado="no_generado" />
+                ) : (
+                  <p className="text-sm text-ink-muted">
+                    El análisis no recoge ninguna fortaleza ni recurso. Revisa
+                    la nota: puede haberlos, y si no están escritos conviene
+                    preguntarlos en sesión.
+                  </p>
+                )
               }
             />
           </SubSeccion>
@@ -203,6 +210,7 @@ export default function BloqueMantenimiento({
               items={analisis.valores_y_metas}
               seccionId="formulacion"
               etiqueta="valor o meta"
+              estadoVacio={estadoVacio(analisis, "valores_y_metas")}
               onCambiar={(nuevos) =>
                 onEditarSeccion("formulacion", (c) => {
                   c.valores_y_metas = nuevos;
@@ -215,6 +223,7 @@ export default function BloqueMantenimiento({
               items={analisis.perdida_de_reforzadores}
               seccionId="formulacion"
               etiqueta="reforzador perdido"
+              estadoVacio={estadoVacio(analisis, "perdida_de_reforzadores")}
               onCambiar={(nuevos) =>
                 onEditarSeccion("formulacion", (c) => {
                   c.perdida_de_reforzadores = nuevos;

@@ -16,10 +16,13 @@ import { verboRelacion } from "@/lib/gradoApoyo";
 import { construirNodosGrafo } from "@/lib/grafo";
 import {
   criteriosDeBlanco,
+  NOTA_MODIFICABILIDAD_INFERIDA,
   ORIGEN_DE_CRITERIO,
   priorizarBlancos,
+  rotuloPalanca,
   type CriteriosBlanco,
 } from "@/lib/priorizacion";
+import { Apoyo } from "./primitivas";
 
 /**
  * Franja de "esto no se toca" para las hipótesis de origen.
@@ -214,7 +217,7 @@ export function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
                   aporta y la prosa no.
                 */}
                 <title>
-                  {`«${desde.etiqueta}» ${verboRelacion(a.bidireccional ? "bidireccional" : "unidireccional")} «${hasta.etiqueta}»${a.enBucle ? ", en bucle cerrado" : ""}.`}
+                  {`${desde.etiqueta} ${verboRelacion(a.bidireccional ? "bidireccional" : "unidireccional")} ${hasta.etiqueta}${a.inferida ? " (relación inferida)" : ""}${a.enBucle ? ", en bucle cerrado" : ""}.`}
                 </title>
               </path>
             );
@@ -282,13 +285,21 @@ export function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
             {red.bucles.map((b, i) => (
               <li key={i} className="text-sm leading-relaxed text-ink">
                 {b}
+                {red.buclesConRelacionInferida[i] && (
+                  <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-ink-muted">
+                    <Apoyo grado="inferencia" />
+                    Incluye una relación inferida: ninguna línea de la nota la sostiene.
+                  </span>
+                )}
               </li>
             ))}
           </ul>
           <p className="mt-2 text-sm leading-relaxed text-ink-muted">
             Cada uno se alimenta a sí mismo: intervenir sobre una de sus partes
-            sin tocar el resto lo deja funcionando. El plan tiene que romperlo
-            por algún punto.
+            sin tocar el resto lo deja funcionando.
+            {red.buclesConRelacionInferida.some(Boolean)
+              ? " Si se confirma cada tramo, el plan tiene que romperlo por algún punto; un tramo inferido se comprueba en sesión antes de planificar sobre él."
+              : " El plan tiene que romperlo por algún punto."}
           </p>
         </div>
       )}
@@ -345,16 +356,24 @@ export function PriorizacionEstimada({ analisis }: { analisis: AnalisisFuncional
                       <dt title={ORIGEN_DE_CRITERIO[clave].origen} className="cursor-help text-ink-muted">
                         {ORIGEN_DE_CRITERIO[clave].titulo}
                       </dt>
-                      <dd className={`font-mono text-[11px] uppercase tracking-wide ${valor ? "text-ink" : "italic text-ink-muted"}`}>
+                      <dd className={`text-right font-mono text-[11px] uppercase tracking-wide ${valor ? "text-ink" : "italic text-ink-muted"}`}>
                         {valor ?? "sin datos"}
+                        {clave === "modificabilidad" && valor && b.palanca?.relacion_inferida && (
+                          <span className="block font-sans text-[11px] normal-case tracking-normal text-ink-muted">
+                            {NOTA_MODIFICABILIDAD_INFERIDA}
+                          </span>
+                        )}
                       </dd>
                     </div>
                   );
                 })}
               </dl>
               {b.palanca ? (
-                <p className="mt-2 text-sm text-ink-muted">
-                  Por dónde moverla: {b.palanca.etiqueta}
+                <p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-sm text-ink-muted">
+                  <span>{rotuloPalanca(b.palanca)}: {b.palanca.etiqueta}</span>
+                  {/* La marca gris es la de la relación, no la del dato: la
+                      variable puede estar citada y su papel no. */}
+                  {b.palanca.relacion_inferida && <Apoyo grado="inferencia" />}
                 </p>
               ) : (
                 <p className="mt-2 text-sm italic text-ink-muted">

@@ -3,8 +3,10 @@ import { agruparAlertas } from "./validadores";
 import { situacionDeLaCadenaDBT } from "./identidad";
 import {
   criteriosDeBlanco,
+  NOTA_MODIFICABILIDAD_INFERIDA,
   ORIGEN_DE_CRITERIO,
   priorizarBlancos,
+  rotuloPalanca,
   type CriteriosBlanco,
 } from "./priorizacion";
 import {
@@ -29,11 +31,19 @@ import {
   INTRO_GRADO_APOYO,
   NIVELES_APOYO,
   NOTA_PIE_GRADO_APOYO,
+  relacionInferida,
   traducirMensajeAlerta,
   verboRelacion,
   type GradoApoyo,
 } from "./gradoApoyo";
 import { terminoEnTexto } from "./terminos";
+import {
+  estadoVacio,
+  TEXTO_RIESGO_NO_EVALUADO,
+  TEXTO_RIESGO_SIN_INDICADORES,
+  TEXTO_VACIO,
+  type EstadoVacio,
+} from "./vacios";
 import { hayCamino, idNodoSituacion } from "./aristas";
 import { apoyoCadena, construirNodosGrafo, type NodoGrafo } from "./grafo";
 import { ETIQUETA_PROCESO_ACT } from "./procesosACT";
@@ -50,7 +60,6 @@ import {
   type MonitorizacionDeBlanco,
 } from "./plan";
 
-const SIN_HALLAZGOS = "Sin hallazgos suficientes en la nota.";
 
 /** Un aviso del validador junto a la propuesta que señala. */
 function textoAvisos(alertas: readonly Alerta[], sangria: string): string[] {
@@ -114,26 +123,36 @@ function derivarEnunciadoHipotesis(
   const trazado = (desde: string | null, hasta = destino) =>
     Boolean(desde && hayCamino(analisis.aristas, desde, hasta));
 
+  /*
+    SIN COMILLAS. Las etiquetas son del modelo, no de la nota, y las comillas
+    latinas son la marca de una cita verificada (invariante 2): entrecomillarlas
+    le decía al lector que eso estaba escrito en su nota. Van como «rótulo:
+    texto», sin el punto final de la etiqueta, que partía la frase en dos.
+  */
+  const rotulado = (rotulo: string, texto: string | undefined) => {
+    const limpio = (texto ?? "").trim().replace(/\.+$/, "");
+    return limpio ? `${rotulo}: ${limpio}` : null;
+  };
   const partes: string[] = [];
   partes.push(
     trazado(ed)
-      ? `Ante el Ed «${etiquetas.get(ed!) ?? operante?.antecedente ?? ""}»`
+      ? rotulado("Ed", etiquetas.get(ed!) ?? operante?.antecedente) ?? "[Ed no trazado hasta la conducta]"
       : "[Ed no trazado hasta la conducta]"
   );
   if (om) {
     partes.push(
       trazado(om)
-        ? `bajo la OM «${etiquetas.get(om) ?? operante?.operacion_motivacional ?? ""}»`
+        ? rotulado("OM", etiquetas.get(om) ?? operante?.operacion_motivacional ?? undefined) ??"[OM no trazada hasta la conducta]"
         : "[OM no trazada hasta la conducta]"
     );
   }
-  partes.push(`se observa «${conducta}»`);
+  partes.push(rotulado("conducta", conducta) ?? "[conducta sin descripción]");
 
   const inmediata = operante?.consecuencia;
   if (inmediata?.texto) {
     partes.push(
       trazado(destino, inmediata.id)
-        ? `seguida de «${etiquetas.get(inmediata.id) ?? inmediata.texto}»`
+        ? rotulado("consecuencia inmediata", etiquetas.get(inmediata.id) ?? inmediata.texto)!
         : "[consecuencia inmediata no trazada desde la conducta]"
     );
   }
@@ -141,16 +160,21 @@ function derivarEnunciadoHipotesis(
   if (demorada?.texto) {
     partes.push(
       trazado(destino, demorada.id)
-        ? `y de «${etiquetas.get(demorada.id) ?? demorada.texto}» a medio o largo plazo`
+        ? rotulado("consecuencia a medio o largo plazo", etiquetas.get(demorada.id) ?? demorada.texto)!
         : "[consecuencia demorada no trazada desde la conducta]"
     );
   }
 
+  // Que el camino exista en el grafo no hace citada la relación: el origen se
+  // nombra como lo que es, una inferencia, si ninguna línea la sostiene.
   const origen = hipotesis.origen_id;
   if (origen) {
+    const rotuloOrigen = relacionInferida(hipotesis)
+      ? "relación de mantenimiento inferida (ninguna línea de la nota la sostiene), desde"
+      : "relación de mantenimiento trazada desde";
     partes.push(
       trazado(origen)
-        ? `La relación de mantenimiento trazada parte de «${etiquetas.get(origen) ?? hipotesis.origen}»`
+        ? rotulado(rotuloOrigen, etiquetas.get(origen) || hipotesis.origen) ?? "[origen no trazado]"
         : "[Origen no trazado hasta la conducta]"
     );
   }
@@ -159,7 +183,7 @@ function derivarEnunciadoHipotesis(
   if (funcionId) {
     partes.push(
       funcionTrazada
-        ? `La ruta termina en la función hipotetizada «${etiquetas.get(funcionId) ?? situacion?.funcion_hipotetizada ?? ""}»`
+        ? rotulado("función hipotetizada", etiquetas.get(funcionId) ?? situacion?.funcion_hipotetizada) ?? "[Función no trazada desde la conducta]"
         : "[Función no trazada desde la conducta]"
     );
   }
@@ -227,12 +251,12 @@ function textoCita(cita: Cita): string {
   return `"${cita.texto}" (${rango})`;
 }
 
-function seccion(titulo: string, cuerpo: string): string {
-  return `${titulo}\n${"-".repeat(titulo.length)}\n${cuerpo || SIN_HALLAZGOS}\n`;
+function seccion(titulo: string, cuerpo: string, estado: EstadoVacio = "sin_hallazgos"): string {
+  return `${titulo}\n${"-".repeat(titulo.length)}\n${cuerpo || TEXTO_VACIO[estado]}\n`;
 }
 
-function listaOTexto(items: string[]): string {
-  return items.length > 0 ? items.map((i) => `- ${i}`).join("\n") : SIN_HALLAZGOS;
+function listaOTexto(items: string[], estado: EstadoVacio = "sin_hallazgos"): string {
+  return items.length > 0 ? items.map((i) => `- ${i}`).join("\n") : TEXTO_VACIO[estado];
 }
 
 /** El grado de una situación: el de su elemento peor apoyado, no un promedio. */
@@ -328,6 +352,7 @@ export function formatearInformeTexto(
   /** Informe de demostración: lo marca antes que nada. Ver lib/maqueta.ts. */
   esEjemplo = false
 ): string {
+  const vacioDe = (campo: keyof AnalisisFuncional) => estadoVacio(analisis, campo);
   const partes: string[] = [];
   // Lo primero de todo y separado: un documento exportado se lee fuera de
   // contexto, y esto tiene que verse antes que el contenido clínico.
@@ -386,10 +411,10 @@ export function formatearInformeTexto(
     seccion(
       "RIESGO",
       analisis.riesgo.evaluado
-        ? listaOTexto(analisis.riesgo.indicadores) === SIN_HALLAZGOS
-          ? "Sin indicadores de riesgo detectados en la nota."
+        ? analisis.riesgo.indicadores.length === 0
+          ? TEXTO_RIESGO_SIN_INDICADORES
           : listaOTexto(analisis.riesgo.indicadores)
-        : "No se ha evaluado el riesgo en esta nota: falta información para pronunciarse."
+        : TEXTO_RIESGO_NO_EVALUADO
     )
   );
 
@@ -443,7 +468,7 @@ export function formatearInformeTexto(
     ].join("\n")
   );
 
-  bloques["resumen"] = seccion("RESUMEN CLÍNICO", prosa.resumen);
+  bloques["resumen"] = seccion("RESUMEN CLÍNICO", prosa.resumen, vacioDe("resumen_clinico"));
   bloques["hipotesis-principal"] = seccion(
     "FORMULACIÓN FUNCIONAL DESTACADA",
     prosa.destacada
@@ -563,7 +588,7 @@ export function formatearInformeTexto(
       prosa.hipotesis
         .map(
           (h) =>
-            `- [${h.conducta}] (Apoyo en la nota: ${describirGrado(gradoDeHipotesis(h, nodos)).etiqueta}) ${h.enunciado}\n  Para qué le sirve (función): ${h.funcion}${h.origen ? `\n  «${h.origen}» ${verboRelacion(h.direccion)} «${h.conducta}»` : ""}`
+            `- [${h.conducta}] (Apoyo en la nota: ${describirGrado(gradoDeHipotesis(h, nodos)).etiqueta}) ${h.enunciado}\n  Para qué le sirve (función): ${h.funcion}${h.origen ? `\n  ${h.origen} ${verboRelacion(h.direccion)} ${h.conducta}${relacionInferida(h) ? " (relación inferida)" : ""}` : ""}`
         )
         .join("\n")
     )
@@ -582,7 +607,7 @@ export function formatearInformeTexto(
       [
         AVISO_ORIGEN_NO_MODIFICABLE,
         "",
-        listaOTexto(analisis.hipotesis_origen),
+        listaOTexto(analisis.hipotesis_origen, vacioDe("hipotesis_origen")),
       ].join("\n")
     )
   );
@@ -592,7 +617,7 @@ export function formatearInformeTexto(
       "FORMULACIÓN DEL CASO",
       [
         "Relaciones entre problemas:",
-        listaOTexto(analisis.formulacion.relaciones_entre_problemas),
+        listaOTexto(analisis.formulacion.relaciones_entre_problemas, vacioDe("formulacion")),
         "",
         // Un solo ranking, y es de conductas: ver lib/priorizacion.ts. Antes
         // salían dos seguidos, con nombres casi iguales y ordenando cosas
@@ -611,10 +636,15 @@ export function formatearInformeTexto(
               nodos.find((n) => n.id === b.id)?.apoyo ?? 1
             );
             const criterios = (Object.keys(ORIGEN_DE_CRITERIO) as (keyof CriteriosBlanco)[])
-              .map((clave) => `${ORIGEN_DE_CRITERIO[clave].titulo.toLowerCase()} ${c[clave] ?? "sin datos"}`)
+              .map((clave) => {
+                const texto = `${ORIGEN_DE_CRITERIO[clave].titulo.toLowerCase()} ${c[clave] ?? "sin datos"}`;
+                return clave === "modificabilidad" && c[clave] && b.palanca?.relacion_inferida
+                  ? `${texto} (${NOTA_MODIFICABILIDAD_INFERIDA})`
+                  : texto;
+              })
               .join(" · ");
             const palanca = b.palanca
-              ? `\n   Por dónde moverla: ${b.palanca.etiqueta}`
+              ? `\n   ${rotuloPalanca(b.palanca)}: ${b.palanca.etiqueta}`
               : "\n   Sin variable trazada: no consta por dónde moverla";
             const cabecera = `${i + 1}. ${b.etiqueta}\n   ${criterios}${palanca}`;
             return b.justificacion ? `${cabecera}\n   ${b.justificacion}` : cabecera;
@@ -623,13 +653,13 @@ export function formatearInformeTexto(
           "El informe no declara ninguna conducta problema: no hay nada que ordenar.",
         "",
         "Fortalezas y recursos:",
-        listaOTexto(analisis.fortalezas_y_recursos),
+        listaOTexto(analisis.fortalezas_y_recursos, vacioDe("fortalezas_y_recursos")),
         "",
         "Valores y metas del consultante:",
-        listaOTexto(analisis.valores_y_metas),
+        listaOTexto(analisis.valores_y_metas, vacioDe("valores_y_metas")),
         "",
         "Pérdida de reforzadores:",
-        listaOTexto(analisis.perdida_de_reforzadores),
+        listaOTexto(analisis.perdida_de_reforzadores, vacioDe("perdida_de_reforzadores")),
       ].join("\n")
     )
   );
@@ -879,7 +909,7 @@ export function formatearInformeTexto(
               .trim()
           );
 
-  bloques["preguntas"] = seccion("PREGUNTAS PARA LA PRÓXIMA SESIÓN", listaOTexto(analisis.preguntas_para_sesion));
+  bloques["preguntas"] = seccion("PREGUNTAS PARA LA PRÓXIMA SESIÓN", listaOTexto(analisis.preguntas_para_sesion, vacioDe("preguntas_para_sesion")));
   bloques["intervencion"] =
     plan.intervencionesSinBlanco.length === 0
       ? ""

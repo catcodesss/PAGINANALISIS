@@ -10,6 +10,7 @@ import {
 } from "@/lib/secciones";
 import { describirGrado, type GradoApoyo } from "@/lib/gradoApoyo";
 import { TERMINOS, type IdTermino } from "@/lib/terminos";
+import { TEXTO_VACIO, type EstadoVacio } from "@/lib/vacios";
 import {
   BotonAgregar,
   BotonBorrar,
@@ -44,8 +45,22 @@ function EstadoRevision({ bloque }: { bloque: IdSeccion }) {
   );
 }
 
-export function SinHallazgos() {
-  return <p className="text-sm text-ink-muted">Sin hallazgos suficientes en la nota.</p>;
+/**
+ * Un apartado vacío, diciendo por qué y sin culpar a la nota: «no se generó»
+ * o «la IA no encontró nada». Ver lib/vacios.ts.
+ */
+export function SinHallazgos({ estado = "sin_hallazgos" }: { estado?: EstadoVacio }) {
+  return <p className="text-sm text-ink-muted">{TEXTO_VACIO[estado]}</p>;
+}
+
+/**
+ * Una etiqueta que escribió el modelo, citada dentro de otra frase. No lleva
+ * comillas: las comillas son la marca de una cita verificada de la nota
+ * (invariante 2), y esto no lo es. Fondo neutro y sin cursiva, para que no se
+ * confunda con el bloque «De la nota».
+ */
+export function EtiquetaModelo({ children }: { children: ReactNode }) {
+  return <span className="etiqueta-modelo rounded bg-ink-muted/10 px-1.5 py-0.5 text-ink">{children}</span>;
 }
 
 export function Chip({ children }: { children: ReactNode }) {
@@ -199,6 +214,7 @@ export function ListaEditable({
   onCambiar,
   claseItem = "text-[15px] leading-relaxed text-ink",
   vacio,
+  estadoVacio,
 }: {
   items: string[];
   seccionId: string;
@@ -206,10 +222,11 @@ export function ListaEditable({
   onCambiar: (nuevos: string[]) => void;
   claseItem?: string;
   vacio?: ReactNode;
+  estadoVacio?: EstadoVacio;
 }) {
   const edicion = useEdicion();
-  if (items.length === 0 && !edicion) return <>{vacio ?? <SinHallazgos />}</>;
-  return <>{items.length === 0 ? (vacio ?? <SinHallazgos />) : <ul className="list-disc space-y-2 pl-5">{items.map((item, i) => <li key={i} className={claseItem}><span className="flex flex-wrap items-baseline gap-x-2"><TextoEditable valor={item} seccionId={seccionId} etiqueta={`${etiqueta} ${i + 1}`} className={claseItem} onCambio={(valor) => onCambiar(items.map((actual, j) => j === i ? valor : actual))} /><BotonBorrar etiqueta={`${etiqueta} ${i + 1}`} onBorrar={() => onCambiar(items.filter((_, j) => j !== i))} /></span></li>)}</ul>}<BotonAgregar etiqueta={etiqueta} onAgregar={(texto) => onCambiar([...items, texto])} /></>;
+  if (items.length === 0 && !edicion) return <>{vacio ?? <SinHallazgos estado={estadoVacio} />}</>;
+  return <>{items.length === 0 ? (vacio ?? <SinHallazgos estado={estadoVacio} />) : <ul className="list-disc space-y-2 pl-5">{items.map((item, i) => <li key={i} className={claseItem}><span className="flex flex-wrap items-baseline gap-x-2"><TextoEditable valor={item} seccionId={seccionId} etiqueta={`${etiqueta} ${i + 1}`} className={claseItem} onCambio={(valor) => onCambiar(items.map((actual, j) => j === i ? valor : actual))} /><BotonBorrar etiqueta={`${etiqueta} ${i + 1}`} onBorrar={() => onCambiar(items.filter((_, j) => j !== i))} /></span></li>)}</ul>}<BotonAgregar etiqueta={etiqueta} onAgregar={(texto) => onCambiar([...items, texto])} /></>;
 }
 
 export function SeccionInforme({

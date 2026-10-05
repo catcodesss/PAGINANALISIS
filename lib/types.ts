@@ -638,11 +638,12 @@ export interface MetaGeneracion {
 
 /**
  * Versión del esquema del análisis. La 2 es la que da identidad a las entidades
- * (ver `Id`); la 3 funde la capa MC en el Plan. Un informe guardado de una
- * versión anterior se migra al leerlo; nunca se descarta. Ver
- * lib/identidad.ts#migrarAV3.
+ * (ver `Id`); la 3 funde la capa MC en el Plan; la 4 recuerda qué claves no
+ * traía la respuesta (`campos_ausentes`). Un informe guardado de una versión
+ * anterior se migra al leerlo; nunca se descarta. Ver
+ * lib/identidad.ts#migrarAV4.
  */
-export const VERSION_ANALISIS = 3;
+export const VERSION_ANALISIS = 4;
 
 export interface AnalisisFuncional {
   version: number;
@@ -703,6 +704,14 @@ export interface AnalisisFuncional {
    * que existiera el análisis por partes.
    */
   campos_generados: string[];
+  /**
+   * Las claves de contenido que la respuesta no traía (ausentes o `null`).
+   * Lo escribe el normalizador; el modelo nunca. Distingue «no se generó» de
+   * «se generó vacío», que el arreglo vacío ya no puede distinguir una vez
+   * normalizado (ver lib/vacios.ts). Un informe anterior a la v4 lo recibe
+   * vacío: no hay forma de saber qué traía, y suponer que nada sería inventar.
+   */
+  campos_ausentes: string[];
   /** Modelo y versión de prompt que generaron este informe. Ver MetaGeneracion. */
   meta: MetaGeneracion;
   /**
@@ -763,6 +772,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "riesgo",
   "alertas",
   "campos_generados",
+  "campos_ausentes",
   "meta",
   "secciones_editadas",
   "estados_plan",
