@@ -25,12 +25,12 @@ node evals/validadores.test.mjs                             # 47
 node evals/reporteFallo.test.mjs                            #  7
 node evals/coherencia.test.mjs                              # 20
 node evals/maqueta.test.mjs                                 # 13
-node evals/migracion.test.mjs                               # 42
+node evals/migracion.test.mjs                               # 53
 node evals/plan.test.mjs                                    # 20
 npx eslint components lib app
 ```
 
-181 pruebas. `eslint` da 0 errores y 1 warning preexistente en
+192 pruebas. `eslint` da 0 errores y 1 warning preexistente en
 `PanelRecomendaciones.tsx`. Esta lista y `.github/workflows/evals.yml` **tienen
 que decir lo mismo**.
 

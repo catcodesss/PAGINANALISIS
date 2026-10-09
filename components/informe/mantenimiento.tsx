@@ -12,7 +12,7 @@
 import { useMemo } from "react";
 import type { AnalisisFuncional } from "@/lib/types";
 import { construirRedFuncional } from "@/lib/redFuncional";
-import { verboRelacion } from "@/lib/gradoApoyo";
+import { gradoDeApoyoArista, verboRelacion } from "@/lib/gradoApoyo";
 import { construirNodosGrafo } from "@/lib/grafo";
 import {
   criteriosDeBlanco,
@@ -114,7 +114,9 @@ export function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
         Las mismas hipótesis de arriba, dibujadas. Una flecha dice que un
         elemento influye en otro; con punta en los dos extremos, que se
         relacionan entre sí. Los trazos discontinuos son bucles cerrados: se
-        alimentan a sí mismos, así que hay que romperlos por algún punto.
+        alimentan a sí mismos, así que hay que romperlos por algún punto. Un
+        trazo punteado es una relación inferida: ninguna frase de la nota la
+        sostiene.
       </p>
 
       {/* overflow-x: en un móvil el diagrama no cabe, y el resto del informe no
@@ -195,7 +197,8 @@ export function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
                 // Grosor fijo: la fuerza de la relación ya no se enseña en
                 // pantalla (ver lib/gradoApoyo.ts#verboRelacion).
                 strokeWidth={2}
-                strokeDasharray={a.enBucle ? "7 4" : undefined}
+                strokeDasharray={a.enBucle ? "7 4" : a.apoyo === "inferido" ? "0.1 6" : undefined}
+                strokeLinecap={!a.enBucle && a.apoyo === "inferido" ? "round" : undefined}
                 markerEnd={`url(#${a.enBucle ? "red-punta-bucle" : "red-punta"})`}
                 markerStart={
                   a.bidireccional
@@ -268,7 +271,7 @@ export function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
 
       <p className="mt-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
         Círculo: conducta problema · Rombo: variable moduladora · Trazo
-        discontinuo: bucle cerrado
+        discontinuo: bucle cerrado · Trazo punteado: relación inferida
       </p>
 
       {/*
@@ -285,6 +288,10 @@ export function RedFuncionalSVG({ analisis }: { analisis: AnalisisFuncional }) {
             {red.bucles.map((b, i) => (
               <li key={i} className="text-sm leading-relaxed text-ink">
                 {b}
+                {/* Un bucle vale lo que su tramo más débil (lib/apoyoAristas.ts). */}
+                <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-ink-muted">
+                  Apoyo del bucle: <Apoyo grado={gradoDeApoyoArista(red.apoyoDeBucles[i])} />
+                </span>
                 {red.buclesConRelacionInferida[i] && (
                   <span className="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-ink-muted">
                     <Apoyo grado="inferencia" />

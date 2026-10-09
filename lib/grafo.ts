@@ -1,6 +1,9 @@
 import { idConsecuenciaAlternativa, idNodoSituacion } from "./aristas";
+import { marcarCreado, marcarEditado, olvidarProcedencia } from "./procedencia";
 import type {
   AnalisisFuncional,
+  ApoyoArista,
+  Arista,
   Cita,
   Id,
   NivelConfianza,
@@ -66,6 +69,26 @@ export function derivarApoyo(
   return 1;
 }
 
+const NUMERO_DE_APOYO_ARISTA: Record<ApoyoArista, 1 | 2 | 3> = {
+  textual: 3,
+  parcial: 2,
+  inferido: 1,
+};
+const APOYO_ARISTA_DE_NUMERO: Record<1 | 2 | 3, ApoyoArista> = {
+  3: "textual",
+  2: "parcial",
+  1: "inferido",
+};
+
+/** La escala 1–3 del grafo (barra del nodo) para el apoyo de una relación. */
+export function numeroDeApoyoArista(apoyo: ApoyoArista): 1 | 2 | 3 {
+  return NUMERO_DE_APOYO_ARISTA[apoyo];
+}
+
+export function apoyoAristaDeNumero(apoyo: 1 | 2 | 3): ApoyoArista {
+  return APOYO_ARISTA_DE_NUMERO[apoyo];
+}
+
 function nodo(
   base: Omit<NodoGrafo, "apoyo"> & { apoyo?: never }
 ): NodoGrafo {
@@ -86,7 +109,10 @@ function nodosSituacion(
     salida.push(nodo({
       id: idNodoSituacion(situacion, "om"), tipo: "om", carril: "contexto",
       etiqueta: operante.operacion_motivacional, situacion_id: situacion.id,
-      alternativa: false, evidencia: evidenciaOperante, confianza: situacion.confianza,
+      // Sin cita propia: la cadena cita lo que pasó, no la operación motivacional
+      // que el análisis le atribuye. «OE de malestar condicionado por evaluación
+      // social» es una construcción del modelo; ninguna frase la dice.
+      alternativa: false, evidencia: null, confianza: situacion.confianza,
     }));
   }
   if (operante?.antecedente) {
@@ -141,7 +167,8 @@ function nodosSituacion(
     salida.push(nodo({
       id: idNodoSituacion(situacion, "funcion"), tipo: "funcion", carril: "inmediata",
       etiqueta: situacion.funcion_hipotetizada, situacion_id: situacion.id,
-      alternativa: false, evidencia: evidenciaOperante, confianza: situacion.confianza,
+      // Una función hipotetizada es, por definición, lo que ninguna frase dice.
+      alternativa: false, evidencia: null, confianza: situacion.confianza,
     }));
   }
   for (const alternativa of analisis.conductas_alternativas.filter(
@@ -225,11 +252,30 @@ export function hayGrafoBase(analisis: AnalisisFuncional): boolean {
   );
 }
 
-export function apoyoCadena(nodos: readonly NodoGrafo[]): 1 | 2 | 3 {
-  const relevantes = nodos.filter((n) => !n.alternativa && n.tipo !== "funcion");
-  return relevantes.length
-    ? Math.min(...relevantes.map((n) => n.apoyo)) as 1 | 2 | 3
-    : 1;
+/**
+ * El apoyo de una cadena es el de su pieza o su relación peor apoyada.
+ *
+ * La operación motivacional y la función son construcciones del análisis, no
+ * sucesos de la nota: se enseñan en su propio nodo (inferidos) y no rebajan a
+ * «inferencia» la cadena entera, que sin esta exclusión saldría así siempre.
+ * Las relaciones sí cuentan: una cadena de nodos citados cuyas conexiones
+ * ninguna frase afirma no es «cita textual».
+ */
+export function apoyoCadena(
+  nodos: readonly NodoGrafo[],
+  aristas: readonly Pick<Arista, "desde" | "hasta" | "apoyo">[] = []
+): 1 | 2 | 3 {
+  const relevantes = nodos.filter(
+    (n) => !n.alternativa && n.tipo !== "funcion" && n.tipo !== "om"
+  );
+  const ids = new Set(relevantes.map((n) => n.id));
+  const valores = [
+    ...relevantes.map((n) => n.apoyo),
+    ...aristas
+      .filter((a) => ids.has(a.desde) && ids.has(a.hasta))
+      .map((a) => numeroDeApoyoArista(a.apoyo)),
+  ];
+  return valores.length ? Math.min(...valores) as 1 | 2 | 3 : 1;
 }
 
 export function huecosDeSituacion(
@@ -258,9 +304,13 @@ export function huecosDeSituacion(
 
 function retirarAristas(analisis: AnalisisFuncional, ids: readonly string[]) {
   const retirados = new Set(ids);
+  const quitadas = analisis.aristas.filter(
+    (a) => retirados.has(a.desde) || retirados.has(a.hasta)
+  );
   analisis.aristas = analisis.aristas.filter(
     (a) => !retirados.has(a.desde) && !retirados.has(a.hasta)
   );
+  olvidarProcedencia(analisis, quitadas.map((a) => a.id));
 }
 
 export function actualizarEtiquetaNodo(
@@ -268,6 +318,10 @@ export function actualizarEtiquetaNodo(
   id: string,
   etiqueta: string
 ): void {
+  // El texto que dejó la IA, antes de pisarlo: es lo que la Ficha enseña como
+  // «original» y lo que distingue un elemento editado de uno solo confirmado.
+  const previa = construirNodosGrafo(analisis).find((n) => n.id === id)?.etiqueta;
+  if (previa !== undefined && previa !== etiqueta) marcarEditado(analisis, id, previa);
   const conducta = analisis.conductas_problema.find((c) => c.id === id);
   if (conducta) conducta.descripcion = etiqueta;
   const variable = analisis.variables_moduladoras.find((v) => v.id === id);
@@ -330,6 +384,7 @@ export function borrarNodo(analisis: AnalisisFuncional, id: string): void {
     if (id === idConsecuencia) alternativa.consecuencia_necesaria = "";
   }
   retirarAristas(analisis, idsRetirados);
+  olvidarProcedencia(analisis, idsRetirados);
 }
 
 function nuevoId(analisis: AnalisisFuncional, prefijo: string): string {
@@ -345,7 +400,12 @@ export function agregarArista(
   tipo: TipoArista = "secuencial"
 ): void {
   if (desde === hasta || analisis.aristas.some((a) => a.desde === desde && a.hasta === hasta && a.tipo === tipo)) return;
-  analisis.aristas.push({ id: nuevoId(analisis, "ari"), desde, hasta, tipo });
+  const id = nuevoId(analisis, "ari");
+  // Una relación del clínico no tiene apoyo declarado: ninguna frase la cita
+  // todavía. Es «inferido» sin cita y se ve como «tuya» (procedencia creado)
+  // hasta que se le añada una (fase 5). Nunca hereda el apoyo de sus extremos.
+  analisis.aristas.push({ id, desde, hasta, tipo, apoyo: "inferido", evidencia: [] });
+  marcarCreado(analisis, id);
 }
 
 export function agregarNodo(
@@ -359,36 +419,64 @@ export function agregarNodo(
   if (tipo === "moduladora") {
     const id = nuevoId(analisis, "vmd");
     analisis.variables_moduladoras.push({ id, nivel: "psicologico", dimension: "conducta", momento: "actual", descripcion: etiqueta, modificabilidad: "baja", evidencia: sinCita });
+    marcarCreado(analisis, id);
     if (situacion) agregarArista(analisis, id, idNodoSituacion(situacion, "om"), "moderadora");
     return;
   }
   if (tipo === "repertorio") {
-    analisis.repertorio_disponible.push({ id: nuevoId(analisis, "rep"), descripcion: etiqueta, contexto_en_que_ocurre: "", evidencia: null });
+    const id = nuevoId(analisis, "rep");
+    analisis.repertorio_disponible.push({ id, descripcion: etiqueta, contexto_en_que_ocurre: "", evidencia: null });
+    marcarCreado(analisis, id);
     return;
   }
   if (tipo === "regla_verbal") {
-    analisis.reglas_verbales.push({ id: nuevoId(analisis, "rvb"), regla: etiqueta, textual_o_inferida: "inferida", clase: "tracking", rigidez: "baja", analisis: "" });
+    const id = nuevoId(analisis, "rvb");
+    analisis.reglas_verbales.push({ id, regla: etiqueta, textual_o_inferida: "inferida", clase: "tracking", rigidez: "baja", analisis: "" });
+    marcarCreado(analisis, id);
     return;
   }
   if (tipo === "valor") {
     analisis.valores_y_metas.push(etiqueta);
+    marcarCreado(analisis, `valor_${analisis.valores_y_metas.length}`);
     return;
   }
   if (!situacion) return;
-  if (tipo === "om" && situacion.cadena_operante && !situacion.cadena_operante.operacion_motivacional) situacion.cadena_operante.operacion_motivacional = etiqueta;
-  if (tipo === "ed" && situacion.cadena_operante && !situacion.cadena_operante.antecedente) situacion.cadena_operante.antecedente = etiqueta;
-  if (tipo === "funcion" && !situacion.funcion_hipotetizada) situacion.funcion_hipotetizada = etiqueta;
-  if (tipo === "encubierta" && situacion.cadena_dbt) situacion.cadena_dbt.eslabones.push({ id: nuevoId(analisis, "esl"), tipo: "pensamiento", descripcion: etiqueta });
+  if (tipo === "om" && situacion.cadena_operante && !situacion.cadena_operante.operacion_motivacional) {
+    situacion.cadena_operante.operacion_motivacional = etiqueta;
+    marcarCreado(analisis, idNodoSituacion(situacion, "om"));
+  }
+  if (tipo === "ed" && situacion.cadena_operante && !situacion.cadena_operante.antecedente) {
+    situacion.cadena_operante.antecedente = etiqueta;
+    marcarCreado(analisis, idNodoSituacion(situacion, "ed"));
+  }
+  if (tipo === "funcion" && !situacion.funcion_hipotetizada) {
+    situacion.funcion_hipotetizada = etiqueta;
+    marcarCreado(analisis, idNodoSituacion(situacion, "funcion"));
+  }
+  if (tipo === "encubierta" && situacion.cadena_dbt) {
+    const id = nuevoId(analisis, "esl");
+    situacion.cadena_dbt.eslabones.push({ id, tipo: "pensamiento", descripcion: etiqueta });
+    marcarCreado(analisis, id);
+  }
   if (tipo === "conducta") {
     const id = nuevoId(analisis, "cnd");
     analisis.conductas_problema.push({ id, descripcion: etiqueta, tipo: "manifiesta", importancia: "baja", es_conducta_seguridad: false, deficit_o_interferencia: "no_determinable", justificacion_deficit: "", evidencia: sinCita });
     situacion.conductas_ids.push(id);
+    marcarCreado(analisis, id);
   }
   if (tipo === "alternativa") {
-    analisis.conductas_alternativas.push({ id: nuevoId(analisis, "alt"), situacion: situacion.nombre, situacion_id: situacion.id, conducta_propuesta: etiqueta, consecuencia_necesaria: "" });
+    const id = nuevoId(analisis, "alt");
+    analisis.conductas_alternativas.push({ id, situacion: situacion.nombre, situacion_id: situacion.id, conducta_propuesta: etiqueta, consecuencia_necesaria: "" });
+    marcarCreado(analisis, id);
   }
   if (tipo === "consecuencia" && situacion.cadena_operante) {
-    if (!situacion.cadena_operante.consecuencia.texto) situacion.cadena_operante.consecuencia.texto = etiqueta;
-    else if (!situacion.cadena_operante.consecuencias_largo_plazo) situacion.cadena_operante.consecuencias_largo_plazo = { id: nuevoId(analisis, "cns"), texto: etiqueta };
+    if (!situacion.cadena_operante.consecuencia.texto) {
+      situacion.cadena_operante.consecuencia.texto = etiqueta;
+      marcarCreado(analisis, situacion.cadena_operante.consecuencia.id);
+    } else if (!situacion.cadena_operante.consecuencias_largo_plazo) {
+      const id = nuevoId(analisis, "cns");
+      situacion.cadena_operante.consecuencias_largo_plazo = { id, texto: etiqueta };
+      marcarCreado(analisis, id);
+    }
   }
 }

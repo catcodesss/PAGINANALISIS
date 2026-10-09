@@ -1,5 +1,82 @@
 # CAMBIOS
 
+## Rediseño · fase 3: apoyo en las relaciones y procedencia por elemento (esquema v5, sin cambio de prompt)
+
+Hecho: 3A (esquema y cálculo) y 3C (interfaz mínima). **3B no se ha hecho**: toca
+el prompt, exige medir con la API y el encargo pide preguntar antes. Medir y
+subir `VERSION_PROMPT` queda pendiente (ver al final).
+
+- **Apoyo en las aristas** (`lib/apoyoAristas.ts`, determinista, lo calcula el
+  servidor). `Arista` gana `apoyo: "textual" | "parcial" | "inferido"` y
+  `evidencia: Cita[]`. Una relación vale lo que valga la frase que la afirma, y
+  como mucho su extremo más débil:
+
+  | Relación | Techo | Cita que lleva |
+  |---|---|---|
+  | Sale de una hipótesis de mantenimiento | parcial | ninguna |
+  | …con confianza baja | inferido | ninguna |
+  | conducta → consecuencia inmediata (cadena operante) | textual | la de la cadena |
+  | Otra de una cadena (OM→ED, ED→conducta, → consecuencia demorada, eslabones DBT, EC) | parcial | la de la cadena |
+  | Cualquier otra | inferido | ninguna |
+  | La creó el clínico | inferido | ninguna; se ve como «tuya» |
+
+  Una relación «inferido» no lista citas. La consecuencia **demorada** queda en
+  parcial aunque el encargo solo decía «conducta → consecuencia»: es lo que
+  menos suele decir la nota (el encargo fija un máximo, no un mínimo).
+- **Nodos.** La OM y la función hipotetizada dejan de heredar la cita de la
+  cadena: sin cita propia son inferidas (`lib/grafo.ts`). ED, EC, consecuencias
+  y eslabones DBT siguen heredándola: son sucesos del episodio que la cita
+  describe; la OM y la función son construcciones del análisis.
+- **Agregados.** `apoyoCadena(nodos, aristas)` toma el mínimo de las piezas y
+  de sus relaciones, **sin contar la OM ni la función** (si contaran, toda
+  situación con OM saldría «inferencia»). Consecuencia visible: casi ninguna
+  situación sale ya «cita textual», porque sus relaciones están techadas en
+  parcial. `gradoDeHipotesis` lee de la arista; la red (`AristaRed.apoyo`) y
+  cada bucle (`apoyoDeBucles`) toman el tramo más débil.
+- **La palanca NO cambia, a propósito.** El encargo decía «quita el parche de la
+  fase 1 si queda redundante». No lo queda: una hipótesis sin cita propia llega
+  a «parcial» (dorado), y con eso bastaría para que el sueño volviera a ordenar
+  el plan. `relacionInferida(h)` sigue gobernando la marca y el orden hasta que
+  haya 3B. Es la decisión más prudente y la más fácil de revertir.
+- **Procedencia por elemento.** `AnalisisFuncional.procedencia:
+  Record<Id, {estado: "propuesta"|"confirmado"|"editado"|"creado", original?}>`
+  (`lib/procedencia.ts`). Ausente = propuesta, como `estados_plan`. La escribe
+  solo la interfaz; no entra en el esquema del modelo ni en `normalizarAnalisis`
+  (una respuesta del modelo con `procedencia` se descarta; lo fija una prueba).
+  Confirmar no es editar y no marca la sección como editada (`onDecidir` →
+  `onEditarSeccion(null, …)`). Lo `editado` o `creado` no vuelve a otro estado.
+  Editar se detecta por diff antes/después (`lib/procedenciaEdicion.ts`), no en
+  cada editor; los «valores» quedan fuera porque su id es la posición.
+- **Migración `migrarAV5`** (`migrarAV4` pasa a interna). Calcula el apoyo de
+  las aristas y crea `procedencia`. Los elementos de las secciones ya editadas
+  pasan a «editado» **una sola vez**, al venir de una versión anterior, y sin
+  texto original: dentro de una sección no se sabe qué se tocó, y marcar de más
+  es el lado honesto del invariante 6.
+- **Interfaz.** Relaciones inferidas **punteadas** (trazo `0.1 6` con extremos
+  redondos) en la red funcional, en la lente ACT y en DBT; en AFC no se dibujan
+  líneas (decisión de la 1B), así que ahí se ven en «Relaciones del nodo» de la
+  Ficha, con muestra de trazo, apoyo y procedencia. En la red, el trazo
+  discontinuo sigue siendo bucle; el punteado, relación inferida. Procedencia
+  con borde (discontinuo = propuesta de la IA) y marca (IA, ✓, ✎), nunca color.
+  Botón «Confirmar» en la Ficha (AFC/ACT) y en el detalle DBT.
+- **Exportación** (texto, impreso y Word, que se construye sobre el texto):
+  `[Propuesta de la IA]`, `[Confirmado]`, `[Editado]` o `[Del profesional]`
+  junto a conductas, repertorio, variables, reglas, nodos de la cadena
+  (OM, antecedente, consecuencias, eslabones, estímulo, función), hipótesis y
+  alternativas; y «Apoyo de la relación» en cada hipótesis.
+- **Pruebas** (`evals/migracion.test.mjs`, 42 → 53): v3→v5 sin pérdida e
+  idempotente; la OM del caso 01 no es textual; sueño → evitar exponer y su
+  bucle no son textuales; ninguna relación supera a sus extremos; solo
+  conducta→consecuencia inmediata es textual; relación del clínico inferida y
+  «creado»; sección editada → editado una vez; editado/confirmado/creado salen
+  distintos en el exportado; la procedencia no entra desde el modelo.
+- **Sin medir con la API** (no hay crédito): el prompt no cambia, así que no hay
+  nada que medir de la fase.
+
+Pendiente de esta fase: **3B** (cita propia por hipótesis, prompt; pedir permiso,
+correr evals antes y después y contar cuántas hipótesis traen cita y cuántas
+resuelven) y, cuando exista, retirar el parche de `relacionInferida`.
+
 ## Rediseño · fase 1B: verificar en la misma pantalla
 
 - **Ficha y nota en panel lateral** (AFC y ACT; DBT ya lo tenía): desde

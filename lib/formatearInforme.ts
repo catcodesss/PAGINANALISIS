@@ -46,6 +46,8 @@ import {
 } from "./vacios";
 import { hayCamino, idNodoSituacion } from "./aristas";
 import { apoyoCadena, construirNodosGrafo, type NodoGrafo } from "./grafo";
+import { aristaDeHipotesis, ETIQUETA_APOYO_ARISTA } from "./apoyoAristas";
+import { marcaDeExportacion, procedenciaDe } from "./procedencia";
 import { ETIQUETA_PROCESO_ACT } from "./procesosACT";
 import {
   avisosDeTarjeta,
@@ -260,25 +262,37 @@ function listaOTexto(items: string[], estado: EstadoVacio = "sin_hallazgos"): st
 }
 
 /** El grado de una situación: el de su elemento peor apoyado, no un promedio. */
-function gradoDeSituacion(s: Situacion, nodos: readonly NodoGrafo[]): GradoApoyo {
-  return gradoDeNumero(apoyoCadena(nodos.filter((n) => n.situacion_id === s.id)));
+function gradoDeSituacion(
+  s: Situacion,
+  nodos: readonly NodoGrafo[],
+  aristas: AnalisisFuncional["aristas"]
+): GradoApoyo {
+  return gradoDeNumero(apoyoCadena(nodos.filter((n) => n.situacion_id === s.id), aristas));
 }
 
-function formatearSituacion(s: Situacion, nodos: readonly NodoGrafo[]): string {
+function formatearSituacion(
+  analisis: AnalisisFuncional,
+  s: Situacion,
+  nodos: readonly NodoGrafo[]
+): string {
+  // Quién tiene la última palabra sobre cada elemento (invariante 6 por
+  // elemento): el documento se lee fuera de la herramienta y tiene que decir
+  // por sí mismo qué propuso la IA y qué escribió o revisó el profesional.
+  const marca = (id: string) => ` ${marcaDeExportacion(analisis, id)}`;
   const lineas: string[] = [
-    `## ${s.nombre} (Apoyo en la nota: ${describirGrado(gradoDeSituacion(s, nodos)).etiqueta})`,
+    `## ${s.nombre} (Apoyo en la nota: ${describirGrado(gradoDeSituacion(s, nodos, analisis.aristas)).etiqueta})`,
   ];
 
   if (s.cadena_operante) {
     const c = s.cadena_operante;
     lineas.push("Cadena operante:");
     if (c.operacion_motivacional) {
-      lineas.push(`  ${terminoEnTexto("om")}: ${c.operacion_motivacional}`);
+      lineas.push(`  ${terminoEnTexto("om")}: ${c.operacion_motivacional}${marca(idNodoSituacion(s, "om"))}`);
     }
-    lineas.push(`  Antecedente: ${c.antecedente}`);
+    lineas.push(`  Antecedente: ${c.antecedente}${marca(idNodoSituacion(s, "ed"))}`);
     lineas.push(`  Respuesta: ${c.respuesta}`);
     lineas.push(
-      `  Consecuencia [${c.tipo_contingencia}, ${c.inmediatez}, ${ETIQUETA_ESQUEMA[c.esquema_de_contingencia]}]: ${c.consecuencia.texto}`
+      `  Consecuencia [${c.tipo_contingencia}, ${c.inmediatez}, ${ETIQUETA_ESQUEMA[c.esquema_de_contingencia]}]: ${c.consecuencia.texto}${marca(c.consecuencia.id)}`
     );
     if (c.esquema_de_contingencia === "intermitente") {
       lineas.push(
@@ -287,7 +301,7 @@ function formatearSituacion(s: Situacion, nodos: readonly NodoGrafo[]): string {
     }
     if (c.consecuencias_largo_plazo) {
       lineas.push(
-        `  Consecuencias a largo plazo: ${c.consecuencias_largo_plazo.texto}`
+        `  Consecuencias a largo plazo: ${c.consecuencias_largo_plazo.texto}${marca(c.consecuencias_largo_plazo.id)}`
       );
     }
     lineas.push(`  De la nota: ${textoCita(c.evidencia)}`);
@@ -301,7 +315,7 @@ function formatearSituacion(s: Situacion, nodos: readonly NodoGrafo[]): string {
     );
     lineas.push(`  Evento precipitante: ${c.evento_precipitante}`);
     c.eslabones.forEach((e, i) => {
-      lineas.push(`  Eslabón ${i + 1} [${e.tipo}]: ${e.descripcion}`);
+      lineas.push(`  Eslabón ${i + 1} [${e.tipo}]: ${e.descripcion}${marca(e.id)}`);
     });
     lineas.push(`  Conducta problema: ${c.conducta_problema}`);
     lineas.push(`  Consecuencias: ${c.consecuencias}`);
@@ -311,7 +325,7 @@ function formatearSituacion(s: Situacion, nodos: readonly NodoGrafo[]): string {
   if (s.cadena_respondiente) {
     const c = s.cadena_respondiente;
     lineas.push("Cadena respondiente:");
-    lineas.push(`  Estímulo: ${c.estimulo}`);
+    lineas.push(`  Estímulo: ${c.estimulo}${marca(idNodoSituacion(s, "ec"))}`);
     lineas.push(`  Respuesta condicionada: ${c.respuesta_condicionada}`);
     if (c.conexion_con_operante) {
       lineas.push(`  Conexión con la cadena operante: ${c.conexion_con_operante}`);
@@ -323,9 +337,25 @@ function formatearSituacion(s: Situacion, nodos: readonly NodoGrafo[]): string {
     lineas.push(`Ciclo interconductual: ${s.ciclo_interconductual}`);
   }
 
-  lineas.push(`Función hipotetizada: ${s.funcion_hipotetizada}`);
+  lineas.push(`Función hipotetizada: ${s.funcion_hipotetizada}${marca(idNodoSituacion(s, "funcion"))}`);
 
   return lineas.join("\n");
+}
+
+/**
+ * El apoyo de la relación de una hipótesis, en el documento. Sin él, un lector
+ * del papel vería «Apoyo en la nota: dato parcial» y no sabría que la nota no
+ * afirma la relación en sí. Una relación que añadió el profesional lo dice.
+ */
+function textoApoyoRelacion(
+  analisis: AnalisisFuncional,
+  h: AnalisisFuncional["hipotesis_mantenimiento"][number]
+): string {
+  const arista = aristaDeHipotesis(analisis, h);
+  if (!arista) return "\n  Apoyo de la relación: sin relación trazada en el grafo";
+  const cita = arista.evidencia.length > 0 ? "con cita propia" : "sin cita propia";
+  const autor = procedenciaDe(analisis, arista.id).estado === "creado" ? " · [Del profesional]" : "";
+  return `\n  Apoyo de la relación: ${ETIQUETA_APOYO_ARISTA[arista.apoyo]} (${cita})${autor}`;
 }
 
 /** Separador entre dos apartados que comparten un mismo bloque reordenable. */
@@ -483,7 +513,7 @@ export function formatearInformeTexto(
   // igual: es la que distingue un problema de adquisición de uno de
   // generalización.
   const conducta = (c: AnalisisFuncional["conductas_problema"][number]) =>
-    `- [${c.tipo}, importancia ${c.importancia}${c.es_conducta_seguridad ? ", CONDUCTA DE SEGURIDAD" : ""}${c.deficit_o_interferencia !== "no_determinable" ? `, ${c.deficit_o_interferencia}` : ""}] ${c.descripcion}${c.justificacion_deficit ? `\n  ${c.justificacion_deficit}` : ""}\n  De la nota: ${textoCita(c.evidencia)}`;
+    `- [${c.tipo}, importancia ${c.importancia}${c.es_conducta_seguridad ? ", CONDUCTA DE SEGURIDAD" : ""}${c.deficit_o_interferencia !== "no_determinable" ? `, ${c.deficit_o_interferencia}` : ""}] ${c.descripcion}${c.justificacion_deficit ? `\n  ${c.justificacion_deficit}` : ""}\n  De la nota: ${textoCita(c.evidencia)}\n  Procedencia: ${marcaDeExportacion(analisis, c.id)}`;
 
   const esDeficit = (c: AnalisisFuncional["conductas_problema"][number]) =>
     c.deficit_o_interferencia === "deficit";
@@ -504,7 +534,7 @@ export function formatearInformeTexto(
         analisis.repertorio_disponible
           .map(
             (r) =>
-              `- ${r.descripcion}${r.contexto_en_que_ocurre ? `\n  Ocurre en: ${r.contexto_en_que_ocurre}` : ""}${r.evidencia ? `\n  De la nota: ${textoCita(r.evidencia)}` : ""}`
+              `- ${r.descripcion}${r.contexto_en_que_ocurre ? `\n  Ocurre en: ${r.contexto_en_que_ocurre}` : ""}${r.evidencia ? `\n  De la nota: ${textoCita(r.evidencia)}` : ""}\n  Procedencia: ${marcaDeExportacion(analisis, r.id)}`
           )
           .join("\n") ||
           "La nota no recoge ningún contexto en que la conducta adecuada sí ocurra.",
@@ -537,7 +567,7 @@ export function formatearInformeTexto(
             return celda.variables
               .map(
                 (v) =>
-                  `- ${ETIQUETA_DIMENSION[dimension]}: ${v.descripcion} [${v.momento === "historico" ? "histórica" : "actual"}, modificabilidad ${v.modificabilidad}] — De la nota: ${textoCita(v.evidencia)}`
+                  `- ${ETIQUETA_DIMENSION[dimension]}: ${v.descripcion} [${v.momento === "historico" ? "histórica" : "actual"}, modificabilidad ${v.modificabilidad}] — De la nota: ${textoCita(v.evidencia)} — ${marcaDeExportacion(analisis, v.id)}`
               )
               .join("\n");
           }),
@@ -550,7 +580,7 @@ export function formatearInformeTexto(
   bloques["situaciones"] = (
     seccion(
       "ANÁLISIS POR SITUACIONES",
-      analisis.situaciones.map((sit) => formatearSituacion(sit, nodos)).join("\n\n")
+      analisis.situaciones.map((sit) => formatearSituacion(analisis, sit, nodos)).join("\n\n")
     )
   );
 
@@ -576,7 +606,7 @@ export function formatearInformeTexto(
       analisis.reglas_verbales
         .map(
           (r) =>
-            `- [${r.clase}, ${r.textual_o_inferida}, rigidez ${r.rigidez}] ${r.regla}\n  ${r.analisis}`
+            `- [${r.clase}, ${r.textual_o_inferida}, rigidez ${r.rigidez}] ${r.regla} ${marcaDeExportacion(analisis, r.id)}\n  ${r.analisis}`
         )
         .join("\n")
     )
@@ -588,7 +618,7 @@ export function formatearInformeTexto(
       prosa.hipotesis
         .map(
           (h) =>
-            `- [${h.conducta}] (Apoyo en la nota: ${describirGrado(gradoDeHipotesis(h, nodos)).etiqueta}) ${h.enunciado}\n  Para qué le sirve (función): ${h.funcion}${h.origen ? `\n  ${h.origen} ${verboRelacion(h.direccion)} ${h.conducta}${relacionInferida(h) ? " (relación inferida)" : ""}` : ""}`
+            `- [${h.conducta}] (Apoyo en la nota: ${describirGrado(gradoDeHipotesis(h, nodos, analisis.aristas)).etiqueta}) ${h.enunciado}\n  Para qué le sirve (función): ${h.funcion}${h.origen ? `\n  ${h.origen} ${verboRelacion(h.direccion)} ${h.conducta}${relacionInferida(h) ? " (relación inferida)" : ""}` : ""}${textoApoyoRelacion(analisis, h)}\n  Procedencia: ${marcaDeExportacion(analisis, h.id)}`
         )
         .join("\n")
     )
@@ -674,7 +704,7 @@ export function formatearInformeTexto(
       ...(faltan.length > 0
         ? [`${sangria}Información insuficiente para darla por propuesta. Primero explorar: ${enumerarDatosFaltantes(faltan)}`]
         : []),
-      `${sangria}${faltan.length > 0 ? "Propuesta condicional: " : ""}${a.alternativa.conducta_propuesta}`,
+      `${sangria}${faltan.length > 0 ? "Propuesta condicional: " : ""}${a.alternativa.conducta_propuesta} ${marcaDeExportacion(analisis, a.alternativa.id)}`,
       `${sangria}  Consecuencia necesaria: ${a.alternativa.consecuencia_necesaria}`,
       ...textoAvisos(
         a.alertas.filter(

@@ -24,7 +24,7 @@ function clave(desde: string, hasta: string, tipo: TipoArista) {
  * función solo se usa al normalizar un análisis que todavía no trae `aristas`.
  */
 export function materializarAristas(analisis: AnalisisFuncional): Arista[] {
-  const pendientes: Omit<Arista, "id">[] = [];
+  const pendientes: Omit<Arista, "id" | "apoyo" | "evidencia">[] = [];
   const vistas = new Set<string>();
 
   const agregar = (desde: string | null | undefined, hasta: string | null | undefined, tipo: TipoArista = "secuencial") => {
@@ -92,9 +92,13 @@ export function materializarAristas(analisis: AnalisisFuncional): Arista[] {
     );
   }
 
+  // El apoyo no se decide aquí, sino en calcularApoyoAristas (lib/apoyoAristas.ts),
+  // que necesita los nodos. Hasta que corra, lo seguro es «inferido» y sin cita.
   return pendientes.map((arista, indice) => ({
     id: `ari_${indice + 1}`,
     ...arista,
+    apoyo: "inferido" as const,
+    evidencia: [] as Arista["evidencia"],
   }));
 }
 

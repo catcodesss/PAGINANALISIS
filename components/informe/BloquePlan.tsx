@@ -102,7 +102,7 @@ export default function BloquePlan({
                 numero={n + 1}
                 tarjeta={t}
                 analisis={analisis}
-                gradoFuncion={t.hipotesis.map((h) => gradoDeHipotesis(h, nodos))}
+                gradoFuncion={t.hipotesis.map((h) => gradoDeHipotesis(h, nodos, analisis.aristas))}
                 onEditarSeccion={onEditarSeccion}
               />
             ))}

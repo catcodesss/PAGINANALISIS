@@ -285,11 +285,28 @@ export type TipoRelacion = "causal" | "moderadora" | "mediadora";
  */
 export type TipoArista = "secuencial" | "moderadora" | "bucle";
 
+/**
+ * Cuánto de una RELACIÓN está escrito en la nota. Es el mismo eje que el apoyo
+ * de los nodos (cita / parcial / inferencia) con otro nombre de salida; ver
+ * lib/apoyoAristas.ts para las reglas y por qué una relación entre dos nodos
+ * citados no hereda su cita.
+ */
+export type ApoyoArista = "textual" | "parcial" | "inferido";
+
 export interface Arista {
   id: Id;
   desde: Id;
   hasta: Id;
   tipo: TipoArista;
+  /**
+   * Lo calcula el servidor (lib/apoyoAristas.ts), nunca el modelo, y nunca es
+   * más fuerte que el más débil de sus dos extremos. Una arista creada por el
+   * clínico nace «inferido» y sin cita: su procedencia es `creado`, y se ve
+   * como «tuya» hasta que se le añada una cita.
+   */
+  apoyo: ApoyoArista;
+  /** Las citas verificadas que sostienen la relación. Vacío = ninguna frase. */
+  evidencia: Cita[];
 }
 
 export interface HipotesisMantenimiento {
@@ -637,13 +654,31 @@ export interface MetaGeneracion {
 }
 
 /**
+ * Quién tiene la última palabra sobre un elemento (un nodo o una relación).
+ * Es el invariante 6 llevado de la sección al elemento.
+ *
+ * - `propuesta`: lo escribió la IA y nadie lo ha tocado. Es el estado por
+ *   defecto y por eso no se guarda: ausente = propuesta.
+ * - `confirmado`: el clínico lo revisó y lo da por bueno. NO es texto suyo.
+ * - `editado`: el clínico cambió el texto; `original` guarda el de la IA.
+ * - `creado`: lo añadió el clínico; la IA nunca lo propuso.
+ */
+export type EstadoProcedencia = "propuesta" | "confirmado" | "editado" | "creado";
+
+export interface ProcedenciaElemento {
+  estado: EstadoProcedencia;
+  /** El texto de la IA antes de la edición. Solo con `editado`. */
+  original?: string;
+}
+
+/**
  * Versión del esquema del análisis. La 2 es la que da identidad a las entidades
  * (ver `Id`); la 3 funde la capa MC en el Plan; la 4 recuerda qué claves no
- * traía la respuesta (`campos_ausentes`). Un informe guardado de una versión
- * anterior se migra al leerlo; nunca se descarta. Ver
- * lib/identidad.ts#migrarAV4.
+ * traía la respuesta (`campos_ausentes`); la 5 da apoyo y cita a las aristas y
+ * procedencia a cada elemento. Un informe guardado de una versión anterior se
+ * migra al leerlo; nunca se descarta. Ver lib/identidad.ts#migrarAV5.
  */
-export const VERSION_ANALISIS = 4;
+export const VERSION_ANALISIS = 5;
 
 export interface AnalisisFuncional {
   version: number;
@@ -728,6 +763,13 @@ export interface AnalisisFuncional {
    * lib/plan.ts#estadoDeBlanco). El modelo nunca lo envía.
    */
   estados_plan: Record<Id, EstadoPlan>;
+  /**
+   * Procedencia por elemento (id de nodo o de arista). Solo guarda lo que se
+   * apartó de «propuesta»; lo ausente es propuesta de la IA. La escribe solo la
+   * interfaz: el modelo nunca la envía, y no entra en el esquema que se le
+   * manda. `secciones_editadas` se conserva para los informes anteriores.
+   */
+  procedencia: Record<Id, ProcedenciaElemento>;
 }
 
 /**
@@ -776,6 +818,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "meta",
   "secciones_editadas",
   "estados_plan",
+  "procedencia",
 ] as const satisfies readonly (keyof AnalisisFuncional)[];
 
 type _TodasLasClavesCubiertas =

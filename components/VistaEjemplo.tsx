@@ -14,6 +14,7 @@ import { leerOrdenGuardado } from "./ordenBloques";
 import { revalidarTrasEdicion } from "@/lib/validadores";
 import type { AnalisisFuncional } from "@/lib/types";
 import { ausentesTrasReanalisis } from "@/lib/vacios";
+import { cerrarEdicion } from "@/lib/procedenciaEdicion";
 
 /**
  * El informe de ejemplo, tal y como se ve en la herramienta.
@@ -76,6 +77,7 @@ export default function VistaEjemplo({
     setAnalisis((previo) => {
       const copia: AnalisisFuncional = JSON.parse(JSON.stringify(previo));
       mutar(copia);
+      cerrarEdicion(previo, copia, seccionId === null);
       if (seccionId !== null && !copia.secciones_editadas.includes(seccionId)) {
         copia.secciones_editadas = [...copia.secciones_editadas, seccionId];
       }

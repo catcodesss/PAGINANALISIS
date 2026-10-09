@@ -78,7 +78,7 @@ export default function BloqueMantenimiento({
                       <Chip>{h.funcion}</Chip>
                     </span>
                   )}
-                  <Apoyo grado={gradoDeHipotesis(h, nodos)} />
+                  <Apoyo grado={gradoDeHipotesis(h, nodos, analisis.aristas)} />
                 </div>
                 {/*
                   La relación en dos verbos, «influye en» o «se relaciona

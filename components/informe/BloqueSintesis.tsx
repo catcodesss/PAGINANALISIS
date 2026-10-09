@@ -110,7 +110,7 @@ export default function BloqueSintesis({
                   <ChipDestacado>{destacada.funcion}</ChipDestacado>
                 </span>
               )}
-              <Apoyo grado={gradoDeHipotesis(destacada, nodos)} />
+              <Apoyo grado={gradoDeHipotesis(destacada, nodos, analisis.aristas)} />
             </div>
             <a
               href="#hipotesis-mantenimiento"

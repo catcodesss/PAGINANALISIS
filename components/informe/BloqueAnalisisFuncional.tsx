@@ -34,7 +34,7 @@ export default function BloqueAnalisisFuncional({
   /** Las vistas AFC / DBT / ACT / conductual: solo tienen sentido aquí. */
   selectorEstilo: ReactNode;
   onEditarSeccion: (
-    seccionId: string,
+    seccionId: string | null,
     mutar: (copia: AnalisisFuncional) => void
   ) => void;
 }) {
@@ -69,6 +69,7 @@ export default function BloqueAnalisisFuncional({
             notaOriginal={notaOriginal}
             estilo={estilo}
             onEditar={(mutar) => onEditarSeccion("situaciones", mutar)}
+            onDecidir={(mutar) => onEditarSeccion(null, mutar)}
           />
         )}
       </Seccion>

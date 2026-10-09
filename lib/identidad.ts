@@ -8,7 +8,9 @@ import {
   type Situacion,
 } from "./types";
 import { materializarAristas } from "./aristas";
+import { aristaDeHipotesis, calcularApoyoAristas } from "./apoyoAristas";
 import { construirNodosGrafo } from "./grafo";
+import { ANCLAS_DE_BLOQUE } from "./secciones";
 import { esProcesoV3, procesoAV3 } from "./procesosACT";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 
@@ -538,18 +540,125 @@ function subirReglasVerbales(analisis: AnalisisFuncional): void {
 }
 
 /**
- * Lleva un análisis de cualquier versión anterior a la actual (v4).
+ * Los elementos (nodos del grafo, hipótesis y relaciones) que viven en una
+ * sección del informe, para saber qué tocó el clínico cuando solo se sabe qué
+ * SECCIÓN editó. Acepta ids de bloque y de ancla, y los que no conoce o no
+ * tienen elementos con id (el resumen, las preguntas…) no producen nada.
+ *
+ * Sobreestima a propósito: dentro de una sección ya editada no se puede saber
+ * qué elemento se cambió, y marcar de más como «editado» es el lado honesto del
+ * invariante 6 (nunca presentar como generado lo que pudo escribir el clínico).
+ */
+function elementosDeSeccion(a: AnalisisFuncional, seccion: string): Id[] {
+  const anclas: readonly string[] =
+    seccion in ANCLAS_DE_BLOQUE
+      ? ANCLAS_DE_BLOQUE[seccion as keyof typeof ANCLAS_DE_BLOQUE]
+      : [seccion];
+  const ids: Id[] = [];
+  const nodos = construirNodosGrafo(a);
+  for (const ancla of anclas) {
+    if (ancla === "conductas") {
+      ids.push(...a.conductas_problema.map((c) => c.id), ...a.repertorio_disponible.map((r) => r.id));
+    } else if (ancla === "variables-moduladoras") {
+      ids.push(...a.variables_moduladoras.map((v) => v.id));
+    } else if (ancla === "situaciones") {
+      ids.push(
+        ...a.situaciones.map((s) => s.id),
+        ...nodos
+          .filter((n) => n.situacion_id && !["conducta", "alternativa", "consecuencia_alternativa"].includes(n.tipo))
+          .map((n) => n.id)
+      );
+    } else if (ancla === "modalidad") {
+      ids.push(
+        ...a.reglas_verbales.map((r) => r.id),
+        ...a.capa_act.procesos_act.map((p) => p.id),
+        ...a.capa_dbt.analisis_de_soluciones.map((s) => s.id)
+      );
+    } else if (ancla === "hipotesis-mantenimiento") {
+      for (const h of a.hipotesis_mantenimiento) {
+        ids.push(h.id);
+        const arista = aristaDeHipotesis(a, h);
+        if (arista) ids.push(arista.id);
+      }
+    } else if (ancla === "conductas-alternativas") {
+      ids.push(
+        ...a.conductas_alternativas.map((c) => c.id),
+        ...nodos.filter((n) => n.tipo === "consecuencia_alternativa").map((n) => n.id)
+      );
+    }
+  }
+  return ids;
+}
+
+const APOYOS_ARISTA = ["textual", "parcial", "inferido"];
+const ESTADOS_PROCEDENCIA = ["propuesta", "confirmado", "editado", "creado"];
+
+/**
+ * Lleva un análisis de cualquier versión anterior a la actual (v5).
+ *
+ * La v5 añade tres cosas, todas sin pérdida:
+ *
+ * - `apoyo` y `evidencia` en cada arista, calculados por
+ *   lib/apoyoAristas.ts. Un informe antiguo se ve con las relaciones tal como
+ *   las valora ahora el sistema, que es más prudente que antes: la OM y la
+ *   función dejan de heredar la cita de la cadena, y ninguna relación entre
+ *   dos nodos citados cuenta como citada.
+ * - `procedencia` por elemento. Todo nace como propuesta de la IA (ausente),
+ *   salvo los elementos de las secciones que `secciones_editadas` ya declara
+ *   editadas, que pasan a «editado». No se puede saber qué elemento se tocó
+ *   dentro de una sección, así que se marca la sección entera, y sin texto
+ *   original que enseñar. Solo se hace UNA vez, al llegar de una versión
+ *   anterior: después, la procedencia es por elemento y volver a marcar la
+ *   sección entera borraría esa precisión.
+ * - Nada más: el resto del esquema es el de la v4.
+ *
+ * Idempotente. Se aplica en tres sitios: al normalizar la respuesta del modelo
+ * (lib/parseAnalisis.ts), al leer del historial (lib/repositorio.ts) y al
+ * cargar el informe de ejemplo (lib/maquetaInforme.ts, vía el normalizador).
+ */
+export function migrarAV5(analisis: AnalisisFuncional): AnalisisFuncional {
+  migrarAV4(analisis);
+  const crudo = analisis as unknown as Record<string, unknown>;
+  const veniaDeAntes =
+    typeof crudo.procedencia !== "object" || crudo.procedencia === null || Array.isArray(crudo.procedencia);
+
+  if (veniaDeAntes) analisis.procedencia = {};
+  for (const [id, p] of Object.entries(analisis.procedencia)) {
+    if (!p || typeof p !== "object" || !ESTADOS_PROCEDENCIA.includes(p.estado)) {
+      delete analisis.procedencia[id];
+    }
+  }
+
+  for (const arista of analisis.aristas) {
+    if (!APOYOS_ARISTA.includes(arista.apoyo)) arista.apoyo = "inferido";
+    if (!Array.isArray(arista.evidencia)) arista.evidencia = [];
+  }
+
+  if (veniaDeAntes) {
+    for (const seccion of analisis.secciones_editadas ?? []) {
+      for (const id of elementosDeSeccion(analisis, seccion)) {
+        if (!(id in analisis.procedencia)) analisis.procedencia[id] = { estado: "editado" };
+      }
+    }
+  }
+
+  calcularApoyoAristas(analisis);
+  analisis.version = VERSION_ANALISIS;
+  return analisis;
+}
+
+/**
+ * Lleva un análisis de cualquier versión anterior a la v4.
  *
  * La v4 solo añade `campos_ausentes`, que un informe guardado antes no tiene
  * y no puede reconstruirse: se le da vacío, que se lee como «se generó y salió
  * vacío» — el estado que no culpa a la nota (ver lib/vacios.ts). Idempotente:
  * una lista que ya existe no se toca.
  *
- * Se aplica en tres sitios: al normalizar la respuesta del modelo
- * (lib/parseAnalisis.ts), al leer del historial (lib/repositorio.ts) y al
- * cargar el informe de ejemplo (lib/maquetaInforme.ts, vía el normalizador).
+ * No se exporta: sin el paso de migrarAV5, un informe quedaría sin procedencia
+ * ni apoyo en las relaciones.
  */
-export function migrarAV4(analisis: AnalisisFuncional): AnalisisFuncional {
+function migrarAV4(analisis: AnalisisFuncional): AnalisisFuncional {
   migrarAV3(analisis);
   if (!Array.isArray(analisis.campos_ausentes)) analisis.campos_ausentes = [];
   analisis.version = VERSION_ANALISIS;
@@ -565,8 +674,8 @@ export function migrarAV4(analisis: AnalisisFuncional): AnalisisFuncional {
  * referencias (migrarAV2). Es idempotente y no destructivo: sobre un análisis que ya es v3
  * no cambia nada, y ningún texto se borra.
  *
- * No se exporta: sin el paso de migrarAV4, un informe quedaría sin
- * `campos_ausentes`. Un informe guardado en v1 o v2 se abre igual que siempre;
+ * No se exporta: sin los pasos de migrarAV4 y migrarAV5, un informe quedaría
+ * sin `campos_ausentes`. Un informe guardado en v1 o v2 se abre igual que siempre;
  * lo fija evals/migracion.test.mjs.
  */
 function migrarAV3(analisis: AnalisisFuncional): AnalisisFuncional {

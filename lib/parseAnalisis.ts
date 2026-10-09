@@ -1,5 +1,5 @@
 import { resolverCita } from "./citas";
-import { migrarAV4 } from "./identidad";
+import { migrarAV5 } from "./identidad";
 import { procesoAV3 } from "./procesosACT";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 import {
@@ -13,6 +13,7 @@ import {
   type CadenaRespondiente,
   type CapaModalidadACT,
   type CapaModalidadDBT,
+  type Cita,
   type ConductaAlternativa,
   type ConductaProblema,
   type Consecuencia,
@@ -570,6 +571,7 @@ const CAMPOS_DEL_SERVIDOR = new Set<string>([
   "meta",
   "secciones_editadas",
   "estados_plan",
+  "procedencia",
 ]);
 
 /**
@@ -598,7 +600,7 @@ function camposAusentes(d: Record<string, unknown>): string[] {
 export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFuncional {
   const d = comoObjeto(json);
 
-  // migrarAV4 cierra el paso: asigna los ids que los normalizadores dejaron
+  // migrarAV5 cierra el paso: asigna los ids que los normalizadores dejaron
   // vacíos y resuelve las referencias por prosa una sola vez. Que la respuesta
   // recién llegada y el informe rescatado del historial pasen los dos por aquí
   // es lo que garantiza que un análisis no pueda existir sin identidad.
@@ -658,6 +660,8 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     // Solo la escribe la interfaz cuando el clínico edita; el modelo nunca.
     secciones_editadas: [],
     estados_plan: {},
+    // Solo la escribe la interfaz; el modelo nunca (ni entra en su esquema).
+    procedencia: {},
   };
   // La capa MC ya no es parte del esquema, pero un JSON anterior a la v3 (el
   // informe de ejemplo, o uno pegado a mano) la trae. Se pasa tal cual para
@@ -666,7 +670,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
   if ("capa_mc" in d) {
     (analisis as unknown as Record<string, unknown>).capa_mc = d.capa_mc;
   }
-  return migrarAV4(analisis);
+  return migrarAV5(analisis);
 }
 
 /**
@@ -705,6 +709,17 @@ const NORMALIZADORES_POR_CAMPO: {
         desde: arista.desde,
         hasta: arista.hasta,
         tipo: arista.tipo as Arista["tipo"],
+        // Un fragmento reanalizado no trae el apoyo calculado: lo seguro es
+        // «inferido» hasta que calcularApoyoAristas lo fije sobre el análisis.
+        apoyo: ["textual", "parcial", "inferido"].includes(String(arista.apoyo))
+          ? (arista.apoyo as Arista["apoyo"])
+          : "inferido",
+        evidencia: comoArreglo<unknown>(arista.evidencia).flatMap((valor): Cita[] => {
+          const cita = comoObjeto(valor);
+          return cita.verificada === true && typeof cita.texto === "string"
+            ? [valor as Cita]
+            : [];
+        }),
       }];
     }),
   resumen_clinico: (d) => comoTexto(d.resumen_clinico),
@@ -761,6 +776,7 @@ const NORMALIZADORES_POR_CAMPO: {
   meta: () => ({ modelo: "", version_prompt: "" }),
   secciones_editadas: () => [],
   estados_plan: () => ({}),
+  procedencia: () => ({}),
 };
 
 function esCampoDeAnalisis(campo: string): campo is keyof AnalisisFuncional {

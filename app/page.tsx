@@ -33,6 +33,8 @@ import Sidebar, { type Vista } from "@/components/Sidebar";
 import PanelRecomendaciones from "@/components/PanelRecomendaciones";
 import { usePreferencias } from "@/components/usePreferencias";
 import { ausentesTrasReanalisis } from "@/lib/vacios";
+import { calcularApoyoAristas } from "@/lib/apoyoAristas";
+import { cerrarEdicion } from "@/lib/procedenciaEdicion";
 import PreguntasDatosFaltantes, {
   type ResultadoPreguntas,
 } from "@/components/PreguntasDatosFaltantes";
@@ -307,6 +309,7 @@ export default function Home() {
       if (!previo) return previo;
       const copia = structuredClone(previo);
       mutar(copia);
+      cerrarEdicion(previo, copia, seccionId === null);
       // null = decisión sobre la propuesta (estado del plan), no texto propio.
       if (seccionId !== null && !previo.secciones_editadas.includes(seccionId)) {
         copia.secciones_editadas = [...previo.secciones_editadas, seccionId];
@@ -331,6 +334,9 @@ export default function Home() {
       const actualizado = structuredClone(previo);
       Object.assign(actualizado, fragmento);
       actualizado.campos_ausentes = ausentesTrasReanalisis(previo, fragmento);
+      // Las citas de los nodos pueden haber cambiado: el apoyo de las
+      // relaciones se vuelve a calcular, no se arrastra el de antes.
+      calcularApoyoAristas(actualizado);
       actualizado.alertas = revalidarTrasReanalisis(actualizado, ultimoTextoEnviado);
       return actualizado;
     });

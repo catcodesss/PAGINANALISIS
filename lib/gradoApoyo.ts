@@ -20,8 +20,15 @@
  * de dónde sale el dato, no su gravedad.
  */
 
+import { aristaDeHipotesis } from "./apoyoAristas";
 import { derivarApoyo, type NodoGrafo } from "./grafo";
-import type { Cita, HipotesisMantenimiento, NivelConfianza } from "./types";
+import type {
+  ApoyoArista,
+  Arista,
+  Cita,
+  HipotesisMantenimiento,
+  NivelConfianza,
+} from "./types";
 
 export type GradoApoyo = "cita" | "parcial" | "inferencia";
 
@@ -114,19 +121,34 @@ export function gradoMasDebil(grados: readonly GradoApoyo[]): GradoApoyo {
   );
 }
 
+const GRADO_DE_APOYO_ARISTA: Record<ApoyoArista, GradoApoyo> = {
+  textual: "cita",
+  parcial: "parcial",
+  inferido: "inferencia",
+};
+
+/** El apoyo de una relación en la escala de pantalla de los nodos. */
+export function gradoDeApoyoArista(apoyo: ApoyoArista): GradoApoyo {
+  return GRADO_DE_APOYO_ARISTA[apoyo];
+}
+
 /**
- * Una hipótesis de mantenimiento nunca llega a «cita textual».
+ * El apoyo de una hipótesis de mantenimiento es el de su relación.
  *
- * No trae cita propia: afirma una RELACIÓN, y aunque sus dos extremos estén
- * citados, que la nota diga A y diga B no es que diga «A mantiene B». Así que
- * el techo es «dato parcial», y baja con el extremo peor apoyado o con una
- * confianza baja declarada por el modelo. Los informes anteriores a la v2, sin
- * extremos resueltos, caen en lo que diga su confianza con ese mismo techo.
+ * Con las aristas a mano se lee de la arista que la dibuja, que es donde
+ * lib/apoyoAristas.ts decide: sin cita propia nunca llega a «cita textual»
+ * aunque sus dos extremos estén citados, porque que la nota diga A y diga B no
+ * es que diga «A mantiene B». Sin aristas (o sin la arista de esta hipótesis)
+ * cae en la misma cuenta hecha a mano: techo «dato parcial», que baja con el
+ * extremo peor apoyado o con una confianza baja declarada por el modelo.
  */
 export function gradoDeHipotesis(
   h: HipotesisMantenimiento,
-  nodos: readonly NodoGrafo[]
+  nodos: readonly NodoGrafo[],
+  aristas?: readonly Arista[]
 ): GradoApoyo {
+  const arista = aristas ? aristaDeHipotesis({ aristas: [...aristas] }, h) : undefined;
+  if (arista) return gradoDeApoyoArista(arista.apoyo);
   if (h.confianza === "baja") return "inferencia";
   const extremos = nodos
     .filter((n) => n.id === h.origen_id || n.id === h.destino_id)
@@ -144,10 +166,14 @@ export function gradoDeHipotesis(
  * citado (mesa-clínica §A.4).
  *
  * Por eso todo lo que se deriva de una relación —la palanca de un blanco, un
- * bucle, la formulación— tiene que decir que se apoya en una inferencia. Se
- * escribe como la regla general —sin cita propia, la relación es inferida—
- * porque es el punto que cambiará cuando las relaciones tengan apoyo propio
- * (fase 3 del rediseño).
+ * bucle, la formulación— tiene que decir que se apoya en una inferencia.
+ *
+ * FASE 3. Las aristas ya llevan su apoyo (lib/apoyoAristas.ts) y la tarjeta de
+ * la hipótesis, la red y los bucles lo leen de ahí. Esto NO se retira: una
+ * hipótesis sin cita propia llega como mucho a «dato parcial», y «parcial» no
+ * debe bastar para que la palanca ordene el plan. Se escribe como la regla
+ * general —sin cita propia, la relación es inferida— y es el único punto que
+ * cambia cuando las hipótesis traigan cita (sub-fase 3B, pendiente).
  */
 export function relacionInferida(h: HipotesisMantenimiento): boolean {
   return !("evidencia" in h);

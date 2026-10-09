@@ -30,18 +30,27 @@ import { interAfc, poppinsAfc } from "./fuentesAfc";
 import { ChevronRight } from "lucide-react";
 import { alertasPorNodo } from "@/lib/alertasNodo";
 import { AvisosDelNodo, InsigniaAlerta } from "./InsigniaAlerta";
+import { ApoyoRelacion, InsigniaProcedencia, MuestraTrazo } from "./ProcedenciaElemento";
+import { confirmarElemento } from "@/lib/procedencia";
+import type { ApoyoArista } from "@/lib/types";
 
 interface GrafoAFCProps {
   analisis: AnalisisFuncional;
   notaOriginal: string;
   estilo: EstiloGrafo;
   onEditar: (mutar: (copia: AnalisisFuncional) => void) => void;
+  /**
+   * Una decisión sobre la propuesta de la IA (confirmar), no texto del clínico:
+   * no marca la sección como editada. Confirmar no es editar (invariante 6).
+   */
+  onDecidir: (mutar: (copia: AnalisisFuncional) => void) => void;
 }
 
 interface Trazo {
   id: string;
   d: string;
   tipo: TipoArista;
+  apoyo: ApoyoArista;
   desde: string;
   hasta: string;
   /** Une nodos de tableros distintos (o uno global): cruzaría otras situaciones. */
@@ -447,7 +456,7 @@ function BotonAgregarNodo({
   );
 }
 
-export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: GrafoAFCProps) {
+export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar, onDecidir }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const redibujar = useRef<() => void>(() => {});
   const pila = useRef<AnalisisFuncional[]>([]);
@@ -477,6 +486,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
           const otro = nodos.find((n) => n.id === (sale ? a.hasta : a.desde));
           return {
             id: a.id,
+            apoyo: a.apoyo,
             sentido: sale ? "Lleva a" : "Recibe de",
             tipo: TIPO_RELACION[a.tipo],
             etiqueta: otro ? `${etiquetaTipoNodo(otro)}: ${otro.etiqueta}` : "[elemento sin etiqueta]",
@@ -578,14 +588,14 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
           if (estilo === "afc") {
             const origen = situacionDe(arista.desde);
             const lejana = origen === null || origen !== situacionDe(arista.hasta);
-            return [{ id: arista.id, tipo: arista.tipo, desde: arista.desde, hasta: arista.hasta, lejana, d: trazadoAFC(desde, hasta) }];
+            return [{ id: arista.id, tipo: arista.tipo, apoyo: arista.apoyo, desde: arista.desde, hasta: arista.hasta, lejana, d: trazadoAFC(desde, hasta) }];
           }
           const x1 = desde.x + desde.w;
           const y1 = desde.y + desde.h / 2;
           const x2 = hasta.x;
           const y2 = hasta.y + hasta.h / 2;
           const curva = Math.max(24, Math.abs(x2 - x1) / 2);
-          return [{ id: arista.id, tipo: arista.tipo, desde: arista.desde, hasta: arista.hasta, d: `M ${x1} ${y1} C ${x1 + curva} ${y1}, ${x2 - curva} ${y2}, ${x2} ${y2}` }];
+          return [{ id: arista.id, tipo: arista.tipo, apoyo: arista.apoyo, desde: arista.desde, hasta: arista.hasta, d: `M ${x1} ${y1} C ${x1 + curva} ${y1}, ${x2 - curva} ${y2}, ${x2} ${y2}` }];
         }));
       });
     };
@@ -722,7 +732,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
             <svg className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full overflow-visible md:block" aria-hidden="true">
               <defs><marker id="punta-afc" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="currentColor" /></marker></defs>
               {trazos.map((trazo) => (
-                <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink-muted/60"} markerEnd="url(#punta-afc)" />
+                <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap={trazo.apoyo === "inferido" ? "round" : undefined} strokeDasharray={trazo.apoyo === "inferido" ? "0.1 5" : trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink-muted/60"} markerEnd="url(#punta-afc)" />
               ))}
             </svg>
           )}
@@ -741,6 +751,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
                   lineas={lineas}
                   lineaActiva={lineaActiva}
                   onEditar={aplicar}
+                  onDecidir={onDecidir}
                 />
               )}
               {estilo === "act" && <VistaACT analisis={analisis} nodos={nodos} renderNodo={renderNodo} />}
@@ -799,6 +810,11 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
                 if (valor && valor !== nodoSeleccionado.etiqueta) aplicar((copia) => actualizarEtiquetaNodo(copia, nodoSeleccionado.id, valor));
               }} rows={3} className="mt-1 w-full rounded border border-divider bg-surface p-2 text-sm text-ink" />
             </label>
+            <InsigniaProcedencia
+              analisis={analisis}
+              id={nodoSeleccionado.id}
+              onConfirmar={() => onDecidir((copia) => confirmarElemento(copia, nodoSeleccionado.id))}
+            />
             <dl className="space-y-1 text-xs"><div><dt className="inline text-ink-muted">Tipo: </dt><dd className="inline text-ink">{etiquetaTipoNodo(nodoSeleccionado)}</dd></div><div><dt className="inline text-ink-muted">Apoyo en la nota: </dt><dd className="inline text-ink">{etiquetaApoyo(nodoSeleccionado.apoyo)}</dd></div></dl>
             {citaSeleccionada
               ? <button type="button" onClick={() => irACita(nodoSeleccionado)} className="text-xs text-accent underline underline-offset-2">Ver en la nota · {citaSeleccionada.linea_inicio === citaSeleccionada.linea_fin ? `L${citaSeleccionada.linea_inicio}` : `L${citaSeleccionada.linea_inicio}–L${citaSeleccionada.linea_fin}`}</button>
@@ -809,9 +825,17 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar }: G
               {/* La etiqueta del otro extremo y el tipo de relación: los ids
                   (alt_1 → alt_1_consecuencia) son internos y no dicen nada. */}
               {relacionesSeleccionado.length === 0 && <p className="text-[11px] text-ink-muted">Sin relaciones trazadas.</p>}
+              {relacionesSeleccionado.length > 0 && <p className="mb-2 text-[11px] leading-snug text-ink-muted">El apoyo de una relación no es el de sus extremos: que dos datos estén en la nota no significa que la nota diga que uno lleva al otro. El trazo punteado marca una relación inferida.</p>}
               {relacionesSeleccionado.map((r) => (
-                <div key={r.id} className="mb-1.5 flex items-start gap-2 text-[11px] text-ink-muted">
-                  <span className="min-w-0 flex-1">{r.sentido} · {r.tipo}: <span className="text-ink">{r.etiqueta}</span></span>
+                <div key={r.id} className="mb-2 flex items-start gap-2 text-[11px] text-ink-muted">
+                  <span className="min-w-0 flex-1">
+                    {r.sentido} · {r.tipo}: <span className="text-ink">{r.etiqueta}</span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <MuestraTrazo apoyo={r.apoyo} />
+                      <ApoyoRelacion apoyo={r.apoyo} />
+                      <InsigniaProcedencia analisis={analisis} id={r.id} />
+                    </span>
+                  </span>
                   <button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar relación" : "Las relaciones se editan en la vista AFC"} aria-label={`Borrar la relación con ${r.etiqueta}`} onClick={() => aplicar((copia) => { copia.aristas = copia.aristas.filter((actual) => actual.id !== r.id); })} className="text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar</button>
                 </div>
               ))}

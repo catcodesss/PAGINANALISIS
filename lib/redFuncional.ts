@@ -1,5 +1,6 @@
+import { aristaDeHipotesis, apoyoMasDebil } from "./apoyoAristas";
 import { relacionInferida } from "./gradoApoyo";
-import type { AnalisisFuncional, NivelConfianza, TipoRelacion } from "./types";
+import type { AnalisisFuncional, ApoyoArista, NivelConfianza, TipoRelacion } from "./types";
 
 /**
  * La red funcional del caso: qué está conectado con qué, calculado a partir de
@@ -53,6 +54,12 @@ export interface AristaRed {
   enBucle: boolean;
   /** Ninguna línea de la nota sostiene esta relación (gradoApoyo.ts#relacionInferida). */
   inferida: boolean;
+  /**
+   * El apoyo de la relación según lib/apoyoAristas.ts. «inferido» se dibuja
+   * punteado. Distinto de `inferida`, que dice que ninguna frase cita la
+   * relación (hoy, toda hipótesis) y gobierna el texto y la priorización.
+   */
+  apoyo: ApoyoArista;
   /** La hipótesis que la originó, para el nombre accesible. */
   enunciado: string;
 }
@@ -71,6 +78,8 @@ export interface RedFuncional {
    * un hecho que hay que romper.
    */
   buclesConRelacionInferida: boolean[];
+  /** Por cada bucle, el apoyo de su tramo más débil. */
+  apoyoDeBucles: ApoyoArista[];
   /**
    * Cuántas hipótesis de mantenimiento no se pudieron situar en la red porque
    * les falta uno de los dos extremos. Antes desaparecían sin dejar rastro; se
@@ -183,6 +192,7 @@ export function construirRedFuncional(analisis: AnalisisFuncional): RedFuncional
     alto: 0,
     bucles: [],
     buclesConRelacionInferida: [],
+    apoyoDeBucles: [],
     sinResolver,
     motivoVacio: motivo,
   });
@@ -224,6 +234,7 @@ export function construirRedFuncional(analisis: AnalisisFuncional): RedFuncional
       tipo_relacion: h.tipo_relacion,
       enBucle: false,
       inferida: relacionInferida(h),
+      apoyo: aristaDeHipotesis(analisis, h)?.apoyo ?? "inferido",
       enunciado: h.enunciado,
     });
   }
@@ -298,6 +309,9 @@ export function construirRedFuncional(analisis: AnalisisFuncional): RedFuncional
     ),
     buclesConRelacionInferida: aristasDeCiclo.map((indices) =>
       indices.some((i) => aristas[i].inferida)
+    ),
+    apoyoDeBucles: aristasDeCiclo.map((indices) =>
+      apoyoMasDebil(indices.map((i) => aristas[i].apoyo))
     ),
     sinResolver,
     motivoVacio: null,

@@ -31,6 +31,8 @@ import s from "../afc.module.css";
 import { Cita } from "@/components/informe/primitivas";
 import { alertasPorNodo } from "@/lib/alertasNodo";
 import { AvisosDelNodo, InsigniaAlerta } from "../InsigniaAlerta";
+import { ApoyoRelacion, InsigniaProcedencia, MuestraTrazo } from "../ProcedenciaElemento";
+import { confirmarElemento } from "@/lib/procedencia";
 
 /*
   Vista DBT: análisis en cadena de arriba abajo, con el detalle del eslabón
@@ -117,9 +119,13 @@ interface VistaDBTProps {
   lineas: readonly string[];
   lineaActiva: number | null;
   onEditar: (mutar: (copia: AnalisisFuncional) => void) => void;
+  /** Confirmar una propuesta no es editarla: no marca la sección como editada. */
+  onDecidir: (mutar: (copia: AnalisisFuncional) => void) => void;
 }
 
 interface Trazo {
+  /** «inferido» se dibuja punteado: ninguna frase sostiene la relación. */
+  inferido?: boolean;
   id: string;
   d: string;
   clase: string;
@@ -179,6 +185,7 @@ export default function VistaDBT({
   lineas,
   lineaActiva,
   onEditar,
+  onDecidir,
 }: VistaDBTProps) {
   const cadenaRef = useRef<HTMLDivElement>(null);
   const notaRef = useRef<HTMLDivElement>(null);
@@ -299,7 +306,7 @@ export default function VistaDBT({
             const x1 = regla.x, y1 = regla.y + regla.h / 2;
             const x2 = nodo.x + nodo.w, y2 = nodo.y + nodo.h / 2;
             const curva = Math.max(16, (x1 - x2) / 2);
-            nuevos.push({ id: a.id, clase, d: `M ${x1} ${y1} C ${x1 - curva} ${y1}, ${x2 + curva} ${y2}, ${x2} ${y2}` });
+            nuevos.push({ id: a.id, clase, inferido: a.apoyo === "inferido", d: `M ${x1} ${y1} C ${x1 - curva} ${y1}, ${x2 + curva} ${y2}, ${x2} ${y2}` });
             continue;
           }
           // La secuencia principal ya la dicen las flechas: solo se traza lo
@@ -309,7 +316,7 @@ export default function VistaDBT({
           const x = Math.max(desde.x + desde.w, hasta.x + hasta.w);
           const g = 14 + (desvio++ % 3) * 7;
           const y1 = desde.y + desde.h / 2, y2 = hasta.y + hasta.h / 2;
-          nuevos.push({ id: a.id, clase, d: `M ${x} ${y1} C ${x + g} ${y1}, ${x + g} ${y2}, ${x} ${y2}` });
+          nuevos.push({ id: a.id, clase, inferido: a.apoyo === "inferido", d: `M ${x} ${y1} C ${x + g} ${y1}, ${x + g} ${y2}, ${x} ${y2}` });
         }
         setTrazos(nuevos);
       });
@@ -357,7 +364,9 @@ export default function VistaDBT({
     });
   }
 
-  const apoyoSituacion = apoyoCadena(deSituacion);
+  // La cadena vale lo que su pieza o su relación peor apoyada: unos nodos
+  // citados unidos por relaciones que ninguna frase afirma no son «cita».
+  const apoyoSituacion = apoyoCadena(deSituacion, analisis.aristas);
 
   const cadena = (
     <div className="min-w-0 space-y-4">
@@ -383,7 +392,7 @@ export default function VistaDBT({
           <div ref={cadenaRef} className="@container relative px-4 pb-2">
             <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible" aria-hidden="true">
               <defs><marker id="punta-dbt" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="currentColor" /></marker></defs>
-              {trazos.map((t) => <path key={t.id} d={t.d} fill="none" stroke="currentColor" strokeWidth="1.2" strokeDasharray="4 4" className={t.clase} markerEnd="url(#punta-dbt)" />)}
+              {trazos.map((t) => <path key={t.id} d={t.d} fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap={t.inferido ? "round" : undefined} strokeDasharray={t.inferido ? "0.1 5" : "4 4"} className={t.clase} markerEnd="url(#punta-dbt)" />)}
             </svg>
 
             <div className="relative z-10 grid gap-x-10 @3xl:grid-cols-[minmax(0,1fr)_14rem]">
@@ -446,11 +455,14 @@ export default function VistaDBT({
   const fila = (id: string, aristaId: string) => {
     const otro = nodos.find((n) => n.id === id);
     if (!otro) return null;
+    const arista = analisis.aristas.find((a) => a.id === aristaId);
     return (
       <div key={aristaId} className="flex items-center gap-2">
         <button type="button" onClick={() => onSeleccionar(otro)} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-divider bg-surface px-2.5 py-2 text-left hover:border-ink-muted/40">
           <IconoNodo nodo={otro} className="h-4 w-4 flex-none text-ink-muted" />
-          <span className="min-w-0"><span className="block truncate text-sm text-ink">{otro.etiqueta}</span><span className="block text-[11px] text-ink-muted">{subtipoDeNodo(otro) ?? describirTipo(otro)}</span></span>
+          <span className="min-w-0"><span className="block truncate text-sm text-ink">{otro.etiqueta}</span><span className="block text-[11px] text-ink-muted">{subtipoDeNodo(otro) ?? describirTipo(otro)}</span>
+            {arista && <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]"><MuestraTrazo apoyo={arista.apoyo} /><ApoyoRelacion apoyo={arista.apoyo} /><InsigniaProcedencia analisis={analisis} id={arista.id} /></span>}
+          </span>
         </button>
         <button type="button" onClick={() => onEditar((copia) => { copia.aristas = copia.aristas.filter((a) => a.id !== aristaId); })} aria-label={`Quitar la relación con ${otro.etiqueta}`} title="Quitar relación" className="rounded p-1 text-ink-muted hover:text-warn"><X className="h-3.5 w-3.5" aria-hidden="true" /></button>
       </div>
@@ -472,6 +484,12 @@ export default function VistaDBT({
         </div>
         <PildoraApoyo apoyo={nodoSel.apoyo} />
       </div>
+
+      <InsigniaProcedencia
+        analisis={analisis}
+        id={nodoSel.id}
+        onConfirmar={() => onDecidir((copia) => confirmarElemento(copia, nodoSel.id))}
+      />
 
       <AvisosDelNodo alertas={alertasDeNodo.get(nodoSel.id) ?? []} />
 
