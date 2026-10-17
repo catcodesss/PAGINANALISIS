@@ -96,6 +96,27 @@ En cuanto a antecedentes, describe un padre muy crítico con el rendimiento esco
     "patron": "refuerzo positivo|reforzamiento positivo"
   },
   {
+    "id": "pregunta-reaccion-del-entorno",
+    "descripcion": "Alguna pregunta debe indagar la reacción de la supervisora o de los compañeros (lo que decide si la función es de escape)",
+    "tipo": "debe_aparecer",
+    "ambito": "preguntas\\[\\d+\\]\\.texto$",
+    "patron": "supervisora|companer|reaccion|reaccion|reacciona"
+  },
+  {
+    "id": "pregunta-nombra-hipotesis",
+    "descripcion": "Alguna pregunta debe quedar enlazada a una hipótesis de mantenimiento (pone_a_prueba resuelto por el servidor)",
+    "tipo": "debe_aparecer",
+    "ambito": "preguntas\\[\\d+\\]\\.pone_a_prueba$",
+    "patron": "^hip_\\d+$"
+  },
+  {
+    "id": "alternativa-con-rival",
+    "descripcion": "La hipótesis alternativa de refuerzo positivo debe apuntar a la hipótesis principal con la que compite",
+    "tipo": "debe_aparecer",
+    "ambito": "hipotesis_alternativas\\[\\d+\\]\\.rival_de$",
+    "patron": "^hip_\\d+$"
+  },
+  {
     "id": "riesgo-evaluado",
     "descripcion": "El campo riesgo debe marcarse como evaluado: la nota da base para pronunciarse, aunque no haya indicadores",
     "tipo": "debe_aparecer",

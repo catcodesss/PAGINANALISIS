@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import {
+  generarTexto,
+  leerClaveIA,
+  MODELO_PRINCIPAL,
+  NOMBRE_PROVEEDOR,
+  VARIABLE_CLAVE,
+} from "@/lib/clienteIA";
 import { MENSAJE_MOTOR_DESACTIVADO, MOTOR_IA_ACTIVO } from "@/lib/motorIA";
 import { construirSystemPrompt, VERSION_PROMPT } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarAnalisis } from "@/lib/parseAnalisis";
 import { numerarNota, normalizarTexto } from "@/lib/citas";
+import { nuevoIdPregunta } from "@/lib/preguntas";
+import { migrarAV6 } from "@/lib/identidad";
 import { validarAnalisis } from "@/lib/validadores";
 import { ejecutarPasadaCritica } from "@/lib/pasadaCritica";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
@@ -12,10 +20,7 @@ import { CAMPOS_ANALISIS_FUNCIONAL } from "@/lib/types";
 import { maquetaActivada } from "@/lib/maqueta";
 import { informeDeMaqueta } from "@/lib/maquetaInforme";
 
-const MODELO = "gpt-4o";
-// Fija para que las evals sean comparables entre ejecuciones. El modelo lo
-// trata como "mejor esfuerzo": no garantiza determinismo, pero reduce varianza.
-const SEED = Number(process.env.OPENAI_SEED ?? 42);
+const MODELO = MODELO_PRINCIPAL;
 // Opt-in: duplica el coste del análisis (segunda llamada, ver lib/pasadaCritica.ts).
 // Desactivada por defecto; se activa con PASADA_CRITICA=true.
 const PASADA_CRITICA_ACTIVADA = process.env.PASADA_CRITICA === "true";
@@ -23,7 +28,7 @@ const RUTA = "analizar";
 const LIMITE_PETICIONES = Number(process.env.LIMITE_ANALISIS_POR_VENTANA ?? 5);
 const VENTANA_MS = Number(process.env.LIMITE_VENTANA_MS ?? 10 * 60 * 1000);
 const LONGITUD_MINIMA = 100;
-// Ampliado a petición de uso real. gpt-4o admite mucho más contexto del que
+// Ampliado a petición de uso real. el modelo admite mucho más contexto del que
 // gastamos; el límite existe para acotar el coste, no por capacidad del modelo.
 const LONGITUD_MAXIMA = Number(process.env.LONGITUD_MAXIMA_NOTA ?? 40000);
 
@@ -32,16 +37,16 @@ const LONGITUD_MAXIMA = Number(process.env.LONGITUD_MAXIMA_NOTA ?? 40000);
  * es la calibración correcta para que las evals sean comparables entre
  * ejecuciones, y la equivocada para la profundidad del informe (ver principio
  * 22 del prompt). Por eso producción va más alta y las evals fijan la suya:
- * córrelas con OPENAI_TEMPERATURA=0.2 o los números no se podrán comparar con
+ * córrelas con IA_TEMPERATURA=0.2 o los números no se podrán comparar con
  * las marcas anteriores.
  */
-const TEMPERATURA = Number(process.env.OPENAI_TEMPERATURA ?? 0.5);
+const TEMPERATURA = Number(process.env.IA_TEMPERATURA ?? 0.5);
 
 /**
  * Techo de salida proporcional a lo que se pide. No cambia el precio por token,
  * pero evita que una respuesta se descontrole y corta antes si algo va mal.
  *
- * El tope global es el máximo real de gpt-4o (16 384). Antes estaba en 12 000 y
+ * El tope global deja margen de sobra para el informe completo. Antes estaba en 12 000 y
  * mordía: el informe completo con las tres capas pide 23 campos, y ahora además
  * gasta el razonamiento previo antes de empezar a escribirlo.
  */
@@ -56,7 +61,7 @@ function respuestaError(error: string, message: string, status: number) {
 /**
  * Traduce el fallo a algo que el clínico pueda accionar. "Intenta nuevamente"
  * es un mal consejo cuando reintentar no puede funcionar: si la cuenta de
- * OpenAI no tiene saldo o la clave está mal, el usuario reintenta diez veces
+ * el proveedor no tiene saldo o la clave está mal, el usuario reintenta diez veces
  * sin enterarse de nada. Todos los textos son fijos: no llevan nada de la nota
  * ni del análisis (invariante 5).
  */
@@ -70,28 +75,28 @@ function causaDelFallo(error: unknown): { error: string; message: string } {
     return {
       error: "clave_rechazada",
       message:
-        "OpenAI rechazó la clave de API. Revisa que OPENAI_API_KEY sea válida y tenga permisos sobre el modelo.",
+        `${NOMBRE_PROVEEDOR} rechazó la clave de API. Revisa que ${VARIABLE_CLAVE} sea válida y tenga permisos sobre el modelo.`,
     };
   }
   if (estado === 429) {
     return {
-      error: "cuota_openai",
+      error: "cuota_ia",
       message:
-        "OpenAI está limitando las peticiones o la cuenta se quedó sin saldo. Revisa el saldo y los límites de uso antes de reintentar.",
+        `${NOMBRE_PROVEEDOR} está limitando las peticiones o la cuenta se quedó sin saldo. Revisa el saldo y los límites de uso antes de reintentar.`,
     };
   }
   if (estado === 400) {
     return {
       error: "peticion_rechazada",
       message:
-        "OpenAI rechazó la petición por un parámetro fuera de rango. Es un fallo de configuración del servidor, no de tu nota.",
+        `${NOMBRE_PROVEEDOR} rechazó la petición por un parámetro fuera de rango. Es un fallo de configuración del servidor, no de tu nota.`,
     };
   }
   if (estado !== undefined && estado >= 500) {
     return {
-      error: "openai_caido",
+      error: "ia_caida",
       message:
-        "OpenAI no respondió correctamente. Suele ser temporal: espera un minuto e intenta de nuevo.",
+        `${NOMBRE_PROVEEDOR} no respondió correctamente. Suele ser temporal: espera un minuto e intenta de nuevo.`,
     };
   }
   if (error instanceof SyntaxError) {
@@ -109,7 +114,7 @@ function causaDelFallo(error: unknown): { error: string; message: string } {
 
 export async function POST(request: Request) {
   /*
-    Modo maqueta: devuelve un informe guardado, sin llamar a OpenAI. Va lo
+    Modo maqueta: devuelve un informe guardado, sin llamar a la API. Va lo
     primero de todo, antes incluso del límite de peticiones, porque no consume
     nada y revisar la interfaz no debería tener cupo. Solo funciona fuera de
     producción y con la variable puesta (ver lib/maqueta.ts).
@@ -123,7 +128,7 @@ export async function POST(request: Request) {
   }
 
   // Ruta pública sin autenticación: sin límite, cualquiera puede consumir el
-  // saldo de OpenAI del propietario. Ver lib/limitePeticiones.ts.
+  // saldo del propietario. Ver lib/limitePeticiones.ts.
   const limite = comprobarLimite(
     `${RUTA}:${ipDe(request)}`,
     LIMITE_PETICIONES,
@@ -174,7 +179,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = leerClaveIA();
   if (!apiKey) {
     return respuestaError(
       "falta_api_key",
@@ -195,30 +200,25 @@ export async function POST(request: Request) {
     // por número de línea y el servidor recorta el texto real (ver lib/citas.ts).
     const { lineas, texto: notaNumerada } = numerarNota(nota);
 
-    const openai = new OpenAI({ apiKey });
-    const respuesta = await openai.chat.completions.create({
-      model: MODELO,
-      max_tokens: techoDeSalida(campos.length),
-      temperature: TEMPERATURA,
-      seed: SEED,
-      messages: [
-        { role: "system", content: construirSystemPrompt(campos) },
-        {
-          role: "user",
-          content: `Notas clínicas a analizar (con líneas numeradas):\n\n${notaNumerada}`,
-        },
-      ],
+    const { texto, truncada, tokensEntrada, tokensSalida } = await generarTexto(apiKey, {
+      modelo: MODELO,
+      maxTokens: techoDeSalida(campos.length),
+      temperatura: TEMPERATURA,
+      sistema: construirSystemPrompt(campos),
+      usuario: `Notas clínicas a analizar (con líneas numeradas):\n\n${notaNumerada}`,
     });
 
-    const eleccion = respuesta.choices[0];
-    const texto = eleccion?.message?.content?.trim() ?? "";
+    // Solo cifras (invariante 5): permiten medir el coste de cada versión del prompt.
+    console.info(
+      `[tokens] analizar prompt=${VERSION_PROMPT} entrada=${tokensEntrada} salida=${tokensSalida}`
+    );
 
     // Si el modelo agota el techo de salida, el JSON llega cortado y
     // JSON.parse falla con un mensaje que no dice nada de la causa real. Se
     // distingue aquí para que el usuario sepa que puede generar por partes en
     // lugar de reintentar lo mismo. El motivo de parada es una palabra de
     // estado del proveedor, no contenido de la nota: se puede registrar.
-    if (eleccion?.finish_reason === "length") {
+    if (truncada) {
       console.error(
         `Respuesta truncada: el modelo agotó max_tokens=${techoDeSalida(
           campos.length
@@ -243,10 +243,14 @@ export async function POST(request: Request) {
     // de ellos. No dependen de que el modelo los repita: si el terapeuta dijo
     // que no lo sabe, tienen que aparecer, obedezca o no el prompt. Deduplicado
     // contra lo que el propio modelo ya haya detectado, para no mostrar el
-    // mismo vacío dos veces con palabras distintas.
+    // mismo vacío dos veces con palabras distintas. Entran como preguntas con
+    // origen «previa» (ver lib/preguntas.ts).
     if (Array.isArray(datosFaltantesDeclarados)) {
       const yaPresentes = new Set(
-        analisisSinValidar.datos_faltantes.map((d) => normalizarTexto(d.dato))
+        analisisSinValidar.preguntas.flatMap((p) => [
+          normalizarTexto(p.dato_faltante),
+          normalizarTexto(p.texto),
+        ])
       );
       for (const item of datosFaltantesDeclarados) {
         // El paso previo manda el hueco con su porqué (ver
@@ -266,12 +270,22 @@ export async function POST(request: Request) {
         const clave = normalizarTexto(dato);
         if (yaPresentes.has(clave)) continue;
         yaPresentes.add(clave);
-        analisisSinValidar.datos_faltantes.push({
-          dato: dato.trim(),
-          por_que_importa: porQue,
+        analisisSinValidar.preguntas.push({
+          id: nuevoIdPregunta(analisisSinValidar.preguntas),
+          texto: dato.trim(),
+          hipotesis: "",
+          pone_a_prueba: null,
+          dato_faltante: dato.trim(),
+          decision: porQue,
+          origen: "previa",
+          estado: "abierta",
         });
       }
     }
+
+    // Las preguntas del paso previo se añadieron después de normalizar: se vuelve a
+    // resolver para que una intervención que dependía de ese dato quede atada a ella.
+    migrarAV6(analisisSinValidar);
 
     const analisis = validarAnalisis(analisisSinValidar, nota);
 
@@ -309,7 +323,7 @@ export async function POST(request: Request) {
     // El nombre del error distingue de un vistazo las tres causas que se
     // confunden bajo el mismo mensaje genérico: SyntaxError es JSON mal
     // formado (respuesta cortada o con texto alrededor), APIError es un
-    // rechazo de OpenAI (clave, cuota, parámetro fuera de rango) y el resto
+    // rechazo de la API (clave, cuota, parámetro fuera de rango) y el resto
     // es cosa nuestra. Nunca se registra la nota ni el análisis.
     console.error(
       "Error al generar el análisis funcional:",

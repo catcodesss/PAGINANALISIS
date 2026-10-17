@@ -340,6 +340,9 @@ export interface HipotesisMantenimiento {
   /** Si el efecto va en un sentido o los dos se alimentan (un bucle). */
   direccion: "unidireccional" | "bidireccional";
   tipo_relacion: TipoRelacion;
+  /** Solo la cambia el clínico: el modelo no la envía. */
+  estado: EstadoHipotesis;
+  motivo_estado: string;
 }
 
 export interface PriorizacionBlanco {
@@ -389,6 +392,57 @@ export interface PreguntaPrevia {
   por_que_importa: string;
 }
 
+export type EstadoPregunta =
+  | "abierta"
+  | "respondida"
+  | "respondida_en_parte"
+  | "descartada";
+
+export type OrigenPregunta = "ia" | "clinico" | "previa";
+
+/**
+ * Una pregunta clínica: lo que hay que averiguar, qué hipótesis pone a prueba
+ * y qué cambia según la respuesta.
+ *
+ * Sustituye a cuatro formas de lo mismo que no se conectaban entre sí: las
+ * preguntas sueltas para la sesión, los datos faltantes, el `como_descartarla`
+ * de las hipótesis alternativas y el `depende_de` de las intervenciones. Con
+ * una sola entidad, una pregunta enseña a la vez qué hipótesis discrimina, qué
+ * dato falta y qué decisión desbloquea.
+ *
+ * La respuesta la escribe solo el clínico (invariante 6): el modelo nunca
+ * propone `estado` ni `respuesta`.
+ */
+export interface PreguntaClinica {
+  id: Id;
+  texto: string;
+  /** La hipótesis de mantenimiento a la que se refiere, con las palabras del modelo. */
+  hipotesis: string;
+  /** Esa hipótesis resuelta a id por el servidor; null si no casa con ninguna. */
+  pone_a_prueba: Id | null;
+  /** Qué información concreta falta; "" si la pregunta no declara ninguna. */
+  dato_faltante: string;
+  /** Qué cambia en el análisis o el plan según la respuesta; "" si no se declaró. */
+  decision: string;
+  origen: OrigenPregunta;
+  estado: EstadoPregunta;
+  respuesta?: { texto: string; autor: "clinico" };
+  /**
+   * Una pregunta que llegó sin hipótesis ni decisión (las preguntas sueltas de
+   * un informe anterior): no se descarta ni se completa por adivinación, se
+   * marca para que el clínico decida qué hacer con ella.
+   */
+  revisar?: boolean;
+}
+
+/** Cuánto sostiene hoy una hipótesis lo observado. Nunca «confirmada»: una nota no confirma una hipótesis funcional. */
+export type EstadoHipotesis =
+  | "en_prueba"
+  | "sostenida"
+  | "modificada"
+  | "debilitada"
+  | "descartada";
+
 /**
  * Una línea de intervención, atada a su blanco y con su razón.
  *
@@ -412,7 +466,13 @@ export interface LineaIntervencion {
   intervencion: string;
   /** Sobre qué función o contingencia actúa, y por qué esta intervención y no otra. */
   porque: string;
-  /** El dato de `datos_faltantes` del que depende; null si no depende de ninguno. */
+  /** La pregunta de la que depende; null si no depende de ninguna. */
+  pregunta_id: Id | null;
+  /**
+   * El dato del que depende, tal como lo escribió el modelo. Se resuelve a
+   * `pregunta_id` por igualdad con el dato faltante de una pregunta; si no
+   * casa se conserva aquí y la interfaz avisa, en vez de perder la dependencia.
+   */
   depende_de: string | null;
   /**
    * Qué contingencia concreta pretende modificar. Viene de la antigua capa MC:
@@ -454,17 +514,50 @@ export interface PlanDeMonitorizacion {
 }
 
 /**
- * En qué punto está cada blanco del plan, según el clínico. Ver lib/plan.ts.
- *
- * No es contenido del informe sino una decisión sobre él, así que cambiarlo no
- * marca la sección como editada (invariante 6 habla de texto escrito a mano):
- * aprobar una propuesta no la convierte en texto del clínico.
+ * El estado único de un blanco, tal como se guardaba hasta la v5. Mezclaba dos
+ * preguntas distintas —«¿revisé la propuesta?» y «¿en qué fase del tratamiento
+ * está?»— y por eso desde la v6 se guarda como `EstadoBlanco`. Solo queda para
+ * migrar lo antiguo (lib/plan.ts#estadoBlancoDeLegado).
  */
 export type EstadoPlan = "propuesto" | "revisar" | "aprobado" | "en_curso" | "descartado";
 
+/** Qué ha decidido el clínico sobre la propuesta de la IA. */
+export type RevisionBlanco = "propuesto" | "confirmado" | "modificado" | "rechazado";
+
+/** En qué punto del tratamiento está el blanco. */
+export type FaseBlanco = "activo" | "en_pausa" | "resuelto";
+
+/**
+ * Revisión y fase de un blanco, por separado. Ver lib/plan.ts.
+ *
+ * No es contenido del informe sino una decisión sobre él, así que cambiarlo no
+ * marca la sección como editada (invariante 6 habla de texto escrito a mano):
+ * confirmar una propuesta no la convierte en texto del clínico. Un blanco
+ * rechazado no tiene fase (`null`): no está en el tratamiento.
+ */
+export interface EstadoBlanco {
+  revision: RevisionBlanco;
+  fase: FaseBlanco | null;
+}
+
 export interface HipotesisAlternativa {
+  id: Id;
   enunciado: string;
-  como_descartarla: string;
+  /** La hipótesis principal con la que compite, con las palabras del modelo. */
+  rival: string;
+  /** Esa hipótesis resuelta a id por el servidor; null si no casa con ninguna. */
+  rival_de: Id | null;
+  /** Qué observación apoyaría a esta alternativa. */
+  la_favoreceria: string;
+  /** Qué observación apoyaría a la hipótesis principal frente a ésta. */
+  favorece_principal: string;
+  /** La pregunta que las separa. */
+  pregunta_id: Id | null;
+  /**
+   * Solo mientras llega: el texto de la pregunta antes de convertirse en una
+   * `PreguntaClinica` enlazada (migrarAV6). Después no existe.
+   */
+  como_descartarla?: string;
 }
 
 // --- Capas de modalidad: ACT y DBT se generan en la misma llamada, para poder
@@ -675,10 +768,12 @@ export interface ProcedenciaElemento {
  * Versión del esquema del análisis. La 2 es la que da identidad a las entidades
  * (ver `Id`); la 3 funde la capa MC en el Plan; la 4 recuerda qué claves no
  * traía la respuesta (`campos_ausentes`); la 5 da apoyo y cita a las aristas y
- * procedencia a cada elemento. Un informe guardado de una versión anterior se
- * migra al leerlo; nunca se descarta. Ver lib/identidad.ts#migrarAV5.
+ * procedencia a cada elemento; la 6 unifica preguntas y datos faltantes en
+ * `preguntas`, da identidad a las hipótesis alternativas y estado a las de
+ * mantenimiento. Un informe guardado de una versión anterior se migra al
+ * leerlo; nunca se descarta. Ver lib/identidad.ts#migrarAV6.
  */
-export const VERSION_ANALISIS = 5;
+export const VERSION_ANALISIS = 6;
 
 export interface AnalisisFuncional {
   version: number;
@@ -708,9 +803,9 @@ export interface AnalisisFuncional {
   capa_act: CapaModalidadACT;
   capa_dbt: CapaModalidadDBT;
   hipotesis_alternativas: HipotesisAlternativa[];
-  preguntas_para_sesion: string[];
+  /** Preguntas y datos que faltan en una sola lista. Ver PreguntaClinica. */
+  preguntas: PreguntaClinica[];
   lineas_de_intervencion_tentativas: LineaIntervencion[];
-  datos_faltantes: DatoFaltante[];
   /** Principio 7: ciclos de acomodación del entorno, con quién y qué función. */
   acomodacion_entorno: Acomodacion[];
   /**
@@ -760,9 +855,10 @@ export interface AnalisisFuncional {
   /**
    * Estado de cada blanco del plan, por id de conducta problema. Solo guarda
    * las decisiones explícitas del clínico; lo que no está aquí se deriva (ver
-   * lib/plan.ts#estadoDeBlanco). El modelo nunca lo envía.
+   * lib/plan.ts#estadoDeBlanco). El modelo nunca lo envía. Hasta la v5 cada entrada era
+   * un `EstadoPlan` suelto; migrarAV6 lo separa en revisión y fase.
    */
-  estados_plan: Record<Id, EstadoPlan>;
+  estados_plan: Record<Id, EstadoBlanco>;
   /**
    * Procedencia por elemento (id de nodo o de arista). Solo guarda lo que se
    * apartó de «propuesta»; lo ausente es propuesta de la IA. La escribe solo la
@@ -804,10 +900,9 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "capa_act",
   "capa_dbt",
   "hipotesis_alternativas",
-  "preguntas_para_sesion",
+  "preguntas",
   "lineas_de_intervencion_tentativas",
   "plan_de_monitorizacion",
-  "datos_faltantes",
   "acomodacion_entorno",
   "valores_y_metas",
   "perdida_de_reforzadores",

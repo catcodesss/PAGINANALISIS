@@ -20,7 +20,7 @@ export type CampoAnalisis = keyof AnalisisFuncional;
 
 /**
  * Siempre presentes, cuesten lo que cuesten: el resumen orienta la lectura y
- * los datos faltantes son la salvaguarda que impide leer el informe como si
+ * las preguntas (con los datos que faltan) son la salvaguarda que impide leer el informe como si
  * fuera completo. No se ofrecen como opción porque no deben poder desactivarse.
  */
 const CAMPOS_SIEMPRE: CampoAnalisis[] = [
@@ -28,7 +28,7 @@ const CAMPOS_SIEMPRE: CampoAnalisis[] = [
   "siguiente_id",
   "aristas",
   "resumen_clinico",
-  "datos_faltantes",
+  "preguntas",
   "riesgo",
   "alertas",
   "campos_generados",
@@ -152,7 +152,8 @@ export const BLOQUES: Bloque[] = [
     etiqueta: "Preguntas para la sesión",
     descripcion: "Qué preguntar para confirmar o descartar cada hipótesis.",
     categoria: "Formulación y plan",
-    campos: ["preguntas_para_sesion"],
+    // Las hipótesis, para que cada pregunta pueda nombrar la que pone a prueba.
+    campos: ["hipotesis_mantenimiento", "preguntas"],
     peso: 1,
   },
   {

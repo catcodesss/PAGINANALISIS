@@ -20,51 +20,111 @@
  * anterior al 1.7.0, cuyas intervenciones eran textos sueltos sin conducta.
  */
 
+import { normalizarTexto } from "./citas";
+import { estaAbierta } from "./preguntas";
 import type {
   Alerta,
   AnalisisFuncional,
   ConductaAlternativa,
   ConductaProblema,
+  EstadoBlanco,
   EstadoPlan,
+  FaseBlanco,
   HipotesisMantenimiento,
+  PreguntaClinica,
   Id,
   LineaIntervencion,
   PlanDeMonitorizacion,
   PriorizacionBlanco,
+  RevisionBlanco,
 } from "./types";
 
-/** Los estados, en el orden en que se recorren. El primero es el de fábrica. */
-export const ESTADOS_PLAN = [
+/** Las revisiones, en el orden en que se recorren. La primera es la de fábrica. */
+export const REVISIONES = [
   { id: "propuesto", etiqueta: "Propuesto por IA" },
-  { id: "revisar", etiqueta: "Revisar" },
-  { id: "aprobado", etiqueta: "Aprobado" },
-  { id: "en_curso", etiqueta: "En curso" },
-  { id: "descartado", etiqueta: "Descartado" },
-] as const satisfies readonly { id: EstadoPlan; etiqueta: string }[];
+  { id: "confirmado", etiqueta: "Confirmado" },
+  { id: "modificado", etiqueta: "Modificado" },
+  { id: "rechazado", etiqueta: "Rechazado" },
+] as const satisfies readonly { id: RevisionBlanco; etiqueta: string }[];
 
-export const ETIQUETA_ESTADO_PLAN = Object.fromEntries(
-  ESTADOS_PLAN.map((e) => [e.id, e.etiqueta])
-) as Record<EstadoPlan, string>;
+export const ETIQUETA_REVISION = Object.fromEntries(
+  REVISIONES.map((e) => [e.id, e.etiqueta])
+) as Record<RevisionBlanco, string>;
 
-export function esEstadoPlan(valor: unknown): valor is EstadoPlan {
-  return ESTADOS_PLAN.some((e) => e.id === valor);
+export const FASES = [
+  { id: "activo", etiqueta: "Activo" },
+  { id: "en_pausa", etiqueta: "En pausa" },
+  { id: "resuelto", etiqueta: "Resuelto" },
+] as const satisfies readonly { id: FaseBlanco; etiqueta: string }[];
+
+export const ETIQUETA_FASE = Object.fromEntries(
+  FASES.map((e) => [e.id, e.etiqueta])
+) as Record<FaseBlanco, string>;
+
+export const ESTADO_DE_FABRICA: EstadoBlanco = { revision: "propuesto", fase: "activo" };
+
+export function esEstadoBlanco(valor: unknown): valor is EstadoBlanco {
+  if (typeof valor !== "object" || valor === null) return false;
+  const v = valor as Record<string, unknown>;
+  return (
+    REVISIONES.some((r) => r.id === v.revision) &&
+    (v.fase === null || FASES.some((f) => f.id === v.fase))
+  );
 }
 
 /**
- * El estado de un blanco. Sin decisión del clínico, lo que hay es una
- * propuesta de la IA — salvo que un validador haya señalado algo en esa
- * tarjeta: entonces el estado de partida es «Revisar». No se puede presentar
- * como propuesta normal algo que el propio sistema ya sabe que hay que mirar.
- * Una decisión explícita del clínico gana siempre: es criterio profesional.
+ * La correspondencia de los cinco estados antiguos, revisada con el clínico:
+ *
+ * | antes       | revisión   | fase   |
+ * |-------------|------------|--------|
+ * | propuesto   | propuesto  | activo |
+ * | revisar     | propuesto  | activo |
+ * | aprobado    | confirmado | activo |
+ * | en_curso    | confirmado | activo |
+ * | descartado  | rechazado  | —      |
+ *
+ * «Revisar» era un estado derivado de los avisos del validador (y a veces
+ * elegido a mano): sigue habiendo avisos y se siguen viendo en la tarjeta, pero
+ * ya no hace falta un estado para decir «mira esto». `aprobado` y `en_curso`
+ * caen en el mismo par: se pierde esa distinción, y es lo único que se pierde.
+ * Un valor que no es ninguno de los cinco devuelve null y se descarta.
  */
-export function estadoDeBlanco(
-  analisis: AnalisisFuncional,
-  conductaId: Id,
-  tieneAvisos: boolean
-): EstadoPlan {
-  const elegido = analisis.estados_plan?.[conductaId];
-  if (esEstadoPlan(elegido)) return elegido;
-  return tieneAvisos ? "revisar" : "propuesto";
+export function estadoBlancoDeLegado(valor: unknown): EstadoBlanco | null {
+  switch (valor as EstadoPlan) {
+    case "propuesto":
+    case "revisar":
+      return { revision: "propuesto", fase: "activo" };
+    case "aprobado":
+    case "en_curso":
+      return { revision: "confirmado", fase: "activo" };
+    case "descartado":
+      return { revision: "rechazado", fase: null };
+    default:
+      return null;
+  }
+}
+
+/** Un valor guardado, sea de la v6 o de una anterior, como estado actual; o null. */
+export function estadoBlancoGuardado(valor: unknown): EstadoBlanco | null {
+  return esEstadoBlanco(valor) ? valor : estadoBlancoDeLegado(valor);
+}
+
+/**
+ * El estado de un blanco. Sin decisión del clínico es una propuesta de la IA,
+ * activa. Los avisos del validador no cambian el estado: se ven en la tarjeta
+ * como lo que son, y una decisión explícita del clínico gana siempre porque es
+ * criterio profesional.
+ */
+export function estadoDeBlanco(analisis: AnalisisFuncional, conductaId: Id): EstadoBlanco {
+  const elegido = estadoBlancoGuardado(analisis.estados_plan?.[conductaId]);
+  return elegido ?? { ...ESTADO_DE_FABRICA };
+}
+
+/** «Confirmado · En pausa», o solo la revisión si no hay fase. */
+export function textoDeEstadoBlanco(estado: EstadoBlanco): string {
+  return estado.fase
+    ? `${ETIQUETA_REVISION[estado.revision]} · ${ETIQUETA_FASE[estado.fase]}`
+    : ETIQUETA_REVISION[estado.revision];
 }
 
 export interface AlternativaDeBlanco {
@@ -226,10 +286,10 @@ export function construirPlanPorBlanco(analisis: AnalisisFuncional): PlanPorBlan
 /**
  * El dato faltante del que depende una propuesta, si un validador lo señaló.
  *
- * Sale de las alertas `intervencion_depende_de_dato_faltante` y se busca en
- * `datos_faltantes` por su texto exacto: el mensaje lo compone
- * lib/validadores.ts con el `dato` entre comillas, así que no se interpreta
- * prosa del modelo, solo se relee lo que escribió el propio validador.
+ * Sale de las alertas `intervencion_depende_de_dato_faltante` y se busca en las
+ * preguntas por su dato exacto: el mensaje lo compone lib/validadores.ts con el
+ * dato entre comillas, así que no se interpreta prosa del modelo, solo se
+ * relee lo que escribió el propio validador.
  */
 export function datosFaltantesDe(
   analisis: AnalisisFuncional,
@@ -237,26 +297,52 @@ export function datosFaltantesDe(
 ): string[] {
   const datos = alertas
     .filter((a) => a.codigo === "intervencion_depende_de_dato_faltante")
-    .map((a) => analisis.datos_faltantes.find((d) => a.mensaje.includes(`"${d.dato}"`))?.dato)
+    .map(
+      (a) =>
+        analisis.preguntas.find(
+          (p) => p.dato_faltante && a.mensaje.includes(`"${p.dato_faltante}"`)
+        )?.dato_faltante
+    )
     .filter((d): d is string => Boolean(d));
   return [...new Set(datos)];
 }
 
 /**
- * De qué datos depende una intervención: lo que el modelo declaró en
- * `depende_de` y lo que detectó el validador V4 por su cuenta. Las dos fuentes
- * se suman a propósito: el validador existe para no depender de que el modelo
- * lo declare (invariante 3), y el modelo puede ver una dependencia que el
- * emparejamiento por palabras del validador no ve.
+ * De qué datos depende una intervención: la pregunta a la que el modelo la
+ * ató (`pregunta_id`, o `depende_de` si no llegó a resolverse) y lo que detectó
+ * el validador V4 por su cuenta. Las dos fuentes se suman a propósito: el
+ * validador existe para no depender de que el modelo lo declare (invariante 3),
+ * y el modelo puede ver una dependencia que el emparejamiento por palabras del
+ * validador no ve.
+ *
+ * Una pregunta ya respondida o descartada deja de condicionar la propuesta.
  */
 export function datosFaltantesDeIntervencion(
   analisis: AnalisisFuncional,
   item: IntervencionDeBlanco
 ): string[] {
-  const declarado = item.linea.depende_de?.trim();
+  const pregunta = item.linea.pregunta_id
+    ? analisis.preguntas.find((p) => p.id === item.linea.pregunta_id)
+    : undefined;
+  const declarado = pregunta
+    ? estaAbierta(pregunta)
+      ? pregunta.dato_faltante || pregunta.texto
+      : undefined
+    : item.linea.depende_de?.trim();
   return [
     ...new Set([...(declarado ? [declarado] : []), ...datosFaltantesDe(analisis, item.alertas)]),
   ];
+}
+
+/** La pregunta que declara este dato, para enlazar «Primero explorar» con ella. */
+export function preguntaDeDato(
+  analisis: AnalisisFuncional,
+  dato: string
+): PreguntaClinica | undefined {
+  const clave = normalizarTexto(dato);
+  return analisis.preguntas.find(
+    (p) => normalizarTexto(p.dato_faltante) === clave || normalizarTexto(p.texto) === clave
+  );
 }
 
 /** «Primero explorar: …». Los datos suelen traer su punto final; no se duplica. */

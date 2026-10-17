@@ -55,12 +55,13 @@ execFileSync(
 const require = createRequire(import.meta.url);
 const { numerarNota } = require(join(RAIZ, ".tmp-evals/citas.js"));
 const { normalizarAnalisis } = require(join(RAIZ, ".tmp-evals/parseAnalisis.js"));
-const { migrarAV5, sugerirConducta } = require(join(RAIZ, ".tmp-evals/identidad.js"));
+const { migrarAV6, sugerirConducta } = require(join(RAIZ, ".tmp-evals/identidad.js"));
 const { validarAnalisis } = require(join(RAIZ, ".tmp-evals/validadores.js"));
 const {
   construirPlanPorBlanco,
   datosFaltantesDe,
   estadoDeBlanco,
+  estadoBlancoDeLegado,
 } = require(join(RAIZ, ".tmp-evals/plan.js"));
 const { formatearInformeTexto } = require(join(RAIZ, ".tmp-evals/formatearInforme.js"));
 
@@ -182,7 +183,7 @@ prueba("todo aviso sobre el plan llega al texto exportado, junto a su propuesta"
 
 prueba("una propuesta que depende de un dato faltante se exporta como condicional", () => {
   const a = informe();
-  const dato = a.datos_faltantes[0].dato;
+  const dato = a.preguntas.find((p) => p.dato_faltante).dato_faltante;
   const alt = a.conductas_alternativas[0];
   a.alertas.push({
     codigo: "intervencion_depende_de_dato_faltante",
@@ -200,33 +201,58 @@ prueba("una propuesta que depende de un dato faltante se exporta como condiciona
   assert.ok(texto.includes(`Propuesta condicional: ${alt.conducta_propuesta}`));
 });
 
-prueba("estado: con avisos arranca en «Revisar», sin ellos en «Propuesto por IA»", () => {
+prueba("estado: sin decisión es una propuesta de la IA, activa; los avisos no cambian el estado", () => {
   const a = informe();
   const id = a.conductas_problema[0].id;
-  assert.equal(estadoDeBlanco(a, id, true), "revisar");
-  assert.equal(estadoDeBlanco(a, id, false), "propuesto");
+  assert.deepEqual(estadoDeBlanco(a, id), { revision: "propuesto", fase: "activo" });
 });
 
 prueba("estado: la decisión del clínico gana, y un valor inválido se ignora", () => {
   const a = informe();
   const id = a.conductas_problema[0].id;
-  a.estados_plan[id] = "aprobado";
-  assert.equal(estadoDeBlanco(a, id, true), "aprobado");
+  a.estados_plan[id] = { revision: "confirmado", fase: "en_pausa" };
+  assert.deepEqual(estadoDeBlanco(a, id), { revision: "confirmado", fase: "en_pausa" });
   a.estados_plan[id] = "inventado";
-  assert.equal(estadoDeBlanco(a, id, false), "propuesto");
+  assert.deepEqual(estadoDeBlanco(a, id), { revision: "propuesto", fase: "activo" });
+  a.estados_plan[id] = { revision: "confirmada", fase: "activo" };
+  assert.deepEqual(estadoDeBlanco(a, id), { revision: "propuesto", fase: "activo" });
+});
+
+prueba("estado: la correspondencia de los cinco estados antiguos es la acordada", () => {
+  assert.deepEqual(estadoBlancoDeLegado("propuesto"), { revision: "propuesto", fase: "activo" });
+  assert.deepEqual(estadoBlancoDeLegado("revisar"), { revision: "propuesto", fase: "activo" });
+  assert.deepEqual(estadoBlancoDeLegado("aprobado"), { revision: "confirmado", fase: "activo" });
+  assert.deepEqual(estadoBlancoDeLegado("en_curso"), { revision: "confirmado", fase: "activo" });
+  assert.deepEqual(estadoBlancoDeLegado("descartado"), { revision: "rechazado", fase: null });
+  assert.equal(estadoBlancoDeLegado("inventado"), null);
+});
+
+prueba("estado: un informe guardado con estados v5 se migra por la tabla, idempotente y sin perder blancos", () => {
+  const a = informe();
+  const [uno, dos, tres, cuatro, cinco] = a.conductas_problema.map((c) => c.id);
+  a.estados_plan = { [uno]: "revisar", [dos]: "aprobado", [tres]: "en_curso", [cuatro]: "descartado", [cinco]: "inventado" };
+  const migrado = migrarAV6(a);
+  assert.deepEqual(migrado.estados_plan[uno], { revision: "propuesto", fase: "activo" });
+  assert.deepEqual(migrado.estados_plan[dos], { revision: "confirmado", fase: "activo" });
+  assert.deepEqual(migrado.estados_plan[tres], { revision: "confirmado", fase: "activo" });
+  assert.deepEqual(migrado.estados_plan[cuatro], { revision: "rechazado", fase: null });
+  assert.equal(cinco in migrado.estados_plan, false, "un valor inválido se descarta");
+  assert.deepEqual(migrarAV6(JSON.parse(JSON.stringify(migrado))), migrado);
 });
 
 prueba("el estado viaja al texto exportado", () => {
   const a = informe();
   const primera = construirPlanPorBlanco(a).tarjetas[0].conducta;
-  a.estados_plan[primera.id] = "descartado";
-  assert.ok(textoDelPlan(a).includes("Blanco 1 · Prioridad 1 · Estado: Descartado"));
+  a.estados_plan[primera.id] = { revision: "rechazado", fase: null };
+  assert.ok(textoDelPlan(a).includes("Blanco 1 · Prioridad 1 · Estado: Rechazado"));
+  a.estados_plan[primera.id] = { revision: "confirmado", fase: "en_pausa" };
+  assert.ok(textoDelPlan(a).includes("Estado: Confirmado · En pausa"));
 });
 
 prueba("un informe guardado sin estados se abre con estados vacíos", () => {
   const a = informe();
   delete a.estados_plan;
-  const migrado = migrarAV5(a);
+  const migrado = migrarAV6(a);
   assert.deepEqual(migrado.estados_plan, {});
   assert.doesNotThrow(() => construirPlanPorBlanco(migrado));
 });
@@ -326,7 +352,7 @@ prueba("un informe anterior (textos sueltos, un solo plan) se migra sin blanco y
   viejo.plan_de_monitorizacion = {
     que_se_mide: "Evitaciones.", con_que: "Autorregistro.", cada_cuanto: "Diario.", criterio_de_revision: "",
   };
-  const a = migrarAV5(viejo);
+  const a = migrarAV6(viejo);
   assert.deepEqual(
     a.lineas_de_intervencion_tentativas.map((l) => [l.intervencion, l.conducta_id]),
     [["Entrenamiento en asertividad.", null], ["Reducir el consumo.", null]]
@@ -337,7 +363,7 @@ prueba("un informe anterior (textos sueltos, un solo plan) se migra sin blanco y
   assert.equal(plan.intervencionesSinBlanco.length, 2);
   assert.equal(plan.monitorizacionSinBlanco.length, 1);
   // Y abrirlo dos veces no cambia nada.
-  assert.deepEqual(migrarAV5(structuredClone(a)).lineas_de_intervencion_tentativas, a.lineas_de_intervencion_tentativas);
+  assert.deepEqual(migrarAV6(structuredClone(a)).lineas_de_intervencion_tentativas, a.lineas_de_intervencion_tentativas);
 });
 
 prueba("sin ningún plan de medición, el exportado lo dice en vez de callarlo", () => {

@@ -745,10 +745,56 @@ prueba("un dato faltante sin su porqué se conserva, no se descarta", () => {
     datos_faltantes: ["Frecuencia de los episodios.", { dato: "Otro hueco." }, "", 7],
   };
   const antiguo = normalizarAnalisis(crudo, lineas);
-  assert.deepEqual(antiguo.datos_faltantes, [
-    { dato: "Frecuencia de los episodios.", por_que_importa: "" },
-    { dato: "Otro hueco.", por_que_importa: "" },
-  ]);
+  // Desde la v6 los datos faltantes son preguntas con `dato_faltante`; el motivo
+  // vacío se queda vacío (la interfaz no lo rellena).
+  const datos = antiguo.preguntas.filter((p) => p.dato_faltante);
+  assert.deepEqual(
+    datos.map((p) => [p.dato_faltante, p.decision]),
+    [
+      ["Frecuencia de los episodios.", ""],
+      ["Otro hueco.", ""],
+    ]
+  );
+});
+
+prueba("V4 por id: una intervención atada a una pregunta abierta se señala aunque no comparta palabras", () => {
+  const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+  // Sin los datos faltantes heredados del fixture: solo cuenta la pregunta de este caso.
+  delete crudo.datos_faltantes;
+  delete crudo.preguntas_para_sesion;
+  crudo.preguntas = [
+    { pregunta: "¿Qué pasa con los compañeros?", hipotesis: null, dato: "Zzzzzzzz irrelevante.", decision: "Cambia el blanco." },
+  ];
+  crudo.lineas_de_intervencion_tentativas = [
+    { conducta: "", intervencion: "Entrenamiento en habilidades de comunicación.", porque: "x", depende_de: "Zzzzzzzz irrelevante." },
+  ];
+  const a = normalizarAnalisis(crudo, lineas);
+  assert.equal(a.lineas_de_intervencion_tentativas[0].pregunta_id, a.preguntas[0].id, "depende_de se resuelve a id");
+  assert.equal(a.lineas_de_intervencion_tentativas[0].depende_de, null);
+  const alertas = validarAnalisis(a, nota).alertas.filter(
+    (x) => x.codigo === "intervencion_depende_de_dato_faltante"
+  );
+  assert.equal(alertas.length, 1);
+  assert.ok(alertas[0].ruta.startsWith("lineas_de_intervencion_tentativas[0]"));
+
+  // Respondida: ya no condiciona nada.
+  a.preguntas[0].estado = "respondida";
+  const sin = validarAnalisis(a, nota).alertas.filter(
+    (x) => x.codigo === "intervencion_depende_de_dato_faltante"
+  );
+  assert.equal(sin.length, 0);
+});
+
+prueba("un depende_de que no casa con ninguna pregunta se conserva como texto", () => {
+  const crudo = JSON.parse(JSON.stringify(fixture.analisis));
+  crudo.preguntas = [];
+  crudo.datos_faltantes = [];
+  crudo.lineas_de_intervencion_tentativas = [
+    { conducta: "", intervencion: "Registro de conducta.", porque: "x", depende_de: "Un dato que nadie declaró." },
+  ];
+  const a = normalizarAnalisis(crudo, lineas);
+  assert.equal(a.lineas_de_intervencion_tentativas[0].pregunta_id, null);
+  assert.equal(a.lineas_de_intervencion_tentativas[0].depende_de, "Un dato que nadie declaró.");
 });
 
 prueba("el porqué de un dato faltante no dispara la alerta de dependencia por su cuenta", () => {

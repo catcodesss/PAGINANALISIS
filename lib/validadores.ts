@@ -2,6 +2,7 @@ import type { AnalisisFuncional, Alerta } from "./types";
 // Solo el tipo: no añade nada al JavaScript emitido.
 import type { IdAncla } from "./secciones";
 import { normalizarTexto } from "./citas";
+import { estaAbierta } from "./preguntas";
 
 /**
  * Comprobaciones deterministas sobre el informe ya generado. No usan IA: son
@@ -286,35 +287,61 @@ function validarConductasSeguridad(a: AnalisisFuncional, nota: string): Alerta[]
 /**
  * V4 · Una intervención que depende de un dato que el propio informe declara
  * faltante debe presentarse como condicional, no como plan.
+ *
+ * Dos vías, y se suman: la dependencia que el modelo declaró (la intervención
+ * apunta a su pregunta por id) y la que el validador encuentra por su cuenta
+ * comparando palabras (invariante 3: no depende de que el modelo la declare).
+ * Una pregunta respondida o descartada ya no condiciona nada.
  */
 function validarDependenciaDeDatosFaltantes(a: AnalisisFuncional): Alerta[] {
-  if (a.datos_faltantes.length === 0) return [];
+  const abiertas = a.preguntas.filter((p) => estaAbierta(p) && p.dato_faltante.trim());
+  if (abiertas.length === 0) return [];
   const alertas: Alerta[] = [];
+  const intervenciones = textosDeIntervencion(a);
+  // Una intervención no se señala dos veces por la misma pregunta aunque la
+  // encuentren las dos vías.
+  const vistas = new Set<string>();
 
-  for (const falta of a.datos_faltantes) {
-    // Solo el hueco entra en la comparación, no el porqué: el porqué habla del
-    // análisis ("deja sin decidir la priorización") y sus palabras coinciden
-    // con las de cualquier intervención, así que emparejar por él dispararía
-    // la alerta en propuestas que no dependen del dato.
-    const palabrasFalta = palabrasSignificativas(falta.dato, 7);
+  const avisar = (
+    falta: (typeof abiertas)[number],
+    intervencion: { ruta: string; texto: string }
+  ) => {
+    const clave = `${falta.id}|${intervencion.ruta}`;
+    if (vistas.has(clave)) return;
+    vistas.add(clave);
+    alertas.push({
+      codigo: "intervencion_depende_de_dato_faltante",
+      origen: "validador",
+      gravedad: "media",
+      ruta: intervencion.ruta,
+      mensaje: `Depende de información que el informe declara faltante: "${falta.dato_faltante}".${
+        falta.decision ? ` ${falta.decision}` : ""
+      } Trátalo como condicional hasta confirmarlo.`,
+      elemento: intervencion.texto.trim(),
+    });
+  };
+
+  for (const falta of abiertas) {
+    // Por id: la intervención que el modelo ató a esta pregunta.
+    a.lineas_de_intervencion_tentativas.forEach((l, i) => {
+      if (l.pregunta_id === falta.id && l.intervencion.trim()) {
+        avisar(falta, { ruta: `lineas_de_intervencion_tentativas[${i}]`, texto: l.intervencion });
+      }
+    });
+
+    // Por palabras: solo el hueco entra en la comparación, no la decisión: la
+    // decisión habla del análisis ("deja sin decidir la priorización") y sus
+    // palabras coinciden con las de cualquier intervención, así que emparejar
+    // por ella dispararía la alerta en propuestas que no dependen del dato.
+    const palabrasFalta = palabrasSignificativas(falta.dato_faltante, 7);
     if (palabrasFalta.size === 0) continue;
-
-    for (const intervencion of textosDeIntervencion(a)) {
+    for (const intervencion of intervenciones) {
       const comunes = interseccion(
         palabrasFalta,
         palabrasSignificativas(intervencion.texto, 7)
       );
       if (comunes.length === 0) continue;
-      alertas.push({
-        codigo: "intervencion_depende_de_dato_faltante",
-        origen: "validador",
-        gravedad: "media",
-        ruta: intervencion.ruta,
-        mensaje: `Depende de información que el informe declara faltante: "${falta.dato}".${
-          falta.por_que_importa ? ` ${falta.por_que_importa}` : ""
-        } Trátalo como condicional hasta confirmarlo.`,
-        elemento: intervencion.texto.trim(),
-      });
+      avisar(falta, intervencion);
     }
   }
 
@@ -415,6 +442,7 @@ export function seccionDeRuta(ruta: string): IdAncla | null {
     // pregunta —qué hay que comprobar antes de dar el informe por bueno— desde
     // dos secciones distintas. Ahora comparten una.
     case "datos_faltantes":
+    case "preguntas":
       return "verificacion";
     case "riesgo":
       return "riesgo";

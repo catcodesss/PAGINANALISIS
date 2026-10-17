@@ -1,5 +1,5 @@
 import type { AnalisisFuncional } from "./types";
-import { migrarAV5 } from "./identidad";
+import { migrarAV6 } from "./identidad";
 import {
   cifrar,
   crearTestigo,
@@ -260,7 +260,7 @@ class RepositorioLocal implements Repositorio {
       ...entrada,
       /*
         Un informe guardado puede ser de cualquier versión anterior: el
-        historial es local y nadie lo actualiza por detrás. migrarAV5 le da
+        historial es local y nadie lo actualiza por detrás. migrarAV6 le da
         identidad a sus entidades y funde la cadena DBT duplicada; es
         idempotente, así que uno que ya sea v2 pasa por aquí sin cambiar.
 
@@ -270,7 +270,7 @@ class RepositorioLocal implements Repositorio {
         el usuario pudiera hacer nada. Leyendo, el peor caso es que el informe
         se migre otra vez la próxima vez que se abra.
       */
-      analisis: migrarAV5(entrada.analisis),
+      analisis: migrarAV6(entrada.analisis),
     };
   }
 

@@ -1,4 +1,12 @@
 import { ETIQUETA_ESQUEMA, type Alerta, type AnalisisFuncional, type Cita, type Situacion } from "./types";
+import { referenciaEnTexto } from "./citas";
+import {
+  ETIQUETA_ESTADO_HIPOTESIS,
+  ETIQUETA_ESTADO_PREGUNTA,
+  estaAbierta,
+  preguntasPrioritarias,
+  rotuloHipotesis,
+} from "./preguntas";
 import { agruparAlertas } from "./validadores";
 import { situacionDeLaCadenaDBT } from "./identidad";
 import {
@@ -56,7 +64,7 @@ import {
   datosFaltantesDeIntervencion,
   enumerarDatosFaltantes,
   estadoDeBlanco,
-  ETIQUETA_ESTADO_PLAN,
+  textoDeEstadoBlanco,
   type AlternativaDeBlanco,
   type IntervencionDeBlanco,
   type MonitorizacionDeBlanco,
@@ -246,11 +254,7 @@ export function derivarVistasProsa(analisis: AnalisisFuncional): VistasProsaDeri
  */
 function textoCita(cita: Cita): string {
   if (!cita.verificada) return "inferido — sin cita literal en la nota";
-  const rango =
-    cita.linea_inicio === cita.linea_fin
-      ? `línea ${cita.linea_inicio}`
-      : `líneas ${cita.linea_inicio}–${cita.linea_fin}`;
-  return `"${cita.texto}" (${rango})`;
+  return `"${cita.texto}" (${referenciaEnTexto(cita)})`;
 }
 
 function seccion(titulo: string, cuerpo: string, estado: EstadoVacio = "sin_hallazgos"): string {
@@ -425,14 +429,34 @@ export function formatearInformeTexto(
   // y la sección no viaja con el documento.
   const apartadosVerificacion: string[] = [];
 
-  if (analisis.datos_faltantes.length > 0) {
+  if (analisis.preguntas.length > 0) {
+    // Abiertas primero. Todo lo que el clínico anotó viaja con la pregunta y
+    // dicho a mano: el documento se lee fuera de la pantalla, y no puede
+    // confundir su respuesta con texto del análisis (invariante 6).
+    const ordenadas = [
+      ...analisis.preguntas.filter(estaAbierta),
+      ...analisis.preguntas.filter((p) => !estaAbierta(p)),
+    ];
     apartadosVerificacion.push(
-      "## Datos faltantes",
-      analisis.datos_faltantes
-        .map(
-          (d) =>
-            `- ${d.dato}${d.por_que_importa ? `\n  Por qué importa: ${d.por_que_importa}` : "\n  Sin motivo declarado."}`
-        )
+      "## Preguntas abiertas",
+      ordenadas
+        .map((p) => {
+          const hipotesis = p.pone_a_prueba
+            ? analisis.hipotesis_mantenimiento.find((h) => h.id === p.pone_a_prueba)
+            : undefined;
+          const lineas = [
+            `- [${ETIQUETA_ESTADO_PREGUNTA[p.estado]}] ${p.texto}`,
+            ...(hipotesis || p.hipotesis
+              ? [`  Pone a prueba: ${hipotesis ? rotuloHipotesis(hipotesis) : p.hipotesis}`]
+              : []),
+            ...(p.dato_faltante && p.dato_faltante !== p.texto
+              ? [`  Dato que falta: ${p.dato_faltante}`]
+              : []),
+            ...(p.decision ? [`  Qué cambia: ${p.decision}`] : []),
+            ...(p.respuesta ? [`  Respuesta del clínico (anotada a mano): ${p.respuesta.texto}`] : []),
+          ];
+          return lineas.join("\n");
+        })
         .join("\n")
     );
   }
@@ -618,7 +642,7 @@ export function formatearInformeTexto(
       prosa.hipotesis
         .map(
           (h) =>
-            `- [${h.conducta}] (Apoyo en la nota: ${describirGrado(gradoDeHipotesis(h, nodos, analisis.aristas)).etiqueta}) ${h.enunciado}\n  Para qué le sirve (función): ${h.funcion}${h.origen ? `\n  ${h.origen} ${verboRelacion(h.direccion)} ${h.conducta}${relacionInferida(h) ? " (relación inferida)" : ""}` : ""}${textoApoyoRelacion(analisis, h)}\n  Procedencia: ${marcaDeExportacion(analisis, h.id)}`
+            `- [${h.conducta}] (Apoyo en la nota: ${describirGrado(gradoDeHipotesis(h, nodos, analisis.aristas)).etiqueta}) ${h.enunciado}\n  Estado: ${ETIQUETA_ESTADO_HIPOTESIS[h.estado]}${h.motivo_estado ? ` — ${h.motivo_estado}` : ""}\n  Para qué le sirve (función): ${h.funcion}${h.origen ? `\n  ${h.origen} ${verboRelacion(h.direccion)} ${h.conducta}${relacionInferida(h) ? " (relación inferida)" : ""}` : ""}${textoApoyoRelacion(analisis, h)}\n  Procedencia: ${marcaDeExportacion(analisis, h.id)}`
         )
         .join("\n")
     )
@@ -754,11 +778,13 @@ export function formatearInformeTexto(
     "PLAN POR BLANCO",
     [
       ...plan.tarjetas.flatMap((t, n) => {
-        const estado = estadoDeBlanco(analisis, t.conducta.id, avisosDeTarjeta(t).length > 0);
+        const estado = estadoDeBlanco(analisis, t.conducta.id);
         const cabecera = `Blanco ${n + 1} · ${
           t.prioridad ? `Prioridad ${t.prioridad}` : "Sin priorizar"
-        } · Estado: ${ETIQUETA_ESTADO_PLAN[estado]}`;
-        if (estado === "descartado") {
+        } · Estado: ${textoDeEstadoBlanco(estado)}${
+          avisosDeTarjeta(t).length > 0 && estado.revision === "propuesto" ? " · Requiere revisión" : ""
+        }`;
+        if (estado.revision === "rechazado") {
           return [cabecera, `  ${t.conducta.descripcion}`, ""];
         }
         const funciones =
@@ -912,7 +938,21 @@ export function formatearInformeTexto(
     seccion(
       "HIPÓTESIS ALTERNATIVAS",
       analisis.hipotesis_alternativas
-        .map((h) => `- ${h.enunciado}\n  Cómo descartarla: ${h.como_descartarla}`)
+        .map((h) => {
+          const rival = h.rival_de
+            ? analisis.hipotesis_mantenimiento.find((x) => x.id === h.rival_de)
+            : undefined;
+          const pregunta = h.pregunta_id
+            ? analisis.preguntas.find((p) => p.id === h.pregunta_id)
+            : undefined;
+          return [
+            `- ${h.enunciado}`,
+            ...(rival || h.rival ? [`  Compite con: ${rival ? rotuloHipotesis(rival) : h.rival}`] : []),
+            ...(h.la_favoreceria ? [`  La favorecería: ${h.la_favoreceria}`] : []),
+            ...(h.favorece_principal ? [`  Favorecería a la principal: ${h.favorece_principal}`] : []),
+            ...(pregunta ? [`  Para separarlas: ${pregunta.texto}`] : []),
+          ].join("\n");
+        })
         .join("\n")
     )
   );
@@ -939,7 +979,16 @@ export function formatearInformeTexto(
               .trim()
           );
 
-  bloques["preguntas"] = seccion("PREGUNTAS PARA LA PRÓXIMA SESIÓN", listaOTexto(analisis.preguntas_para_sesion, vacioDe("preguntas_para_sesion")));
+  bloques["preguntas"] = seccion(
+    "PREGUNTAS PARA LA PRÓXIMA SESIÓN",
+    listaOTexto(
+      preguntasPrioritarias(analisis, 3).map((p) => p.texto),
+      vacioDe("preguntas")
+    ) +
+      (analisis.preguntas.filter(estaAbierta).length > 3
+        ? "\n(Las demás preguntas abiertas están en «Preguntas abiertas».)"
+        : "")
+  );
   bloques["intervencion"] =
     plan.intervencionesSinBlanco.length === 0
       ? ""

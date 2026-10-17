@@ -1,5 +1,6 @@
 import { resolverCita } from "./citas";
-import { migrarAV5 } from "./identidad";
+import { ESTADOS_HIPOTESIS, normalizarPreguntas } from "./preguntas";
+import { migrarAV6 } from "./identidad";
 import { procesoAV3 } from "./procesosACT";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 import {
@@ -17,7 +18,7 @@ import {
   type ConductaAlternativa,
   type ConductaProblema,
   type Consecuencia,
-  type DatoFaltante,
+  type EstadoHipotesis,
   type DeficitOInterferencia,
   type DimensionVariable,
   type EsquemaDeContingencia,
@@ -365,6 +366,14 @@ function normalizarHipotesisMantenimiento(valor: unknown): HipotesisMantenimient
     tipo_relacion: TIPOS_RELACION.includes(d.tipo_relacion as TipoRelacion)
       ? (d.tipo_relacion as TipoRelacion)
       : "causal",
+    // Solo el clínico la cambia: lo que el modelo escriba aquí se ignora, y una
+    // hipótesis nace «en prueba». Una guardada conserva el estado que se le dio
+    // (por eso se lee solo cuando ya tiene id, como pasa con un informe del historial).
+    estado:
+      typeof d.id === "string" && ESTADOS_HIPOTESIS.includes(d.estado as EstadoHipotesis)
+        ? (d.estado as EstadoHipotesis)
+        : "en_prueba",
+    motivo_estado: typeof d.id === "string" ? comoTexto(d.motivo_estado) : "",
   };
 }
 
@@ -398,10 +407,22 @@ function normalizarConductaAlternativa(valor: unknown): ConductaAlternativa {
 
 function normalizarHipotesisAlternativa(valor: unknown): HipotesisAlternativa {
   const d = comoObjeto(valor);
-  return {
+  const alternativa: HipotesisAlternativa = {
+    id: typeof d.id === "string" ? d.id : SIN_ID,
     enunciado: comoTexto(d.enunciado),
-    como_descartarla: comoTexto(d.como_descartarla),
+    // El modelo nombra con qué hipótesis compite (`compite_con`); una guardada
+    // ya trae `rival`. El servidor lo resuelve a id una vez (lib/identidad.ts).
+    rival: comoTexto(d.rival) || comoTexto(d.compite_con),
+    rival_de: comoIdONulo(d.rival_de),
+    la_favoreceria: comoTexto(d.la_favoreceria),
+    favorece_principal: comoTexto(d.favorece_principal),
+    pregunta_id: comoIdONulo(d.pregunta_id),
   };
+  // La pregunta que las separa: el modelo la escribe en `pregunta`, un informe
+  // anterior en `como_descartarla`. migrarAV6 la convierte en PreguntaClinica.
+  const pregunta = comoTexto(d.pregunta) || comoTexto(d.como_descartarla);
+  if (pregunta && alternativa.pregunta_id === null) alternativa.como_descartarla = pregunta;
+  return alternativa;
 }
 
 /**
@@ -523,29 +544,6 @@ function normalizarAcomodacion(valor: unknown, lineas: string[]): Acomodacion {
 }
 
 /**
- * COMPATIBILIDAD: hasta que "datos_faltantes" pasó a llevar el porqué, cada
- * hueco era una cadena suelta. Los informes ya guardados en el historial (ver
- * lib/repositorio.ts) siguen trayendo esa forma, y un modelo que no obedezca
- * el esquema puede devolverla otra vez. Una cadena se acepta como el dato, con
- * el porqué vacío: la interfaz lo muestra como "sin motivo declarado", que es
- * honesto — mejor eso que perder el hueco entero o inventarle una razón.
- */
-function normalizarDatoFaltante(valor: unknown): DatoFaltante {
-  if (typeof valor === "string") return { dato: valor, por_que_importa: "" };
-  const d = comoObjeto(valor);
-  return {
-    dato: comoTexto(d.dato),
-    por_que_importa: comoTexto(d.por_que_importa),
-  };
-}
-
-function normalizarDatosFaltantes(valor: unknown): DatoFaltante[] {
-  return comoArreglo<unknown>(valor)
-    .map(normalizarDatoFaltante)
-    .filter((d) => d.dato.trim().length > 0);
-}
-
-/**
  * null cuando la nota no da base para un plan de medición. Un plan inventado
  * sería peor que ninguno: el clínico lo seguiría, y mediría lo que a nadie le
  * consta que haya que medir. Si el objeto llega pero sin criterio de revisión,
@@ -588,6 +586,10 @@ function camposAusentes(d: Record<string, unknown>): string[] {
     if (campo === "reglas_verbales") {
       return d.reglas_verbales == null && comoObjeto(d.capa_act).reglas_verbales == null;
     }
+    // Un informe anterior a la v6 trae las preguntas en sus dos claves de antes.
+    if (campo === "preguntas") {
+      return d.preguntas == null && d.datos_faltantes == null && d.preguntas_para_sesion == null;
+    }
     return d[campo] == null;
   });
 }
@@ -600,7 +602,7 @@ function camposAusentes(d: Record<string, unknown>): string[] {
 export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFuncional {
   const d = comoObjeto(json);
 
-  // migrarAV5 cierra el paso: asigna los ids que los normalizadores dejaron
+  // migrarAV6 cierra el paso: asigna los ids que los normalizadores dejaron
   // vacíos y resuelve las referencias por prosa una sola vez. Que la respuesta
   // recién llegada y el informe rescatado del historial pasen los dos por aquí
   // es lo que garantiza que un análisis no pueda existir sin identidad.
@@ -638,12 +640,11 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     hipotesis_alternativas: comoArreglo<unknown>(d.hipotesis_alternativas).map(
       normalizarHipotesisAlternativa
     ),
-    preguntas_para_sesion: comoArregloDeTexto(d.preguntas_para_sesion),
+    preguntas: normalizarPreguntas(d.preguntas),
     lineas_de_intervencion_tentativas: normalizarLineasIntervencion(
       d.lineas_de_intervencion_tentativas
     ),
     plan_de_monitorizacion: normalizarPlanesMonitorizacion(d.plan_de_monitorizacion),
-    datos_faltantes: normalizarDatosFaltantes(d.datos_faltantes),
     acomodacion_entorno: comoArreglo<unknown>(d.acomodacion_entorno).map((a) =>
       normalizarAcomodacion(a, lineas)
     ),
@@ -655,7 +656,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     // Lo fija la ruta según lo que se haya pedido, no el modelo.
     campos_generados: [],
     campos_ausentes: camposAusentes(d),
-    // Lo fija la ruta tras la llamada a OpenAI (ver app/api/analizar/route.ts).
+    // Lo fija la ruta tras la llamada a la API (ver app/api/analizar/route.ts).
     meta: { modelo: "", version_prompt: "" },
     // Solo la escribe la interfaz cuando el clínico edita; el modelo nunca.
     secciones_editadas: [],
@@ -670,7 +671,12 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
   if ("capa_mc" in d) {
     (analisis as unknown as Record<string, unknown>).capa_mc = d.capa_mc;
   }
-  return migrarAV5(analisis);
+  // Igual con las dos listas que la v6 fundió en `preguntas`: un JSON anterior
+  // las trae, y migrarAV6 las convierte sin perder ninguna.
+  for (const clave of ["datos_faltantes", "preguntas_para_sesion"]) {
+    if (clave in d) (analisis as unknown as Record<string, unknown>)[clave] = d[clave];
+  }
+  return migrarAV6(analisis);
 }
 
 /**
@@ -757,12 +763,11 @@ const NORMALIZADORES_POR_CAMPO: {
     comoArreglo<unknown>(d.hipotesis_alternativas).map(
       normalizarHipotesisAlternativa
     ),
-  preguntas_para_sesion: (d) => comoArregloDeTexto(d.preguntas_para_sesion),
+  preguntas: (d) => normalizarPreguntas(d.preguntas),
   lineas_de_intervencion_tentativas: (d) =>
     normalizarLineasIntervencion(d.lineas_de_intervencion_tentativas),
   plan_de_monitorizacion: (d) =>
     normalizarPlanesMonitorizacion(d.plan_de_monitorizacion),
-  datos_faltantes: (d) => normalizarDatosFaltantes(d.datos_faltantes),
   acomodacion_entorno: (d, lineas) =>
     comoArreglo<unknown>(d.acomodacion_entorno).map((a) =>
       normalizarAcomodacion(a, lineas)

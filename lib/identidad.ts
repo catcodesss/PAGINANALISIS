@@ -1,4 +1,5 @@
-import { SIN_CITA } from "./citas";
+import { normalizarTexto, SIN_CITA } from "./citas";
+import { ESTADOS_HIPOTESIS, nuevoIdPregunta, preguntasDeLegado } from "./preguntas";
 import { raicesSignificativas } from "./validadores";
 import {
   VERSION_ANALISIS,
@@ -13,6 +14,7 @@ import { construirNodosGrafo } from "./grafo";
 import { ANCLAS_DE_BLOQUE } from "./secciones";
 import { esProcesoV3, procesoAV3 } from "./procesosACT";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
+import { estadoBlancoGuardado } from "./plan";
 
 /**
  * Identidad de las entidades del análisis: asignarla y resolver las referencias
@@ -247,6 +249,11 @@ function asignarIds(a: AnalisisFuncional): number {
   a.reglas_verbales.forEach((r, i) => ponerId(r, idDe("rvb", i)));
   a.capa_act.procesos_act.forEach((p, i) => ponerId(p, idDe("pac", i)));
   a.capa_dbt.analisis_de_soluciones.forEach((s, i) => ponerId(s, idDe("sol", i)));
+  a.hipotesis_alternativas.forEach((h, i) => ponerId(h, idDe("hal", i)));
+  // Las preguntas toman el número libre y no la posición: una pregunta borrada
+  // no puede dejar su id a otra, porque una intervención podría seguir
+  // apuntándole.
+  for (const p of a.preguntas) ponerId(p, nuevoIdPregunta(a.preguntas));
 
   a.situaciones.forEach((s, i) => {
     ponerId(s, idDe("sit", i));
@@ -286,6 +293,8 @@ export function todosLosIds(a: AnalisisFuncional): Id[] {
     ...a.reglas_verbales.map((r) => r.id),
     ...a.capa_act.procesos_act.map((p) => p.id),
     ...a.capa_dbt.analisis_de_soluciones.map((s) => s.id),
+    ...a.hipotesis_alternativas.map((h) => h.id),
+    ...a.preguntas.map((p) => p.id),
     ...a.situaciones.map((s) => s.id),
   ];
   for (const s of a.situaciones) {
@@ -372,6 +381,43 @@ function resolverReferencias(a: AnalisisFuncional): void {
   for (const m of a.plan_de_monitorizacion) {
     if (m.conducta_id === null) {
       m.conducta_id = mejorCoincidencia(m.conducta, conductas);
+    }
+  }
+
+  // Las preguntas y las alternativas nombran la hipótesis con sus palabras y
+  // se resuelven una vez, igual que el resto. Una alternativa cuyo rival no casa
+  // queda en null y se ve como hueco, no se enlaza al primero que se parezca.
+  const hipotesis = a.hipotesis_mantenimiento.map((h) => ({
+    id: h.id,
+    texto: `${h.conducta} ${h.enunciado} ${h.funcion}`,
+  }));
+  for (const alt of a.hipotesis_alternativas) {
+    if (alt.rival_de === null && alt.rival.trim()) {
+      alt.rival_de = mejorCoincidencia(alt.rival, hipotesis);
+    }
+  }
+  for (const p of a.preguntas) {
+    if (p.pone_a_prueba === null && p.hipotesis.trim()) {
+      p.pone_a_prueba = mejorCoincidencia(p.hipotesis, hipotesis);
+    }
+  }
+  // La pregunta que separa a una alternativa de su rival pone a prueba a ese rival.
+  for (const alt of a.hipotesis_alternativas) {
+    const pregunta = a.preguntas.find((p) => p.id === alt.pregunta_id);
+    if (pregunta && pregunta.pone_a_prueba === null) pregunta.pone_a_prueba = alt.rival_de;
+  }
+  // `depende_de` es el dato escrito por el modelo; su sitio ahora es una
+  // pregunta. Se casa por igualdad de texto con el dato faltante (hoy son la
+  // misma cadena); lo que no casa se deja como está y la interfaz avisa.
+  for (const l of a.lineas_de_intervencion_tentativas) {
+    if (l.pregunta_id !== null || !l.depende_de) continue;
+    const clave = normalizarTexto(l.depende_de);
+    const pregunta = a.preguntas.find(
+      (p) => normalizarTexto(p.dato_faltante) === clave || normalizarTexto(p.texto) === clave
+    );
+    if (pregunta) {
+      l.pregunta_id = pregunta.id;
+      l.depende_de = null;
     }
   }
 
@@ -515,6 +561,7 @@ function fundirCapaMc(analisis: AnalisisFuncional): void {
       // se conserva con la contingencia como texto visible en vez de perderlo.
       intervencion: intervencion || contingencia,
       porque: "",
+      pregunta_id: null,
       depende_de: null,
       contingencia_objetivo: contingencia || null,
       precauciones: precauciones || null,
@@ -594,7 +641,119 @@ const APOYOS_ARISTA = ["textual", "parcial", "inferido"];
 const ESTADOS_PROCEDENCIA = ["propuesta", "confirmado", "editado", "creado"];
 
 /**
- * Lleva un análisis de cualquier versión anterior a la actual (v5).
+ * El estado único de cada blanco (propuesto, revisar, aprobado, en_curso,
+ * descartado) se separa en revisión y fase (lib/plan.ts#estadoBlancoDeLegado).
+ * Idempotente: un estado ya separado se deja como está, y lo que no es ninguno
+ * de los dos formatos se descarta, igual que antes se descartaba un valor
+ * inválido.
+ */
+function llevarEstadosDeBlancoAV6(analisis: AnalisisFuncional): void {
+  for (const [id, valor] of Object.entries(analisis.estados_plan)) {
+    const estado = estadoBlancoGuardado(valor);
+    if (estado) analisis.estados_plan[id] = estado;
+    else delete analisis.estados_plan[id];
+  }
+}
+
+/**
+ * Las cuatro formas antiguas de «una cosa que falta saber» pasan a ser
+ * preguntas:
+ *
+ * - cada dato faltante, con `decision = por_que_importa`;
+ * - cada pregunta suelta, marcada para revisar;
+ * - el `como_descartarla` de cada hipótesis alternativa, como pregunta
+ *   enlazada a ella (la resolución del rival llega después, en
+ *   `resolverReferencias`);
+ * - `depende_de` de las intervenciones, que se resuelve ahí mismo por igualdad
+ *   de texto.
+ *
+ * Las claves viejas se borran al convertirlas, y eso es lo que hace al paso
+ * idempotente: una segunda pasada ya no las encuentra. Nada se pierde porque
+ * cada texto vive ahora en una pregunta.
+ */
+function llevarPreguntasAV6(analisis: AnalisisFuncional): void {
+  const crudo = analisis as unknown as Record<string, unknown>;
+  if (!Array.isArray(analisis.preguntas)) analisis.preguntas = [];
+
+  // Un informe guardado antes de la v6 no trae los campos nuevos: se rellenan
+  // con lo neutro (sin rival, sin pregunta, hipótesis «en prueba»), que es lo
+  // que un hueco debe ser.
+  for (const h of analisis.hipotesis_mantenimiento) {
+    if (!ESTADOS_HIPOTESIS.includes(h.estado)) h.estado = "en_prueba";
+    if (typeof h.motivo_estado !== "string") h.motivo_estado = "";
+  }
+  for (const alt of analisis.hipotesis_alternativas ?? []) {
+    if (typeof alt.rival !== "string") alt.rival = "";
+    if (alt.rival_de === undefined) alt.rival_de = null;
+    if (typeof alt.la_favoreceria !== "string") alt.la_favoreceria = "";
+    if (typeof alt.favorece_principal !== "string") alt.favorece_principal = "";
+    if (alt.pregunta_id === undefined) alt.pregunta_id = null;
+  }
+  // En un informe anterior al 1.7.0 las intervenciones son cadenas sueltas: se
+  // normalizan más adelante (migrarAV2) y ya nacen con `pregunta_id`.
+  for (const l of analisis.lineas_de_intervencion_tentativas) {
+    if (typeof l === "object" && l !== null && l.pregunta_id === undefined) l.pregunta_id = null;
+  }
+
+  // Las que ya traen contenido pero aún no id (las del modelo) lo toman antes
+  // que las derivadas, para que el orden de los ids siga el de la lista.
+  for (const p of analisis.preguntas) {
+    if (sinId(p)) p.id = nuevoIdPregunta(analisis.preguntas);
+  }
+
+  const delegado = preguntasDeLegado(
+    crudo.datos_faltantes,
+    crudo.preguntas_para_sesion,
+    analisis.preguntas
+  );
+  analisis.preguntas.push(...delegado);
+  delete crudo.datos_faltantes;
+  delete crudo.preguntas_para_sesion;
+
+  for (const alt of analisis.hipotesis_alternativas ?? []) {
+    const texto = alt.como_descartarla?.trim();
+    delete alt.como_descartarla;
+    if (!texto || alt.pregunta_id) continue;
+    // Si el modelo ya preguntó lo mismo en `preguntas`, la alternativa se enlaza
+    // a esa pregunta en vez de crear una copia con las mismas palabras.
+    const clave = normalizarTexto(texto);
+    const igual = analisis.preguntas.find((p) => normalizarTexto(p.texto) === clave);
+    if (igual) {
+      alt.pregunta_id = igual.id;
+      continue;
+    }
+    const id = nuevoIdPregunta(analisis.preguntas);
+    analisis.preguntas.push({
+      id,
+      texto,
+      hipotesis: alt.rival,
+      pone_a_prueba: null,
+      dato_faltante: "",
+      decision: alt.la_favoreceria || "",
+      origen: "ia",
+      estado: "abierta",
+    });
+    alt.pregunta_id = id;
+  }
+}
+
+/**
+ * Lleva un análisis de cualquier versión anterior a la actual (v6).
+ *
+ * La v6 une las preguntas y los datos faltantes en `preguntas` (ver
+ * llevarPreguntasAV6), da identidad a las hipótesis alternativas y estado a las
+ * de mantenimiento. Idempotente y sin pérdida. El estado de los blancos del
+ * plan sigue como estaba hasta que se decida su correspondencia.
+ */
+export function migrarAV6(analisis: AnalisisFuncional): AnalisisFuncional {
+  llevarPreguntasAV6(analisis);
+  migrarAV5(analisis);
+  analisis.version = VERSION_ANALISIS;
+  return analisis;
+}
+
+/**
+ * Lleva un análisis de cualquier versión anterior a la v5.
  *
  * La v5 añade tres cosas, todas sin pérdida:
  *
@@ -616,7 +775,7 @@ const ESTADOS_PROCEDENCIA = ["propuesta", "confirmado", "editado", "creado"];
  * (lib/parseAnalisis.ts), al leer del historial (lib/repositorio.ts) y al
  * cargar el informe de ejemplo (lib/maquetaInforme.ts, vía el normalizador).
  */
-export function migrarAV5(analisis: AnalisisFuncional): AnalisisFuncional {
+function migrarAV5(analisis: AnalisisFuncional): AnalisisFuncional {
   migrarAV4(analisis);
   const crudo = analisis as unknown as Record<string, unknown>;
   const veniaDeAntes =
@@ -725,6 +884,7 @@ function migrarAV2(analisis: AnalisisFuncional): AnalisisFuncional {
   if (!analisis.estados_plan || typeof analisis.estados_plan !== "object") {
     analisis.estados_plan = {};
   }
+  llevarEstadosDeBlancoAV6(analisis);
   analisis.version = VERSION_ANALISIS;
   return analisis;
 }

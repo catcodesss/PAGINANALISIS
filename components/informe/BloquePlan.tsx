@@ -23,7 +23,9 @@ import { useMemo, useState, type ReactNode } from "react";
 import type {
   Alerta,
   AnalisisFuncional,
-  EstadoPlan,
+  EstadoBlanco,
+  FaseBlanco,
+  RevisionBlanco,
   LineaIntervencion,
   PlanDeMonitorizacion,
 } from "@/lib/types";
@@ -34,10 +36,11 @@ import {
   construirPlanPorBlanco,
   datosFaltantesDe,
   datosFaltantesDeIntervencion,
-  enumerarDatosFaltantes,
+  preguntaDeDato,
   estadoDeBlanco,
-  ESTADOS_PLAN,
-  ETIQUETA_ESTADO_PLAN,
+  FASES,
+  REVISIONES,
+  textoDeEstadoBlanco,
   type AlternativaDeBlanco,
   type IntervencionDeBlanco,
   type MonitorizacionDeBlanco,
@@ -48,6 +51,7 @@ import { sugerirConducta } from "@/lib/identidad";
 import { Apoyo, BloqueBase, MenuAcciones, TablaCadena } from "./primitivas";
 import { Seccion } from "./seccion";
 import { BotonAgregar, TextoEditable, useEdicion } from "../edicionManual";
+import { EnlacePregunta } from "./PreguntasClinicas";
 
 type EditarSeccion = (
   seccionId: string | null,
@@ -322,11 +326,28 @@ function AvisoEnLinea({ alerta }: { alerta: Alerta }) {
 }
 
 /** «Información insuficiente…»: encabeza una propuesta condicional. */
-function Insuficiente({ datos, que }: { datos: string[]; que: string }) {
+function Insuficiente({
+  datos,
+  que,
+  analisis,
+}: {
+  datos: string[];
+  que: string;
+  analisis: AnalisisFuncional;
+}) {
   return (
     <p className="mb-1.5 rounded border-l-[3px] border-warn bg-warn/5 py-1.5 pl-3 pr-2 text-sm leading-relaxed text-ink">
       <span className="font-medium text-warn">Información insuficiente para {que}.</span>{" "}
-      Primero explorar: {enumerarDatosFaltantes(datos)}
+      Primero explorar:{" "}
+      {datos.map((d, i) => (
+        <span key={i}>
+          {i > 0 && "; "}
+          <EnlacePregunta pregunta={preguntaDeDato(analisis, d)}>
+            {d.trim().replace(/\.+$/, "")}
+          </EnlacePregunta>
+        </span>
+      ))}
+      .
     </p>
   );
 }
@@ -347,16 +368,22 @@ function TarjetaDeBlanco({
   const edicion = useEdicion();
   const { conducta, alternativas, intervenciones, monitorizacion } = tarjeta;
   const avisos = avisosDeTarjeta(tarjeta);
-  const estado = estadoDeBlanco(analisis, conducta.id, avisos.length > 0);
-  const descartado = estado === "descartado";
+  const estado = estadoDeBlanco(analisis, conducta.id);
+  const descartado = estado.revision === "rechazado";
   const sinFuncion =
     tarjeta.hipotesis.length === 0 && tarjeta.funcionesDeSituacion.length === 0;
 
   // Cambiar el estado es una decisión sobre la propuesta, no texto escrito a
   // mano: por eso va con `null` y no marca la sección como editada.
-  function cambiarEstado(nuevo: EstadoPlan) {
+  function cambiarEstado(nuevo: Partial<EstadoBlanco>) {
     onEditarSeccion(null, (c) => {
-      c.estados_plan = { ...c.estados_plan, [conducta.id]: nuevo };
+      const actual = estadoDeBlanco(c, conducta.id);
+      const revision = nuevo.revision ?? actual.revision;
+      // Un blanco rechazado no está en el tratamiento: no tiene fase. Al
+      // reabrirlo vuelve a «activo», que es de donde parte cualquier propuesta.
+      const fase: FaseBlanco | null =
+        revision === "rechazado" ? null : (nuevo.fase ?? actual.fase ?? "activo");
+      c.estados_plan = { ...c.estados_plan, [conducta.id]: { revision, fase } };
     });
   }
 
@@ -370,6 +397,7 @@ function TarjetaDeBlanco({
           conducta_id: conducta.id,
           intervencion: texto,
           porque: "",
+          pregunta_id: null,
           depende_de: null,
           contingencia_objetivo: null,
           precauciones: null,
@@ -396,7 +424,7 @@ function TarjetaDeBlanco({
               {tarjeta.prioridad
                 ? `Prioridad ${tarjeta.prioridad}`
                 : `Sin priorizar · importancia ${conducta.importancia}`}
-              {avisos.length > 0 && (estado === "propuesto" || estado === "revisar") && (
+              {avisos.length > 0 && estado.revision === "propuesto" && (
                 <span className="text-warn"> · Requiere revisión</span>
               )}
             </p>
@@ -409,25 +437,43 @@ function TarjetaDeBlanco({
           </div>
           <div className="shrink-0">
             {edicion ? (
-              <label className="flex items-center gap-2 print:hidden">
-                <span className="sr-only">Estado del blanco {numero}</span>
-                <select
-                  value={estado}
-                  onChange={(e) => cambiarEstado(e.target.value as EstadoPlan)}
-                  className="rounded border border-divider bg-surface px-2 py-1 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-                >
-                  {ESTADOS_PLAN.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.etiqueta}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="flex flex-wrap items-center gap-2 print:hidden">
+                <label className="flex items-center gap-2">
+                  <span className="sr-only">Revisión del blanco {numero}</span>
+                  <select
+                    value={estado.revision}
+                    onChange={(e) => cambiarEstado({ revision: e.target.value as RevisionBlanco })}
+                    className="rounded border border-divider bg-surface px-2 py-1 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                  >
+                    {REVISIONES.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.etiqueta}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {estado.fase !== null && (
+                  <label className="flex items-center gap-2">
+                    <span className="sr-only">Fase del blanco {numero}</span>
+                    <select
+                      value={estado.fase}
+                      onChange={(e) => cambiarEstado({ fase: e.target.value as FaseBlanco })}
+                      className="rounded border border-divider bg-surface px-2 py-1 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                    >
+                      {FASES.map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.etiqueta}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
             ) : null}
             <span
               className={`${edicion ? "hidden print:inline" : "inline"} font-mono text-[10px] uppercase tracking-wide text-ink-muted`}
             >
-              {ETIQUETA_ESTADO_PLAN[estado]}
+              {textoDeEstadoBlanco(estado)}
             </span>
           </div>
         </div>
@@ -598,10 +644,10 @@ function Intervencion({
             en vez de un plan completo apoyado en lo que falta.
           */}
           {!linea.intervencion ? (
-            <Insuficiente datos={faltan.length > 0 ? faltan : ["qué mantiene esta conducta"]} que="proponer intervención" />
+            <Insuficiente datos={faltan.length > 0 ? faltan : ["qué mantiene esta conducta"]} que="proponer intervención" analisis={analisis} />
           ) : (
             <>
-              {faltan.length > 0 && <Insuficiente datos={faltan} que="darla por propuesta" />}
+              {faltan.length > 0 && <Insuficiente datos={faltan} que="darla por propuesta" analisis={analisis} />}
               {faltan.length > 0 && (
                 <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
                   Propuesta condicional
@@ -802,12 +848,7 @@ function Alternativa({
             leerse como plan y pasa a leerse como condicional.
           */}
           {faltan.length > 0 && (
-            <p className="mb-1.5 rounded border-l-[3px] border-warn bg-warn/5 py-1.5 pl-3 pr-2 text-sm leading-relaxed text-ink">
-              <span className="font-medium text-warn">
-                Información insuficiente para darla por propuesta.
-              </span>{" "}
-              Primero explorar: {enumerarDatosFaltantes(faltan)}
-            </p>
+            <Insuficiente datos={faltan} que="darla por propuesta" analisis={analisis} />
           )}
           {faltan.length > 0 && (
             <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">

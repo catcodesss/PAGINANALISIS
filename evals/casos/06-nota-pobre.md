@@ -21,7 +21,7 @@ Paciente acude por ansiedad. Refiere malestar en el trabajo. Dice que le cuesta 
     "id": "datos-faltantes-poblado",
     "descripcion": "La sección de datos faltantes debe estar bien poblada",
     "tipo": "debe_aparecer",
-    "ambito": "datos_faltantes",
+    "ambito": "preguntas",
     "patron": "[a-z]"
   },
   {
