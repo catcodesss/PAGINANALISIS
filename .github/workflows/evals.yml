@@ -44,6 +44,12 @@ jobs:
       - name: El razonamiento previo no sale del servidor
         run: node --experimental-strip-types evals/razonamiento.test.mjs
 
+      - name: Cobertura de la nota y segmentación en frases
+        run: node evals/cobertura.test.mjs
+
+      - name: El espacio de trabajo no esconde avisos ni secciones
+        run: node evals/espacio.test.mjs
+
       - name: Coherencia entre TypeScript, CSS y componentes
         run: node evals/coherencia.test.mjs
 

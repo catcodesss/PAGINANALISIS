@@ -106,3 +106,49 @@ export const ANCLAS_DE_BLOQUE = Object.fromEntries(
     ANCLAS_INFORME.filter((a) => a.bloque === b).map((a) => a.id),
   ])
 ) as Record<IdSeccion, IdAncla[]>;
+
+/*
+  ESPACIO DE TRABAJO (fase 5). Las pestañas desaparecen: en pantalla hay dos
+  vistas —Mapa y Blancos— más una cabecera, un raíl, un Inspector y la Fuente.
+  Los cinco bloques de arriba siguen siendo la estructura del DOCUMENTO
+  exportado (texto, Word e impresión), y sus anclas siguen siendo los ids que
+  guardan `secciones_editadas` y los avisos. Lo que cambia es dónde se ve cada
+  ancla en pantalla, y eso lo dice DONDE_SE_VE. Si una vista nueva no encaja
+  aquí, se amplía esta lista; no se ensancha ningún tipo a `string`.
+*/
+
+export const VISTAS_ESPACIO = [
+  { id: "mapa", titulo: "Mapa" },
+  { id: "blancos", titulo: "Blancos" },
+] as const satisfies readonly { id: string; titulo: string }[];
+
+export type IdVista = (typeof VISTAS_ESPACIO)[number]["id"];
+
+/** Los sitios del espacio donde puede verse algo. */
+export type LugarEspacio = IdVista | "raíl" | "inspector" | "cabecera" | "bandeja";
+
+/**
+ * Dónde se ve en pantalla cada ancla del documento. Toda ancla tiene sitio:
+ * moverla de pestaña no puede esconderla (regla 4 de la fase 5).
+ * `evals/coherencia.test.mjs` comprueba que cada lugar nombrado se pinta.
+ */
+export const DONDE_SE_VE = {
+  conductas: "mapa",
+  "variables-moduladoras": "mapa",
+  situaciones: "mapa",
+  modalidad: "mapa",
+  riesgo: "cabecera",
+  resumen: "raíl",
+  "hipotesis-principal": "inspector",
+  prioridades: "blancos",
+  preguntas: "raíl",
+  "hipotesis-mantenimiento": "raíl",
+  "hipotesis-origen": "raíl",
+  formulacion: "raíl",
+  "conductas-alternativas": "blancos",
+  intervencion: "blancos",
+  monitorizacion: "blancos",
+  "hipotesis-alternativas": "inspector",
+  verificacion: "bandeja",
+  "niveles-confianza": "mapa",
+} as const satisfies Record<IdAncla, LugarEspacio>;

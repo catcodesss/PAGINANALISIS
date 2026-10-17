@@ -34,6 +34,8 @@ import PanelRecomendaciones from "@/components/PanelRecomendaciones";
 import { usePreferencias } from "@/components/usePreferencias";
 import { ausentesTrasReanalisis } from "@/lib/vacios";
 import { calcularApoyoAristas } from "@/lib/apoyoAristas";
+import { migrarAV6 } from "@/lib/identidad";
+import { fusionarPreguntas } from "@/lib/preguntas";
 import { cerrarEdicion } from "@/lib/procedenciaEdicion";
 import PreguntasDatosFaltantes, {
   type ResultadoPreguntas,
@@ -332,7 +334,18 @@ export default function Home() {
     setAnalisis((previo) => {
       if (!previo) return previo;
       const actualizado = structuredClone(previo);
+      // Reanalizar las preguntas no pisa lo que el clínico ya trabajó: se
+      // conservan las respondidas, descartadas, suyas o del paso previo.
+      if (fragmento.preguntas) {
+        fragmento = {
+          ...fragmento,
+          preguntas: fusionarPreguntas(previo.preguntas, fragmento.preguntas),
+        };
+      }
       Object.assign(actualizado, fragmento);
+      // El fragmento llega sin ids ni referencias resueltas: se completan con
+      // el mismo paso idempotente que usa el análisis recién generado.
+      migrarAV6(actualizado);
       actualizado.campos_ausentes = ausentesTrasReanalisis(previo, fragmento);
       // Las citas de los nodos pueden haber cambiado: el apoyo de las
       // relaciones se vuelve a calcular, no se arrastra el de antes.
@@ -620,27 +633,7 @@ export default function Home() {
                   {fechaGeneracion}
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={manejarCopiarInforme}
-                    className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-                  >
-                    {copiado ? "Copiado" : "Copiar informe"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={manejarDescargarDocx}
-                    className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-                  >
-                    Descargar Word
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => window.print()}
-                    className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-                  >
-                    Imprimir / Guardar como PDF
-                  </button>
+                  {/* Copiar, Word e imprimir viven en «Exportar ▾» de la cabecera del informe. */}
                   <button
                     type="button"
                     onClick={manejarNuevoAnalisis}
@@ -658,6 +651,11 @@ export default function Home() {
                 notaOriginal={ultimoTextoEnviado}
                 onAnalisisActualizado={manejarAnalisisActualizado}
                 onEditarSeccion={manejarEditarSeccion}
+                acciones={{
+                  onCopiar: manejarCopiarInforme,
+                  copiado,
+                  onWord: manejarDescargarDocx,
+                }}
               />
             </div>
           )}

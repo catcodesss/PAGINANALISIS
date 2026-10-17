@@ -98,29 +98,7 @@ export default function VistaEjemplo({
       */}
       <div className="mx-auto max-w-[96rem] px-4 py-8 sm:px-6">
         <div className="mb-6 flex flex-wrap gap-2 print:hidden">
-          <button
-            type="button"
-            onClick={copiar}
-            className="rounded border border-divider bg-surface px-3 py-2 text-sm text-ink transition-colors hover:border-accent hover:text-accent"
-          >
-            {copiado ? "Copiado" : "Copiar informe"}
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              descargarDocx(analisis, referenciaCaso, fecha, orden(), true)
-            }
-            className="rounded border border-divider bg-surface px-3 py-2 text-sm text-ink transition-colors hover:border-accent hover:text-accent"
-          >
-            Descargar Word
-          </button>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="rounded border border-divider bg-surface px-3 py-2 text-sm text-ink transition-colors hover:border-accent hover:text-accent"
-          >
-            Imprimir / Guardar como PDF
-          </button>
+          {/* Copiar, Word e imprimir viven en «Exportar ▾» de la cabecera. */}
           <Link
             href="/"
             className="rounded bg-accent px-3 py-2 text-sm font-medium texto-sobre-acento transition-colors hover:bg-accent/90"
@@ -143,6 +121,12 @@ export default function VistaEjemplo({
             }))
           }
           onEditarSeccion={editarSeccion}
+          acciones={{
+            onCopiar: copiar,
+            copiado,
+            onWord: () => descargarDocx(analisis, referenciaCaso, fecha, orden(), true),
+          }}
+          esEjemplo
         />
       </div>
     </div>

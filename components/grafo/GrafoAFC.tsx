@@ -13,7 +13,6 @@ import {
   agregarArista,
   agregarNodo,
   actualizarEtiquetaNodo,
-  borrarNodo,
   construirNodosGrafo,
   type CarrilGrafo,
   type NodoGrafo,
@@ -28,17 +27,16 @@ import { TERMINOS, terminoDeContingencia, terminoEnTexto, type IdTermino } from 
 import { describirGrado, gradoDeNumero } from "@/lib/gradoApoyo";
 import { interAfc, poppinsAfc } from "./fuentesAfc";
 import { ChevronRight } from "lucide-react";
+import { ETIQUETA_TIPO, etiquetaApoyo, etiquetaTipoNodo } from "./etiquetasNodo";
+import { useEspacio } from "../espacio/contexto";
 import { alertasPorNodo } from "@/lib/alertasNodo";
-import { AvisosDelNodo, InsigniaAlerta } from "./InsigniaAlerta";
-import { ApoyoRelacion, InsigniaProcedencia, MuestraTrazo } from "./ProcedenciaElemento";
-import { confirmarElemento } from "@/lib/procedencia";
+import { InsigniaAlerta } from "./InsigniaAlerta";
 import type { ApoyoArista } from "@/lib/types";
 
 interface GrafoAFCProps {
   analisis: AnalisisFuncional;
   notaOriginal: string;
   estilo: EstiloGrafo;
-  onEditar: (mutar: (copia: AnalisisFuncional) => void) => void;
   /**
    * Una decisión sobre la propuesta de la IA (confirmar), no texto del clínico:
    * no marca la sección como editada. Confirmar no es editar (invariante 6).
@@ -84,28 +82,6 @@ function trazadoAFC(desde: Caja, hasta: Caja): string {
   const curva = Math.max(10, Math.abs(y2 - y1) / 2) * (abajo ? 1 : -1);
   return `M ${x1} ${y1} C ${x1} ${y1 + curva}, ${x2} ${y2 - curva}, ${x2} ${y2}`;
 }
-
-/**
- * La etiqueta clara de cada tipo de nodo. Los que tienen sigla técnica la
- * llevan al lado en pequeño, con su definición al pasar el cursor
- * (TERMINO_DE_TIPO y lib/terminos.ts). Ed y EC no comparten palabra: uno
- * indica que la conducta funciona ahí y el otro provoca la reacción.
- */
-const ETIQUETA_TIPO: Record<TipoNodoGrafo, string> = {
-  om: TERMINOS.om.claro,
-  moduladora: "Moduladora",
-  ed: TERMINOS.ed.claro,
-  ec: TERMINOS.ec.claro,
-  regla_verbal: "Regla verbal",
-  encubierta: "Encubierta",
-  conducta: "Conducta",
-  repertorio: "Repertorio activo",
-  alternativa: "Conducta alternativa",
-  consecuencia: "Consecuencia",
-  consecuencia_alternativa: "Consecuencia necesaria",
-  funcion: TERMINOS.funcion.claro,
-  valor: "Valor",
-};
 
 const TERMINO_DE_TIPO: Partial<Record<TipoNodoGrafo, IdTermino>> = {
   om: "om",
@@ -161,22 +137,6 @@ const CLASE_TIPO: Record<TipoNodoGrafo, string> = {
   funcion: "border-l-cyan-500",
   valor: "border-l-teal-500",
 };
-
-/** El tipo de relación en palabras, para la Ficha. */
-const TIPO_RELACION: Record<TipoArista, string> = {
-  secuencial: "secuencia",
-  moderadora: "modula",
-  bucle: "bucle",
-};
-
-/** Un eslabón «acción» no se rotula como encubierto: es conducta observable. */
-function etiquetaTipoNodo(nodo: NodoGrafo): string {
-  return nodo.tipo === "encubierta" && nodo.detalle === "accion" ? "Eslabón · acción" : ETIQUETA_TIPO[nodo.tipo];
-}
-
-function etiquetaApoyo(apoyo: 1 | 2 | 3) {
-  return describirGrado(gradoDeNumero(apoyo)).etiqueta;
-}
 
 function Nodo({
   nodo,
@@ -456,111 +416,40 @@ function BotonAgregarNodo({
   );
 }
 
-export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar, onDecidir }: GrafoAFCProps) {
+export default function GrafoAFC({ analisis, notaOriginal, estilo, onDecidir }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const redibujar = useRef<() => void>(() => {});
-  const pila = useRef<AnalisisFuncional[]>([]);
-  const rehacer = useRef<AnalisisFuncional[]>([]);
-  const [seleccionado, setSeleccionado] = useState<string | null>(null);
+  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita: abrirCita, citaEnFuente } = useEspacio();
   const [modoConectar, setModoConectar] = useState(false);
   const [origenConexion, setOrigenConexion] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<1 | 2 | 3 | null>(null);
   const [soloApoyado, setSoloApoyado] = useState(false);
-  const [lineaActiva, setLineaActiva] = useState<number | null>(null);
   const [trazos, setTrazos] = useState<Trazo[]>([]);
-  const [puedeDeshacer, setPuedeDeshacer] = useState(false);
-  const [puedeRehacer, setPuedeRehacer] = useState(false);
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
-  const nodoSeleccionado = nodos.find((n) => n.id === seleccionado) ?? null;
   const alertasDeNodo = useMemo(() => alertasPorNodo(analisis), [analisis]);
-  const notaRef = useRef<HTMLDivElement>(null);
-  const [cajonAbierto, setCajonAbierto] = useState(false);
-  // Solo escritorio (≥1280 px): la Ficha ocupa su columna del grid o la cede.
-  const [fichaVisible, setFichaVisible] = useState(true);
-  const citaSeleccionada = nodoSeleccionado?.evidencia?.verificada ? nodoSeleccionado.evidencia : null;
-  const relacionesSeleccionado = nodoSeleccionado
-    ? analisis.aristas
-        .filter((a) => a.desde === nodoSeleccionado.id || a.hasta === nodoSeleccionado.id)
-        .map((a) => {
-          const sale = a.desde === nodoSeleccionado.id;
-          const otro = nodos.find((n) => n.id === (sale ? a.hasta : a.desde));
-          return {
-            id: a.id,
-            apoyo: a.apoyo,
-            sentido: sale ? "Lleva a" : "Recibe de",
-            tipo: TIPO_RELACION[a.tipo],
-            etiqueta: otro ? `${etiquetaTipoNodo(otro)}: ${otro.etiqueta}` : "[elemento sin etiqueta]",
-          };
-        })
-    : [];
   const avisos = (id: string) => alertasDeNodo.get(id) ?? [];
+  // La vista DBT sigue pintando su propio panel de detalle hasta la 5B: le
+  // basta con las líneas de la nota y la que resalta la Fuente.
   const lineas = useMemo(() => notaOriginal.replace(/\r\n/g, "\n").split("\n"), [notaOriginal]);
-
-  function aplicar(mutacion: (copia: AnalisisFuncional) => void) {
-    pila.current.push(structuredClone(analisis));
-    if (pila.current.length > 80) pila.current.shift();
-    rehacer.current = [];
-    setPuedeDeshacer(true);
-    setPuedeRehacer(false);
-    onEditar(mutacion);
-  }
-
-  function restaurar(estado: AnalisisFuncional) {
-    onEditar((copia) => Object.assign(copia, structuredClone(estado)));
-  }
-
-  function deshacer() {
-    const anterior = pila.current.pop();
-    if (!anterior) return;
-    rehacer.current.push(structuredClone(analisis));
-    setPuedeDeshacer(pila.current.length > 0);
-    setPuedeRehacer(true);
-    setSeleccionado(null);
-    restaurar(anterior);
-  }
-
-  function rehacerAccion() {
-    const siguiente = rehacer.current.pop();
-    if (!siguiente) return;
-    pila.current.push(structuredClone(analisis));
-    setPuedeDeshacer(true);
-    setPuedeRehacer(rehacer.current.length > 0);
-    setSeleccionado(null);
-    restaurar(siguiente);
-  }
+  const lineaActiva = citaEnFuente?.linea_inicio ?? null;
 
   function seleccionarNodo(nodo: NodoGrafo) {
     if (!modoConectar) {
-      setSeleccionado(nodo.id);
-      setCajonAbierto(true);
-      // La cita del nodo se resalta sola en la nota del panel.
-      if (nodo.evidencia?.verificada) enfocarLinea(nodo.evidencia.linea_inicio);
+      seleccionar(nodo.id);
       return;
     }
     if (!origenConexion) {
       setOrigenConexion(nodo.id);
-      setSeleccionado(nodo.id);
+      seleccionar(nodo.id);
       return;
     }
     aplicar((copia) => agregarArista(copia, origenConexion, nodo.id));
     setOrigenConexion(null);
-    setSeleccionado(nodo.id);
-  }
-
-  /** Lleva la nota del panel a una línea sin mover la página. */
-  function enfocarLinea(linea: number) {
-    requestAnimationFrame(() => {
-      const nota = notaRef.current;
-      const el = nota?.querySelector<HTMLElement>(`#nota-linea-${linea}`);
-      if (nota && el) nota.scrollTop = el.offsetTop - nota.clientHeight / 2;
-    });
+    seleccionar(nodo.id);
   }
 
   function irACita(nodo: NodoGrafo) {
-    if (!nodo.evidencia?.verificada) return;
-    setLineaActiva(nodo.evidencia.linea_inicio);
-    setCajonAbierto(true);
-    enfocarLinea(nodo.evidencia.linea_inicio);
+    if (nodo.evidencia?.verificada) abrirCita(nodo.evidencia);
   }
 
   useLayoutEffect(() => {
@@ -688,7 +577,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar, onD
     <div className="print:contents">
       <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
         <button type="button" disabled={!puedeDeshacer} onClick={deshacer} className="rounded border border-divider px-3 py-1.5 text-xs text-ink disabled:opacity-40">Deshacer</button>
-        <button type="button" disabled={!puedeRehacer} onClick={rehacerAccion} className="rounded border border-divider px-3 py-1.5 text-xs text-ink disabled:opacity-40">Rehacer</button>
+        <button type="button" disabled={!puedeRehacer} onClick={rehacer} className="rounded border border-divider px-3 py-1.5 text-xs text-ink disabled:opacity-40">Rehacer</button>
         <button
           type="button"
           disabled={!conectable}
@@ -714,12 +603,9 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar, onD
           <input type="checkbox" checked={soloApoyado} onChange={(e) => setSoloApoyado(e.target.checked)} />
           Ver solo lo apoyado por la nota
         </label>
-        {!esDBT && !fichaVisible && (
-          <button type="button" onClick={() => setFichaVisible(true)} aria-label="Mostrar la ficha" title="Mostrar la ficha" className="ml-auto hidden h-6 w-6 items-center justify-center rounded-full border border-divider bg-surface text-sm leading-none text-ink-muted hover:text-ink xl:flex">›</button>
-        )}
       </div>
 
-      <div className={`grid min-w-0 print:block ${esDBT ? "gap-5" : `xl:items-start xl:transition-[grid-template-columns,column-gap] xl:duration-200 ${fichaVisible ? "xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-5 min-[1536px]:grid-cols-[minmax(0,1fr)_24rem]" : "xl:grid-cols-[minmax(0,1fr)_0rem] xl:gap-0"}`}`}>
+      <div className="min-w-0 print:block">
         <div className={esAFC ? `${s.scroll} min-w-0 print:hidden` : "contents"}>
         <div
           ref={contenedorRef}
@@ -746,7 +632,7 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar, onD
                   renderNodo={renderNodoDBT}
                   seleccionado={seleccionado}
                   onSeleccionar={seleccionarNodo}
-                  onCerrar={() => { setSeleccionado(null); setLineaActiva(null); }}
+                  onCerrar={() => seleccionar(null)}
                   describirTipo={(n) => ETIQUETA_TIPO[n.tipo]}
                   lineas={lineas}
                   lineaActiva={lineaActiva}
@@ -776,79 +662,6 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onEditar, onD
         </div>
         </div>
 
-        {/* Abajo de 1280 px, la Ficha es un cajón: un fondo para cerrarlo y,
-            cerrado, un botón fijo que lo abre sin tener que seleccionar nada. */}
-        {!esDBT && cajonAbierto && <div className="fixed inset-0 z-40 bg-ink/20 xl:hidden print:hidden" onClick={() => setCajonAbierto(false)} aria-hidden="true" />}
-        {!esDBT && !cajonAbierto && (
-          <button type="button" onClick={() => setCajonAbierto(true)} className="fixed bottom-4 right-4 z-30 rounded-full border border-divider bg-surface px-4 py-2 text-xs font-medium text-ink shadow-lg xl:hidden print:hidden">
-            Ficha y nota ▴
-          </button>
-        )}
-        {/*
-          Seleccionar y leer en la misma pantalla. La Ficha vivía debajo del
-          grafo: a 1600 px empezaba en y≈3.600 con los nodos entre 700 y 3.000,
-          y seleccionar actualizaba un panel que no se veía (mesa-clínica §A.5).
-          Desde 1280 px es una columna fija con scroll propio; por debajo, un
-          cajón que sube desde abajo.
-        */}
-        {!esDBT && <aside
-          aria-label="Ficha y nota"
-          className={`${cajonAbierto ? "fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-2xl border-t shadow-xl" : "hidden"} min-w-0 border-divider bg-canvas p-3 print:hidden xl:sticky xl:top-4 xl:z-auto xl:max-h-[calc(100vh-2rem)] xl:flex-col xl:rounded-lg xl:border xl:shadow-none ${fichaVisible ? "xl:flex" : "xl:hidden"}`}
-        >
-          <button type="button" onClick={() => setFichaVisible(false)} aria-label="Ocultar la ficha" title="Ocultar la ficha" className="absolute -left-3 top-3 hidden h-6 w-6 items-center justify-center rounded-full border border-divider bg-surface text-sm leading-none text-ink-muted shadow-sm hover:text-ink xl:flex">‹</button>
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto">
-          <div>
-          <header className="flex items-center justify-between gap-2">
-            <h4 className="font-serif text-base font-semibold text-ink">Ficha</h4>
-            <button type="button" onClick={() => setCajonAbierto(false)} aria-label="Cerrar la ficha" className="rounded px-2 py-0.5 text-sm text-ink-muted hover:text-ink xl:hidden">✕</button>
-          </header>
-          {nodoSeleccionado ? <div className="mt-3 space-y-3">
-            <AvisosDelNodo alertas={avisos(nodoSeleccionado.id)} />
-            <label className="block text-xs text-ink-muted">Etiqueta
-              <textarea key={nodoSeleccionado.id + nodoSeleccionado.etiqueta} defaultValue={nodoSeleccionado.etiqueta} onBlur={(e) => {
-                const valor = e.target.value.trim();
-                if (valor && valor !== nodoSeleccionado.etiqueta) aplicar((copia) => actualizarEtiquetaNodo(copia, nodoSeleccionado.id, valor));
-              }} rows={3} className="mt-1 w-full rounded border border-divider bg-surface p-2 text-sm text-ink" />
-            </label>
-            <InsigniaProcedencia
-              analisis={analisis}
-              id={nodoSeleccionado.id}
-              onConfirmar={() => onDecidir((copia) => confirmarElemento(copia, nodoSeleccionado.id))}
-            />
-            <dl className="space-y-1 text-xs"><div><dt className="inline text-ink-muted">Tipo: </dt><dd className="inline text-ink">{etiquetaTipoNodo(nodoSeleccionado)}</dd></div><div><dt className="inline text-ink-muted">Apoyo en la nota: </dt><dd className="inline text-ink">{etiquetaApoyo(nodoSeleccionado.apoyo)}</dd></div></dl>
-            {citaSeleccionada
-              ? <button type="button" onClick={() => irACita(nodoSeleccionado)} className="text-xs text-accent underline underline-offset-2">Ver en la nota · {citaSeleccionada.linea_inicio === citaSeleccionada.linea_fin ? `L${citaSeleccionada.linea_inicio}` : `L${citaSeleccionada.linea_inicio}–L${citaSeleccionada.linea_fin}`}</button>
-              : <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Inferido — sin cita literal en la nota</p>}
-            <button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar nodo" : "La estructura se edita en la vista AFC"} onClick={() => aplicar((copia) => borrarNodo(copia, nodoSeleccionado.id))} className="block rounded border border-warn/50 px-2 py-1 text-xs text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar nodo</button>
-            <div className="border-t border-divider pt-3">
-              <p className="mb-2 text-xs font-medium text-ink">Relaciones del nodo</p>
-              {/* La etiqueta del otro extremo y el tipo de relación: los ids
-                  (alt_1 → alt_1_consecuencia) son internos y no dicen nada. */}
-              {relacionesSeleccionado.length === 0 && <p className="text-[11px] text-ink-muted">Sin relaciones trazadas.</p>}
-              {relacionesSeleccionado.length > 0 && <p className="mb-2 text-[11px] leading-snug text-ink-muted">El apoyo de una relación no es el de sus extremos: que dos datos estén en la nota no significa que la nota diga que uno lleva al otro. El trazo punteado marca una relación inferida.</p>}
-              {relacionesSeleccionado.map((r) => (
-                <div key={r.id} className="mb-2 flex items-start gap-2 text-[11px] text-ink-muted">
-                  <span className="min-w-0 flex-1">
-                    {r.sentido} · {r.tipo}: <span className="text-ink">{r.etiqueta}</span>
-                    <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <MuestraTrazo apoyo={r.apoyo} />
-                      <ApoyoRelacion apoyo={r.apoyo} />
-                      <InsigniaProcedencia analisis={analisis} id={r.id} />
-                    </span>
-                  </span>
-                  <button type="button" disabled={estilo !== "afc"} title={estilo === "afc" ? "Borrar relación" : "Las relaciones se editan en la vista AFC"} aria-label={`Borrar la relación con ${r.etiqueta}`} onClick={() => aplicar((copia) => { copia.aristas = copia.aristas.filter((actual) => actual.id !== r.id); })} className="text-warn disabled:cursor-not-allowed disabled:opacity-40">Borrar</button>
-                </div>
-              ))}
-            </div>
-          </div> : <p className="mt-3 text-sm text-ink-muted">Selecciona un nodo. Doble clic sobre su etiqueta para editarla en el grafo.</p>}
-          </div>
-          <div><h5 className="font-serif text-sm font-semibold text-ink">Nota numerada</h5><div ref={notaRef} className="relative mt-2 max-h-80 overflow-y-auto rounded border border-divider bg-surface p-2 font-mono text-[11px] leading-relaxed xl:max-h-[45vh]">{lineas.map((linea, indice) => {
-            const n = indice + 1;
-            const citada = citaSeleccionada && n >= citaSeleccionada.linea_inicio && n <= citaSeleccionada.linea_fin;
-            return <p id={`nota-linea-${n}`} key={indice} className={`rounded px-1 ${lineaActiva === n ? "bg-warn/20 text-ink ring-1 ring-warn/40" : citada ? "bg-warn/10 text-ink" : "text-ink-muted"}`}><span className="mr-2 select-none text-ink-muted">L{n}</span>{linea || " "}</p>;
-          })}</div></div>
-          </div>
-        </aside>}
       </div>
 
       <div className="hidden print:block">

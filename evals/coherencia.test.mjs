@@ -51,7 +51,7 @@ const require = createRequire(import.meta.url);
 const { ESCALA_TEXTO, claveEstiloGrafo } = require(
   join(RAIZ, ".tmp-evals/preferencias.js")
 );
-const { SECCIONES_INFORME, ANCLAS_INFORME } = require(
+const { SECCIONES_INFORME, ANCLAS_INFORME, VISTAS_ESPACIO, DONDE_SE_VE } = require(
   join(RAIZ, ".tmp-evals/secciones.js")
 );
 const { reconciliarOrden } = require(join(RAIZ, ".tmp-evals/ordenSecciones.js"));
@@ -67,9 +67,14 @@ const reportView = readFileSync(join(RAIZ, "components/ReportView.tsx"), "utf8")
   seguido en verde sin vigilar ya casi nada: el caso exacto de acuerdo tácito
   que esta suite existe para cazar.
 */
-const fuentesInforme = readdirSync(join(RAIZ, "components/informe"))
-  .filter((f) => f.endsWith(".tsx"))
-  .map((f) => readFileSync(join(RAIZ, "components/informe", f), "utf8"));
+const leerCarpeta = (carpeta) =>
+  readdirSync(join(RAIZ, carpeta))
+    .filter((f) => f.endsWith(".tsx"))
+    .map((f) => readFileSync(join(RAIZ, carpeta, f), "utf8"));
+// Desde la fase 5 el informe es el espacio de trabajo: sus piezas viven en
+// components/espacio/, y sus clases de tamaño también tienen que obedecer.
+const fuentesInforme = [...leerCarpeta("components/informe"), ...leerCarpeta("components/espacio")];
+const fuente = (ruta) => readFileSync(join(RAIZ, ruta), "utf8");
 const codigoInforme = [reportView, ...fuentesInforme].join("\n");
 const grafoAFC = readFileSync(join(RAIZ, "components/grafo/GrafoAFC.tsx"), "utf8");
 const estilosGrafo = ["dbt", "act"].map((estilo) =>
@@ -155,188 +160,156 @@ prueba("las anulaciones de tamaño están fuera de @layer, que es lo que las hac
   assert.deepEqual(dentroDeCapa, [], "hay anulaciones de tamaño dentro de @layer");
 });
 
-/* ── Bloques y anclas del informe ────────────────────────────────────────── */
+/* ── Bloques, anclas y vistas del espacio ────────────────────────────────── */
 
 const IDS = SECCIONES_INFORME.map((s) => s.id);
 const IDS_ANCLA = ANCLAS_INFORME.map((a) => a.id);
+const IDS_VISTA = VISTAS_ESPACIO.map((v) => v.id);
 
-/**
- * Los dos niveles del informe, que antes eran uno.
- *
- * `<Bloque>` es la unidad que se arrastra, se oculta y sale en el índice: son
- * cinco. `<Seccion>` es un apartado dentro de un bloque, y solo aporta un
- * ancla enlazable. Confundirlos es el fallo que estas pruebas cazan: un
- * apartado convertido en bloque volvería a meter diecisiete entradas en el
- * índice, y un bloque escrito como apartado desaparecería del orden sin dar
- * ningún error.
- */
-function bloquesDibujados() {
-  const componentes = {
-    BloqueSintesis: "sintesis",
-    BloqueAnalisisFuncional: "que-pasa",
-    BloqueMantenimiento: "mantenimiento",
-    BloquePlan: "plan",
-    BloquePendientes: "pendientes",
-  };
-  return new Set(
-    Object.entries(componentes)
-      .filter(([nombre]) => new RegExp(`<${nombre}\\b`).test(reportView))
-      .map(([, id]) => id)
-  );
-}
+/*
+  Dos estructuras desde la fase 5, y no se pueden confundir:
 
-/**
- * El codigo de cada bloque, leido de SU fichero.
- *
- * Desde que ReportView se troceo, las anclas no estan en ReportView: estan en
- * components/informe/Bloque*.tsx. Buscarlas en el fichero que las contiene, y
- * no en todo el monton, hace la comprobacion mas estricta que antes: ya no
- * basta con que el ancla exista en algun sitio, tiene que estar en el bloque
- * que ANCLAS_INFORME dice.
- */
-const FICHERO_DE_BLOQUE = {
-  sintesis: "BloqueSintesis",
-  "que-pasa": "BloqueAnalisisFuncional",
-  mantenimiento: "BloqueMantenimiento",
-  plan: "BloquePlan",
-  pendientes: "BloquePendientes",
+  - Los cinco BLOQUES y sus ANCLAS son el documento exportado (texto, Word,
+    impresión) y los ids que guardan `secciones_editadas` y los avisos.
+  - Las VISTAS (Mapa, Blancos) y los LUGARES (raíl, Inspector, cabecera,
+    bandeja) son dónde se ve cada cosa en pantalla.
+
+  `DONDE_SE_VE` (lib/secciones.ts) une las dos. Estas pruebas cazan lo que el
+  compilador no ve: un lugar nombrado que nadie pinta, o un ancla que dice
+  vivir en un sitio donde no está. Ninguno de los dos da error: dan un aviso
+  que no lleva a ninguna parte.
+*/
+const espacio = fuente("components/espacio/EspacioTrabajo.tsx");
+const FUENTE_DE_LUGAR = {
+  mapa: fuente("components/espacio/VistaMapa.tsx"),
+  blancos: espacio + fuente("components/informe/BloquePlan.tsx"),
+  "raíl": fuente("components/espacio/Rail.tsx"),
+  cabecera: fuente("components/espacio/Cabecera.tsx"),
+  bandeja: fuente("components/espacio/Cabecera.tsx"),
+  inspector: fuente("components/espacio/Inspector.tsx"),
 };
 
-const fuenteDeBloque = Object.fromEntries(
-  Object.entries(FICHERO_DE_BLOQUE).map(([id, fichero]) => [
-    id,
-    readFileSync(join(RAIZ, "components/informe/" + fichero + ".tsx"), "utf8"),
-  ])
-);
+/**
+ * Lo que el Inspector enseña no tiene ancla propia (depende de lo
+ * seleccionado). Para esas anclas se comprueba que el Inspector pinta el
+ * concepto, por el rótulo con que lo presenta.
+ */
+const ROTULO_EN_INSPECTOR = {
+  "hipotesis-principal": "Hipótesis de mantenimiento",
+  "hipotesis-alternativas": "Hipótesis rivales",
+};
 
-function anclasEn(fuente) {
+function idsPintados(codigo) {
+  // `id="x"` o, en el raíl, `id={ancla("x")}` (que lo omite en su copia del móvil).
   return new Set(
-    [
-      ...fuente.matchAll(/<Seccion\s+id="([^"]+)"/g),
-      ...fuente.matchAll(/<Seccion\s*\n\s*id="([^"]+)"/g),
-      // Las que no siguen el molde de <Seccion> pintan su ancla a mano.
-      ...fuente.matchAll(/<section\s+id="([^"]+)"/g),
-      ...fuente.matchAll(/<span\s+id="([^"]+)"/g),
-    ].map((m) => m[1])
+    [...codigo.matchAll(/\bid="([^"]+)"/g), ...codigo.matchAll(/\bid=\{ancla\("([^"]+)"\)\}/g)].map((m) => m[1])
   );
 }
 
-function anclasDibujadas() {
-  const todas = new Set();
-  for (const fuente of Object.values(fuenteDeBloque)) {
-    for (const id of anclasEn(fuente)) todas.add(id);
-  }
-  return todas;
-}
-
-prueba("no hay identificadores repetidos, ni de bloque ni de ancla", () => {
+prueba("no hay identificadores repetidos, ni de bloque, ni de ancla, ni de vista", () => {
   assert.equal(new Set(IDS).size, IDS.length);
   assert.equal(new Set(IDS_ANCLA).size, IDS_ANCLA.length);
+  assert.equal(new Set(IDS_VISTA).size, IDS_VISTA.length);
   // Y un id no puede ser las dos cosas: el orden guardado no sabría cuál es.
   const ambos = IDS.filter((id) => IDS_ANCLA.includes(id));
   assert.deepEqual(ambos, [], "hay ids que son bloque y ancla a la vez");
 });
 
-prueba("los cinco bloques se dibujan, y no se dibuja ninguno de más", () => {
-  const dibujados = bloquesDibujados();
+prueba("las vistas del espacio se pintan, y no se pinta ninguna de más", () => {
+  // EspacioTrabajo elige por `vista === "<id>"`: toda vista declarada tiene su
+  // rama, y no hay ramas para vistas que no estén en lib/secciones.ts.
+  const ramas = new Set([...espacio.matchAll(/vista === "([a-z]+)"/g)].map((m) => m[1]));
+  const sinPintar = IDS_VISTA.filter((id) => !ramas.has(id) && id !== "blancos");
+  assert.deepEqual(sinPintar, [], "vistas listadas que nadie pinta");
+  assert.deepEqual([...ramas].filter((id) => !IDS_VISTA.includes(id)), [], "vistas pintadas que no están en VISTAS_ESPACIO");
+  // Blancos es la rama del «si no»: tiene que pintar el plan.
+  assert.match(espacio, /<BloquePlan\b/);
+  assert.match(espacio, /<VistaMapa\b/);
+});
+
+prueba("toda ancla del documento tiene un sitio donde verse en pantalla", () => {
   assert.deepEqual(
-    IDS.filter((id) => !dibujados.has(id)),
+    IDS_ANCLA.filter((id) => !(id in DONDE_SE_VE)),
     [],
-    "bloques listados en el índice que nadie pinta"
+    "anclas sin lugar en DONDE_SE_VE"
   );
   assert.deepEqual(
-    [...dibujados].filter((id) => !IDS.includes(id)),
+    Object.keys(DONDE_SE_VE).filter((id) => !IDS_ANCLA.includes(id)),
     [],
-    "bloques pintados que no están en lib/secciones.ts"
+    "DONDE_SE_VE nombra anclas que no existen"
   );
 });
 
-prueba("toda ancla que se pinta está declarada, y toda la declarada se pinta", () => {
-  // Un ancla sin declarar es un enlace que nadie puede alcanzar desde un aviso;
-  // una declarada que nadie pinta es un enlace roto en el informe.
-  const dibujadas = anclasDibujadas();
-  assert.deepEqual(
-    [...dibujadas].filter((id) => !IDS_ANCLA.includes(id)),
-    [],
-    "anclas pintadas que no están en ANCLAS_INFORME"
-  );
-  assert.deepEqual(
-    IDS_ANCLA.filter((id) => !dibujadas.has(id)),
-    [],
-    "anclas declaradas que ningun bloque pinta"
-  );
+prueba("cada ancla se pinta en el lugar que DONDE_SE_VE declara", () => {
+  const mal = [];
+  for (const [ancla, lugar] of Object.entries(DONDE_SE_VE)) {
+    const codigo = FUENTE_DE_LUGAR[lugar];
+    if (!codigo) {
+      mal.push(`${ancla}: el lugar «${lugar}» no tiene componente`);
+      continue;
+    }
+    if (lugar === "inspector") {
+      const rotulo = ROTULO_EN_INSPECTOR[ancla];
+      if (!rotulo || !codigo.includes(rotulo)) mal.push(`${ancla}: el Inspector no lo enseña`);
+      continue;
+    }
+    if (!idsPintados(codigo).has(ancla)) mal.push(`${ancla} debería pintarse en ${lugar}`);
+  }
+  assert.deepEqual(mal, []);
 });
 
 prueba("cada ancla pertenece a un bloque que existe", () => {
-  const huerfanas = ANCLAS_INFORME.filter((a) => !IDS.includes(a.bloque)).map(
-    (a) => a.id
-  );
+  const huerfanas = ANCLAS_INFORME.filter((a) => !IDS.includes(a.bloque)).map((a) => a.id);
   assert.deepEqual(huerfanas, [], "anclas con un bloque que no existe");
 });
 
 prueba("ningún bloque se queda sin anclas", () => {
-  // Un bloque vacío ocupa una entrada del índice para no decir nada.
-  const vacios = IDS.filter(
-    (b) => !ANCLAS_INFORME.some((a) => a.bloque === b)
-  );
+  // Un bloque vacío ocupa un apartado del documento para no decir nada.
+  const vacios = IDS.filter((b) => !ANCLAS_INFORME.some((a) => a.bloque === b));
   assert.deepEqual(vacios, []);
 });
 
-prueba("el título del índice y el del encabezado salen de la misma lista", () => {
-  /*
-    El índice saca el título de lib/secciones.ts y antes la tarjeta lo recibía
-    como prop: eran dos sitios y nada los comparaba. Al renombrar «Variables
-    moduladoras» se cambió solo uno, y el resultado fue un índice que enviaba a
-    una sección con otro nombre — sin error, sin enlace roto, solo un documento
-    que se contradice.
-
-    Ahora <Bloque> no acepta `titulo`: lo lee de TITULO_DE_SECCION. Esta prueba
-    fija esa decisión, porque volver a pasarlo como prop reabriría el fallo.
-  */
-  const conTitulo = [...reportView.matchAll(/<Bloque(?:Sintesis|AnalisisFuncional|Mantenimiento|Plan|Pendientes)\b[^>]*\btitulo=/g)];
-  assert.deepEqual(
-    conTitulo.map((m) => m[0]),
-    [],
-    "algún <Bloque> vuelve a recibir el título como prop"
-  );
-});
-
-prueba("todo bloque y toda ancla tienen título, y ninguno se repite", () => {
+prueba("todo bloque, toda ancla y toda vista tienen título, y ninguno se repite", () => {
   const titulos = [
     ...SECCIONES_INFORME.map((s) => s.titulo),
     ...ANCLAS_INFORME.map((a) => a.titulo),
   ];
   assert.ok(titulos.every((t) => t && t.trim().length > 0));
   assert.equal(new Set(titulos).size, titulos.length, "hay títulos duplicados");
+  assert.ok(VISTAS_ESPACIO.every((v) => v.titulo.trim().length > 0));
+});
+
+prueba("ya no hay pestañas en el informe", () => {
+  // Las cinco pestañas se sustituyeron por el espacio de trabajo. Volver a
+  // montarlas reabriría el informe de 12.800 px con la misma conducta en
+  // catorce sitios.
+  assert.doesNotMatch(reportView, /<BarraPestanas\b/);
+  assert.match(reportView, /<EspacioTrabajo\b/);
+});
+
+prueba("lo impreso sale del mismo texto que el Word y el portapapeles", () => {
+  const impreso = fuente("components/espacio/DocumentoImpreso.tsx");
+  assert.match(impreso, /formatearInformeTexto\(/);
+  assert.match(reportView, /<DocumentoImpreso\b/);
+  // El espacio de trabajo no se imprime.
+  assert.match(espacio, /print:hidden/);
 });
 
 /* ── Selector de lente ───────────────────────────────────────────────────── */
 
+const vistaMapa = FUENTE_DE_LUGAR.mapa;
+
 prueba("el selector de lente aparece una sola vez en el informe", () => {
   // Repetir el mando en cada sección no daba más control: daba ocasiones de
-  // leer una situación en ACT y la de al lado en DBT sin darse cuenta. Si
-  // alguien vuelve a colocar un <SelectorDeLente> dentro de una sección, esto
-  // lo caza — no da error, solo devuelve el problema que se acaba de quitar.
-  const usos = [...reportView.matchAll(/<SelectorDeLente\b/g)];
-  assert.equal(
-    usos.length,
-    1,
-    `el selector de lente se pinta ${usos.length} veces; tiene que ser una`
-  );
+  // leer una situación en ACT y la de al lado en DBT sin darse cuenta.
+  // codigoInforme ya incluye components/espacio/, donde vive el Mapa.
+  const usos = [...codigoInforme.matchAll(/<SelectorDeLente\b/g)].length;
+  assert.equal(usos, 1, `el selector de lente se pinta ${usos} veces; tiene que ser una`);
 });
 
 prueba("la lente elegida no vive en el estado del componente", () => {
-  // Es una preferencia del terapeuta, no del informe: se guarda como el orden
-  // de los bloques (ver components/useLente.ts). Con useState volvería a ACT en
-  // cada informe nuevo, que es justo lo que se quería dejar de pedirle.
-  assert.ok(
-    /useLente\(/.test(reportView),
-    "ReportView ya no usa la preferencia persistida de lente"
-  );
-  assert.ok(
-    !/useState<ModeloTerapeutico>/.test(reportView),
-    "la lente volvió a un useState local"
-  );
+  assert.ok(/useLente\(/.test(vistaMapa), "el Mapa ya no usa la preferencia persistida de lente");
+  assert.ok(!/useState<EstiloGrafo>/.test(vistaMapa), "la lente volvió a un useState local");
 });
 
 prueba("los estilos del grafo son proyecciones locales de una sola colección", () => {
@@ -369,23 +342,6 @@ prueba("el orden de fábrica de las anclas no entremezcla bloques", () => {
     [...posiciones].sort((x, y) => x - y),
     `un bloque se interrumpe y vuelve: ${ANCLAS_INFORME.map((a) => a.bloque).join(" ")}`
   );
-});
-
-prueba("las anclas se pintan dentro del bloque que declaran", () => {
-  /*
-    El acuerdo que nada mas comprueba: ANCLAS_INFORME dice a que bloque
-    pertenece cada apartado, y cada componente de bloque lo pinta. Si los dos
-    dejan de coincidir no hay error: hay un apartado que se arrastra con el
-    bloque equivocado y un indice que miente sobre donde esta.
-  */
-  const mal = [];
-  for (const [bloque, fuente] of Object.entries(fuenteDeBloque)) {
-    const dentro = anclasEn(fuente);
-    for (const a of ANCLAS_INFORME.filter((x) => x.bloque === bloque)) {
-      if (!dentro.has(a.id)) mal.push(a.id + " deberia estar en " + bloque);
-    }
-  }
-  assert.deepEqual(mal, []);
 });
 
 /* ── Conciliación del orden guardado ─────────────────────────────────────── */
