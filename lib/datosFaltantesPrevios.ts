@@ -1,9 +1,9 @@
-import OpenAI from "openai";
+import { generarTexto, MODELO_LIGERO } from "./clienteIA";
 import { construirPromptDatosFaltantesPrevios } from "./systemPrompt";
 import { extraerJSON } from "./parseAnalisis";
 import type { PreguntaPrevia } from "./types";
 
-const MODELO_DETECCION = "gpt-4o-mini";
+const MODELO_DETECCION = MODELO_LIGERO;
 type Categoria = "consecuencia" | "contexto" | "frecuencia";
 
 /**
@@ -66,7 +66,7 @@ function normalizarPregunta(valor: unknown): [Categoria, PreguntaPrevia] | null 
 /**
  * Comprobación previa al análisis completo (ver app/page.tsx): con un modelo
  * barato, identifica qué le falta a la nota y lo convierte en preguntas que
- * el terapeuta puede responder ANTES de gastar la llamada completa a gpt-4o.
+ * el terapeuta puede responder ANTES de gastar la llamada completa del análisis.
  * Lo confirmado se incorpora a la nota y lo omitido ("No sé") se declara en
  * datos_faltantes sin depender de que el modelo lo vuelva a detectar (ver
  * app/api/analizar/route.ts) — el ahorro real es no tener que reanalizar
@@ -81,18 +81,13 @@ export async function detectarDatosFaltantesPrevios(
   apiKey: string
 ): Promise<PreguntaPrevia[]> {
   try {
-    const openai = new OpenAI({ apiKey });
-    const respuesta = await openai.chat.completions.create({
-      model: MODELO_DETECCION,
-      max_tokens: 600,
-      temperature: 0,
-      messages: [
-        { role: "system", content: construirPromptDatosFaltantesPrevios() },
-        { role: "user", content: `Nota clínica:\n\n${nota}` },
-      ],
+    const { texto } = await generarTexto(apiKey, {
+      modelo: MODELO_DETECCION,
+      maxTokens: 600,
+      temperatura: 0,
+      sistema: construirPromptDatosFaltantesPrevios(),
+      usuario: `Nota clínica:\n\n${nota}`,
     });
-
-    const texto = respuesta.choices[0]?.message?.content?.trim() ?? "";
     const json = JSON.parse(extraerJSON(texto)) as { preguntas?: unknown };
     if (!Array.isArray(json.preguntas)) return [];
 

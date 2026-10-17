@@ -2,7 +2,7 @@
  * Límite de peticiones por IP.
  *
  * Por qué: /api/analizar es una ruta pública sin autenticación. Cualquiera que
- * conozca la URL puede enviarle notas directamente y consumir el saldo de OpenAI
+ * conozca la URL puede enviarle notas directamente y consumir el saldo de la API
  * del propietario. Sin esto, el coste de la aplicación no tiene techo.
  *
  * LIMITACIÓN IMPORTANTE: el contador vive en memoria del proceso. En Vercel cada

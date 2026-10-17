@@ -1,9 +1,9 @@
-import OpenAI from "openai";
+import { generarTexto, MODELO_LIGERO } from "./clienteIA";
 import { construirPromptPasadaCritica } from "./systemPrompt";
 import { extraerJSON } from "./parseAnalisis";
 import type { Alerta, AnalisisFuncional } from "./types";
 
-const MODELO_PASADA_CRITICA = "gpt-4o-mini";
+const MODELO_PASADA_CRITICA = MODELO_LIGERO;
 
 interface HallazgoCrudo {
   gravedad?: unknown;
@@ -28,21 +28,13 @@ export async function ejecutarPasadaCritica(
   notaNumerada: string,
   apiKey: string
 ): Promise<Alerta[]> {
-  const openai = new OpenAI({ apiKey });
-  const respuesta = await openai.chat.completions.create({
-    model: MODELO_PASADA_CRITICA,
-    max_tokens: 1500,
-    temperature: 0,
-    messages: [
-      { role: "system", content: construirPromptPasadaCritica() },
-      {
-        role: "user",
-        content: `Nota clínica con líneas numeradas:\n\n${notaNumerada}\n\nAnálisis funcional generado (JSON):\n\n${JSON.stringify(analisis)}`,
-      },
-    ],
+  const { texto } = await generarTexto(apiKey, {
+    modelo: MODELO_PASADA_CRITICA,
+    maxTokens: 1500,
+    temperatura: 0,
+    sistema: construirPromptPasadaCritica(),
+    usuario: `Nota clínica con líneas numeradas:\n\n${notaNumerada}\n\nAnálisis funcional generado (JSON):\n\n${JSON.stringify(analisis)}`,
   });
-
-  const texto = respuesta.choices[0]?.message?.content?.trim() ?? "";
 
   let hallazgos: unknown;
   try {

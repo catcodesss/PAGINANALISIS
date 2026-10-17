@@ -1,3 +1,4 @@
+import { leerClaveIA } from "@/lib/clienteIA";
 import { NextResponse } from "next/server";
 import { detectarDatosFaltantesPrevios } from "@/lib/datosFaltantesPrevios";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
@@ -15,7 +16,7 @@ const LONGITUD_MAXIMA = Number(process.env.LONGITUD_MAXIMA_NOTA ?? 40000);
  * Comprobación previa al análisis completo (ver lib/datosFaltantesPrevios.ts
  * y app/page.tsx). Deliberadamente permisiva con sus propios fallos: esto es
  * un paso opcional antes de /api/analizar, así que cualquier problema aquí
- * (límite alcanzado, cuerpo inválido, nota fuera de rango, fallo de OpenAI)
+ * (límite alcanzado, cuerpo inválido, nota fuera de rango, fallo de la API)
  * se traduce en "sin preguntas" en vez de un error — el terapeuta nunca debe
  * quedarse bloqueado por un paso que solo pretendía ahorrarle una vuelta.
  */
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ preguntas: [] });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = leerClaveIA();
   if (!apiKey) {
     return NextResponse.json({ preguntas: [] });
   }

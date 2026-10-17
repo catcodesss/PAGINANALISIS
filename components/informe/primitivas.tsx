@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Cita as CitaVerificada } from "@/lib/types";
+import { etiquetaCita } from "@/lib/citas";
 import {
   ANCLAS_DE_BLOQUE,
   TITULO_DE_ANCLA,
@@ -92,9 +93,7 @@ export function Termino({ id, soloClaro = false }: { id: IdTermino; soloClaro?: 
 export function Cita({ children }: { children: CitaVerificada | null | undefined }) {
   if (!children) return null;
   if (!children.verificada) return <p className="evidence-prefix mt-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted">Inferido — sin cita literal en la nota</p>;
-  const rango = children.linea_inicio === children.linea_fin
-    ? `línea ${children.linea_inicio}`
-    : `líneas ${children.linea_inicio}–${children.linea_fin}`;
+  const rango = etiquetaCita(children);
   return <blockquote className="evidence-block mt-2 border-l-2 border-divider pl-3"><p className="evidence-prefix font-mono text-[10px] uppercase tracking-wide text-ink-muted">De la nota · {rango}</p><p className="evidence-text text-sm italic leading-relaxed text-ink-muted">&quot;{children.texto}&quot;</p></blockquote>;
 }
 

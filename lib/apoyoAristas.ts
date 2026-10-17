@@ -111,7 +111,7 @@ function sinRepetir(citas: readonly Cita[]): Cita[] {
   const vistas = new Set<string>();
   return citas.filter((c) => {
     if (!c.verificada) return false;
-    const clave = `${c.linea_inicio}-${c.linea_fin}`;
+    const clave = `${c.linea_inicio}.${c.frase_inicio ?? 0}-${c.linea_fin}.${c.frase_fin ?? 0}`;
     if (vistas.has(clave)) return false;
     vistas.add(clave);
     return true;

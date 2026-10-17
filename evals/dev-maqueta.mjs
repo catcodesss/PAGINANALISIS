@@ -1,6 +1,6 @@
 /**
  * Levanta el servidor de desarrollo sirviendo un informe guardado, sin gastar
- * una sola llamada a OpenAI.
+ * una sola llamada a la API.
  *
  * Ejecutar:  npm run dev:maqueta
  *
@@ -27,7 +27,7 @@ process.env.ACIA_INFORME_DE_MAQUETA = "true";
 
 console.log(
   "\nModo maqueta: /api/analizar devuelve el informe guardado del caso 01.\n" +
-    "NO se llama a OpenAI y no cuenta para el límite de peticiones.\n" +
+    "NO se llama a la API y no cuenta para el límite de peticiones.\n" +
     "Para medir el prompt usa `npm run dev:evals`, que sí gasta.\n"
 );
 

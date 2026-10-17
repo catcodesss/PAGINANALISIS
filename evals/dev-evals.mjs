@@ -4,7 +4,7 @@
  * Ejecutar:  npm run dev:evals
  *
  * Existe porque la forma de pasar una variable de entorno cambia según la
- * consola: `OPENAI_TEMPERATURA=0.2 npm run dev` es sintaxis de bash y en
+ * consola: `IA_TEMPERATURA=0.2 npm run dev` es sintaxis de bash y en
  * PowerShell falla con "no se reconoce como nombre de un cmdlet" — pero el
  * comando siguiente sí se ejecuta, así que las evals corren igual con la
  * temperatura de producción y devuelven números que parecen válidos y no lo
@@ -33,11 +33,11 @@ const TEMPERATURA_EVALS = "0.2";
 /** Nueve casos con margen para `--reps=3`, que es el otro uso habitual. */
 const LIMITE_EVALS = "60";
 
-process.env.OPENAI_TEMPERATURA ??= TEMPERATURA_EVALS;
+process.env.IA_TEMPERATURA ??= TEMPERATURA_EVALS;
 process.env.LIMITE_ANALISIS_POR_VENTANA ??= LIMITE_EVALS;
 
 console.log(
-  `Servidor de desarrollo con OPENAI_TEMPERATURA=${process.env.OPENAI_TEMPERATURA} ` +
+  `Servidor de desarrollo con IA_TEMPERATURA=${process.env.IA_TEMPERATURA} ` +
     "(las marcas históricas se midieron a 0.2).\n" +
     `Límite de peticiones subido a ${process.env.LIMITE_ANALISIS_POR_VENTANA} por ventana: ` +
     "una corrida son nueve llamadas seguidas y el límite de producción (5) las corta a la mitad.\n"

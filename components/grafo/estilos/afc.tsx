@@ -184,7 +184,7 @@ export default function VistaAFC({ analisis, nodos, renderNodo, renderAgregar, o
             </div>
 
             <div className={`${s.alternativa} ${s.alt}`}>
-              <p className={s.alternativaCabecera}><ArrowLeftRight className={s.alternativaIcono} strokeWidth={1.8} aria-hidden="true" /><strong>Conducta alternativa</strong> · compite por la misma contingencia</p>
+              <p className={s.alternativaCabecera}><ArrowLeftRight className={s.alternativaIcono} strokeWidth={1.8} aria-hidden="true" /><strong>Conducta alternativa</strong></p>
               <div className={s.alternativaFila}>
                 <div className={s.lista}>
                   {alternativas.map((n) => <Fragment key={n.id}>{renderNodo(n)}</Fragment>)}

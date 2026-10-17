@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { generarTexto, leerClaveIA, MODELO_PRINCIPAL } from "@/lib/clienteIA";
 import { MENSAJE_MOTOR_DESACTIVADO, MOTOR_IA_ACTIVO } from "@/lib/motorIA";
 import { construirPromptReanalisisSeccion } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarFragmento } from "@/lib/parseAnalisis";
@@ -7,11 +7,9 @@ import { numerarNota } from "@/lib/citas";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
 import { CAMPOS_ANALISIS_FUNCIONAL, type AnalisisFuncional } from "@/lib/types";
 
-const MODELO = "gpt-4o";
-// Misma semilla que app/api/analizar/route.ts: mejor esfuerzo de determinismo.
-const SEED = Number(process.env.OPENAI_SEED ?? 42);
+const MODELO = MODELO_PRINCIPAL;
 // Y la misma temperatura, por la misma razón (ver el comentario de esa ruta).
-const TEMPERATURA = Number(process.env.OPENAI_TEMPERATURA ?? 0.5);
+const TEMPERATURA = Number(process.env.IA_TEMPERATURA ?? 0.5);
 const RUTA = "reanalizar";
 const LIMITE_PETICIONES = Number(process.env.LIMITE_REANALISIS_POR_VENTANA ?? 20);
 const VENTANA_MS = Number(process.env.LIMITE_VENTANA_MS ?? 10 * 60 * 1000);
@@ -43,7 +41,7 @@ export async function POST(request: Request) {
   }
 
   // Ruta pública sin autenticación: sin límite, cualquiera puede consumir el
-  // saldo de OpenAI del propietario. Ver lib/limitePeticiones.ts.
+  // saldo del propietario. Ver lib/limitePeticiones.ts.
   const limite = comprobarLimite(`${RUTA}:${ipDe(request)}`, LIMITE_PETICIONES, VENTANA_MS);
   if (!limite.permitido) {
     return NextResponse.json(
@@ -119,7 +117,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = leerClaveIA();
   if (!apiKey) {
     return respuestaError(
       "falta_api_key",
@@ -135,29 +133,18 @@ export async function POST(request: Request) {
     const documento = `${notaOriginal}\n\n--- Nota adicional del clínico ---\n\n${notaAdicional}`;
     const { lineas, texto: documentoNumerado } = numerarNota(documento);
 
-    const openai = new OpenAI({ apiKey });
-    const respuesta = await openai.chat.completions.create({
-      model: MODELO,
+    const { texto } = await generarTexto(apiKey, {
+      modelo: MODELO,
       // Mismo criterio que en /api/analizar: la temperatura baja se reserva
       // para las evals, y el techo deja sitio al razonamiento previo.
-      max_tokens: 8000,
-      temperature: TEMPERATURA,
-      seed: SEED,
-      messages: [
-        {
-          role: "system",
-          content: construirPromptReanalisisSeccion(campos),
-        },
-        {
-          role: "user",
-          content: `Nota clínica original y nota adicional del clínico (un solo documento, con líneas numeradas):\n\n${documentoNumerado}\n\nAnálisis funcional actual (contexto, no lo reescribas salvo los campos solicitados):\n\n${JSON.stringify(
+      maxTokens: 8000,
+      temperatura: TEMPERATURA,
+      sistema: construirPromptReanalisisSeccion(campos),
+      usuario: `Nota clínica original y nota adicional del clínico (un solo documento, con líneas numeradas):\n\n${documentoNumerado}\n\nAnálisis funcional actual (contexto, no lo reescribas salvo los campos solicitados):\n\n${JSON.stringify(
             analisisActual
           )}`,
-        },
-      ],
     });
 
-    const texto = respuesta.choices[0]?.message?.content?.trim() ?? "";
     const json = JSON.parse(extraerJSON(texto));
     const fragmento = normalizarFragmento(campos, json, lineas);
 

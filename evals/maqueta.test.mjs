@@ -3,7 +3,7 @@
  *
  * Ejecutar:  node evals/maqueta.test.mjs
  *
- * Sirve para revisar la interfaz sin gastar llamadas a OpenAI (ver
+ * Sirve para revisar la interfaz sin gastar llamadas a la API (ver
  * lib/maqueta.ts y `npm run dev:maqueta`). Justo por eso es peligroso: un
  * informe inventado presentado como análisis de la nota del clínico sería el
  * peor fallo posible de esta herramienta. De ahí el doble candado, y de ahí
