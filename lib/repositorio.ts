@@ -55,6 +55,12 @@ export interface ResumenHistorial {
 export interface Repositorio {
   /** Falso en entornos sin IndexedDB (algunos modos privados, SSR). */
   disponible(): boolean;
+  /**
+   * Ata la biblioteca a una cuenta (`usuario_id`): cada cuenta abre su propia
+   * base local, y otra cuenta en el mismo navegador no ve estos casos. Bloquea
+   * el historial. `null` = sin cuentas (modo sin Firebase configurado).
+   */
+  asociarCuenta(usuarioId: string | null): Promise<void>;
   yaConfigurado(): Promise<boolean>;
   configurar(contrasena: string): Promise<void>;
   desbloquear(contrasena: string): Promise<boolean>;
@@ -85,6 +91,13 @@ export interface Repositorio {
 // --- IndexedDB ---------------------------------------------------------
 
 const BD = "acia-historial";
+// Marca de qué cuenta heredó la base anterior a las cuentas (`acia-historial`).
+const MARCA_BD_HEREDADA = "acia-bd-heredada";
+let nombreBd = BD;
+
+function nombreBdDeCuenta(usuarioId: string): string {
+  return `${BD}-${usuarioId}`;
+}
 const VERSION = 2;
 const ALMACEN_REGISTROS = "registros";
 const ALMACEN_CASOS = "casos";
@@ -105,7 +118,7 @@ interface RegistroCrudo {
 
 function abrirBd(): Promise<IDBDatabase> {
   return new Promise((resolver, rechazar) => {
-    const solicitud = indexedDB.open(BD, VERSION);
+    const solicitud = indexedDB.open(nombreBd, VERSION);
     solicitud.onupgradeneeded = () => {
       const bd = solicitud.result;
       if (!bd.objectStoreNames.contains(ALMACEN_REGISTROS)) {
@@ -144,11 +157,41 @@ async function leerConfig(): Promise<ConfigCifrado | null> {
   }
 }
 
+async function existeBdAnterior(): Promise<boolean> {
+  if (typeof indexedDB === "undefined" || !indexedDB.databases) return false;
+  try {
+    return (await indexedDB.databases()).some((d) => d.name === BD);
+  } catch {
+    return false;
+  }
+}
+
 class RepositorioLocal implements Repositorio {
   private clave: CryptoKey | null = null;
 
   disponible(): boolean {
     return typeof indexedDB !== "undefined";
+  }
+
+  async asociarCuenta(usuarioId: string | null): Promise<void> {
+    this.clave = null;
+    if (usuarioId === null) {
+      nombreBd = BD;
+      return;
+    }
+    // Los casos creados antes de las cuentas viven en `acia-historial`: la
+    // primera cuenta que entre en este navegador los hereda; las demás, no.
+    let heredada: string | null = null;
+    try {
+      heredada = localStorage.getItem(MARCA_BD_HEREDADA);
+    } catch {}
+    if (heredada === null && (await existeBdAnterior())) {
+      try {
+        localStorage.setItem(MARCA_BD_HEREDADA, usuarioId);
+        heredada = usuarioId;
+      } catch {}
+    }
+    nombreBd = heredada === usuarioId ? BD : nombreBdDeCuenta(usuarioId);
   }
 
   async yaConfigurado(): Promise<boolean> {

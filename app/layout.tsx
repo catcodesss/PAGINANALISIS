@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Source_Serif_4, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import ProveedorCuenta from "@/components/ProveedorCuenta";
 
 const sourceSerif = Source_Serif_4({
   variable: "--font-source-serif",
@@ -63,7 +64,7 @@ r.style.colorScheme=t?"dark":"light";
         />
       </head>
       <body className="min-h-screen bg-canvas font-sans text-ink antialiased">
-        {children}
+        <ProveedorCuenta>{children}</ProveedorCuenta>
       </body>
     </html>
   );
