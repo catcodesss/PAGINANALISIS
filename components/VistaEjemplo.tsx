@@ -96,7 +96,7 @@ export default function VistaEjemplo({
         límites), así que no hay contrapartida por ensancharlo aquí también,
         igual que en app/page.tsx.
       */}
-      <div className="mx-auto max-w-[96rem] px-4 py-8 sm:px-6">
+      <div className="mx-auto w-full px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-wrap gap-2 print:hidden">
           {/* Copiar, Word e imprimir viven en «Exportar ▾» de la cabecera. */}
           <Link

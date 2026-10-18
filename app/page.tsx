@@ -391,7 +391,7 @@ export default function Home() {
           // análisis, y max-w-6xl las apretaba a todas por igual, no solo a
           // la cadena.
           className={`mx-auto px-4 py-8 sm:px-6 sm:py-10 lg:px-10 print:max-w-none print:px-0 print:py-0 ${
-            estado === "resultado" ? "max-w-[96rem]" : "max-w-6xl"
+            estado === "resultado" ? "max-w-none" : "max-w-6xl"
           }`}
         >
           <header className="mb-8 flex flex-wrap items-start justify-between gap-4 print:hidden">
