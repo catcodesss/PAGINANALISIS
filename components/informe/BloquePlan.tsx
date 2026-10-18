@@ -19,7 +19,7 @@
  * anteriores al prompt 1.7.0, que no decían a qué conducta se dirigían.
  */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type {
   Alerta,
   AnalisisFuncional,
@@ -53,7 +53,7 @@ import { Seccion } from "./seccion";
 import { BotonAgregar, TextoEditable, useEdicion } from "../edicionManual";
 import { EnlacePregunta } from "./PreguntasClinicas";
 import CadenaBlanco, { hayAlertaAlta } from "./CadenaBlanco";
-import { moverBlanco, ordenarBlancos } from "@/lib/plan";
+import { blancosDeLegado, moverBlanco, ordenarBlancos } from "@/lib/plan";
 
 type EditarSeccion = (
   seccionId: string | null,
@@ -400,6 +400,18 @@ function TarjetaDeBlanco({
   // La cadena ya resume el blanco: el texto largo queda plegado (se imprime igual).
   const [verDetalle, setVerDetalle] = useState(false);
 
+  // Un informe guardado puede no traer el blanco de esta conducta: se crea con
+  // lo que ya enlaza (como al migrar), para que la tarjeta tenga su tablero.
+  useEffect(() => {
+    if (blanco) return;
+    onEditarSeccion(null, (c) => {
+      if ((c.blancos ?? []).some((b) => b.conducta_ids.includes(conducta.id))) return;
+      const nuevo = blancosDeLegado(c).find((b) => b.conducta_ids.includes(conducta.id));
+      if (!nuevo) return;
+      c.blancos = [...(c.blancos ?? []), { ...nuevo, id: `bln_${conducta.id}` }];
+    });
+  }, [blanco, conducta.id, onEditarSeccion]);
+
   // Reordenar es decisión del clínico: va con `null`. Alt+↑/↓ desde la tarjeta.
   const mover = (paso: -1 | 1) => {
     if (blanco) onEditarSeccion(null, (c) => moverBlanco(c, blanco.id, paso));
@@ -570,12 +582,12 @@ function TarjetaDeBlanco({
           </p>
         ) : (
           <>
-          {blanco && (
+          {(
             <button type="button" onClick={() => setVerDetalle(!verDetalle)} aria-expanded={verDetalle} className="mt-3 text-xs text-ink-muted hover:text-ink print:hidden">
               {verDetalle ? "▾ Ocultar detalle" : "▸ Ver detalle"}
             </button>
           )}
-          <div className={`mt-4 space-y-3 ${blanco && !verDetalle ? "hidden print:block" : ""}`}>
+          <div className={`mt-4 space-y-3 ${!verDetalle ? "hidden print:block" : ""}`}>
             {tarjeta.alertasConducta.map((a, i) => (
               <AvisoEnLinea key={i} alerta={a} />
             ))}
