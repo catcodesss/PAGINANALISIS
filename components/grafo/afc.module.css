@@ -106,6 +106,18 @@
    el área principal mide 779 px (medido): un mínimo mayor obligaba a scroll
    horizontal y dejaba "Consecuencias" fuera de vista. */
 .lienzo { min-width: 760px; }
+/* El tablero del nivel Situación convive con el raíl y el Inspector: a 1440 px
+   le quedan unos 685 px (medido). Por encima de esto cabe sin desplazarse. */
+.lienzoColumnas { min-width: 600px; }
+/* Con poco sitio, el tablero aprieta cabeceras y márgenes antes de desplazarse. */
+.contenedorColumnas { container-type: inline-size; }
+@container (max-width: 760px) {
+  .lienzoColumnas { gap: 12px; }
+  .lienzoColumnas .columnaCabecera { gap: 6px; min-height: 46px; padding: 0 10px; }
+  .lienzoColumnas .columnaIcono { width: 18px; height: 18px; }
+  .lienzoColumnas .columnaTitulo { font-size: .95rem; }
+  .lienzoColumnas .columnaCuerpo { padding: 10px; }
+}
 
 .pila { display: flex; flex-direction: column; gap: 1.25rem; }
 

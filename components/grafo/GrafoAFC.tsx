@@ -23,8 +23,12 @@ import {
 import { EtiquetasProcesoACT, ProcesosSinAnclar } from "./AnotacionesACT";
 import VistaACT from "./estilos/act";
 import TableroSituacion, { type CapasMapa } from "./TableroSituacion";
+import TableroColumnas, { type AgruparMapa } from "./TableroColumnas";
 import { rutaDeSeleccion, textoDeRuta } from "@/lib/rutaMapa";
 import { ETIQUETA_APOYO_ARISTA } from "@/lib/apoyoAristas";
+import { repartirProcesosACT } from "@/lib/procesosACT";
+import { destinosPosibles } from "@/lib/edicionMapa";
+import { TIPO_ARRASTRE_NODO } from "../espacio/contexto";
 import s from "./afc.module.css";
 import { TERMINOS, terminoDeContingencia, type IdTermino } from "@/lib/terminos";
 import { interAfc, poppinsAfc } from "./fuentesAfc";
@@ -32,6 +36,8 @@ import { ETIQUETA_TIPO, etiquetaApoyo, etiquetaTipoNodo } from "./etiquetasNodo"
 import { useEspacio } from "../espacio/contexto";
 import { alertasPorNodo } from "@/lib/alertasNodo";
 import { InsigniaAlerta } from "./InsigniaAlerta";
+import { procedenciaDe, ROTULOS_PROCEDENCIA } from "@/lib/procedencia";
+import type { ProcedenciaElemento } from "@/lib/types";
 import type { ApoyoArista } from "@/lib/types";
 
 interface GrafoAFCProps {
@@ -124,6 +130,14 @@ function textoDetalle(nodo: NodoGrafo): { texto: string; definicion?: string } |
   return { texto: nodo.detalle };
 }
 
+/** La marca escrita de la procedencia: sin color, porque el color ya es el apoyo. */
+const MARCA_PROCEDENCIA: Record<ProcedenciaElemento["estado"], string> = {
+  propuesta: "IA",
+  confirmado: "✓",
+  editado: "✎",
+  creado: "Tuyo",
+};
+
 const CLASE_TIPO: Record<TipoNodoGrafo, string> = {
   om: "border-l-sky-500",
   moduladora: "border-l-violet-500",
@@ -150,6 +164,11 @@ function Nodo({
   onCita,
   variante,
   alertas = [],
+  procedencia,
+  onMenu,
+  soltarFrase,
+  destinoCita = false,
+  arrastre,
 }: {
   nodo: NodoGrafo;
   seleccionado: boolean;
@@ -160,6 +179,16 @@ function Nodo({
   onCita: (nodo: NodoGrafo) => void;
   variante?: "afc";
   alertas?: readonly Alerta[];
+  /** Quién tiene la última palabra sobre el nodo. Sin esto no se pinta marca. */
+  procedencia?: ProcedenciaElemento;
+  /** Abre el menú del nodo en un punto de la pantalla. */
+  onMenu?: (x: number, y: number) => void;
+  /** Recibe una frase arrastrada desde la Fuente (contexto.tsx#propsSoltarFrase). */
+  soltarFrase?: { onDragOver: (e: React.DragEvent) => void; onDrop: (e: React.DragEvent) => void };
+  /** Hay una frase en el aire: se marca como sitio donde soltarla. */
+  destinoCita?: boolean;
+  /** Si el nodo se puede llevar a otro carril, cómo empieza y acaba el arrastre. */
+  arrastre?: { onDragStart: (e: React.DragEvent) => void; onDragEnd: () => void };
 }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(nodo.etiqueta);
@@ -175,6 +204,13 @@ function Nodo({
     if (evento.key === "Enter" || evento.key === " ") {
       evento.preventDefault();
       onSeleccionar(nodo);
+    }
+    // La tecla Menú y Shift+F10 son el clic derecho del teclado.
+    if (onMenu && (evento.key === "ContextMenu" || (evento.key === "F10" && evento.shiftKey))) {
+      evento.preventDefault();
+      const r = evento.currentTarget.getBoundingClientRect();
+      onSeleccionar(nodo);
+      onMenu(r.left + 12, r.bottom - 8);
     }
   }
 
@@ -223,6 +259,15 @@ function Nodo({
       setEditando(true);
     },
     onKeyDown: manejarTecla,
+    onContextMenu: onMenu
+      ? (evento: React.MouseEvent) => {
+          evento.preventDefault();
+          onSeleccionar(nodo);
+          onMenu(evento.clientX, evento.clientY);
+        }
+      : undefined,
+    ...soltarFrase,
+    ...(arrastre ? { draggable: true, ...arrastre } : {}),
   } as const;
 
   if (variante === "afc") {
@@ -232,10 +277,23 @@ function Nodo({
       nodo.tipo === "conducta" ? s.conducta : "",
       seleccionado ? s.seleccionado : "",
       atenuado ? s.atenuado : "",
+      procedencia?.estado === "propuesta" ? s.propuesta : "",
+      destinoCita ? s.destinoCita : "",
     ].join(" ");
+    const rotulo = procedencia ? ROTULOS_PROCEDENCIA[procedencia.estado] : null;
     return (
       <article {...comunes} aria-label={`${nodo.tipo === "encubierta" ? ETIQUETA_TIPO.conducta : ETIQUETA_TIPO[nodo.tipo]}: ${nodo.etiqueta}${conectando ? ". Seleccionar para conectar" : ""}`} className={clases}>
         {barraApoyo(s.barraApoyo)}
+        {procedencia && rotulo && (
+          <span
+            className={s.marcaProcedencia}
+            data-procedencia={procedencia.estado}
+            title={`${rotulo.frase}${procedencia.estado === "editado" ? (procedencia.original ? ` Texto original de la IA: ${procedencia.original}` : " No se conserva el texto original de la IA.") : ""}`}
+          >
+            {MARCA_PROCEDENCIA[procedencia.estado]}
+            <span className="sr-only"> {rotulo.etiqueta}</span>
+          </span>
+        )}
         <div className={s.nodoCuerpo}>
           <div className={s.nodoTexto}>
             <span className={s.chip}>{nodo.tipo === "encubierta" ? ETIQUETA_TIPO.conducta : ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} /></span>
@@ -377,11 +435,12 @@ function BotonAgregarNodo({
 
 export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto, onIrANivel }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
-  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita } = useEspacio();
+  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu, propsSoltarFrase, arrastrandoFrase, setNodoEnElAire } = useEspacio();
   const [modoConectar, setModoConectar] = useState(false);
   const [origenConexion, setOrigenConexion] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<1 | 2 | 3 | null>(null);
   const [soloApoyado, setSoloApoyado] = useState(false);
+  const [agrupar, setAgrupar] = useState<AgruparMapa>("episodio");
   const [trazos, setTrazos] = useState<Trazo[]>([]);
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
   const alertasDeNodo = useMemo(() => alertasPorNodo(analisis), [analisis]);
@@ -446,14 +505,30 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
   }, [analisis.aristas, nodos, matrix]);
 
   // Los procesos ACT se leen sobre su nodo, por id y solo por id, cuando la capa
-  // ACT está encendida. Lo que no ancla va a la lista «sin anclar».
-  const idsNodos = new Set(nodos.map((n) => n.id));
-  const procesosACT = analisis.capa_act.procesos_act;
-  const procesosSinAnclar = procesosACT.filter((p) => !p.nodo_id || !idsNodos.has(p.nodo_id));
+  // ACT está encendida y tienen base funcional. Lo demás va a la lista aparte.
+  const { interpretables: procesosACT, aparte: procesosSinAnclar } = repartirProcesosACT(
+    analisis.capa_act.procesos_act,
+    new Set(nodos.map((n) => n.id))
+  );
   const atenuado = (n: NodoGrafo) =>
     (filtro !== null && n.apoyo !== filtro) ||
     (soloApoyado && n.apoyo < 3) ||
     (ruta.ids.size > 0 && !ruta.ids.has(n.id));
+
+  // Un nodo con un carril compatible al que ir se puede arrastrar; mientras
+  // vuela, el tablero enseña dónde se puede soltar (TableroSituacion).
+  const arrastreDe = (n: NodoGrafo) => {
+    const destinos = destinosPosibles(analisis, n.id);
+    if (destinos.length === 0) return undefined;
+    return {
+      onDragStart: (e: React.DragEvent) => {
+        e.dataTransfer.setData(TIPO_ARRASTRE_NODO, n.id);
+        e.dataTransfer.effectAllowed = "move";
+        setNodoEnElAire({ id: n.id, situacionId: n.situacion_id, destinos });
+      },
+      onDragEnd: () => setNodoEnElAire(null),
+    };
+  };
 
   const renderNodoMapa = (n: NodoGrafo) => {
     const nodo = (
@@ -467,6 +542,11 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
         onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
         onCita={citaDeNodo}
         alertas={avisos(n.id)}
+        procedencia={procedenciaDe(analisis, n.id)}
+        onMenu={(x, y) => abrirMenu(n.id, x, y)}
+        soltarFrase={propsSoltarFrase(n.id)}
+        destinoCita={arrastrandoFrase}
+        arrastre={arrastreDe(n)}
       />
     );
     const suyos = capas.act ? procesosACT.filter((p) => p.nodo_id === n.id) : [];
@@ -520,6 +600,22 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
         >
           {origenConexion ? "Elige el destino" : "Conectar"}
         </button>
+        {nivel === "situacion" && !matrix && (
+          <div role="group" aria-label="Separar el Mapa por" className="ml-2 flex items-center gap-1 text-xs">
+            <span className="text-ink-muted">Separar por</span>
+            {(["episodio", "conducta"] as const).map((opcion) => (
+              <button
+                key={opcion}
+                type="button"
+                aria-pressed={agrupar === opcion}
+                onClick={() => setAgrupar(opcion)}
+                className="rounded-full border border-divider px-2.5 py-1 text-ink-muted aria-pressed:border-accent aria-pressed:text-accent"
+              >
+                {opcion === "episodio" ? "Episodio" : "Conducta"}
+              </button>
+            ))}
+          </div>
+        )}
         <span className="ml-auto text-xs text-ink-muted">{nodos.length} nodos · {analisis.aristas.length} relaciones</span>
       </div>
 
@@ -563,7 +659,22 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
           </>
         ) : (
           <div className="space-y-5">
-            {analisis.situaciones.map((situacion) => (
+            {nivel === "situacion" ? (
+              <TableroColumnas
+                analisis={analisis}
+                nodos={nodos}
+                capas={capas}
+                agrupar={agrupar}
+                ruta={ruta.ids}
+                renderNodo={renderNodoMapa}
+                renderAgregar={renderAgregar}
+                onSeleccionarId={seleccionar}
+                onAgregarFuncion={(situacionId) => {
+                  const texto = window.prompt("Función hipotetizada")?.trim();
+                  if (texto) aplicar((copia) => agregarNodo(copia, situacionId, "funcion", texto));
+                }}
+              />
+            ) : analisis.situaciones.map((situacion) => (
               <TableroSituacion
                 key={situacion.id}
                 analisis={analisis}
@@ -583,6 +694,7 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
                 }}
                 onCita={irACita}
                 onIrANivel={onIrANivel}
+                onMenu={abrirMenu}
               />
             ))}
             <FueraDeSituacion
