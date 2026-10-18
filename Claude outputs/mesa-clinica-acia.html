@@ -1,0 +1,1589 @@
+<title>Mesa clínica ACIA</title>
+<meta name="description" content="Auditoría de /maqueta y rediseño de ACIA como espacio de trabajo clínico longitudinal.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Diseño: el sistema de marca de ACIA (MARCA.md) aplicado a un documento de diseño.
+   Índice fijo a la izquierda + columna de lectura; maquetas de baja fidelidad en sans,
+   referencias a la nota en mono (la mono marca lo verificable). Sin rojo: ámbar = revisar. */
+:root {
+  --lienzo: #F5F0E8;
+  --superficie: #FBF8F2;
+  --hundido: #EEE7DA;
+  --tinta: #1F2A28;
+  --tinta-suave: #6E6357;
+  --linea: #E2D8C8;
+  --verde: #0F5A43;
+  --verde-suave: color-mix(in srgb, #0F5A43 11%, #FBF8F2);
+  --ambar: #8A6D3B;
+  --ambar-suave: color-mix(in srgb, #8A6D3B 14%, #FBF8F2);
+  --dorado: #B48A35;
+  --gris: #9A9288;
+  --sobre-verde: #FFFFFF;
+  --serif: "Source Serif 4", "Iowan Old Style", Georgia, serif;
+  --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --lienzo: #12171A; --superficie: #1A2124; --hundido: #151B1E; --tinta: #E8EDEB;
+    --tinta-suave: #9AA8A4; --linea: #2B3438; --verde: #5A9C84;
+    --verde-suave: color-mix(in srgb, #5A9C84 18%, #1A2124); --ambar: #D0A94A;
+    --ambar-suave: color-mix(in srgb, #D0A94A 15%, #1A2124); --dorado: #C9A55A;
+    --gris: #7D8A87; --sobre-verde: #0B0F10; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --lienzo: #12171A; --superficie: #1A2124; --hundido: #151B1E; --tinta: #E8EDEB;
+  --tinta-suave: #9AA8A4; --linea: #2B3438; --verde: #5A9C84;
+  --verde-suave: color-mix(in srgb, #5A9C84 18%, #1A2124); --ambar: #D0A94A;
+  --ambar-suave: color-mix(in srgb, #D0A94A 15%, #1A2124); --dorado: #C9A55A;
+  --gris: #7D8A87; --sobre-verde: #0B0F10; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--lienzo); color: var(--tinta); font-family: var(--serif); font-size: 17px; line-height: 1.6; }
+.pagina { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; max-width: 1240px; margin: 0 auto; padding: 40px 24px 96px; }
+@media (max-width: 1000px) { .pagina { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 24px 16px 72px; } }
+
+/* Índice */
+nav.indice { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-family: var(--sans); font-size: 13px; line-height: 1.4; max-height: calc(100vh - 48px); overflow-y: auto; }
+nav.indice .marca { font-family: var(--serif); font-weight: 600; letter-spacing: .2em; font-size: 15px; color: var(--verde); margin-bottom: 14px; }
+nav.indice ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+nav.indice a { display: grid; grid-template-columns: 18px 1fr; gap: 6px; padding: 5px 8px; border-radius: 6px; color: var(--tinta-suave); text-decoration: none; }
+nav.indice a:hover, nav.indice a:focus-visible { background: var(--hundido); color: var(--tinta); outline: none; }
+nav.indice a b { font-family: var(--mono); font-weight: 500; color: var(--verde); }
+@media (max-width: 1000px) {
+  nav.indice { position: static; max-height: none; border: 1px solid var(--linea); border-radius: 10px; padding: 12px; background: var(--superficie); }
+  nav.indice ol { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+
+main { min-width: 0; }
+.prosa { max-width: 68ch; }
+h1, h2, h3, h4 { font-family: var(--serif); text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(32px, 4.4vw, 46px); font-weight: 600; letter-spacing: -.01em; }
+h2 { font-size: 30px; font-weight: 600; margin-top: 88px; padding-top: 20px; border-top: 1px solid var(--linea); display: flex; gap: 14px; align-items: baseline; scroll-margin-top: 24px; }
+h2 .letra { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--sobre-verde); background: var(--verde); border-radius: 6px; padding: 2px 9px; position: relative; top: -4px; }
+h3 { font-size: 21px; font-weight: 600; margin-top: 44px; scroll-margin-top: 24px; }
+h4 { font-family: var(--sans); font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-suave); margin-top: 28px; }
+p { margin: 14px 0 0; }
+ul, ol { margin: 14px 0 0; padding-left: 22px; }
+li { margin-top: 6px; }
+li::marker { color: var(--tinta-suave); }
+strong { font-weight: 600; }
+a { color: var(--verde); }
+code, .ref { font-family: var(--mono); font-size: .82em; background: var(--hundido); border-radius: 4px; padding: 1px 5px; }
+.ref { color: var(--verde); white-space: nowrap; }
+.cita { font-style: italic; }
+.eyebrow { font-family: var(--sans); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--verde); font-weight: 600; }
+.lede { font-size: 20px; line-height: 1.5; color: var(--tinta); margin-top: 16px; max-width: 60ch; }
+.nota-lateral { font-family: var(--sans); font-size: 14px; line-height: 1.55; color: var(--tinta-suave); border-left: 3px solid var(--linea); padding: 4px 0 4px 14px; margin-top: 18px; max-width: 72ch; }
+
+/* Tesis */
+.tesis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 32px; }
+@media (max-width: 760px) { .tesis { grid-template-columns: minmax(0, 1fr); } }
+.tesis > div { background: var(--superficie); border: 1px solid var(--linea); border-radius: 10px; padding: 18px; }
+.tesis h3 { margin: 0; font-size: 18px; }
+.tesis p { font-size: 15px; line-height: 1.5; margin-top: 8px; color: var(--tinta-suave); }
+.tesis .num { font-family: var(--mono); font-size: 12px; color: var(--verde); }
+
+/* Cifras de la auditoría */
+.cifras { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 22px; font-family: var(--sans); }
+.cifras div { display: grid; }
+.cifras b { font-family: var(--serif); font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.cifras span { font-size: 13px; color: var(--tinta-suave); max-width: 18ch; }
+
+/* Tablas */
+.tabla { overflow-x: auto; margin-top: 18px; border: 1px solid var(--linea); border-radius: 10px; background: var(--superficie); }
+table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 13.5px; line-height: 1.45; }
+.tabla.ancha table { min-width: 940px; }
+.tabla.media table { min-width: 700px; }
+th { text-align: left; font-weight: 600; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--tinta-suave); background: var(--hundido); padding: 10px 12px; vertical-align: bottom; }
+td { padding: 10px 12px; border-top: 1px solid var(--linea); vertical-align: top; }
+td:first-child { font-weight: 500; }
+td.num, th.num { text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dec { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 2px 7px; border-radius: 99px; white-space: nowrap; border: 1px solid currentColor; }
+.dec.conservar { color: var(--verde); }
+.dec.transformar { color: var(--ambar); }
+.dec.fusionar { color: var(--tinta); }
+.dec.eliminar { color: var(--tinta-suave); text-decoration: line-through; }
+.dec.mover { color: var(--tinta); border-style: dashed; }
+.puntos { font-family: var(--mono); letter-spacing: .1em; color: var(--verde); white-space: nowrap; }
+
+/* Maquetas de baja fidelidad */
+.maqueta { margin-top: 20px; overflow-x: auto; }
+.maqueta > .lienzo-maqueta { font-family: var(--sans); font-size: 12.5px; line-height: 1.4; background: var(--superficie); border: 1px solid var(--linea); border-radius: 12px; color: var(--tinta); }
+.pie-maqueta { font-family: var(--sans); font-size: 12.5px; color: var(--tinta-suave); margin-top: 8px; }
+.callout { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--verde); color: var(--sobre-verde); font-size: 10.5px; font-weight: 600; font-family: var(--sans); flex: none; vertical-align: middle; }
+
+/* Workspace */
+.ws { min-width: 1000px; display: grid; grid-template-columns: 210px minmax(0, 1fr) 270px; grid-template-rows: auto minmax(360px, auto) auto; }
+.ws-cab { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr auto; gap: 6px 18px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--linea); }
+.ws-cab .alias { font-family: var(--serif); font-size: 15px; font-weight: 600; }
+.ws-cab .vistas { display: flex; gap: 4px; }
+.ws-cab .vistas span { padding: 3px 9px; border-radius: 6px; color: var(--tinta-suave); }
+.ws-cab .vistas .act { background: var(--verde); color: var(--sobre-verde); }
+.ws-cab .der { display: flex; gap: 10px; align-items: center; justify-content: end; flex-wrap: wrap; }
+.boton { border: 1px solid var(--linea); border-radius: 6px; padding: 3px 9px; background: var(--superficie); white-space: nowrap; }
+.boton.prim { background: var(--verde); color: var(--sobre-verde); border-color: var(--verde); }
+.chip { display: inline-flex; gap: 5px; align-items: center; border-radius: 99px; padding: 1px 8px; font-size: 11.5px; border: 1px solid var(--linea); white-space: nowrap; background: var(--superficie); }
+.chip.ok { color: var(--verde); border-color: color-mix(in srgb, var(--verde) 45%, transparent); }
+.chip.rev { color: var(--ambar); border-color: color-mix(in srgb, var(--ambar) 55%, transparent); }
+.chip.rev-alta { color: var(--sobre-verde); background: var(--ambar); border-color: var(--ambar); }
+.chip.gris { color: var(--tinta-suave); }
+.ws-rail { border-right: 1px solid var(--linea); padding: 12px; display: grid; gap: 12px; align-content: start; }
+.ws-rail .grupo h5 { margin: 0 0 4px; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-suave); display: flex; justify-content: space-between; }
+.ws-rail .item { display: flex; justify-content: space-between; gap: 6px; padding: 3px 6px; border-radius: 5px; }
+.ws-rail .item.sel { background: var(--verde-suave); font-weight: 600; }
+.ws-centro { display: grid; grid-template-rows: auto 1fr; min-width: 0; }
+.ws-barra { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--linea); color: var(--tinta-suave); }
+.seg { display: inline-flex; border: 1px solid var(--linea); border-radius: 6px; overflow: hidden; }
+.seg span { padding: 2px 8px; }
+.seg span + span { border-left: 1px solid var(--linea); }
+.seg .act { background: var(--verde-suave); color: var(--tinta); font-weight: 600; }
+.ws-lienzo { padding: 18px 14px; display: grid; gap: 10px; align-content: start; background: repeating-linear-gradient(0deg, transparent 0 23px, color-mix(in srgb, var(--linea) 40%, transparent) 23px 24px); }
+.ws-insp { border-left: 1px solid var(--linea); padding: 12px; display: grid; gap: 10px; align-content: start; }
+.ws-insp .tit { font-family: var(--serif); font-size: 15px; font-weight: 600; line-height: 1.25; }
+.ws-insp .etq { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-suave); }
+.ws-insp .pest { display: flex; gap: 10px; border-bottom: 1px solid var(--linea); padding-bottom: 4px; color: var(--tinta-suave); }
+.ws-insp .pest .act { color: var(--tinta); font-weight: 600; border-bottom: 2px solid var(--verde); }
+.ws-fuente { grid-column: 1 / -1; border-top: 1px solid var(--linea); padding: 8px 14px; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; background: var(--hundido); border-radius: 0 0 12px 12px; }
+.frase-sin { background: var(--ambar-suave); border-radius: 4px; padding: 0 4px; }
+
+/* Nodos del mapa */
+.fila { display: flex; align-items: stretch; gap: 0; flex-wrap: nowrap; }
+.n { position: relative; border: 1px solid var(--linea); border-left: 4px solid var(--ap, var(--linea)); background: var(--superficie); border-radius: 7px; padding: 6px 8px 7px; min-width: 0; }
+.n .t { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--tinta-suave); display: flex; gap: 6px; justify-content: space-between; align-items: baseline; }
+.n .t .ref { font-size: 10px; padding: 0 4px; text-transform: none; letter-spacing: 0; }
+.n .x { font-size: 12.5px; margin-top: 2px; }
+.n.textual { --ap: var(--verde); }
+.n.parcial { --ap: var(--dorado); }
+.n.inferido { --ap: var(--gris); }
+.n.ia { border-style: dashed; border-left-style: solid; }
+.n.hueco { border: 1.5px dotted var(--gris); background: transparent; color: var(--tinta-suave); font-style: italic; }
+.n.nuevo::after { content: "lo dice la nota · no está en la maqueta"; position: absolute; top: -8px; right: 6px; font-size: 9.5px; font-style: normal; background: var(--superficie); color: var(--verde); border: 1px solid var(--verde); border-radius: 99px; padding: 0 6px; }
+.n .alerta { display: inline-block; margin-top: 4px; font-size: 10.5px; font-weight: 600; color: var(--sobre-verde); background: var(--ambar); border-radius: 4px; padding: 0 5px; }
+.n .alerta.media { color: var(--ambar); background: transparent; border: 1px solid var(--ambar); }
+.flecha { display: grid; place-items: center; padding: 0 6px; color: var(--tinta-suave); font-size: 15px; flex: none; }
+.arco { flex: none; display: grid; align-content: center; justify-items: center; padding: 0 6px; min-width: 150px; }
+.arco .lbl { font-size: 11px; font-weight: 600; text-align: center; line-height: 1.25; }
+.arco .lbl small { display: block; font-weight: 400; color: var(--tinta-suave); }
+.arco .linea { width: 100%; height: 0; border-top: 3px double var(--verde); position: relative; margin-top: 5px; }
+.arco .linea::after { content: ""; position: absolute; right: -2px; top: -7px; border: 5.5px solid transparent; border-left: 8px solid var(--verde); }
+.banda { border-top: 1px dashed var(--linea); padding-top: 8px; color: var(--tinta-suave); font-size: 11.5px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.banda .rot { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.capa-plan { background: var(--verde-suave); border-radius: 10px; padding: 10px; display: grid; gap: 8px; }
+.capa-plan .rot { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--verde); font-weight: 600; }
+.descartada { text-decoration: line-through; color: var(--tinta-suave); }
+
+/* Nivel 0: clases funcionales */
+.clases { min-width: 900px; padding: 16px; display: grid; gap: 14px; }
+.clases .cols { display: grid; grid-template-columns: 1.25fr 1fr .9fr; gap: 12px; }
+.clase { border: 1px solid var(--linea); border-radius: 10px; padding: 10px; display: grid; gap: 8px; align-content: start; background: var(--superficie); }
+.clase.indet { border-style: dashed; }
+.clase h5 { margin: 0; font-family: var(--serif); font-size: 15px; font-weight: 600; line-height: 1.25; }
+.clase .sub { font-size: 11px; color: var(--tinta-suave); margin-top: -4px; }
+.franja { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; border-top: 1px solid var(--linea); padding-top: 10px; }
+.franja .rot { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-suave); padding-top: 6px; width: 110px; }
+.franja .contenido { display: flex; flex-wrap: wrap; gap: 8px; }
+.franja .contenido .n { max-width: 270px; }
+.lectura { font-size: 12.5px; background: var(--hundido); border-radius: 8px; padding: 8px 10px; }
+
+/* Leyenda */
+.leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--sans); font-size: 12px; color: var(--tinta-suave); margin-top: 10px; }
+.leyenda i { display: inline-block; width: 18px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 5px; border-left: 4px solid var(--c); background: var(--superficie); border-top: 1px solid var(--linea); border-bottom: 1px solid var(--linea); border-right: 1px solid var(--linea); }
+.leyenda i.punteado { border: 1.5px dotted var(--gris); }
+.leyenda i.discontinuo { border: 1px dashed var(--tinta-suave); border-left: 4px solid var(--gris); }
+
+/* Tarjeta de hipótesis y cadena del blanco */
+.tarjeta { font-family: var(--sans); font-size: 13px; background: var(--superficie); border: 1px solid var(--linea); border-radius: 12px; padding: 16px; display: grid; gap: 12px; max-width: 640px; }
+.tarjeta .cab { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tarjeta .titulo { font-family: var(--serif); font-size: 18px; font-weight: 600; line-height: 1.3; }
+.tarjeta .ruta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tarjeta .bloque { border-top: 1px solid var(--linea); padding-top: 10px; display: grid; gap: 6px; }
+.tarjeta .bloque .etq { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-suave); font-weight: 600; }
+.tarjeta .acciones { display: flex; flex-wrap: wrap; gap: 6px; }
+.frase { font-family: var(--serif); font-style: italic; }
+
+.cadena { margin-top: 20px; overflow-x: auto; }
+.cadena .marco { min-width: 1060px; font-family: var(--sans); font-size: 12.5px; background: var(--superficie); border: 1px solid var(--linea); border-radius: 12px; padding: 14px; display: grid; gap: 12px; }
+.cadena .cabecera { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.cadena .cabecera .tit { font-family: var(--serif); font-size: 17px; font-weight: 600; }
+.ranuras { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 0; }
+.ranura { border: 1px solid var(--linea); border-right: none; padding: 8px; display: grid; gap: 4px; align-content: start; position: relative; background: var(--superficie); }
+.ranura:first-child { border-radius: 8px 0 0 8px; }
+.ranura:last-child { border-right: 1px solid var(--linea); border-radius: 0 8px 8px 0; }
+.ranura .num { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-suave); display: flex; justify-content: space-between; }
+.ranura .estado { font-size: 13px; line-height: 1; }
+.ranura.ref { background: var(--hundido); }
+.ranura.hueco .estado { color: var(--ambar); }
+.ranura.abierta { outline: 2px solid var(--verde); outline-offset: -2px; z-index: 1; }
+.editor-ranura { border: 1px solid var(--verde); border-radius: 10px; padding: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; }
+.editor-ranura .campo .etq { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-suave); font-weight: 600; }
+.editor-ranura .ancho { grid-column: 1 / -1; }
+
+/* Teléfono */
+.dos-col { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 28px; align-items: start; margin-top: 20px; }
+@media (max-width: 860px) { .dos-col { grid-template-columns: minmax(0, 1fr); } }
+.telefono { max-width: 360px; width: 100%; border: 1px solid var(--linea); border-radius: 26px; padding: 14px 12px 18px; background: var(--superficie); font-family: var(--sans); font-size: 13px; line-height: 1.4; display: grid; gap: 12px; }
+.telefono .barra { display: flex; justify-content: space-between; align-items: center; }
+.telefono .barra b { font-family: var(--serif); font-size: 17px; }
+.telefono .sec { display: grid; gap: 6px; }
+.telefono .sec > .etq { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--tinta-suave); font-weight: 600; border-bottom: 1px solid var(--linea); padding-bottom: 3px; }
+.telefono .preg { display: grid; gap: 2px; padding: 6px 8px; border-radius: 8px; background: var(--hundido); }
+.telefono .preg small { color: var(--tinta-suave); font-size: 11.5px; }
+.telefono .delta { display: grid; grid-template-columns: 16px 1fr; gap: 4px; }
+.telefono .delta b { font-family: var(--mono); color: var(--verde); }
+.spark { vertical-align: middle; }
+
+/* Revisión de cambios */
+.cambios { min-width: 820px; font-family: var(--sans); font-size: 13px; background: var(--superficie); border: 1px solid var(--linea); border-radius: 12px; }
+.cambios .cab { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--linea); align-items: center; }
+.cambios .cab b { font-family: var(--serif); font-size: 16px; }
+.grupo-c { padding: 10px 14px; border-bottom: 1px solid var(--linea); display: grid; gap: 6px; }
+.grupo-c:last-child { border-bottom: none; }
+.grupo-c .gt { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-weight: 600; }
+.prop { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 5px 6px; border-radius: 6px; }
+.prop:hover { background: var(--hundido); }
+.prop .op { font-family: var(--mono); font-weight: 500; color: var(--verde); }
+.prop .op.menos { color: var(--ambar); }
+.prop .bts { display: flex; gap: 4px; }
+.prop .bts span { border: 1px solid var(--linea); border-radius: 5px; padding: 0 6px; font-size: 12px; }
+
+/* Matriz de evolución */
+.evo { min-width: 860px; font-family: var(--sans); font-size: 12.5px; }
+.evo td, .evo th { text-align: center; }
+.evo td:first-child, .evo th:first-child { text-align: left; }
+.glifo { font-size: 15px; line-height: 1; color: var(--verde); }
+.glifo.p { color: var(--dorado); }
+.glifo.i { color: var(--gris); }
+
+/* Columnas MVP */
+.tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
+@media (max-width: 900px) { .tres { grid-template-columns: minmax(0, 1fr); } }
+.tres > div { background: var(--superficie); border: 1px solid var(--linea); border-radius: 10px; padding: 16px; font-family: var(--sans); font-size: 14px; line-height: 1.5; }
+.tres h4 { margin-top: 0; }
+.tres ol, .tres ul { padding-left: 18px; margin-top: 8px; }
+.tres li { margin-top: 6px; }
+
+.ventajas { display: grid; gap: 14px; margin-top: 22px; counter-reset: v; }
+.ventajas > div { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 14px; background: var(--superficie); border: 1px solid var(--linea); border-radius: 12px; padding: 18px; }
+.ventajas > div::before { counter-increment: v; content: counter(v); font-family: var(--serif); font-size: 30px; font-weight: 600; color: var(--verde); line-height: 1; }
+.ventajas h3 { margin: 0; font-size: 20px; }
+.ventajas p { font-size: 16px; }
+
+.flujo { display: grid; gap: 12px; margin-top: 20px; counter-reset: paso; }
+.flujo > div { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 14px 0; border-top: 1px solid var(--linea); }
+.flujo > div::before { counter-increment: paso; content: counter(paso); font-family: var(--mono); font-size: 13px; color: var(--sobre-verde); background: var(--verde); border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; }
+.flujo h4 { margin: 0; font-family: var(--serif); font-size: 18px; text-transform: none; letter-spacing: 0; color: var(--tinta); font-weight: 600; }
+.flujo dl { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 4px 12px; margin: 8px 0 0; font-size: 15.5px; }
+.flujo dt { font-family: var(--sans); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--tinta-suave); padding-top: 4px; }
+.flujo dd { margin: 0; }
+
+:focus-visible { outline: 2px solid var(--verde); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="pagina">
+<nav class="indice" aria-label="Índice">
+  <div class="marca">ACIA</div>
+  <ol>
+    <li><a href="#tesis"><b>·</b>Tesis</a></li>
+    <li><a href="#a"><b>A</b>Diagnóstico</a></li>
+    <li><a href="#b"><b>B</b>Conservar, fusionar, eliminar</a></li>
+    <li><a href="#c"><b>C</b>Arquitectura</a></li>
+    <li><a href="#d"><b>D</b>Espacio de trabajo</a></li>
+    <li><a href="#e"><b>E</b>AFC gráfico</a></li>
+    <li><a href="#f"><b>F</b>Hipótesis</a></li>
+    <li><a href="#g"><b>G</b>Blancos y alternativas</a></li>
+    <li><a href="#h"><b>H</b>Plan</a></li>
+    <li><a href="#i"><b>I</b>Próxima sesión</a></li>
+    <li><a href="#j"><b>J</b>Evolución</a></li>
+    <li><a href="#k"><b>K</b>Ayuda guiada</a></li>
+    <li><a href="#l"><b>L</b>Outputs de IA</a></li>
+    <li><a href="#m"><b>M</b>MVP</a></li>
+    <li><a href="#n"><b>N</b>Monetización</a></li>
+    <li><a href="#o"><b>O</b>Componentes</a></li>
+    <li><a href="#p"><b>P</b>Arquitectura técnica</a></li>
+    <li><a href="#q"><b>Q</b>Flujo completo</a></li>
+    <li><a href="#r"><b>R</b>Crítica final</a></li>
+  </ol>
+</nav>
+
+<main>
+<header id="tesis">
+  <div class="eyebrow">ACIA · auditoría y rediseño · 4 de octubre de 2026</div>
+  <h1>De informe a mesa de trabajo clínica</h1>
+  <p class="lede">Una auditoría de <code>/maqueta</code> y una arquitectura para que ACIA deje de entregar un documento y pase a sostener la formulación de un caso a lo largo de las sesiones.</p>
+
+  <p class="nota-lateral"><strong>Qué se revisó.</strong> La maqueta publicada en <code>paginanalisis.vercel.app/maqueta</code>, recorrida a 1280 y 1600 px y medida en el navegador, y el código de <code>main</code> (<code>4567a48</code>): <code>components/informe/</code>, <code>components/grafo/</code>, <code>lib/types.ts</code>, <code>lib/citas.ts</code>, más <code>PLAN.md</code>, <code>RELEVO.md</code>, <code>CAMBIOS.md</code>, <code>MONETIZACION.md</code> y <code>MARCA.md</code>. El contenido de la maqueta es el informe v0.1.2 con dos añadidos a mano, así que varios fallos de contenido (el sueño como vulnerabilidad biológica, la respiración como alternativa) vienen de esa versión. Los cito igual: la interfaz tiene que estar diseñada para cuando el modelo se equivoca, y esa maqueta lo muestra mejor que un informe limpio.</p>
+
+  <div class="tesis">
+    <div>
+      <div class="num">Decisión 1</div>
+      <h3>El caso es la unidad de trabajo</h3>
+      <p>Un caso tiene sesiones. Cada sesión propone cambios a una formulación que persiste, y el clínico los acepta o los rechaza. El informe pasa a ser una exportación del estado del caso.</p>
+    </div>
+    <div>
+      <div class="num">Decisión 2</div>
+      <h3>Cuatro vistas sobre un solo modelo</h3>
+      <p>Las cinco pestañas se sustituyen por <strong>Preparar · Mapa · Blancos · Evolución</strong>. Las cuatro leen las mismas entidades por id, y nada se escribe dos veces: el plan referencia la hipótesis, no la copia.</p>
+    </div>
+    <div>
+      <div class="num">Decisión 3</div>
+      <h3>El apoyo se mide en las relaciones</h3>
+      <p>Hoy un dato citado presta su verde a una relación que ninguna línea de la nota sostiene, y esa relación acaba encabezando la formulación. Cada arista tiene que llevar su propio grado de apoyo.</p>
+    </div>
+  </div>
+</header>
+
+<!-- ============================ A ============================ -->
+<h2 id="a"><span class="letra">A</span>Diagnóstico del producto actual</h2>
+
+<div class="cifras" aria-label="Medidas de la maqueta">
+  <div><b>5</b><span>pestañas para un único razonamiento</span></div>
+  <div><b>≈12.800 px</b><span>de alto sumando las pestañas, a 1600 px de ancho</span></div>
+  <div><b>≈3.800</b><span>palabras en pantalla</span></div>
+  <div><b>14</b><span>lugares donde aparece «evitar exponer en reuniones»</span></div>
+  <div><b>≈20</b><span>mensajes de ausencia en la pestaña Plan</span></div>
+</div>
+
+<h3>A.1 Lo que ya es diferencial y hay que proteger</h3>
+<div class="prosa">
+<p>ACIA tiene hoy una base epistémica que ningún generador de informes tiene. El rediseño se apoya en ella; no la sustituye.</p>
+<ul>
+  <li><strong>Citas por línea resueltas en el servidor</strong>, y la etiqueta «Inferido» cuando no resuelven. Es la condición para cualquier trazabilidad posterior, también entre sesiones.</li>
+  <li><strong>Tres grados de apoyo con una definición correcta.</strong> La propia interfaz lo dice: <span class="cita">«No mide si es cierto; mide cuánto de ello escribiste tú»</span>. Es justo la distinción que el encargo pide entre apoyo y probabilidad.</li>
+  <li><strong>Validadores deterministas.</strong> En la maqueta detectan lo que importa: <span class="cita">«Técnicas de respiración ya aparece en el caso cumpliendo función de alivio»</span>.</li>
+  <li><strong>Entidades con identidad y aristas persistidas</strong> (esquema v3: <code>cnd_1</code>, <code>sit_1</code>, <code>Arista</code>). Sin esto la evolución longitudinal sería imposible. Con esto, está a medio camino.</li>
+  <li><strong>Grafo editable</strong> con deshacer, rehacer, «Conectar», y el filtro «Ver solo lo apoyado por la nota».</li>
+  <li><strong>Vacíos honestos:</strong> <span class="cita">«Información insuficiente para darla por propuesta. Primero explorar: …»</span>. Es lo que debe hacer un sistema clínico ante un hueco.</li>
+  <li><strong>El criterio de revisión falsable</strong>: <span class="cita">«Si tras seis exposiciones sin conducta de seguridad la evitación en reuniones no cede, la función no sería de escape…»</span>. Es la mejor frase del producto, y hoy está en «Monitorización sin blanco», al final de la pestaña Plan.</li>
+  <li><strong>La hipótesis de origen</strong> separada y marcada «No modificable · no genera blancos». Enseña sin explicar.</li>
+  <li><strong>El repertorio activo</strong> como tercera columna, que distingue un problema de generalización de uno de adquisición.</li>
+</ul>
+</div>
+
+<h3>A.2 Una conducta, catorce lugares</h3>
+<div class="prosa"><p>Seguí «evitar exponer en reuniones» por toda la maqueta. Aparece en catorce sitios repartidos en cinco pestañas y dos lentes. Solo cuatro añaden algo; el resto repite o reformula.</p></div>
+<div class="tabla media"><table>
+  <thead><tr><th>Dónde</th><th>Qué aporta</th><th>Nuevo o repetido</th></tr></thead>
+  <tbody>
+    <tr><td>Análisis funcional · situación «Reuniones de equipo»</td><td>OM, Ed, EC, cinco tarjetas de conducta, consecuencias, alternativa y, en la última fila, la función</td><td>Nuevo (la fuente)</td></tr>
+    <tr><td>Análisis funcional · Ficha y nota (debajo del grafo)</td><td>Tipo, apoyo, relaciones del nodo; la nota numerada</td><td>Nuevo, pero fuera de vista</td></tr>
+    <tr><td>Resumen · Formulación principal</td><td>La cadena encadenada en una frase</td><td>Repetido</td></tr>
+    <tr><td>Resumen · Tres prioridades</td><td>Puesto 1</td><td>Repetido</td></tr>
+    <tr><td>Resumen · Preguntas</td><td><span class="cita">«¿Qué pensamientos específicos surgen antes de evitar exponer?»</span></td><td>Genérico</td></tr>
+    <tr><td>Formulación · Hipótesis 1</td><td>Idéntica a la formulación principal, palabra por palabra</td><td>Repetido</td></tr>
+    <tr><td>Formulación · Red funcional y bucle</td><td>Un círculo y un bucle con el sueño</td><td>Derivado de una relación sin apoyo (A.4)</td></tr>
+    <tr><td>Formulación · Relaciones entre problemas</td><td><span class="cita">«La evitación de situaciones evaluativas alimenta la falta de confianza…»</span></td><td>Reformulado</td></tr>
+    <tr><td>Formulación · Priorización</td><td>Cuatro criterios y «Por dónde moverla: Sueño deficiente los domingos»</td><td>Derivado de A.4</td></tr>
+    <tr><td>Plan · Blanco 1</td><td>Función otra vez, alternativa con alerta, <span class="cita">«El análisis no propone intervención»</span></td><td>Repetido y vacío</td></tr>
+    <tr><td>Plan · Intervenciones sin blanco</td><td>Exposición graduada; reforzamiento diferencial con <span class="cita">«R− que mantiene la evitación en reuniones»</span></td><td><strong>Nuevo</strong>, pero huérfano</td></tr>
+    <tr><td>Plan · Monitorización sin blanco</td><td>Qué se mide y el criterio de revisión</td><td><strong>Nuevo</strong>, mezclado con el alcohol</td></tr>
+    <tr><td>Revisión · Puntos a verificar y datos faltantes</td><td>La alerta de la respiración (dos veces) y <span class="cita">«Reacciones de la supervisora ante los errores»</span></td><td><strong>Nuevo</strong></td></tr>
+    <tr><td>Lentes DBT y ACT</td><td>Cadena numerada; la alternativa con respiración como «conducta de acercamiento»</td><td>Reordenado</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa"><p>Para responder «¿qué mantiene esta conducta y qué hago con ella?» el clínico tiene que recorrer las cinco pestañas y reconstruir de memoria lo que la interfaz separó. Es la sensación de estar leyendo un informe, medida en recorrido.</p></div>
+
+<h3>A.3 La prosa es el grafo serializado</h3>
+<div class="prosa">
+<p>La «Formulación principal» del Resumen y la hipótesis 1 de Formulación son el mismo texto:</p>
+<p class="nota-lateral" style="font-family: var(--serif); font-style: italic; color: var(--tinta);">Ante el Ed «Supervisora pide exponer resultados.»; bajo la OM «OE de malestar condicionado por evaluación social.»; se observa «Evita exponer resultados en reuniones, pidiendo ir al baño.»; seguida de «Alivio inmediato por evitar exposición.»; y de «Erosión de la confianza en sus habilidades.» a medio o largo plazo; La relación de mantenimiento trazada parte de «Sueño deficiente los domingos.»; La ruta termina en la función hipotetizada «Escape/evitación de evaluación social aversiva.».</p>
+<p>Tiene tres problemas. Se lee peor que el camino dibujado que describe. En la hipótesis 3 imprime <span class="cita">«parte de «»»</span>, con las comillas vacías. Y pone entre comillas latinas etiquetas que escribió el modelo, con la misma marca tipográfica que una cita de la nota: choca con el espíritu del invariante 2, porque el lector no tiene forma de saber que eso no es texto de su nota. La conclusión no es mejorar la plantilla. Si el texto solo puede repetir el grafo, el grafo ya es la formulación, y la prosa debe generarse solo al exportar.</p>
+</div>
+
+<h3>A.4 Una inferencia débil acaba de recomendación</h3>
+<div class="prosa">
+<p>Es el hallazgo más importante, y es de diseño, no del modelo. La nota dice <span class="cita">«Duerme mal los domingos»</span> (L7). A partir de ahí:</p>
+<ol>
+  <li>Se crea la moduladora «Sueño deficiente los domingos», clasificada <code>biofisiologico · atencion · actual</code>, con <strong>Cita textual</strong>.</li>
+  <li>Una arista la une a «Evita exponer…», y la red funcional dibuja un <strong>bucle cerrado</strong> sueño → evitar exponer → sueño, con la instrucción <span class="cita">«El plan tiene que romperlo por algún punto»</span>.</li>
+  <li>La priorización del blanco 1 da <strong>Modificabilidad ALTA</strong>, estimada a partir de «la variable más modificable trazada hasta ella», es decir, el sueño.</li>
+  <li>El blanco 1 recibe <span class="cita">«Por dónde moverla: Sueño deficiente los domingos.»</span></li>
+  <li>La formulación principal del caso termina diciendo que la relación de mantenimiento «parte de» el sueño.</li>
+</ol>
+<p>El caso 01 de las evals afirma justo lo contrario (<code>sueno-no-es-vulnerabilidad-biologica</code>: dormir mal los domingos es consecuencia de la anticipación). Lo grave es el mecanismo. El verde de la cita pertenece al <em>dato</em> («duerme mal»), pero la interfaz lo extiende al <em>papel</em> que se le asigna y a la <em>relación</em> con la evitación, que ninguna línea sostiene. Cada capa derivada (bucle, priorización, formulación principal) hereda el verde y añade certeza. Hace falta medir el apoyo en las aristas, y que todo lo derivado tome el mínimo de las aristas que usa. El sistema ya aplica <code>Math.min</code> a las situaciones; falta llevarlo a las relaciones.</p>
+</div>
+
+<h3>A.5 Lo urgente está lejos de lo que señala</h3>
+<div class="prosa">
+<ul>
+  <li><strong>La alerta más grave no está en el nodo.</strong> La alternativa <span class="cita">«Exponer resultados utilizando técnicas de respiración para manejar la ansiedad»</span> aparece sin aviso en el grafo y, en la lente ACT, como «conducta de acercamiento». La Ficha solo dice «Apoyo en la nota: Inferencia». El aviso está en Plan y, dos veces, en Revisión.</li>
+  <li><strong>La Ficha queda fuera de la pantalla.</strong> A 1600 px empieza en y≈3.600, mientras los nodos van de y≈700 a y≈3.000. Al seleccionar un nodo se actualiza un panel que el clínico no ve. La nota numerada está ahí mismo. Además la Ficha enseña ids internos: <code>alt_1 → alt_1_consecuencia</code>.</li>
+  <li><strong>El blanco 1 dice que no tiene intervención y sí la tiene.</strong> <span class="cita">«El análisis no propone intervención para este blanco»</span>, mientras 1.500 px más abajo, en «Intervenciones sin blanco», están la exposición graduada y el reforzamiento diferencial dirigidos a <span class="cita">«la evitación en reuniones»</span>.</li>
+</ul>
+</div>
+
+<h3>A.6 Tres silencios distintos con la misma frase</h3>
+<div class="prosa">
+<p>«Valores y metas: <em>Sin hallazgos suficientes en la nota</em>», cuando la nota dice que <span class="cita">«le gustaría poder optar a un ascenso que implica coordinar un equipo pequeño»</span> (L11). «Pérdida de reforzadores: <em>Sin hallazgos</em>», cuando ha dejado las clases de baile (L7). Y el riesgo: <span class="cita">«La nota no da base para valorar el riesgo: no dice nada sobre consumo…»</span>, cuando L7 describe dos o tres copas de vino antes de quedar.</p>
+<p>En la maqueta ocurre porque el fixture es anterior a esos campos y llegan a <code>null</code>. El problema es que la interfaz no distingue tres estados: <strong>no se generó</strong> (versión antigua o bloque no pedido), <strong>la IA no encontró nada</strong>, y <strong>la nota no lo contiene</strong>. Los tres se pintan con la frase del tercero, fija en <code>components/informe/primitivas.tsx:48</code> y <code>BloqueSintesis.tsx:70</code>. Clínicamente es el error inverso al de las citas inventadas: le dice al terapeuta que su nota no contiene algo que sí contiene.</p>
+</div>
+
+<h3>A.7 La cita señala un párrafo</h3>
+<div class="prosa">
+<p><code>numerarNota</code> corta por saltos de línea. La nota del caso tiene seis párrafos, así que <span class="ref">L3</span> es el episodio del martes entero, unas 125 palabras. Una «Cita textual» de <span class="cita">«Supervisora pide exponer resultados»</span> resalta el párrafo completo. La verificación es real, pero cuesta leer, y la propia pantalla de entrada aconseja escribir en prosa. Segmentar por frases en el servidor (<span class="ref">L3.2</span>) mantiene el invariante 1 intacto y hace la verificación instantánea.</p>
+</div>
+
+<h3>A.8 El grafo mezcla niveles de análisis</h3>
+<div class="prosa">
+<p>En «Reuniones de equipo», la columna Conducta contiene cinco tarjetas: <em>Taquicardia y sudoración</em> (sensación), <em>Voy a quedarme en blanco</em> (pensamiento), <em>Ir al baño</em> (impulso), <em>Pide ir al baño y evita exponer</em> (acción) y <em>Evita exponer resultados en reuniones, pidiendo ir al baño</em> (manifiesta). Los eslabones DBT se aplanan en la columna operante y la misma conducta sale dos veces (<code>RELEVO.md</code>, pendiente 4). «Taquicardia y sudoración» aparece además como respuesta al desencadenante. En la lente ACT, <em>Pide ir al baño y evita exponer · acción</em> cae en «Malestar interior · eventos privados» con el rótulo ENCUBIERTA.</p>
+<p>Para el usuario principiante, el que confunde topografía con función y respondiente con operante, el grafo muestra precisamente esa confusión. Y la función, que es la conclusión del análisis, ocupa la última fila de cada situación, en pequeño: «Para qué le sirve», debajo de la alternativa.</p>
+</div>
+
+<h3>A.9 Lo que la nota dice y el análisis no usa</h3>
+<div class="prosa">
+<p>Las visitas a urgencias por palpitaciones (L1), la rumiación posterior (<span class="cita">«toda la tarde dándole vueltas»</span>, L3; <span class="cita">«revisando mentalmente la conversación durante horas»</span>, L5), ocultárselo a la supervisora (L5) y la pareja que llama y responde por ella (L9) no son nodos del análisis. La pareja solo aparece como hipótesis alternativa de refuerzo positivo. Nada en la interfaz enseña qué partes de la nota no se usaron, aunque «¿Se dejó algo de la nota?» es la primera pregunta que <code>COLABORACION-CLINICA.md</code> hace a los revisores.</p>
+</div>
+
+<h3>A.10 Preguntas en cuatro sitios</h3>
+<div class="prosa">
+<p>Las preguntas para la próxima sesión (Resumen) son genéricas: <span class="cita">«¿Cómo se siente después de ceder ante demandas indebidas?»</span>. Las buenas están en Revisión, como datos faltantes con su porqué: <span class="cita">«Es la consecuencia social que sostendría la evitación en reuniones; sin ella la función de escape queda sin el dato que la distingue de una función de atención»</span>. Hay además un «Cómo descartarla» en la hipótesis alternativa y un «Primero explorar» dentro de cada blanco. Son cuatro formas de la misma cosa, una pregunta que decide algo, y la de más valor está en la última pestaña.</p>
+</div>
+
+<h3>A.11 ACT como etiqueta, dos grafos y dos ejes de estado</h3>
+<div class="prosa">
+<ul>
+  <li><strong>«Procesos ACT sin anclar»</strong>: <span class="cita">«fusión · Posible · dato parcial — Sin justificación funcional declarada: la etiqueta sola no establece qué controla la conducta»</span>. El sistema reconoce que la etiqueta no aporta nada y aun así le da espacio en pantalla.</li>
+  <li><strong>Dos gramáticas visuales.</strong> «Situaciones y grafo» (carriles, 33 nodos, 25 relaciones) y «Red funcional» (círculos y rombos, etiquetas truncadas como <span class="cita">«Trabajo en atención al client…»</span>) dibujan el mismo modelo de dos maneras.</li>
+  <li><strong>El estado del blanco mezcla dos preguntas.</strong> «Propuesto por IA · Revisar · Aprobado · En curso · Descartado» combina «¿revisé esta propuesta?» con «¿en qué fase del tratamiento está?». Y «Propuesta de la IA · pendiente de revisar» va por pestaña, cinco veces, cuando la revisión ocurre elemento a elemento.</li>
+  <li><strong>Documento antes que caso.</strong> «Expediente · Análisis funcional», «Fecha de generación», «Referencia del caso (opcional)» como texto libre, y tres acciones primarias para salir: Copiar informe, Descargar Word, Imprimir. La primera promesa visible del producto es el PDF que se quiere dejar atrás.</li>
+</ul>
+</div>
+
+<h3>A.12 Visibilidad y valor</h3>
+<div class="tabla media"><table>
+  <thead><tr><th>Demasiado visible</th><th>Demasiado escondido</th></tr></thead>
+  <tbody>
+    <tr><td>«Propuesta de la IA · pendiente de revisar», cinco veces</td><td>Ficha y nota numerada, debajo de 3.000 px de grafo</td></tr>
+    <tr><td>Una veintena de mensajes de ausencia en Plan</td><td>El criterio de revisión, en «Monitorización sin blanco»</td></tr>
+    <tr><td>Dieciséis insignias de priorización (4 criterios × 4 conductas)</td><td>El porqué de cada dato faltante, en Revisión</td></tr>
+    <tr><td>Procesos ACT sin anclar</td><td>La alerta de seguridad, ausente en el nodo al que se refiere</td></tr>
+    <tr><td>«Grado de apoyo en la nota» como sección</td><td>El resumen clínico, tras «Ver resumen clínico»</td></tr>
+    <tr><td>Botones EDITAR y BORRAR en cada línea</td><td>El repertorio activo, inferido y fuera de las situaciones</td></tr>
+    <tr><td>Tres botones de exportación como acciones primarias</td><td>Las intervenciones del blanco 1, en «sin blanco»</td></tr>
+  </tbody>
+</table></div>
+
+<div class="tres">
+  <div>
+    <h4>Valor alto</h4>
+    <ul>
+      <li>Citas verificadas y grado de apoyo</li>
+      <li>Validadores deterministas</li>
+      <li>Criterio de revisión falsable</li>
+      <li>Datos faltantes con su porqué</li>
+      <li>Plan por blanco con «primero explorar»</li>
+      <li>Grafo editable con ids</li>
+      <li>Repertorio activo y origen no modificable</li>
+    </ul>
+  </div>
+  <div>
+    <h4>Valor bajo en su forma actual</h4>
+    <ul>
+      <li>Pestaña Resumen completa</li>
+      <li>Formulación principal en prosa</li>
+      <li>Red funcional como segundo grafo</li>
+      <li>Procesos ACT sin anclar</li>
+      <li>Lente DBT como maquetación entera</li>
+      <li>Matriz de priorización permanente</li>
+      <li>Leyenda de apoyo como sección</li>
+    </ul>
+  </div>
+  <div>
+    <h4>Arreglos que no esperan al rediseño</h4>
+    <ol>
+      <li>Ficha y nota en panel lateral fijo junto al grafo.</li>
+      <li>Alertas pintadas en el nodo (grafo y Matrix).</li>
+      <li>Vacíos en tres estados, sin culpar a la nota.</li>
+      <li>Fuera el «» vacío y las comillas en etiquetas del modelo.</li>
+      <li>Sin ids internos en la Ficha.</li>
+      <li>Un eslabón «acción» no va a eventos privados.</li>
+      <li>Sugerir el blanco de cada intervención huérfana, con confirmación.</li>
+      <li>Maqueta regenerada como caso de tres sesiones.</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ============================ B ============================ -->
+<h2 id="b"><span class="letra">B</span>Qué conservar, fusionar, eliminar y transformar</h2>
+<div class="prosa"><p>Las decisiones se leen con la arquitectura de C: cuatro vistas de caso (Preparar, Mapa, Blancos, Evolución), un inspector lateral y un cajón con las notas.</p></div>
+<div class="tabla ancha"><table>
+  <thead><tr><th style="width:17%">Elemento actual</th><th style="width:20%">Problema</th><th style="width:10%">Decisión</th><th style="width:27%">Nueva representación</th><th>Justificación</th></tr></thead>
+  <tbody>
+    <tr><td>Cabecera «Expediente · Análisis funcional» y fecha de generación</td><td>Enmarca el producto como documento</td><td><span class="dec transformar">Transformar</span></td><td>Cabecera de caso: alias, sesión actual, riesgo, alertas, «Añadir sesión»</td><td>La unidad es el caso; la fecha pertenece a la sesión</td></tr>
+    <tr><td>Copiar · Descargar Word · Imprimir</td><td>Tres acciones primarias para salir del producto</td><td><span class="dec mover">Mover</span></td><td>Menú «Exportar» con plantillas: informe completo y resumen para supervisión</td><td>Exportar es un resultado del trabajo, no el trabajo</td></tr>
+    <tr><td>Referencia del caso (campo libre)</td><td>El caso no existe como entidad</td><td><span class="dec transformar">Transformar</span></td><td>Entidad Caso con alias corto y sin datos identificables</td><td>Sin caso no hay sesiones ni evolución</td></tr>
+    <tr><td>Pestaña Resumen</td><td>Repite la hipótesis 1 y la priorización</td><td><span class="dec eliminar">Eliminar</span></td><td>Riesgo a la cabecera; preguntas a Preparar; resumen clínico a «Contexto» en el raíl</td><td>Nada de lo que contiene es exclusivo suyo</td></tr>
+    <tr><td>Formulación principal</td><td>Prosa encadenada, duplicada, con comillas que parecen citas</td><td><span class="dec eliminar">Eliminar</span></td><td>Ruta resaltada en el Mapa; la frase se genera solo al exportar</td><td>El camino dibujado dice lo mismo de un vistazo</td></tr>
+    <tr><td>Tres prioridades</td><td>Duplica la priorización</td><td><span class="dec eliminar">Eliminar</span></td><td>Orden de los blancos en el raíl</td><td>Un solo ranking</td></tr>
+    <tr><td>Grafo por situación en carriles</td><td>Bueno pero largo (3.570 px); la función, al final</td><td><span class="dec transformar">Transformar</span></td><td>Mapa funcional con cuatro niveles de detalle (E)</td><td>La estructura es correcta; falta jerarquía</td></tr>
+    <tr><td>Fila «Para qué le sirve»</td><td>La conclusión central es lo menos visible</td><td><span class="dec transformar">Transformar</span></td><td>Etiqueta del arco conducta → consecuencia, con su propio apoyo; título de columna en el nivel Caso</td><td>La función es una relación, no un evento</td></tr>
+    <tr><td>Eslabones DBT en la columna Conducta</td><td>Mezcla niveles y duplica la conducta</td><td><span class="dec transformar">Transformar</span></td><td>Subpista «cadena interna» dentro del nodo, en el nivel Clínico</td><td>Separa topografía, respondiente y operante</td></tr>
+    <tr><td>Ficha</td><td>Debajo del grafo; ids internos</td><td><span class="dec transformar">Transformar</span></td><td>Inspector lateral fijo a la derecha</td><td>Seleccionar y leer deben ocurrir en la misma pantalla</td></tr>
+    <tr><td>Nota en bruto</td><td>Debajo del grafo; citas por párrafo</td><td><span class="dec transformar">Transformar</span></td><td>Cajón «Fuente»: frases numeradas, cobertura y arrastrar para citar</td><td>Verificar en dos segundos</td></tr>
+    <tr><td>Estilo del grafo AFC · DBT · ACT</td><td>Tres maquetaciones del mismo grafo</td><td><span class="dec transformar">Transformar</span></td><td>Capas sobre el Mapa; la Matrix ACT queda como vista alternativa</td><td>Las lecturas complementan, no sustituyen</td></tr>
+    <tr><td>Procesos ACT sin anclar</td><td>Etiquetas sin base funcional</td><td><span class="dec eliminar">Eliminar</span></td><td>Un contador en el panel de capas; solo se pintan los procesos anclados y justificados</td><td>Si no dice qué controla la conducta, no informa</td></tr>
+    <tr><td>Hipótesis de mantenimiento (lista)</td><td>Prosa que repite el grafo</td><td><span class="dec transformar">Transformar</span></td><td>Objeto Hipótesis: ruta en el Mapa, tarjeta en el Inspector, estado (F)</td><td>Se trabaja con ella; no se lee</td></tr>
+    <tr><td>Red funcional</td><td>Segundo lenguaje visual</td><td><span class="dec fusionar">Fusionar</span></td><td>Nivel «Caso» del Mapa</td><td>Un solo lenguaje visual</td></tr>
+    <tr><td>Bucles cerrados</td><td>Bien detectados; heredan un apoyo que no tienen</td><td><span class="dec transformar">Transformar</span></td><td>Bucle en el nivel Caso, con el apoyo de su arista más débil</td><td>Un bucle no es más fuerte que su eslabón inferido</td></tr>
+    <tr><td>Relaciones entre problemas</td><td>Frases sueltas</td><td><span class="dec fusionar">Fusionar</span></td><td>Aristas del nivel Caso</td><td>Son relaciones</td></tr>
+    <tr><td>Hipótesis de origen</td><td>Correcta, lejos del contexto</td><td><span class="dec mover">Mover</span></td><td>Raíl, apartado «Historia», marcada no modificable</td><td>Es contexto, no blanco</td></tr>
+    <tr><td>Priorización (4 criterios)</td><td>16 insignias permanentes</td><td><span class="dec transformar">Transformar</span></td><td>Orden de los blancos, con «¿por qué este orden?» en un popover; arrastrar para reordenar</td><td>Útil al decidir, ruido al leer</td></tr>
+    <tr><td>Fortalezas y recursos</td><td>Al final, sin vínculo</td><td><span class="dec transformar">Transformar</span></td><td>Entidad Recurso enlazable a blancos («con qué contamos»)</td><td>Un recurso cuenta si alimenta una alternativa</td></tr>
+    <tr><td>Valores y metas</td><td>Vacío falso en la maqueta</td><td><span class="dec transformar">Transformar</span></td><td>Entidad Valor; aparece en la alternativa como consecuencia a largo plazo</td><td>Es lo que mantendrá la conducta nueva</td></tr>
+    <tr><td>Pérdida de reforzadores</td><td>Lista suelta</td><td><span class="dec transformar">Transformar</span></td><td>Costo demorado en el Mapa</td><td>Es un costo del patrón</td></tr>
+    <tr><td>Plan por blanco</td><td>Estructura correcta, llena de vacíos y huérfanos</td><td><span class="dec conservar">Conservar</span></td><td>Vista Blancos con la cadena de ocho ranuras (G)</td><td>Es el núcleo del plan</td></tr>
+    <tr><td>Intervenciones sin blanco</td><td>Huérfanas que tienen dueño</td><td><span class="dec transformar">Transformar</span></td><td>Bandeja «Por asignar» con un blanco sugerido que el clínico confirma</td><td>Ninguna intervención sin función</td></tr>
+    <tr><td>Monitorización sin blanco</td><td>Mezcla reuniones y alcohol</td><td><span class="dec fusionar">Fusionar</span></td><td>Indicador dentro de cada blanco, con propuesta de dividir</td><td>Se revisan por separado</td></tr>
+    <tr><td>Estado del blanco (5 opciones)</td><td>Mezcla revisión y fase</td><td><span class="dec transformar">Transformar</span></td><td>Dos ejes: revisión (propuesto, confirmado, modificado, rechazado) y fase (activo, en pausa, resuelto)</td><td>Responden a preguntas distintas</td></tr>
+    <tr><td>Pestaña Revisión</td><td>Separa los controles de lo que controlan</td><td><span class="dec eliminar">Eliminar</span></td><td>Alertas en el elemento y bandeja en la cabecera; faltantes a Preguntas; alternativas al Inspector</td><td>Se revisa donde está el dato</td></tr>
+    <tr><td>Puntos a verificar</td><td>Lista larga y repetida</td><td><span class="dec transformar">Transformar</span></td><td>Insignias en el elemento y cola de revisión paso a paso</td><td>Menos lectura, más acción</td></tr>
+    <tr><td>Datos faltantes</td><td>Buen contenido, mal sitio</td><td><span class="dec transformar">Transformar</span></td><td>Nodo hueco en el Mapa y Pregunta abierta</td><td>El hueco se ve donde falta</td></tr>
+    <tr><td>Preguntas para la próxima sesión</td><td>Genéricas, sin vínculo</td><td><span class="dec transformar">Transformar</span></td><td>Pregunta clínica: qué hipótesis pone a prueba, qué dato falta, qué decisión cambia</td><td>Una pregunta vale por la decisión que mueve</td></tr>
+    <tr><td>Hipótesis alternativas</td><td>Aisladas, sin observación que las separe</td><td><span class="dec transformar">Transformar</span></td><td>«Rival» dentro de la tarjeta de su hipótesis, con pregunta discriminante</td><td>Una alternativa solo sirve contra una principal</td></tr>
+    <tr><td>Grado de apoyo en la nota</td><td>Una leyenda ocupando una sección</td><td><span class="dec transformar">Transformar</span></td><td>Leyenda en la barra del Mapa y glosario en Aprender</td><td>Se consulta, no se lee</td></tr>
+    <tr><td>Riesgo</td><td>Mensaje que puede contradecir la nota</td><td><span class="dec mover">Mover</span></td><td>Chip permanente en la cabecera con tres estados</td><td>Nunca debe quedar dentro de una pestaña</td></tr>
+    <tr><td>«Propuesta de la IA · pendiente de revisar»</td><td>Granularidad equivocada</td><td><span class="dec transformar">Transformar</span></td><td>Marca de procedencia por elemento (D.5)</td><td>Se revisa elemento a elemento</td></tr>
+    <tr><td>Validadores</td><td>Son el diferencial</td><td><span class="dec conservar">Conservar</span></td><td>Ampliados a aristas, coherencia del plan y contradicciones entre sesiones</td><td>Ver D.4</td></tr>
+    <tr><td>Deshacer, rehacer, Conectar</td><td>Correctos</td><td><span class="dec conservar">Conservar</span></td><td>Más historial de versiones por sesión</td><td>—</td></tr>
+    <tr><td>Nota metodológica y descargo</td><td>Correctos en el documento exportado</td><td><span class="dec mover">Mover</span></td><td>En la exportación y la bienvenida; enlace en el pie</td><td>No hace falta releerlo en cada pantalla</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ============================ C ============================ -->
+<h2 id="c"><span class="letra">C</span>Nueva arquitectura de información</h2>
+
+<h3>C.1 Navegación global: tres áreas y una acción</h3>
+<div class="tabla media"><table>
+  <thead><tr><th>Área</th><th>Contenido</th><th>Por qué existe</th></tr></thead>
+  <tbody>
+    <tr><td>Casos (inicio)</td><td>Lista ordenada por próxima sesión: alias, sesión n, blancos activos, preguntas abiertas, cambios sin revisar, alertas. Filtros: activos, en pausa, archivados</td><td>Todo el trabajo ocurre dentro de un caso</td></tr>
+    <tr><td>Aprender</td><td>Guía de uso, glosario funcional, casos de ejemplo. Absorbe «Biblioteca clínica» y «Guía de uso»</td><td>La ayuda contextual remite aquí para lo largo</td></tr>
+    <tr><td>Cuenta</td><td>Plan y créditos, privacidad y respaldo cifrado, preferencias (incluida la ayuda guiada o compacta)</td><td>Lo administrativo mínimo</td></tr>
+    <tr><td><em>Acción:</em> Nuevo caso</td><td>Botón primario, no área</td><td>Es un verbo</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa"><p>Tres áreas bastan porque cualquier cosa global más allá de la lista de casos sería administración, y el encargo excluye agenda, CRM y facturación.</p></div>
+
+<h3>C.2 Dentro de un caso: cuatro vistas</h3>
+<div class="tabla media"><table>
+  <thead><tr><th>Vista</th><th>Pregunta que responde</th><th>Momento de uso</th><th>Se abre por defecto</th></tr></thead>
+  <tbody>
+    <tr><td>Preparar</td><td>¿Qué hago hoy con este caso?</td><td>Cinco minutos antes de la sesión, a menudo en el móvil</td><td>Si el caso tiene al menos una sesión</td></tr>
+    <tr><td>Mapa</td><td>¿Qué mantiene lo que pasa, y con qué apoyo?</td><td>Después de la sesión, al formular o supervisar</td><td>Al terminar de revisar una sesión</td></tr>
+    <tr><td>Blancos</td><td>¿Qué intento cambiar, cómo, y cómo sabré si funciona?</td><td>Al planificar y al ajustar el plan</td><td>Desde «Crear blanco» o una alerta del plan</td></tr>
+    <tr><td>Evolución</td><td>¿Qué cambió y qué se sostiene?</td><td>Revisión mensual, supervisión, informe</td><td>Nunca; se visita</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa">
+<p>Persisten en todas: la <strong>cabecera del caso</strong>, el <strong>Inspector</strong> (en Mapa y Blancos) y el <strong>cajón Fuente</strong> con las notas. Cada vista y cada elemento tienen dirección propia (<code>#mapa</code>, <code>?foco=cnd_1</code>, <code>?nivel=situacion</code>) para que una alerta, una pregunta o un cambio lleven exactamente al sitio.</p>
+<p>Preparar y Mapa no se funden en una «vista maestra», aunque el encargo lo sugiere. Responden a momentos distintos: cinco minutos con prisa antes de atender, y media hora pensando después. Una pantalla que intente servir a los dos acaba siendo un tablero que no sirve bien a ninguno.</p>
+</div>
+
+<h3>C.3 Dentro de una sesión: un flujo, no una vista</h3>
+<div class="prosa">
+<p>La sesión no es un lugar donde se vive. Es un paso que se da, en tres tiempos, en un panel a pantalla completa que se abre con «Añadir sesión»:</p>
+<ol>
+  <li><strong>Nota.</strong> Pegar, enmascarar datos identificables y responder las preguntas previas (todo esto ya existe).</li>
+  <li><strong>Revisar cambios.</strong> La IA propone un conjunto de cambios sobre la formulación vigente; el clínico acepta, rechaza o edita cada uno (J.2). En la primera sesión este paso es «Revisar la formulación inicial».</li>
+  <li><strong>Registrar.</strong> Datos de los indicadores, tareas revisadas y lo que se hizo en sesión. Sin IA.</li>
+</ol>
+<p>Al cerrar se guarda una nueva versión de la formulación, con el número de sesión.</p>
+</div>
+
+<!-- ============================ D ============================ -->
+<h2 id="d"><span class="letra">D</span>Pantalla principal de un caso</h2>
+<div class="prosa"><p>La pantalla central es la vista <strong>Mapa</strong>. Abajo, el caso M. en la sesión 3, con la conducta «salir al baño cuando le toca exponer» enfocada en el nivel Situación y la relación de contingencia seleccionada. A 1440 px o más caben las tres columnas; entre 1024 y 1440 el raíl se pliega a iconos; por debajo de 1024 el Inspector pasa a ser un cajón que sube desde abajo.</p></div>
+
+<div class="maqueta" role="img" aria-label="Maqueta del espacio de trabajo: cabecera del caso, raíl izquierdo con el esquema del caso, mapa funcional en el centro, inspector a la derecha y cajón de notas abajo.">
+<div class="lienzo-maqueta ws">
+  <div class="ws-cab">
+    <div style="display:flex;gap:10px;align-items:center"><span class="callout">1</span><span style="color:var(--tinta-suave)">‹ Casos</span><span class="alias">M. · ansiedad ante evaluación</span></div>
+    <div class="vistas"><span>Preparar</span><span class="act">Mapa</span><span>Blancos</span><span>Evolución</span></div>
+    <div class="der"><span class="chip ok">● Riesgo: sin indicadores · S3</span><span class="chip rev">◆ 2 por revisar</span><span style="color:var(--tinta-suave)">Sesión 3 · 16/10</span><span class="boton prim">+ Añadir sesión</span><span class="boton">Exportar ▾</span></div>
+  </div>
+
+  <div class="ws-rail">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span class="callout">2</span><span style="font-size:10.5px;color:var(--tinta-suave)">plegar «</span></div>
+    <div class="grupo"><h5><span>Conductas</span><span>9</span></h5>
+      <div class="item sel"><span>Salir al baño al exponer</span><span>●</span></div>
+      <div class="item"><span>Ceder ante el cliente</span><span>●</span></div>
+      <div class="item"><span>Ocultarlo a la supervisora</span><span>●</span></div>
+      <div class="item"><span>Dar vueltas después</span><span style="color:var(--gris)">○</span></div>
+      <div class="item"><span>Evitar comer con compañeros</span><span style="color:var(--gris)">○</span></div>
+      <div class="item"><span>Beber antes de quedar</span><span style="color:var(--ambar)">◆</span></div>
+      <div class="item"><span>Urgencias por palpitaciones</span><span style="color:var(--gris)">○</span></div>
+      <div class="item" style="color:var(--tinta-suave)"><span>+ 2 más</span><span></span></div>
+    </div>
+    <div class="grupo"><h5><span>Hipótesis</span><span>4</span></h5>
+      <div class="item"><span>H1 Escape de evaluación</span><span class="chip ok">sostenida</span></div>
+      <div class="item"><span>H1′ Déficit de habilidad</span><span class="chip gris">descartada</span></div>
+      <div class="item"><span>H2 Escape de confrontación</span><span class="chip">en prueba</span></div>
+      <div class="item"><span>H3 Alcohol: alivio anticipado</span><span class="chip">en prueba</span></div>
+    </div>
+    <div class="grupo"><h5><span>Blancos</span><span>1 activo</span></h5>
+      <div class="item"><span>1 · Salir de reuniones</span><span class="chip ok">activo</span></div>
+      <div class="item"><span>2 · Beber antes de quedar</span><span class="chip gris">propuesto</span></div>
+    </div>
+    <div class="grupo"><h5><span>Preguntas abiertas</span><span>3</span></h5></div>
+    <div class="grupo"><h5><span>Recursos y valores</span><span>4</span></h5></div>
+    <div class="grupo"><h5><span>Historia</span><span>no modificable</span></h5></div>
+    <div class="grupo"><h5><span>Contexto del caso</span><span>›</span></h5></div>
+  </div>
+
+  <div class="ws-centro">
+    <div class="ws-barra"><span class="callout">3</span>
+      <span class="seg"><span>Caso</span><span class="act">Situación</span><span>Clínico</span><span>Evidencia</span></span>
+      <span>Capas ▾ <small>Plan ✓ · ACT 0 · DBT</small></span>
+      <span>☐ Solo lo apoyado</span><span>☑ Huecos</span><span>☐ Cambios desde S2</span>
+      <span>Conectar</span><span>↶ ↷</span><span>Leyenda</span>
+    </div>
+    <div class="ws-lienzo">
+      <div style="display:flex;gap:8px;align-items:center"><span class="callout">4</span><b style="font-family:var(--serif);font-size:14px">Reuniones de equipo</b><span style="color:var(--tinta-suave)">· salir al baño cuando le toca exponer</span></div>
+      <div class="banda"><span class="rot">Operación motivadora</span><span class="n inferido" style="padding:2px 8px"><span class="x">Malestar anticipatorio desde el domingo</span></span><span>········ aumenta el valor del alivio ········ ↘</span></div>
+      <div class="fila">
+        <div class="n textual" style="width:150px"><div class="t">Antecedente <span class="ref">L3.2</span></div><div class="x">La supervisora le pide exponer ante seis compañeros</div></div>
+        <div class="flecha">→</div>
+        <div class="n textual" style="width:170px"><div class="t">Conducta <span class="ref">L3.4</span></div><div class="x">Pide ir al baño, diez minutos respirando, vuelve cuando el punto pasó</div></div>
+        <div class="arco" style="outline:2px solid var(--verde);outline-offset:3px;border-radius:6px"><div class="lbl">R− · escape de evaluación social<small>inmediata · esquema por determinar</small></div><div class="linea"></div></div>
+        <div class="n textual" style="width:140px"><div class="t">Consecuencia <span class="ref">L3.4–3.5</span></div><div class="x">No expone; «alivio inmediato muy fuerte»</div></div>
+      </div>
+      <div class="fila" style="gap:24px;padding-left:176px">
+        <div class="n textual" style="width:190px"><div class="t">Costo demorado <span class="ref">L3.5</span></div><div class="x">Toda la tarde dándole vueltas; se acuesta pensando que ha vuelto a fallar</div></div>
+        <div class="n hueco" style="width:190px"><div class="t">Hueco</div><div class="x">¿Qué hacen la supervisora y los compañeros cuando no expone?</div></div>
+      </div>
+      <div class="capa-plan">
+        <div class="rot">Capa Plan · blanco 1</div>
+        <div class="fila">
+          <div class="n" style="width:200px;--ap:var(--verde)"><div class="t">Alternativa <span>✎ tuya</span></div><div class="x">Quedarse y decir al menos un dato aunque note taquicardia</div></div>
+          <div class="flecha">→</div>
+          <div class="n" style="width:210px"><div class="t">La mantendría</div><div class="x">Terminar la tarea · «bien hecho» de la supervisora (S2) · el ascenso</div></div>
+          <div class="flecha">→</div>
+          <div class="n" style="width:170px"><div class="t">Estrategia</div><div class="x">Exposición graduada sin salir de la sala</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ws-insp">
+    <div style="display:flex;justify-content:space-between"><span class="callout">5</span><span style="color:var(--tinta-suave)">✕</span></div>
+    <div class="etq">Relación · contingencia</div>
+    <div class="tit">Salir al baño → no expone y siente alivio</div>
+    <div class="pest"><span class="act">Detalle</span><span>Evidencia 2</span><span>Historial</span></div>
+    <div><div class="etq">Función</div>Escape de la evaluación social</div>
+    <div><div class="etq">Apoyo de la relación</div><span class="chip ok">▮ textual</span> <span class="ref">L3.4</span> <span class="ref">L3.5</span></div>
+    <div><div class="etq">Tipo</div>R− · inmediata · esquema por determinar <span class="chip rev">→ pregunta</span></div>
+    <div><div class="etq">Forma parte de</div>H1 · sostenida desde S2 · blanco 1</div>
+    <div><div class="etq">Lecturas complementarias</div><span style="color:var(--tinta-suave)">DBT: punto de solución en el impulso de salir. ACT: ninguna anclada.</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px"><span class="boton">✓ Confirmada</span><span class="boton">Convertir en pregunta</span><span class="boton">¿Por qué?</span></div>
+  </div>
+
+  <div class="ws-fuente"><span class="callout">6</span><b>Fuente ▴</b><span>Notas: S1 · S2 · <b>S3</b></span><span>Cobertura S3: 14 de 16 frases usadas</span><span>Sin usar: <span class="frase-sin">«Esta semana no ha ido a urgencias»</span> <span class="frase-sin">«su pareja ya no responde por ella»</span></span></div>
+</div>
+</div>
+<p class="pie-maqueta">Maqueta de baja fidelidad. Franja izquierda de cada nodo: verde = textual, dorado = parcial, gris = inferido; borde punteado = hueco. Las referencias <span class="ref">L3.4</span> son frases, no párrafos.</p>
+
+<h3>D.1 Zona por zona</h3>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Zona</th><th>Contenido</th><th>¿Fija?</th><th>Al seleccionar un elemento</th><th>Qué se edita ahí</th></tr></thead>
+  <tbody>
+    <tr><td><span class="callout">1</span> Cabecera (56 px)</td><td>Alias y motivo, vistas, riesgo, contador de alertas por gravedad, sesión actual, «Añadir sesión», «Exportar»</td><td>Sí</td><td>No cambia</td><td>Alias y motivo (clic)</td></tr>
+    <tr><td><span class="callout">2</span> Raíl (240 px, plegable)</td><td>Esquema vivo del caso: conductas, hipótesis con estado, blancos con fase, preguntas abiertas, recursos y valores, historia (origen), contexto (resumen clínico)</td><td>Sí</td><td>Resalta el elemento; un clic en el raíl lo enfoca en el mapa</td><td>Orden de los blancos (arrastrar); alta rápida de conducta o pregunta</td></tr>
+    <tr><td><span class="callout">3</span> Barra del mapa</td><td>Nivel de detalle, capas, filtros, Conectar, deshacer, leyenda</td><td>Sí</td><td>«Cambios desde Sn» resalta lo nuevo</td><td>—</td></tr>
+    <tr><td><span class="callout">4</span> Lienzo</td><td>El mapa en el nivel elegido (E)</td><td>Scroll propio</td><td>La ruta del elemento se resalta; lo demás baja al 35 % de opacidad</td><td>Etiquetas (doble clic), conexiones (arrastrar desde el asa), reclasificar (arrastrar entre carriles)</td></tr>
+    <tr><td><span class="callout">5</span> Inspector (380 px)</td><td>Ficha del elemento en tres pestañas: Detalle, Evidencia, Historial</td><td>Sí, con scroll propio</td><td>Carga el elemento: nodo, relación, hipótesis o blanco</td><td>Todos los campos clínicos y el estado de revisión</td></tr>
+    <tr><td><span class="callout">6</span> Cajón Fuente (40 px plegado, 35 % de alto abierto)</td><td>Notas por sesión con frases numeradas; cobertura; frases sin usar marcadas</td><td>Sí</td><td>Salta a la frase citada y la resalta; al revés, clic en una frase enseña qué elementos la usan</td><td>Nada de la nota (es inmutable); arrastrar una frase a un nodo o relación añade una cita</td></tr>
+  </tbody>
+</table></div>
+
+<h3>D.2 Qué ocurre al seleccionar</h3>
+<div class="prosa">
+<ol>
+  <li>Se resalta la ruta del elemento, aguas arriba y aguas abajo por sus aristas, y el resto se atenúa. <kbd>Esc</kbd> lo deshace.</li>
+  <li>El Inspector carga el elemento. Si es una relación, enseña la función, el tipo de contingencia y el apoyo de la relación, distinto del de sus extremos.</li>
+  <li>El raíl marca el elemento y, si pertenece a una hipótesis o a un blanco, también los marca.</li>
+  <li>Si el cajón Fuente está abierto, salta a la frase. Si está cerrado, la referencia <span class="ref">L3.4</span> del Inspector lo abre.</li>
+  <li>La dirección cambia a <code>?foco=…</code>, para poder volver o enlazar desde una alerta.</li>
+</ol>
+</div>
+
+<h3>D.3 Cuándo panel, cuándo cajón, cuándo modal</h3>
+<div class="tabla media"><table>
+  <thead><tr><th>Patrón</th><th>Se usa para</th><th>Ejemplos</th></tr></thead>
+  <tbody>
+    <tr><td>En línea</td><td>Corregir lo que se ve</td><td>Etiqueta de un nodo, texto de la función, ranura de un blanco</td></tr>
+    <tr><td>Inspector (panel fijo)</td><td>Leer y editar un elemento sin perder el mapa</td><td>Relación, hipótesis, conducta</td></tr>
+    <tr><td>Cajón</td><td>Texto largo o una segunda fuente al lado</td><td>Notas, «¿Por qué la IA propone esto?», comparar versiones</td></tr>
+    <tr><td>Popover</td><td>Una definición o una explicación corta</td><td>«¿Qué significa dato parcial?», «¿Por qué este orden?»</td></tr>
+    <tr><td>Modal</td><td>Solo lo irreversible o lo que cuesta créditos</td><td>Descartar una hipótesis (con motivo), borrar un caso, lanzar un análisis profundo</td></tr>
+  </tbody>
+</table></div>
+
+<h3 id="d4">D.4 Alertas sin fatiga</h3>
+<div class="prosa">
+<p>La marca prohíbe el rojo, y con razón: las alertas de ACIA son advertencias metodológicas, no errores del clínico. La gravedad se codifica con forma, peso y texto, nunca solo con color.</p>
+</div>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Clase</th><th>Forma</th><th>Dónde aparece</th><th>Qué bloquea</th><th>Ejemplos</th></tr></thead>
+  <tbody>
+    <tr><td><span class="chip rev-alta">▲ Revisar antes de usar</span></td><td>Insignia ámbar rellena sobre el elemento</td><td>Elemento, contador de cabecera, Preparar, exportación</td><td>«Activar blanco» y «Exportar» piden reconocerla con un motivo; no se bloquea en duro</td><td>Se prescribe una conducta de seguridad; blanco activo sin función; intervención contraria a la función; posible riesgo no evaluado</td></tr>
+    <tr><td><span class="chip rev">◆ Conviene revisar</span></td><td>Insignia ámbar de contorno</td><td>Elemento y contador</td><td>Nada</td><td>Conclusión que solo se apoya en inferencias; relación sin apoyo usada para priorizar; hipótesis sin consecuencia que explique el mantenimiento; dato nuevo que contradice la formulación</td></tr>
+    <tr><td><span class="chip gris">· Sugerencia</span></td><td>Punto gris</td><td>Raíl y Preparar; no suma al contador</td><td>Nada</td><td>Frases de la nota sin usar; indicador sin línea base; pregunta sin responder desde hace dos sesiones</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa">
+<h4>Siete reglas contra la fatiga</h4>
+<ol>
+  <li><strong>En el elemento, no en un banner.</strong> El contador de la cabecera abre una bandeja que salta de una a otra; nunca hay franjas apiladas.</li>
+  <li><strong>Una causa, un aviso.</strong> El esquema ya separa <code>mensaje</code> de <code>elemento</code>: «afecta a 2 propuestas» en vez de dos avisos.</li>
+  <li><strong>Reconocer con motivo.</strong> «Lo he revisado: …» archiva el aviso mientras el elemento no cambie, y el motivo viaja a la exportación.</li>
+  <li><strong>Origen visible.</strong> «Comprobación» para los validadores deterministas, «Opinión de la IA» para la pasada crítica. Ya existe el campo <code>origen</code>; falta pintarlo.</li>
+  <li><strong>Sobre texto del clínico, en forma de pregunta.</strong> «¿Es compatible con la función que formulaste?», no «Error».</li>
+  <li><strong>Preparar enseña tres como máximo</strong>, ordenadas por gravedad y por si afectan a un blanco activo.</li>
+  <li><strong>Las sugerencias no cuentan.</strong> El número de la cabecera solo crece con lo que pide acción.</li>
+</ol>
+</div>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Mensaje</th><th>Qué detecta</th><th>Clase</th><th>Cómo se calcula</th></tr></thead>
+  <tbody>
+    <tr><td>«Propones respiración como estrategia, pero en tus notas funciona como conducta de seguridad»</td><td><code>prescribe_conducta_seguridad</code>, ya existe</td><td>▲</td><td>Determinista</td></tr>
+    <tr><td>«Esta intervención parece incompatible con la función formulada»</td><td>La estrategia reproduce la contingencia que mantiene la conducta (tranquilizar cuando la función es obtener tranquilización; dejar salir cuando es escape)</td><td>▲</td><td>Determinista si la estrategia declara sobre qué relación actúa; si no, opinión de la IA</td></tr>
+    <tr><td>«Este blanco está priorizado pero no tiene función hipotetizada»</td><td>Blanco sin <code>hipotesis_id</code></td><td>▲ si está activo, ◆ si no</td><td>Determinista</td></tr>
+    <tr><td>«Esta conclusión depende solo de inferencias»</td><td>El apoyo mínimo de la ruta es «inferido»</td><td>◆</td><td>Determinista</td></tr>
+    <tr><td>«Esta hipótesis no tiene una consecuencia que explique el mantenimiento»</td><td>Ruta sin relación de contingencia</td><td>◆</td><td>Determinista</td></tr>
+    <tr><td>«Hay información nueva que contradice la formulación»</td><td>Evidencia en contra añadida en la sesión n</td><td>◆, o ▲ si toca un blanco activo</td><td>La IA la propone; el clínico la acepta como evidencia</td></tr>
+    <tr><td>«Esta relación no tiene apoyo y se usa para priorizar»</td><td>El caso del sueño (A.4)</td><td>◆</td><td>Determinista</td></tr>
+    <tr><td>«Otra conducta de la misma clase funcional está aumentando»</td><td>Al bajar una topografía sube otra de la misma función</td><td>◆</td><td>Determinista con datos de indicadores; propuesta de la IA con notas</td></tr>
+    <tr><td>«El indicador no mide la conducta blanco»</td><td>Se mide ansiedad subjetiva cuando el blanco es salir de reuniones</td><td>◆</td><td>Opinión de la IA</td></tr>
+  </tbody>
+</table></div>
+
+<h3 id="d5">D.5 Edición y procedencia</h3>
+<div class="prosa"><p>Casi todo se edita, y casi nada lleva un botón «Editar». Los campos parecen texto y se vuelven editables al hacer clic; el lápiz aparece al pasar el cursor.</p></div>
+<div class="tabla media"><table>
+  <thead><tr><th>Quiero…</th><th>Mecanismo</th></tr></thead>
+  <tbody>
+    <tr><td>Corregir un texto</td><td>Clic en el campo del Inspector; doble clic en la etiqueta del nodo. Desaparecen los botones EDITAR y BORRAR de cada línea</td></tr>
+    <tr><td>Reclasificar (antecedente ↔ consecuencia)</td><td>Arrastrar el nodo a otro carril. Con la ayuda guiada, aparece «¿Por qué?» (K)</td></tr>
+    <tr><td>Relacionar</td><td>Arrastrar desde el asa de un nodo a otro y elegir el tipo: secuencial, moduladora, contingencia o bucle</td></tr>
+    <tr><td>Citar</td><td>Arrastrar una frase del cajón Fuente a un nodo o relación. La cita es verificable por construcción: el texto es de la nota</td></tr>
+    <tr><td>Aceptar o rechazar una propuesta</td><td>✓ o ✕ sobre el elemento; en la cola de revisión, teclas A, R y E</td></tr>
+    <tr><td>Dejarlo para luego</td><td>Menú contextual «Convertir en pregunta»: crea una Pregunta enlazada al elemento</td></tr>
+    <tr><td>Proteger lo verificado</td><td>✓ Confirmar. Una actualización de la IA puede proponer cambios a un elemento confirmado, nunca aplicarlos</td></tr>
+    <tr><td>Anotar algo mío</td><td>Comentario en el elemento: cuaderno del clínico, que nunca se envía a la IA salvo que se pida</td></tr>
+    <tr><td>Ver cómo era</td><td>Pestaña Historial del Inspector: versiones del elemento por sesión, con autor</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa"><p>La procedencia usa canales que no compiten con el color, porque el color ya significa apoyo en la nota (verde, dorado, gris):</p></div>
+<div class="tabla media"><table>
+  <thead><tr><th>Estado</th><th>Borde</th><th>Marca</th><th>En la exportación</th></tr></thead>
+  <tbody>
+    <tr><td>La IA lo propuso y no se ha revisado</td><td>Discontinuo</td><td><code>IA</code></td><td>[Propuesta de la IA]</td></tr>
+    <tr><td>Confirmado por el clínico</td><td>Continuo</td><td>✓</td><td>[Confirmado]</td></tr>
+    <tr><td>Modificado por el clínico</td><td>Continuo</td><td>✎ (al pasar el cursor, el texto original de la IA)</td><td>[Editado] — invariante 6, ahora por elemento</td></tr>
+    <tr><td>Creado por el clínico</td><td>Continuo</td><td>✎ tuya</td><td>[Del profesional]</td></tr>
+    <tr><td>Nuevo desde la última sesión</td><td>El de su estado</td><td>Píldora <code>S4</code> hasta que se visita</td><td>—</td></tr>
+    <tr><td>Descartado u obsoleto</td><td>Atenuado y tachado</td><td>«Descartada en S5»</td><td>Solo en el historial</td></tr>
+  </tbody>
+</table></div>
+
+<h3 id="d6">D.6 Qué significa cada grado de apoyo</h3>
+<div class="prosa">
+<p><strong>Apoyo en las notas</strong>: cuánto de lo afirmado está escrito en alguna nota del caso. No es la probabilidad de que sea cierto, ni su importancia clínica. Se aplica por separado a cada dato (nodo) y a cada relación (arista).</p>
+</div>
+<div class="tabla media"><table>
+  <thead><tr><th>Nivel</th><th>Definición operativa</th><th>Quién lo decide</th></tr></thead>
+  <tbody>
+    <tr><td><span style="color:var(--verde)">▮</span> Textual</td><td>Una frase de alguna nota afirma esto entero</td><td>El servidor: la cita resuelve a una frase real</td></tr>
+    <tr><td><span style="color:var(--dorado)">▮</span> Parcial</td><td>Una frase lo apoya pero no lo afirma entero</td><td>El modelo lo declara; el servidor exige la cita</td></tr>
+    <tr><td><span style="color:var(--gris)">▮</span> Inferido</td><td>Ninguna frase lo dice</td><td>Por defecto si no hay cita</td></tr>
+    <tr><td>⋯ Hueco</td><td>Falta, y algo del análisis depende de ello</td><td>Dato faltante o pregunta abierta</td></tr>
+    <tr><td>⊘ Contradicho</td><td>Una frase posterior dice lo contrario</td><td>Evidencia «en contra» aceptada por el clínico</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa">
+<p>Dos reglas de cálculo cierran el agujero de A.4. Una ruta, una hipótesis o un bucle toman el apoyo de su relación más débil. Y una relación inferida no puede alimentar la priorización ni «por dónde moverla» sin una marca visible de que es una inferencia. El peso clínico de una relación (<code>fuerza</code>) es otro eje: se muestra en el Inspector como palabra, nunca como color ni como número.</p>
+<p>La misma gramática distingue los cuatro tipos de enunciado que pide el encargo. Una <strong>observación</strong> es un nodo con cita. Una <strong>hipótesis</strong> es una relación o una ruta, y tiene estado. Una <strong>inferencia</strong> es cualquier cosa con apoyo «inferido». Una <strong>recomendación</strong> solo existe en la capa Plan y en Blancos, y tiene estado de revisión. El mapa describe; el plan propone; nunca se mezclan en la misma banda.</p>
+</div>
+
+<!-- ============================ E ============================ -->
+<h2 id="e"><span class="letra">E</span>Rediseño del análisis funcional</h2>
+
+<h3>E.1 Veredicto</h3>
+<div class="prosa">
+<p>Sí a un AFC gráfico con detalle progresivo, con tres condiciones. <strong>Niveles discretos</strong> (un selector de cuatro posiciones), no zoom continuo: un nivel se aprende, se enlaza y se imprime; un zoom continuo es un gesto. <strong>Disposición determinista</strong> por carriles y columnas, no un lienzo libre ni un grafo de fuerzas: dos casos con la misma estructura deben verse igual, o el clínico no aprende a leerlos. Y <strong>la estructura de datos ya existe</strong>: las entidades tienen id y las aristas se guardan. Lo que falta es apoyo en las aristas y una entidad para agrupar topografías por función.</p>
+</div>
+
+<h3>E.2 Dos correcciones a la cadena del encargo</h3>
+<div class="prosa">
+<p>El encargo propone CONTEXTO/OM → ANTECEDENTE → CONDUCTA → CONSECUENCIA → FUNCIÓN → COSTO, en vertical. Dos piezas están en el sitio equivocado, y el error enseñaría lo contrario de lo que ACIA quiere enseñar.</p>
+<ol>
+  <li><strong>La función no es una caja después de la consecuencia.</strong> Es lo que la relación conducta → consecuencia hace con la conducta. Dibujarla como un paso más de la secuencia la presenta como un evento, que es exactamente la confusión entre topografía y función que el principiante trae. Va como <strong>etiqueta del arco de contingencia</strong>: «R− · escape de la evaluación social», con su propio grado de apoyo.</li>
+  <li><strong>La operación motivadora no va antes del antecedente.</strong> No es un eslabón temporal: cambia cuánto vale la consecuencia y, con ello, la probabilidad de la conducta. Va como <strong>banda por encima de la cadena</strong>, con un trazo hacia el arco («aumenta el valor del alivio»).</li>
+</ol>
+<p>El costo a medio y largo plazo cuelga de la conducta, debajo, como consecuencia demorada. Y la cadena alternativa va en una banda aparte y de otro fondo (la capa Plan), porque pertenece a lo que se propone, no a lo que se observa.</p>
+</div>
+
+<h3>E.3 Los cuatro niveles</h3>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Nivel</th><th>Pregunta</th><th>Muestra</th><th>Oculta</th><th>Se usa</th></tr></thead>
+  <tbody>
+    <tr><td>0 · Caso</td><td>¿Cuántos patrones hay y qué los une?</td><td>Clases funcionales: una columna por función, las topografías como fichas; contexto, acomodación y moduladoras en una franja; costos y valores en otra; bucles</td><td>Cadenas, citas</td><td>Al abrir el caso y al supervisar</td></tr>
+    <tr><td>1 · Situación</td><td>¿Qué mantiene esta conducta aquí?</td><td>Antecedente → conducta → consecuencia, con la función sobre el arco; OM en banda; costo demorado; huecos; capa Plan</td><td>Eslabones internos, reglas, esquema</td><td>Al seleccionar una conducta</td></tr>
+    <tr><td>2 · Clínico</td><td>¿Qué más interviene?</td><td>Respondiente (EC → RC), cadena interna dentro de la conducta, reglas verbales, esquema de contingencia, moduladoras; capas ACT y DBT</td><td>—</td><td>Al formular a fondo</td></tr>
+    <tr><td>3 · Evidencia</td><td>¿De dónde sale cada cosa?</td><td>Grado de apoyo y frase de origen en cada nodo y cada arista; contradicciones; cobertura de la nota</td><td>—</td><td>Al revisar una propuesta y antes de exportar</td></tr>
+  </tbody>
+</table></div>
+
+<h3>E.4 Nivel Caso, con el caso M.</h3>
+<div class="prosa"><p>Es el nivel que hoy no existe y el que más enseña: pone en práctica el lema de la marca, <em>de la topografía hacia la función</em>. Las fichas marcadas como nuevas no están en la maqueta actual; están en la nota y la cobertura (E.6) las sacaría a la luz.</p></div>
+<div class="maqueta" role="img" aria-label="Nivel Caso del mapa funcional de M.: siete conductas agrupadas en dos funciones probables y una columna de función por determinar, con franjas de contexto y de costos y valores.">
+<div class="lienzo-maqueta clases">
+  <div class="cols">
+    <div class="clase">
+      <h5>Escape de la evaluación social</h5>
+      <div class="sub">función probable · 4 topografías · la clase toma el apoyo de su relación más débil: inferido</div>
+      <div class="n textual"><div class="t">Reuniones <span class="ref">L3.4</span></div><div class="x">Pide ir al baño cuando le toca exponer</div></div>
+      <div class="n parcial"><div class="t">Baile <span class="ref">L7.2</span></div><div class="x">Dejó las clases: al final cada persona improvisa sola ante el grupo</div></div>
+      <div class="n parcial"><div class="t">Amigos <span class="ref">L7.3</span></div><div class="x">Bebe dos o tres copas antes de quedar: «así se suelta»</div><span class="alerta media">◆ rival: R+ por desinhibición</span></div>
+      <div class="n inferido"><div class="t">Comidas <span class="ref">L7.1</span></div><div class="x">Evita comer con los compañeros; dice que está ocupada</div><span class="alerta media">◆ consecuencia no consta</span></div>
+    </div>
+    <div class="clase">
+      <h5>Escape de la confrontación y la desaprobación</h5>
+      <div class="sub">función probable · 2 topografías · textual</div>
+      <div class="n textual"><div class="t">Clientes <span class="ref">L5.2–5.3</span></div><div class="x">Se disculpa repetidamente y acepta una compensación indebida; «el cliente colgó satisfecho»</div></div>
+      <div class="n textual nuevo"><div class="t">Supervisora <span class="ref">L5.4</span></div><div class="x">Se lo oculta «por miedo a la reprimenda»</div></div>
+    </div>
+    <div class="clase indet">
+      <h5>Función por determinar</h5>
+      <div class="sub">conductas registradas sin hipótesis</div>
+      <div class="n textual nuevo"><div class="t">Después <span class="ref">L3.5 · L5.4</span></div><div class="x">Da vueltas toda la tarde; revisa mentalmente la conversación durante horas</div></div>
+      <div class="n textual nuevo"><div class="t">Salud <span class="ref">L1.1</span></div><div class="x">Varias visitas a urgencias por palpitaciones sin hallazgos</div></div>
+    </div>
+  </div>
+  <div class="franja"><div class="rot">Contexto y moduladoras</div><div class="contenido">
+    <div class="n textual nuevo"><div class="t">Acomodación <span class="ref">L9.1–9.2</span></div><div class="x">La pareja llama por ella y responde por ella con gente nueva; M. lo agradece → quita ocasiones de exposición a la columna 1</div></div>
+    <div class="n textual"><div class="t">Trabajo <span class="ref">L1.2</span></div><div class="x">Atención al cliente desde hace tres años: evaluación frecuente</div></div>
+    <div class="n hueco"><div class="t">Relación sin apoyo <span class="ref">L7.4</span></div><div class="x">Duerme mal los domingos: ¿moduladora, o efecto de anticipar el lunes? → pregunta</div></div>
+  </div></div>
+  <div class="franja"><div class="rot">Costos y valores</div><div class="contenido">
+    <div class="n textual"><div class="t">Costo <span class="ref">L3.5</span></div><div class="x">Se acuesta pensando que ha vuelto a fallar</div></div>
+    <div class="n parcial"><div class="t">Reforzador perdido <span class="ref">L7.2</span></div><div class="x">Una actividad que hacía desde hacía años</div></div>
+    <div class="n textual nuevo"><div class="t">Valor <span class="ref">L11.3</span></div><div class="x">Quiere optar a un ascenso que implica coordinar un equipo: choca con la columna 1</div></div>
+  </div></div>
+  <div class="lectura"><b>Lectura:</b> ocho topografías, dos funciones probables y dos por determinar. Implica intervenir sobre la clase de respuesta (exponerse sin ninguna de las salidas) y no conducta por conducta, y vigilar que, al bloquear una salida, no crezca otra de la misma columna.</div>
+</div>
+</div>
+<div class="leyenda"><span><i style="--c:var(--verde)"></i>apoyo textual</span><span><i style="--c:var(--dorado)"></i>parcial</span><span><i style="--c:var(--gris)"></i>inferido</span><span><i class="punteado"></i>hueco</span><span>«nuevo» = está en la nota, no en la maqueta</span></div>
+<div class="prosa"><p>Las columnas no se deducen comparando el texto de las funciones. El modelo propone la agrupación referenciando conductas, y el clínico mueve fichas de columna; mover una ficha es cambiar su hipótesis y queda en el historial.</p></div>
+
+<h3>E.5 Nivel Clínico de «salir al baño»</h3>
+<div class="prosa"><p>El nivel Situación aparece en la maqueta del espacio de trabajo (D). Aquí, la misma cadena con lo que añade el nivel Clínico y las dos capas teóricas encendidas.</p></div>
+<div class="maqueta" role="img" aria-label="Nivel Clínico: cadena respondiente, cadena interna dentro de la conducta, regla verbal inferida, contingencia R− y capas DBT y ACT separadas de los datos.">
+<div class="lienzo-maqueta" style="min-width:980px;padding:16px;display:grid;gap:12px">
+  <div class="banda"><span class="rot">OM</span><span class="n inferido" style="padding:2px 8px"><span class="x">Malestar anticipatorio desde el domingo</span></span><span>···· aumenta el valor del alivio ····↘</span><span class="n hueco" style="padding:2px 8px"><span class="x">¿Moduladora: sueño? sin apoyo</span></span></div>
+  <div class="fila" style="padding-left:180px">
+    <div class="n textual" style="width:170px"><div class="t">EC <span class="ref">L3.3</span></div><div class="x">Esperar su turno ante el grupo</div></div>
+    <div class="flecha">→</div>
+    <div class="n textual" style="width:160px"><div class="t">RC <span class="ref">L3.3</span></div><div class="x">Taquicardia, sudoración</div></div>
+    <div class="flecha" style="font-size:12px">· respondiente</div>
+  </div>
+  <div class="fila">
+    <div class="n textual" style="width:160px"><div class="t">Antecedente <span class="ref">L3.2</span></div><div class="x">La supervisora le pide exponer ante seis compañeros</div></div>
+    <div class="flecha">→</div>
+    <div class="n textual" style="width:330px">
+      <div class="t">Conducta · cadena interna</div>
+      <div style="display:grid;gap:4px;margin-top:4px">
+        <div class="n textual" style="padding:3px 6px"><div class="t">① pensamiento <span class="ref">L3.3</span></div><div class="x">Se va a quedar en blanco y todos verán que no sirve</div></div>
+        <div class="n inferido" style="padding:3px 6px"><div class="t">② impulso</div><div class="x">Salir de la sala</div></div>
+        <div class="n textual" style="padding:3px 6px"><div class="t">③ acción <span class="ref">L3.4</span></div><div class="x">Pide ir al baño; diez minutos respirando</div><span class="alerta media">◆ respirar aquí es parte del escape</span></div>
+      </div>
+    </div>
+    <div class="arco"><div class="lbl">R− · escape de la evaluación<small>inmediata · esquema por determinar</small></div><div class="linea"></div></div>
+    <div class="n textual" style="width:140px"><div class="t">Consecuencia <span class="ref">L3.4–3.5</span></div><div class="x">No expone; alivio inmediato muy fuerte</div></div>
+  </div>
+  <div class="fila" style="gap:16px;padding-left:180px">
+    <div class="n inferido" style="width:330px"><div class="t">Regla verbal · inferida, sin comillas</div><div class="x">Si expongo, quedaré en evidencia ante el equipo</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div style="border:1px solid var(--linea);border-radius:10px;padding:10px;display:grid;gap:6px">
+      <div class="rot" style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-suave);font-weight:600">Interpretación · DBT</div>
+      <div>Puntos de solución sobre la cadena:</div>
+      <div>En ② <b>respuesta</b>: quedarse en la sala sin salir (acción opuesta al impulso).</div>
+      <div>En el antecedente <b>antecedente</b>: acordar con la supervisora un turno fijo <span class="alerta media" style="display:inline-block">◆ ¿paso de la jerarquía o forma de no exponerse?</span></div>
+    </div>
+    <div style="border:1px solid var(--linea);border-radius:10px;padding:10px;display:grid;gap:6px">
+      <div class="rot" style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-suave);font-weight:600">Interpretación · ACT</div>
+      <div><b>Fusión</b> anclada a ① · apoyo parcial <span class="ref">L3.3–3.4</span></div>
+      <div>Qué controla: la salida ocurre en cuanto aparece el pensamiento, antes de cualquier señal externa de fallo.</div>
+      <div style="color:var(--tinta-suave)">Implicación: trabajar la función del pensamiento, no su contenido.</div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="prosa">
+<p>Las capas teóricas viven en recuadros separados y titulados «Interpretación». Nunca cambian el color ni el apoyo de los nodos de datos. Y la etiqueta ACT solo aparece porque declara qué controla la conducta y qué frase lo sostiene; sin eso, no se pinta.</p>
+</div>
+
+<h3>E.6 Nivel Evidencia y cobertura de la nota</h3>
+<div class="prosa">
+<p>En este nivel cada nodo y cada arista enseñan su grado de apoyo y la frase de origen. Las relaciones inferidas se dibujan discontinuas. Una relación con evidencia en contra lleva ⊘. Y aparece la franja de cobertura: qué frases de la nota no usa ningún elemento.</p>
+</div>
+<div class="tabla media"><table>
+  <thead><tr><th>Frase (S1)</th><th>Uso actual</th><th>Acciones</th></tr></thead>
+  <tbody>
+    <tr><td><span class="ref">L1.1</span> derivada tras varias visitas a urgencias por palpitaciones</td><td>Sin usar</td><td>Crear conducta · Ignorar · Proponer con IA (0,25)</td></tr>
+    <tr><td><span class="ref">L3.5</span> toda la tarde dándole vueltas</td><td>Solo como costo, no como conducta</td><td>Crear conducta · Ignorar</td></tr>
+    <tr><td><span class="ref">L5.4</span> se lo ocultó a su supervisora por miedo a la reprimenda</td><td>Sin usar</td><td>Crear conducta · Ignorar</td></tr>
+    <tr><td><span class="ref">L9.1</span> su pareja llama ella misma y responde por M.</td><td>Solo en una hipótesis alternativa</td><td>Crear acomodación · Ignorar</td></tr>
+    <tr><td><span class="ref">L11.3</span> le gustaría optar a un ascenso</td><td>Sin usar</td><td>Crear valor · Ignorar</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa"><p>La parte de «sin usar» es determinista: el servidor ya sabe qué frases citó cada entidad. Solo «Proponer con IA» consume créditos. Es la primera pregunta de los revisores clínicos, contestada sin leer el informe entero.</p></div>
+
+<h3>E.7 Interacciones del mapa</h3>
+<div class="prosa">
+<ul>
+  <li><strong>Modo foco:</strong> al seleccionar, se resalta la ruta completa y lo demás se atenúa.</li>
+  <li><strong>Capas:</strong> Plan, Huecos, ACT, DBT, «Cambios desde Sn». Cada una con su contador; una capa con cero elementos no se puede encender.</li>
+  <li><strong>Filtros:</strong> «Solo lo apoyado por la nota» (ya existe) y «Ocultar inferido».</li>
+  <li><strong>Inspector:</strong> nodo, relación, hipótesis o blanco.</li>
+  <li><strong>Leer como texto:</strong> la ruta en una lista lineal, para lectores de pantalla y para quien prefiera leer. Sustituye a la prosa encadenada.</li>
+  <li><strong>Teclado:</strong> 1–4 cambian de nivel; las flechas recorren las aristas desde el nodo seleccionado; F abre la Fuente.</li>
+  <li><strong>Móvil:</strong> el nivel Situación se apila en vertical y el nivel Caso pasa a columnas una debajo de otra. El dibujo de aristas se oculta y las relaciones se leen en el Inspector, como ya hace el grafo actual.</li>
+</ul>
+</div>
+
+<h3>E.8 Cuándo aportan ACT y DBT</h3>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Lectura</th><th>Aporta información cuando…</th><th>Dónde se ve</th><th>No se muestra si…</th></tr></thead>
+  <tbody>
+    <tr><td>ACT</td><td>Hay conducta gobernada por reglas o por eventos privados que pesa más que la contingencia directa (sigue la regla aunque el resultado la desmienta), o hay valores explícitos en conflicto con una clase funcional</td><td>Recuadro «Interpretación · ACT» en el nodo anclado; la Matrix como vista aparte, útil para dibujarla con el consultante</td><td>El proceso no está anclado a un nodo o no declara qué controla la conducta</td></tr>
+    <tr><td>DBT</td><td>Cadenas con varios eslabones internos y mucha intensidad emocional, o cuando se sospecha un déficit de habilidad; el análisis de soluciones por eslabón (antecedente o respuesta) es lo que añade</td><td>Numeración y puntos de solución sobre la cadena del nivel Clínico; las habilidades pasan a «Habilidades necesarias» de la alternativa</td><td>La cadena tiene un solo eslabón o repite la operante</td></tr>
+    <tr><td>Datos</td><td>Siempre</td><td>Nodos y aristas, con su apoyo</td><td>—</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa"><p>Con esto ningún caso queda forzado dentro de ACT o DBT. Si el análisis no ancla ningún proceso, la capa ACT dice «0» y no ocupa espacio.</p></div>
+
+<h3>E.9 ¿Es viable y mejora la comprensión?</h3>
+<div class="prosa">
+<p><strong>Viable.</strong> El nivel Situación es el carril actual reordenado. El nivel Caso necesita una entidad nueva, <code>ClaseFuncional</code>, que el modelo propone por referencias. El nivel Evidencia necesita <code>apoyo</code> y <code>evidencia[]</code> en cada <code>Arista</code>. La técnica actual, rejilla CSS con aristas SVG superpuestas, basta; no hace falta una librería de grafos.</p>
+<p><strong>Mejora la comprensión</strong> en tres cosas concretas que hoy exigen leer tres pestañas: la clase de respuesta (nivel Caso), la función como relación (nivel Situación) y las relaciones sin apoyo (nivel Evidencia). Es verificable antes de construirlo. Con cinco clínicos y la maqueta actual frente a un prototipo navegable, se mide el tiempo y el acierto en tres preguntas: «¿Qué mantiene la conducta X?», «¿Qué conductas comparten función?» y «¿Qué parte de esta formulación depende de inferencias?».</p>
+<p><strong>Riesgos.</strong> La alfabetización gráfica (mitigada con «Leer como texto» y empezando en el nivel Situación con la ayuda guiada), la densidad del nivel Clínico (capas apagadas por defecto) y la falsa precisión de las aristas (las inferidas, discontinuas).</p>
+</div>
+
+<!-- ============================ F ============================ -->
+<h2 id="f"><span class="letra">F</span>Las hipótesis de mantenimiento</h2>
+
+<h3>F.1 No necesitan página</h3>
+<div class="prosa">
+<p>Una hipótesis de mantenimiento es un objeto con identidad: una <strong>ruta</strong> de relaciones en el mapa, una <strong>función</strong>, un <strong>apoyo</strong> (el de su relación más débil), un <strong>peso</strong>, un <strong>estado</strong>, sus <strong>rivales</strong>, una <strong>prueba</strong> (el criterio de revisión) y su <strong>historial</strong>. Ese objeto se ve en cuatro sitios, y los cuatro leen la misma fuente:</p>
+<ol>
+  <li><strong>En el Mapa</strong>, como ruta resaltada. Seleccionar la hipótesis ilumina sus aristas en cualquier nivel.</li>
+  <li><strong>En el Inspector</strong>, como tarjeta (abajo). Es donde se trabaja con ella.</li>
+  <li><strong>En el raíl</strong>, como lista con su estado.</li>
+  <li><strong>En Evolución</strong>, como fila de la matriz por sesiones.</li>
+</ol>
+<p>La prosa se genera solo al exportar, y en lenguaje natural, no por concatenación: <span class="cita">«Cuando la supervisora le pide exponer ante el equipo, M. sale al baño y no expone. El alivio inmediato probablemente mantiene la conducta por escape de la evaluación. Apoyo textual en la conducta y en la consecuencia; la operación motivadora es inferida.»</span></p>
+</div>
+
+<div class="maqueta">
+<div class="tarjeta" role="img" aria-label="Tarjeta de la hipótesis H1 en el inspector.">
+  <div class="cab"><span class="chip">H1</span><span class="chip ok">sostenida desde S2</span><span class="chip ok">▮ apoyo de la relación: textual</span><span class="chip">peso: alto</span><span class="chip gris">✓ confirmada por ti</span></div>
+  <div class="titulo">Salir al baño se mantiene por escape de la evaluación social</div>
+  <div class="ruta"><span class="chip">Ed · supervisora pide exponer</span>→<span class="chip">salir al baño</span><b style="color:var(--verde)">⟹ R−</b><span class="chip">no expone + alivio</span></div>
+  <div class="bloque"><div class="etq">A favor · 3</div>
+    <div><span class="ref">S1 L3.4</span> <span class="frase">«al volver la reunión ya había pasado a otro punto, por lo que no tuvo que exponer»</span></div>
+    <div><span class="ref">S1 L3.5</span> <span class="frase">«sintió un alivio inmediato muy fuerte»</span></div>
+    <div><span class="ref">S2 L1.3</span> <span class="frase">«el lunes, en la grande, volvió a pedir ir al baño»</span></div>
+  </div>
+  <div class="bloque"><div class="etq">En contra · 0 &nbsp;·&nbsp; Supuestos · 1</div>
+    <div>⋯ Que nadie refuerce la salida: <em>¿qué hacen la supervisora y los compañeros cuando no expone?</em> <span class="chip rev">pregunta abierta</span></div>
+  </div>
+  <div class="bloque"><div class="etq">Rival · H1′ · debilitada en S2</div>
+    <div><b>Déficit de habilidad para exponer</b> (no sabe estructurar la presentación).</div>
+    <div>Lo favorecería: que exponga mal también sin ansiedad. Lo debilita: <span class="ref">S2 L1.2</span> <span class="frase">«de tres personas, expuso los datos sin problema»</span>.</div>
+  </div>
+  <div class="bloque"><div class="etq">Prueba</div>
+    <div>Si tras seis exposiciones sin salir de la sala la evitación no cede, la función no sería de escape: revisar refuerzo social. <span class="chip">revisar en S5</span></div>
+  </div>
+  <div class="acciones"><span class="boton">Modificar</span><span class="boton">Debilitar</span><span class="boton">Descartar…</span><span class="boton">+ Evidencia</span><span class="boton">Convertir en pregunta</span><span class="boton">¿Por qué la IA propone esto?</span></div>
+</div>
+</div>
+
+<div class="prosa">
+<p><strong>«¿Por qué la IA propone esto?»</strong> abre un cajón con una justificación estructurada: evidencia a favor y en contra por frase, supuestos y rivales considerados. No muestra el <code>razonamiento_previo</code>, que por el invariante 5 no sale del servidor. Es un campo de salida propio, <code>justificacion</code>, que se valida como cualquier otro. El botón responde a la pregunta del clínico sin abrir el borrador del modelo.</p>
+</div>
+
+<h3>F.2 Estados</h3>
+<div class="tabla media"><table>
+  <thead><tr><th>Estado</th><th>Significa</th><th>Quién lo cambia</th></tr></thead>
+  <tbody>
+    <tr><td>En prueba</td><td>Formulada; esperando datos que la pongan a prueba</td><td>Estado inicial</td></tr>
+    <tr><td>Sostenida</td><td>Ha resistido al menos una observación que podía desmentirla</td><td>El clínico, a propuesta o no de la IA</td></tr>
+    <tr><td>Modificada</td><td>Cambió alguna pieza (por ejemplo, el antecedente pasó a «delante de seis o más»). Conserva la versión anterior</td><td>El clínico</td></tr>
+    <tr><td>Debilitada</td><td>Hay evidencia en contra, sin bastar para descartarla</td><td>El clínico</td></tr>
+    <tr><td>Descartada</td><td>Ya no explica los datos; motivo obligatorio</td><td>El clínico, en un modal</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa"><p>No uso «confirmada», ni siquiera «confirmada parcialmente». Una nota de sesión no confirma una hipótesis funcional; como mucho, la hipótesis sobrevive a una prueba. La palabra «confirmada» invita a dejar de mirar, que es lo contrario de lo que necesita una formulación viva. La IA nunca cambia un estado: lo propone con la frase que lo justifica.</p></div>
+
+<!-- ============================ G ============================ -->
+<h2 id="g"><span class="letra">G</span>Blancos y conductas alternativas</h2>
+<div class="prosa"><p>Cada blanco es una cadena de ocho ranuras que sigue el orden del encargo: evidencia, hipótesis, blanco, mecanismo, alternativa, estrategia, indicador y revisión. Las dos primeras son referencias al Mapa y no se copian. Abajo, el blanco 1 de M. en la sesión 3, con la ranura de la alternativa abierta.</p></div>
+
+<div class="cadena" role="img" aria-label="Cadena de ocho ranuras del blanco 1, con la ranura de conducta alternativa abierta en un editor.">
+<div class="marco">
+  <div class="cabecera"><span class="chip">Blanco 1</span><span class="tit">Salir de la reunión cuando le toca exponer</span><span class="chip ok">activo</span><span class="chip">listo 7 de 8</span><span class="chip gris">revisión en S5</span></div>
+  <div class="ranuras">
+    <div class="ranura ref"><div class="num"><span>1 · Evidencia</span><span class="estado">●</span></div><div>3 frases a favor, 0 en contra; OM inferida</div><div style="color:var(--verde)">ver en el Mapa ›</div></div>
+    <div class="ranura ref"><div class="num"><span>2 · Hipótesis</span><span class="estado">●</span></div><div>H1 · escape de la evaluación · sostenida</div><div style="color:var(--verde)">abrir H1 ›</div></div>
+    <div class="ranura"><div class="num"><span>3 · Blanco</span><span class="estado">●</span></div><div>Salir de la sala cuando le piden exponer, en reuniones de seis o más</div></div>
+    <div class="ranura"><div class="num"><span>4 · Mecanismo</span><span class="estado">●</span></div><div>Que la salida deje de producir alivio y que exponer contacte con sus consecuencias</div></div>
+    <div class="ranura abierta"><div class="num"><span>5 · Alternativa</span><span class="estado">●</span></div><div>Quedarse y decir al menos un dato aunque note taquicardia</div></div>
+    <div class="ranura"><div class="num"><span>6 · Estrategia</span><span class="estado">●</span></div><div>Exposición graduada por tamaño de grupo, sin salir de la sala</div><div style="color:var(--tinta-suave)">actúa sobre: 4</div></div>
+    <div class="ranura hueco"><div class="num"><span>7 · Indicador</span><span class="estado">◆</span></div><div>Reuniones en que expone sin salir / reuniones en que se lo piden</div><div style="color:var(--ambar)">falta línea base</div></div>
+    <div class="ranura"><div class="num"><span>8 · Revisión</span><span class="estado">●</span></div><div>Si tras seis exposiciones sin salir no cede, revisar la función</div></div>
+  </div>
+  <div class="editor-ranura">
+    <div class="campo"><div class="etq">Conducta alternativa · observable</div>Quedarse en la sala y decir al menos un dato cuando la supervisora le pide exponer, aunque note taquicardia</div>
+    <div class="campo"><div class="etq">Sustituye a</div><span class="chip">salir al baño al exponer</span></div>
+    <div class="campo"><div class="etq">Bajo qué antecedente</div>Petición de exponer en reunión; empezar por las de tres personas</div>
+    <div class="campo"><div class="etq">Qué función debe cumplir</div>Contactar con la evaluación sin escape; acceder a lo que el rol ofrece</div>
+    <div class="campo"><div class="etq">Qué la mantendrá</div>Terminar la tarea (inmediata) · «bien hecho» de la supervisora <span class="ref">S2 L1.2</span> · acercarse al ascenso <span class="ref">S1 L11.3</span></div>
+    <div class="campo"><div class="etq">Habilidades necesarias</div>Ninguna nueva: expuso bien en la reunión pequeña (rival H1′ debilitado). Es un problema de generalización</div>
+    <div class="campo"><div class="etq">Con qué contamos</div><span class="chip">repertorio: defiende su criterio con amigos</span> <span class="chip">valor: ascenso</span></div>
+    <div class="campo"><div class="etq">Qué falta saber</div><span class="chip rev">¿qué hacen los compañeros si se bloquea?</span></div>
+    <div class="campo ancho" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="chip descartada">Respirar para manejar la ansiedad</span><span style="color:var(--tinta-suave)">propuesta de la IA en S1, rechazada: en este caso respirar en el baño forma parte del escape</span></div>
+  </div>
+</div>
+</div>
+
+<div class="prosa">
+<h4>Cómo se usa</h4>
+<ul>
+  <li><strong>Cada ranura se abre en línea</strong>, debajo de la cadena, nunca en un modal. Si la IA tiene una propuesta para esa ranura, aparece con borde discontinuo y ✓ ✕ ✎.</li>
+  <li><strong>Estados de ranura:</strong> ● completa, ⋯ hueco, ◆ conviene revisar, ▲ revisar antes de usar. Ninguna ranura «completa» se pinta en verde, porque el verde es apoyo en la nota y un plan no se apoya en la nota: se decide.</li>
+  <li><strong>Las ranuras 1 y 2 son referencias.</strong> Editarlas lleva al Mapa o avisa: «Esto cambia H1, que usan el blanco 1 y el blanco 3».</li>
+  <li><strong>Validadores por ranura:</strong> alternativa sin consecuencia que la mantenga; alternativa que es conducta de seguridad; alternativa con la misma topografía que el problema; estrategia sin «actúa sobre»; estrategia que reproduce la contingencia; indicador que no mide el blanco; revisión que no puede salir mal («si mejora, seguimos»).</li>
+</ul>
+<h4>Genérica frente a operativa</h4>
+<p>✕ <em>Manejar mejor la ansiedad en reuniones.</em><br>✓ <em>Quedarse en la sala y decir al menos un dato cuando la supervisora le pide exponer, aunque note taquicardia.</em> Tiene verbo observable, contexto, criterio mínimo y la condición que la distingue de la conducta de seguridad.</p>
+<h4>Por qué una lista y no un kanban</h4>
+<p>Un caso tiene entre dos y cinco blancos, ordenados por prioridad, y lo importante de cada uno es su cadena, no la columna en la que está. Un kanban esconde la cadena para enseñar la fase. La fase es un chip.</p>
+</div>
+
+<!-- ============================ H ============================ -->
+<h2 id="h"><span class="letra">H</span>Plan de intervención</h2>
+
+<h3>H.1 Lo mínimo de cada blanco</h3>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Campo</th><th class="num">Para activar</th><th>Por qué</th></tr></thead>
+  <tbody>
+    <tr><td>Conducta blanco operacionalizada (qué, dónde, cuándo)</td><td class="num">Sí</td><td>Sin ella no hay indicador posible</td></tr>
+    <tr><td>Hipótesis funcional vinculada</td><td class="num">Sí</td><td>La interfaz ya lo dice: sin función no hay base para justificar ninguna intervención</td></tr>
+    <tr><td>Mecanismo que se quiere modificar</td><td class="num">Sí</td><td>Es lo que impide el salto de síntoma a técnica</td></tr>
+    <tr><td>Al menos una alternativa con su antecedente y la consecuencia que la mantendrá</td><td class="num">Sí</td><td>Una conducta nueva sin reforzador desaparece</td></tr>
+    <tr><td>Estrategia con «actúa sobre»</td><td class="num">Sí</td><td>Permite comprobarla contra la función</td></tr>
+    <tr><td>Indicador: qué, con qué, cada cuánto</td><td class="num">Sí</td><td>Sin medida, la hipótesis no rinde cuentas</td></tr>
+    <tr><td>Criterio de revisión falsable y sesión en que se mira</td><td class="num">Sí</td><td>Convierte el plan en hipótesis con fecha</td></tr>
+    <tr><td>Línea base</td><td class="num">No</td><td>Aviso ◆: sin ella el cambio no se puede leer</td></tr>
+    <tr><td>Habilidades necesarias, recursos, valores, precauciones, conductas de seguridad que vigilar</td><td class="num">No</td><td>Enriquecen; no bloquean</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa"><p>Un blanco puede activarse con huecos, pero los huecos se ven y una alerta ▲ exige reconocimiento con motivo antes de activar.</p></div>
+
+<h3>H.2 Del análisis al plan sin duplicar</h3>
+<div class="prosa">
+<p><strong>El plan referencia; no copia.</strong> Un blanco guarda <code>conducta_ids</code>, <code>hipotesis_id</code>, <code>alternativa_ids</code>, <code>estrategia_ids</code> e <code>indicador_ids</code>, más lo que es solo suyo: mecanismo, criterio de revisión, fase y prioridad. Lo demás se muestra en vivo desde su fuente. Dos consecuencias:</p>
+<ul>
+  <li>Si en la sesión 4 cambia H1, el blanco 1 recibe ◆ <span class="cita">«La hipótesis cambió: revisa mecanismo y estrategia»</span>. Es el motor de coherencia entre sesiones, y sale gratis de no haber copiado nada.</li>
+  <li>La exportación imprime el plan completo leyendo las referencias; el documento no pierde nada por no estar duplicado en pantalla.</li>
+</ul>
+<h4>Cómo nace un blanco</h4>
+<ol>
+  <li>En el Mapa, menú contextual sobre una conducta o una hipótesis: «Crear blanco». Las ranuras 1 a 3 se rellenan solas.</li>
+  <li>Las ranuras 4 a 8 las escribe el clínico, o pide propuesta a la IA por ranura (0,25 créditos) o para todas a la vez.</li>
+  <li>El blanco queda «propuesto» hasta que el clínico lo activa.</li>
+</ol>
+<h4>La bandeja «Por asignar»</h4>
+<p>Sustituye a «Intervenciones sin blanco». Cada intervención huérfana trae una sugerencia (<span class="cita">«¿Blanco 1? Menciona la evitación en reuniones»</span>) que el clínico confirma, cambia o descarta. Nunca se asigna sola: es la regla de <code>PLAN.md</code>, la heurística en el borde y el hueco a la vista. En la maqueta, la exposición graduada y el reforzamiento diferencial habrían llegado al blanco 1 con un clic.</p>
+<h4>Genérico frente a específico</h4>
+<p>✕ <em>Entrenamiento en habilidades de afrontamiento para situaciones evaluativas</em> (maqueta, sin razón declarada).<br>✓ <em>Exposición graduada a exponer en reuniones, de tres a más de seis personas, sin salir de la sala. Actúa sobre: salida → alivio. Precaución: vigilar que el turno fijo no se convierta en otra forma de no exponer.</em></p>
+</div>
+
+<!-- ============================ I ============================ -->
+<h2 id="i"><span class="letra">I</span>Próxima sesión: la hoja de cinco minutos</h2>
+<div class="dos-col">
+<div class="telefono" role="img" aria-label="Vista Preparar en un teléfono, antes de la sesión 4 de M.">
+  <div class="barra"><b>M. · Sesión 4</b><span class="chip">jue 23/10</span></div>
+  <div style="color:var(--tinta-suave);font-size:12px">Última: S3, hace 7 días · <span style="color:var(--verde)">● Riesgo: sin indicadores (S3)</span></div>
+  <div class="sec"><div class="etq">En 30 segundos</div>
+    <div><b>Función principal:</b> escape de la evaluación social (H1, sostenida).</div>
+    <div><b>Blanco activo:</b> salir de reuniones al exponer.<br>Expone sin salir: S2 1/2 · S3 2/3
+      <svg class="spark" width="72" height="20" viewBox="0 0 72 20" aria-hidden="true"><line x1="6" y1="18" x2="66" y2="18" stroke="var(--linea)" stroke-width="1"/><polyline points="10,11 62,8.7" fill="none" stroke="var(--verde)" stroke-width="2"/><circle cx="10" cy="11" r="2" fill="var(--verde)"/><circle cx="62" cy="8.7" r="2.6" fill="var(--verde)"/></svg></div>
+    <div><b>Tarea:</b> autorregistro de reuniones; exponer un dato en la de seis.</div>
+  </div>
+  <div class="sec"><div class="etq">Al empezar</div>
+    <div>☐ Revisar el autorregistro → <span style="color:var(--verde)">Anotar datos</span></div>
+    <div>☐ ¿Expuso en la reunión de seis?</div>
+  </div>
+  <div class="sec"><div class="etq">Preguntar · 3</div>
+    <div class="preg"><span>¿Qué hacen la supervisora y los compañeros cuando sale o no expone?</span><small>Pone a prueba H1 frente a atención. Si hay rescate o atención, entra en la hipótesis y en el plan.</small></div>
+    <div class="preg"><span>¿Duerme mal solo antes de días con reunión?</span><small>Decide si el sueño es moduladora o efecto de anticipar. Cambia por dónde intervenir.</small></div>
+    <div class="preg"><span>¿Cuántas copas antes de quedar este fin de semana?</span><small>Vigila la clase: si sube mientras baja la salida, el escape se está desplazando.</small></div>
+  </div>
+  <div class="sec"><div class="etq">Atención</div>
+    <div><span style="color:var(--ambar)">◆</span> Beber antes de quedar: sin datos desde S1.</div>
+    <div><span style="color:var(--ambar)">◆</span> Indicador del blanco 1 sin línea base.</div>
+  </div>
+  <div class="sec"><div class="etq">Desde la última sesión</div>
+    <div class="delta"><b>+</b><span>Expuso un dato en la reunión de seis (S3, textual).</span></div>
+    <div class="delta"><b>−</b><span>Rival «déficit de habilidad» descartada (S3).</span></div>
+    <div class="delta"><b>?</b><span>«Su pareja ya no responde por ella» (S3): sin usar.</span></div>
+  </div>
+</div>
+<div class="prosa" style="margin-top:0">
+<h4 style="margin-top:0">Reglas de la vista</h4>
+<ul>
+  <li><strong>Cabe en dos pantallas de móvil.</strong> Es lo que se mira en el pasillo antes de abrir la puerta. Se diseña primero para teléfono y la versión de escritorio es la misma columna centrada.</li>
+  <li><strong>No consume créditos ni espera a la IA.</strong> Todo se deriva del estado del caso: preguntas abiertas, tareas, últimos datos, alertas y el delta de la última sesión.</li>
+  <li><strong>Tres preguntas como máximo</strong>, ordenadas por valor de decisión: afecta a un blanco activo, desbloquea un dato del que depende algo, lleva sesiones sin respuesta. El clínico fija o quita preguntas.</li>
+  <li><strong>Cada línea lleva a su sitio</strong> en Mapa o Blancos.</li>
+  <li><strong>Se puede anotar sin salir:</strong> «Anotar datos» y «Anotar respuesta». Lo anotado es texto del clínico, que entra como evidencia en el siguiente análisis y nunca se presenta como generado.</li>
+  <li><strong>Hoja imprimible</strong> para quien trabaja con papel en sesión.</li>
+</ul>
+<h4>¿Es el motivo para volver cada semana?</h4>
+<p>Sí, si se cumplen las dos primeras reglas. El hábito tiene dos tiempos: <strong>Preparar</strong> antes de la sesión, gratis y sin espera, y <strong>Añadir sesión</strong> después, que es lo que consume créditos y alimenta la siguiente hoja. Si Preparar costara créditos o tardara veinte segundos, se abandonaría en la segunda semana.</p>
+</div>
+</div>
+
+<!-- ============================ J ============================ -->
+<h2 id="j"><span class="letra">J</span>Evolución longitudinal</h2>
+
+<h3>J.1 Nada se sobrescribe</h3>
+<div class="prosa">
+<ul>
+  <li>Cada elemento guarda <strong>revisiones</strong> que solo se añaden: autor (IA o clínico), sesión, antes, después y motivo.</li>
+  <li>Cada sesión cierra con una <strong>versión de la formulación</strong>: una instantánea de qué revisión de cada elemento estaba vigente.</li>
+  <li>La IA <strong>nunca edita</strong>: devuelve un conjunto de cambios propuestos y el clínico decide uno por uno.</li>
+  <li>Los elementos confirmados solo cambian si el clínico acepta la propuesta concreta. Es el invariante 6 llevado al tiempo: lo que el clínico hizo suyo no lo reescribe un reanálisis.</li>
+</ul>
+</div>
+
+<h3>J.2 Añadir una sesión</h3>
+<div class="prosa"><p>La nota de la sesión 2 (ficticia, para el ejemplo) es un párrafo de cinco frases: <span class="ref">L1.1</span> trae el registro de dos reuniones; <span class="ref">L1.2</span> en la del martes, de tres personas, expuso los datos sin problema y la supervisora le dijo «bien hecho»; <span class="ref">L1.3</span> el lunes, en la grande, volvió a pedir ir al baño; <span class="ref">L1.4</span> el miércoles también durmió mal; <span class="ref">L1.5</span> su pareja le propuso que llamara ella al seguro y no lo hizo. El paso «Revisar cambios» queda así:</p></div>
+<div class="maqueta">
+<div class="cambios" role="img" aria-label="Revisión de los cambios propuestos por la IA para la sesión 2, agrupados por hipótesis.">
+  <div class="cab"><b>Sesión 2 · 9/10 · 8 cambios propuestos</b><span style="display:flex;gap:6px"><span class="boton">Aceptar la evidencia nueva (2)</span><span class="boton prim">Terminar revisión</span></span></div>
+  <div class="grupo-c">
+    <div class="gt"><span>H1 · Escape de la evaluación social</span><span class="chip">en prueba → sostenida</span></div>
+    <div class="prop"><span class="op">+</span><span>Evidencia a favor: <span class="ref">L1.3</span> <span class="frase">«el lunes, en la grande, volvió a pedir ir al baño»</span></span><span class="bts"><span>✓</span><span>✕</span></span></div>
+    <div class="prop"><span class="op">~</span><span>Antecedente: «ante seis compañeros» → «en reuniones de seis o más». La conducta depende del tamaño del grupo. <span class="ref">L1.2–1.3</span></span><span class="bts"><span>✓</span><span>✕</span><span>✎</span></span></div>
+    <div class="prop"><span class="op">↑</span><span>Estado: sostenida. Resistió una observación que podía desmentirla.</span><span class="bts"><span>✓</span><span>✕</span></span></div>
+  </div>
+  <div class="grupo-c">
+    <div class="gt"><span>H1′ · Déficit de habilidad para exponer (rival)</span><span class="chip">en prueba → debilitada</span></div>
+    <div class="prop"><span class="op menos">−</span><span>Evidencia en contra: <span class="ref">L1.2</span> <span class="frase">«expuso los datos sin problema»</span></span><span class="bts"><span>✓</span><span>✕</span></span></div>
+  </div>
+  <div class="grupo-c">
+    <div class="gt"><span>Preguntas abiertas</span><span class="chip">2 con respuesta</span></div>
+    <div class="prop"><span class="op">✓</span><span>«¿Qué hace la supervisora?» → cuando expone, la refuerza (<span class="ref">L1.2</span>). Propone añadirlo a la alternativa del blanco 1 como consecuencia que la mantendría. Cuando sale, sigue sin saberse: la pregunta sigue abierta.</span><span class="bts"><span>✓</span><span>✕</span></span></div>
+    <div class="prop"><span class="op">~</span><span>«¿Duerme mal solo los domingos?» → también un miércoles (<span class="ref">L1.4</span>). No depende solo de anticipar el lunes; sigue abierta.</span><span class="bts"><span>✓</span><span>✕</span></span></div>
+  </div>
+  <div class="grupo-c">
+    <div class="gt"><span>Nuevo</span><span class="chip">1 conducta</span></div>
+    <div class="prop"><span class="op">+</span><span>No llama al seguro aunque la pareja se lo propone. Clase: escape de la evaluación social. Apoyo parcial. <span class="ref">L1.5</span></span><span class="bts"><span>✓</span><span>✕</span><span>✎</span></span></div>
+  </div>
+  <div class="grupo-c" style="color:var(--tinta-suave)">
+    <div>Frases sin usar: 1 (<span class="ref">L1.1</span>) · Elementos confirmados afectados: 0 · Alertas nuevas: 0</div>
+  </div>
+</div>
+</div>
+<div class="prosa">
+<p>Los cambios se agrupan por hipótesis o por blanco, nunca por campo, porque el clínico piensa en hipótesis. Cada propuesta enseña la frase que la justifica. «Aceptar en lote» solo existe para evidencia nueva: un cambio de estado o de estructura se acepta uno por uno.</p>
+</div>
+
+<h3>J.3 La vista Evolución</h3>
+<div class="tabla evo"><table class="evo">
+  <thead><tr><th>Hipótesis</th><th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th><th>S6</th><th>S7</th><th>Estado</th></tr></thead>
+  <tbody>
+    <tr><td>H1 · escape de la evaluación</td><td>prueba</td><td>sost. ~ <small>+1</small></td><td>sost. <small>+1</small></td><td>sost.</td><td>sost. <small>prueba superada</small></td><td>sost.</td><td>sost.</td><td><span class="chip ok">sostenida</span></td></tr>
+    <tr><td>H1′ · déficit de habilidad</td><td>prueba</td><td>debil. <small>−1</small></td><td>desc.</td><td></td><td></td><td></td><td></td><td><span class="chip gris">descartada S3</span></td></tr>
+    <tr><td>H2 · escape de la confrontación</td><td>prueba</td><td>prueba</td><td>prueba</td><td>sost. <small>+1</small></td><td>sost.</td><td>sost.</td><td>sost.</td><td><span class="chip ok">sostenida</span></td></tr>
+    <tr><td>H3 · alcohol: alivio anticipado</td><td>prueba</td><td>prueba</td><td>prueba</td><td>prueba</td><td>sost. <small>+2</small></td><td>sost.</td><td>sost.</td><td><span class="chip ok">sostenida</span></td></tr>
+    <tr><td>H3′ · alcohol: alivio del cansancio</td><td></td><td></td><td></td><td></td><td>prueba</td><td>debil. <small>−1</small></td><td>debil.</td><td><span class="chip gris">debilitada</span></td></tr>
+    <tr><th>Indicadores</th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+    <tr><td>Blanco 1 · expone sin salir</td><td>—</td><td>1/2</td><td>2/3</td><td>3/4</td><td>4/4</td><td>3/3</td><td>4/4</td><td><svg class="spark" width="96" height="26" viewBox="0 0 96 26" aria-label="Proporción de reuniones en que expone sin salir, de 0,5 en S2 a 1 en S7"><line x1="4" y1="23" x2="92" y2="23" stroke="var(--linea)" stroke-width="1"/><polyline points="4,13 21.6,9.6 39.2,8.5 56.8,4 74.4,4 92,4" fill="none" stroke="var(--verde)" stroke-width="2"/><circle cx="92" cy="4" r="2.6" fill="var(--verde)"/></svg></td></tr>
+    <tr><td>Blanco 2 · copas antes de quedar</td><td>2–3</td><td>—</td><td>—</td><td>—</td><td>4</td><td>3</td><td>2</td><td><span class="chip rev">activo desde S5</span></td></tr>
+  </tbody>
+</table></div>
+<div class="prosa">
+<p>La matriz responde «¿qué pensábamos en la sesión 2 y qué sabemos en la 7?» sin abrir nada. Clic en una celda abre la formulación de esa sesión en modo lectura, con una franja: «Viendo la formulación de la sesión 2 · Volver a la vigente».</p>
+<p><strong>Comparar dos versiones</strong> superpone ambas en el Mapa: lo añadido con contorno y píldora de sesión, lo retirado como fantasma tachado, lo cambiado con ✎ y el antes y el después en el Inspector.</p>
+<p><strong>«¿Qué cambió desde la última sesión?»</strong> es un componente, el delta de sesión (+ − ~ ?), que aparece en Preparar y al encender «Cambios desde Sn» en el Mapa.</p>
+<p>Los indicadores se dibujan con la línea de fase (línea base, intervención) cuando el clínico la marca. Es un diseño de caso único, el formato con el que un analista de conducta ya sabe leer el cambio.</p>
+</div>
+
+<!-- ============================ K ============================ -->
+<h2 id="k"><span class="letra">K</span>Ayuda guiada frente a modo compacto</h2>
+<div class="prosa">
+<p><strong>Veredicto: un ajuste de ayuda, no dos modos.</strong> Dos modos acaban siendo dos productos que mantener, y llamarlos «principiante» y «experto» etiqueta a la persona. Un clínico con experiencia también quiere explicaciones en un caso que no domina, y un recién titulado quiere ir rápido en el quinto caso de ansiedad social. El ajuste se llama <em>Ayuda de razonamiento</em>, con dos valores, <strong>Con explicaciones</strong> y <strong>Compacto</strong>. Cambia la densidad y el andamiaje, nunca la seguridad. El «¿Por qué?» de cada elemento existe en los dos.</p>
+</div>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Aspecto</th><th>Con explicaciones</th><th>Compacto</th></tr></thead>
+  <tbody>
+    <tr><td>Primera formulación</td><td>Cola de revisión paso a paso: una hipótesis por pantalla, su evidencia y «¿la confirmas?»</td><td>Lista de propuestas con aceptación en lote, salvo las alertas ▲</td></tr>
+    <tr><td>Etiquetas</td><td>«Señal (Ed)», «Consecuencia inmediata»</td><td>«Ed», «C inm.», «R−»</td></tr>
+    <tr><td>Nivel inicial del Mapa</td><td>Situación, con una conducta enfocada</td><td>Caso</td></tr>
+    <tr><td>Huecos</td><td>Con la frase: «Falta: qué hace la supervisora cuando no expone»</td><td>Icono y texto al pasar el cursor</td></tr>
+    <tr><td>Ranuras del blanco</td><td>Con pregunta guía: «¿Qué consecuencia mantendrá esta conducta?»</td><td>Solo el título</td></tr>
+    <tr><td>Alertas</td><td>Mensaje, explicación y un ejemplo mínimo</td><td>Mensaje</td></tr>
+    <tr><td>«¿Por qué?»</td><td>Icono visible junto a cada término técnico</td><td>Al pasar el cursor o con la tecla ?</td></tr>
+    <tr><td>Predecir antes de ver (opcional)</td><td>«¿Qué función crees que tiene?» antes de revelar la propuesta</td><td>No</td></tr>
+    <tr><td>Atajos de teclado</td><td>Se enseñan en los tooltips</td><td>Activos</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa">
+<p><strong>No cambia nunca:</strong> alertas, grados de apoyo, huecos, riesgo, marcas de procedencia y exportación. Es la misma lógica del invariante 4 aplicada a la ayuda: nadie recibe un análisis menos seguro por elegir la vista compacta.</p>
+<p>Tras varias formulaciones aceptadas con pocas correcciones, ACIA ofrece una vez pasar a Compacto, y no insiste.</p>
+</div>
+<h3>Microexplicaciones</h3>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Pregunta</th><th>Cuándo aparece</th><th>Qué dice, con el caso M.</th></tr></thead>
+  <tbody>
+    <tr><td>¿Por qué es consecuencia y no antecedente?</td><td>Al arrastrar un nodo entre carriles, o al pasar por la etiqueta del carril</td><td>«Ocurre después de salir y depende de ello: <em>al volver, la reunión ya había pasado a otro punto</em> (L3.4). Si ocurriera antes y la hiciera más probable, sería antecedente.»</td></tr>
+    <tr><td>¿Por qué esta intervención contradice la función?</td><td>Con una alerta ▲ en una estrategia</td><td>«La salida se mantiene porque quita el malestar. Respirar en el baño es parte de esa salida: prescribirla refuerza lo que se quiere extinguir.»</td></tr>
+    <tr><td>¿Qué significa dato parcial?</td><td>Al pulsar por primera vez una marca de apoyo</td><td>La definición y la frase concreta que lo apoya a medias.</td></tr>
+    <tr><td>Esto es topografía; ¿cuál es la función?</td><td>El texto del campo función coincide con una conducta («evita exponer»)</td><td>«Describe qué hace, no para qué le sirve. ¿Qué consecuencia la mantiene?»</td></tr>
+    <tr><td>¿Sobre qué relación actúa?</td><td>Se crea una estrategia sin mecanismo</td><td>«Una técnica sin mecanismo es un salto de síntoma a técnica. ¿Qué contingencia quieres cambiar?»</td></tr>
+    <tr><td>¿Déficit o interferencia?</td><td>La alternativa exige una habilidad que ya aparece en otro contexto</td><td>«Ya defiende su criterio con amigos. Puede ser un problema de generalización, no de aprendizaje.»</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa"><p>Un popover a la vez. Cada concepto se explica solo la primera vez que hace falta; después se queda tras el «¿Por qué?». Siempre con «No volver a mostrar».</p></div>
+
+<!-- ============================ L ============================ -->
+<h2 id="l"><span class="letra">L</span>Outputs de IA que justifican pagar</h2>
+<div class="prosa"><p>Diez outputs, en el orden en que los construiría. La última columna dice qué le falta a un chat genérico para darlo: casi siempre es estado (memoria del caso), verificación (citas y validadores) o identidad (poder decir «esta hipótesis», no «algo parecido»).</p></div>
+<div class="tabla ancha"><table>
+  <thead><tr><th>#</th><th>Output</th><th>Qué entrega</th><th class="num">Valor clínico</th><th class="num">Frecuencia</th><th class="num">Diferenciación</th><th class="num">Complejidad</th><th>Qué le falta a un chat</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Actualización por sesión</td><td>Cambios propuestos sobre la formulación vigente, cada uno con su frase: evidencia a favor y en contra, estados, conductas nuevas, preguntas respondidas</td><td class="num puntos">●●●</td><td class="num puntos">●●●</td><td class="num puntos">●●●</td><td class="num puntos">●●●</td><td>Estado e identidad</td></tr>
+    <tr><td>2</td><td>Preguntas discriminantes</td><td>Tres preguntas por sesión, cada una con la hipótesis que pone a prueba, el dato que falta y la decisión que cambia</td><td class="num puntos">●●●</td><td class="num puntos">●●●</td><td class="num puntos">●●○</td><td class="num puntos">●●○</td><td>Saber qué está abierto en este caso</td></tr>
+    <tr><td>3</td><td>Cobertura de la nota</td><td>Frases que ningún elemento usa, con una propuesta para cada una</td><td class="num puntos">●●○</td><td class="num puntos">●●●</td><td class="num puntos">●●●</td><td class="num puntos">●○○</td><td>Verificación: la parte central es determinista</td></tr>
+    <tr><td>4</td><td>Coherencia del plan</td><td>Intervención frente a función, alternativa frente a la consecuencia que la mantiene, indicador frente a blanco</td><td class="num puntos">●●●</td><td class="num puntos">●●○</td><td class="num puntos">●●●</td><td class="num puntos">●●○</td><td>Validadores que no dependen de que el modelo obedezca</td></tr>
+    <tr><td>5</td><td>Hipótesis rival con observación discriminante</td><td>Por cada hipótesis principal, una rival, qué la favorecería y qué preguntar para separarlas</td><td class="num puntos">●●●</td><td class="num puntos">●●○</td><td class="num puntos">●●○</td><td class="num puntos">●●○</td><td>Seguir la rival a lo largo de las sesiones</td></tr>
+    <tr><td>6</td><td>Clases funcionales</td><td>Agrupación de topografías por función, con las que quedan sin función</td><td class="num puntos">●●●</td><td class="num puntos">●○○</td><td class="num puntos">●●●</td><td class="num puntos">●●○</td><td>Un formato que permita mover fichas y conservar el cambio</td></tr>
+    <tr><td>7</td><td>Alternativa operativa con contingencias</td><td>Conducta observable, antecedente, función, consecuencias que la mantendrán, habilidades y recursos</td><td class="num puntos">●●●</td><td class="num puntos">●●○</td><td class="num puntos">●●○</td><td class="num puntos">●●○</td><td>Anclarla a la función y a los recursos del caso</td></tr>
+    <tr><td>8</td><td>Lectura de los indicadores</td><td>Si la serie de datos sostiene o debilita la hipótesis, contra el criterio de revisión declarado</td><td class="num puntos">●●●</td><td class="num puntos">●●○</td><td class="num puntos">●●●</td><td class="num puntos">●●●</td><td>Datos acumulados y criterio previo</td></tr>
+    <tr><td>9</td><td>Indicador y plantilla de autorregistro</td><td>Qué medir, cómo y cada cuánto, más una hoja imprimible para el consultante</td><td class="num puntos">●●○</td><td class="num puntos">●○○</td><td class="num puntos">●●○</td><td class="num puntos">●○○</td><td>Poco; es útil, no diferencial</td></tr>
+    <tr><td>10</td><td>Resumen para supervisión</td><td>La evolución del caso en una página: hipótesis, cambios, datos y dudas abiertas</td><td class="num puntos">●●○</td><td class="num puntos">●○○</td><td class="num puntos">●●○</td><td class="num puntos">●○○</td><td>La historia del caso</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa"><p>Complejidad: más puntos, más difícil. Los dos primeros son el ciclo semanal y justifican la suscripción por sí solos. El 3 y el 4 son baratos y dan mucha confianza porque casi todo es determinista. El 5, el 6 y el 7 enriquecen la primera formulación. El 8 necesita semanas de datos, así que va después. El 9 y el 10 son útiles, pero un chat los hace casi igual de bien.</p></div>
+
+<!-- ============================ M ============================ -->
+<h2 id="m"><span class="letra">M</span>MVP comercial</h2>
+<div class="tres">
+  <div>
+    <h4>Imprescindible</h4>
+    <ol>
+      <li>Caso con sesiones, local y cifrado, extendiendo <code>lib/repositorio.ts</code>.</li>
+      <li>Mapa en los niveles Caso y Situación, con el Clínico básico (respondiente y cadena interna como subpista).</li>
+      <li>Inspector lateral y cajón Fuente con frases numeradas.</li>
+      <li>Apoyo por relación, y mínimo por ruta.</li>
+      <li>Procedencia y estado de revisión por elemento.</li>
+      <li>Alertas en el elemento, bandeja por gravedad y vacíos en tres estados.</li>
+      <li>Blancos con la cadena de ocho ranuras y la bandeja «Por asignar».</li>
+      <li>Pregunta clínica como entidad única: funde preguntas, datos faltantes, «cómo descartarla» y «primero explorar».</li>
+      <li>Añadir sesión: cambios propuestos, revisión y nueva versión.</li>
+      <li>Preparar, derivado y sin IA.</li>
+      <li>Exportación a Word y PDF, alimentada por el estado del caso.</li>
+      <li>Caso de ejemplo de tres sesiones como demostración, sustituyendo a la maqueta actual.</li>
+    </ol>
+  </div>
+  <div>
+    <h4>Después</h4>
+    <ul>
+      <li>Vista Evolución completa: matriz y comparación en el Mapa.</li>
+      <li>Registro de datos de indicadores y gráficas por fases.</li>
+      <li>Nivel Evidencia completo, con propuestas de la IA para frases sin usar.</li>
+      <li>Capas ACT y DBT como lecturas ancladas; la Matrix como vista aparte.</li>
+      <li>Ayuda «Con explicaciones» con cola guiada y predicción.</li>
+      <li>Revisión profunda del caso completo.</li>
+      <li>Plantillas de autorregistro imprimibles.</li>
+      <li>Resumen para supervisión.</li>
+    </ul>
+  </div>
+  <div>
+    <h4>No construir todavía</h4>
+    <ul>
+      <li>Sincronización en servidor, cuentas de equipo o compartir casos: exigen la opción B de <code>MONETIZACION.md</code> y toda su carga legal.</li>
+      <li>Chat libre con el caso. Convierte ACIA en un chat con memoria y disuelve la estructura, que es lo que se vende.</li>
+      <li>Lienzo libre, zoom continuo, grafos de fuerzas.</li>
+      <li>Puntuaciones numéricas de confianza o probabilidad.</li>
+      <li>Kanban de blancos.</li>
+      <li>App para el consultante, recordatorios, agenda, facturación, transcripción.</li>
+      <li>Más marcos teóricos como capas.</li>
+      <li>Minería de patrones entre casos.</li>
+    </ul>
+  </div>
+</div>
+<div class="prosa">
+<p><strong>Orden de construcción.</strong> Primero los cimientos que todo lo demás necesita: caso y sesiones, frases numeradas, apoyo en las aristas y procedencia por elemento. Después el Mapa en sus dos niveles con el Inspector al lado, que ya resuelve buena parte de A. Luego Blancos, la Pregunta como entidad y Preparar. Por último la actualización por sesión, que depende de los ids, de las preguntas y de las revisiones.</p>
+<p><strong>Prerrequisito que no es código:</strong> el DPA y la retención cero con OpenAI (<code>PENDIENTE.md</code>, sección 1). Sin eso no se puede cobrar por procesar notas de pacientes reales, por bueno que sea el producto.</p>
+</div>
+
+<!-- ============================ N ============================ -->
+<h2 id="n"><span class="letra">N</span>Monetización</h2>
+<h3>N.1 Principios</h3>
+<div class="prosa">
+<ol>
+  <li><strong>Se cobra el trabajo nuevo de la IA</strong>, nunca el trabajo del clínico con lo que ya existe.</li>
+  <li><strong>La seguridad clínica no se cobra</strong> (invariante 4), y ningún resultado de pago es más seguro que uno gratuito.</li>
+  <li><strong>El gasto se ve antes de gastar.</strong> Cada botón que consume lleva su coste: «≈ 1 crédito».</li>
+  <li><strong>Sin créditos, el caso sigue funcionando entero.</strong> Solo se detiene lo que genera contenido nuevo.</li>
+  <li><strong>No castigar la duda.</strong> <code>MONETIZACION.md</code> tiene razón: pagar por análisis empuja a no analizar el caso dudoso, que es cuando más falta hace. Por eso el modelo es una suscripción con análisis incluidos de sobra, y los créditos quedan para picos y para lo pesado.</li>
+  <li><strong>Los registros clínicos nunca son rehenes.</strong> Leer, exportar y archivar es gratis siempre, también después de cancelar.</li>
+  <li><strong>No se paga el error del modelo.</strong> Si una llamada falla o no valida, el crédito vuelve. Si una propuesta dispara una alerta ▲, regenerar esa ranura es gratis.</li>
+</ol>
+</div>
+<h3>N.2 Qué consume y qué no</h3>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Acción</th><th class="num">Coste</th><th>Motivo</th></tr></thead>
+  <tbody>
+    <tr><td>Editar, conectar, reclasificar, citar arrastrando, aceptar o rechazar, cambiar estados</td><td class="num">Gratis</td><td>Es el trabajo del clínico</td></tr>
+    <tr><td>Validadores, alertas, grados de apoyo, cobertura determinista de la nota</td><td class="num">Gratis</td><td>Seguridad clínica (invariante 4)</td></tr>
+    <tr><td>Mapa, niveles, capas, Preparar, historial, versiones, comparar</td><td class="num">Gratis</td><td>Se calcula sobre el estado; no llama a la IA</td></tr>
+    <tr><td>Anotar datos de indicadores y gráficas</td><td class="num">Gratis</td><td>Es lo que hace que vuelva</td></tr>
+    <tr><td>Exportar a Word o PDF</td><td class="num">Gratis</td><td>Los registros son del clínico</td></tr>
+    <tr><td><strong>Analizar la nota de una sesión</strong> (primera o actualización), con preguntas, alertas y la pasada crítica</td><td class="num">1</td><td>La unidad de valor: una sesión incorporada al caso</td></tr>
+    <tr><td>Proponer una ranura de un blanco, reanalizar un elemento, preguntas extra, propuesta para frases sin usar</td><td class="num">0,25</td><td>Trabajo de IA acotado</td></tr>
+    <tr><td>Revisión profunda del caso completo (todas las notas, formulación desde cero comparada con la vigente)</td><td class="num">3</td><td>Envía todas las notas; es caro de verdad</td></tr>
+    <tr><td>Resumen narrativo para supervisión</td><td class="num">1</td><td>Generación larga</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa"><p>La pasada crítica (<code>lib/pasadaCritica.ts</code>) va incluida en cada análisis, sin coste aparte. Sus alertas son de seguridad aunque las emita un modelo, y cobrarla por separado crearía un informe de primera y otro de segunda.</p></div>
+
+<h3>N.3 Niveles</h3>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Nivel</th><th>Para quién</th><th>Incluye</th></tr></thead>
+  <tbody>
+    <tr><td>Prueba</td><td>Quien quiere ver si le sirve</td><td>Tres casos activos y cinco análisis al mes. Todo lo de seguridad. Caso de ejemplo completo</td></tr>
+    <tr><td>Profesional</td><td>Clínico con consulta propia</td><td>Casos activos sin límite. Análisis incluidos dimensionados para que el uso habitual no los agote: casos que ve cada semana × 4. Con diez casos semanales, unos 40 al mes. Evolución, comparación de versiones, exportación con membrete</td></tr>
+    <tr><td>Formación (después)</td><td>Estudiantes de máster y supervisores</td><td>Ayuda con explicaciones, casos de ejemplo, precio reducido. Sin pacientes reales</td></tr>
+    <tr><td>Equipo (cuando haya servidor)</td><td>Centros y gabinetes</td><td>Sincronización cifrada, supervisión compartida. Exige la opción B</td></tr>
+    <tr><td>Créditos sueltos</td><td>Picos de uso</td><td>Paquetes que caducan a los doce meses, no al mes</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa">
+<p><strong>Sobre los niveles de almacenamiento.</strong> Mientras ACIA sea local, guardar no le cuesta nada al servicio, y vender gigas sería un límite artificial. Lo que se vende es seguimiento: <strong>casos activos</strong>, con alguna sesión en los últimos 90 días. Los archivados son ilimitados y gratis. El día que haya sincronización en servidor sí habrá un coste real, y entonces tiene sentido un nivel con sincronización cifrada.</p>
+<p><strong>Por qué se percibe por encima de un chat.</strong> La unidad de pago es una sesión incorporada al caso, no una respuesta. Un crédito compra: la nota analizada con citas verificadas, los cambios propuestos sobre la formulación vigente, las preguntas de la próxima sesión y las comprobaciones. El precio se ancla a una hora de supervisión, no al coste de los tokens, como ya dice <code>MONETIZACION.md</code>.</p>
+</div>
+
+<!-- ============================ O ============================ -->
+<h2 id="o"><span class="letra">O</span>Componentes</h2>
+<div class="prosa"><p>En español, como pide <code>CLAUDE.md</code> para todo el código. Varios ya existen a medias: el grafo, la ficha, la franja de apoyo, las primitivas de edición.</p></div>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Componente</th><th>Función</th><th>Recibe</th><th>Interacción</th><th>Estados</th><th>Se relaciona con</th></tr></thead>
+  <tbody>
+    <tr><td><code>MarcoCaso</code></td><td>Estructura: cabecera, vista activa, raíl, Inspector, Fuente; guarda la selección compartida</td><td>Caso, vista, selección</td><td>Navegación y atajos</td><td>Cargando · sin sesiones · normal · viendo una versión antigua</td><td>Todos</td></tr>
+    <tr><td><code>CabeceraCaso</code></td><td>Identidad y estado del caso</td><td>Caso, riesgo, recuento de alertas</td><td>Abrir la bandeja de alertas; Añadir sesión; Exportar</td><td>Riesgo: sin indicadores · con indicadores · no evaluado</td><td><code>BandejaAlertas</code>, <code>FlujoSesion</code></td></tr>
+    <tr><td><code>EsquemaCaso</code></td><td>Índice vivo en el raíl</td><td>Entidades por tipo, con estado</td><td>Clic para enfocar; arrastrar blancos para reordenar</td><td>Plegado · abierto</td><td><code>MapaFuncional</code>, <code>Inspector</code></td></tr>
+    <tr><td><code>MapaFuncional</code></td><td>Dibuja el modelo en el nivel elegido</td><td>Nodos, aristas con apoyo, nivel, capas, filtros, selección</td><td>Seleccionar, conectar, reclasificar, editar etiqueta</td><td>Niveles 0 a 3 · foco · comparando versiones</td><td><code>TableroClases</code>, <code>CadenaSituacion</code></td></tr>
+    <tr><td><code>TableroClases</code></td><td>Nivel Caso: columnas por función</td><td>Clases funcionales y sus conductas</td><td>Mover fichas de columna (cambia la hipótesis)</td><td>Con o sin columna «por determinar»</td><td><code>NodoMapa</code></td></tr>
+    <tr><td><code>CadenaSituacion</code></td><td>Niveles Situación y Clínico</td><td>Una conducta en una situación, con su cadena</td><td>Expandir la cadena interna; encender capas</td><td>Con capa Plan · sin ella</td><td><code>NodoMapa</code>, <code>AristaMapa</code></td></tr>
+    <tr><td><code>NodoMapa</code></td><td>Una entidad en el mapa</td><td>Entidad, apoyo, procedencia, alertas</td><td>Clic, doble clic, arrastrar, menú contextual</td><td>Normal · seleccionado · atenuado · propuesta · confirmado · editado · nuevo · descartado · hueco</td><td><code>MarcaApoyo</code>, <code>MarcaProcedencia</code>, <code>InsigniaAlerta</code></td></tr>
+    <tr><td><code>AristaMapa</code></td><td>Una relación</td><td>Tipo, apoyo, función si es contingencia</td><td>Clic: Inspector de relación</td><td>Secuencial · moduladora · contingencia · bucle; continua o discontinua según apoyo</td><td><code>Inspector</code></td></tr>
+    <tr><td><code>MarcaApoyo</code></td><td>La pieza epistémica mínima</td><td>Nivel y citas</td><td>Clic abre la frase en la Fuente</td><td>Textual · parcial · inferido · hueco · contradicho</td><td><code>CajonFuente</code></td></tr>
+    <tr><td><code>MarcaProcedencia</code></td><td>Quién dijo qué</td><td>Revisiones del elemento</td><td>Al pasar el cursor, el original de la IA</td><td>IA · confirmado · editado · tuyo · nuevo · descartado</td><td><code>HistorialElemento</code></td></tr>
+    <tr><td><code>Inspector</code></td><td>Ficha del elemento: Detalle, Evidencia, Historial</td><td>Elemento, relaciones, revisiones</td><td>Edición en línea; acciones del elemento</td><td>Vacío · nodo · relación · hipótesis · blanco</td><td><code>TarjetaHipotesis</code></td></tr>
+    <tr><td><code>TarjetaHipotesis</code></td><td>Trabajar una hipótesis (F)</td><td>Hipótesis, ruta, evidencia, rival, prueba</td><td>Modificar, debilitar, descartar, añadir evidencia</td><td>En prueba · sostenida · modificada · debilitada · descartada</td><td><code>MapaFuncional</code>, <code>MatrizEvolucion</code></td></tr>
+    <tr><td><code>CajonFuente</code></td><td>Las notas, verificables</td><td>Notas por sesión, frases, uso de cada frase</td><td>Arrastrar frase a un elemento; clic en frase: quién la usa</td><td>Plegado · abierto · resaltando</td><td><code>MarcaApoyo</code></td></tr>
+    <tr><td><code>InsigniaAlerta</code> y <code>BandejaAlertas</code></td><td>Alertas por gravedad</td><td>Alertas del caso</td><td>Saltar al elemento; reconocer con motivo</td><td>▲ · ◆ · sugerencia · reconocida</td><td><code>CabeceraCaso</code></td></tr>
+    <tr><td><code>CadenaBlanco</code></td><td>Las ocho ranuras de un blanco (G)</td><td>Blanco y sus referencias</td><td>Abrir ranura en línea; aceptar propuesta</td><td>Por ranura: completa · hueco · ◆ · ▲ · propuesta</td><td><code>EditorAlternativa</code>, <code>EditorIndicador</code></td></tr>
+    <tr><td><code>EditorAlternativa</code></td><td>Operacionalizar la conducta alternativa</td><td>Alternativa, conducta sustituida, recursos, valores</td><td>Editar campos; pedir propuesta (0,25)</td><td>Incompleta · completa · con alerta</td><td><code>CadenaBlanco</code></td></tr>
+    <tr><td><code>EditorIndicador</code></td><td>Qué medir y los datos</td><td>Indicador y observaciones</td><td>Anotar un dato; marcar fase</td><td>Sin línea base · con datos</td><td><code>MiniGrafica</code></td></tr>
+    <tr><td><code>TarjetaPregunta</code></td><td>Pregunta clínica</td><td>Pregunta, hipótesis, dato, decisión</td><td>Fijar; anotar respuesta (entra como evidencia)</td><td>Abierta · respondida · respondida en parte · descartada</td><td><code>VistaPreparar</code></td></tr>
+    <tr><td><code>FlujoSesion</code></td><td>Nota, revisar cambios, registrar</td><td>Caso y nota</td><td>Pasos; coste visible antes de analizar</td><td>Paso 1 · 2 · 3</td><td><code>RevisionCambios</code></td></tr>
+    <tr><td><code>RevisionCambios</code></td><td>Decidir sobre las propuestas de la IA (J.2)</td><td>Conjunto de cambios</td><td>✓ ✕ ✎ por propuesta; lote solo para evidencia</td><td>Pendiente · aplicada</td><td><code>DeltaSesion</code></td></tr>
+    <tr><td><code>DeltaSesion</code></td><td>Qué cambió (+ − ~ ?)</td><td>Dos versiones</td><td>Clic: enfocar el elemento</td><td>Con o sin cambios</td><td><code>VistaPreparar</code>, <code>MapaFuncional</code></td></tr>
+    <tr><td><code>VistaPreparar</code></td><td>La hoja de cinco minutos (I)</td><td>Estado derivado del caso</td><td>Marcar tareas, anotar datos y respuestas</td><td>Primera sesión · sesiones siguientes</td><td><code>TarjetaPregunta</code></td></tr>
+    <tr><td><code>MatrizEvolucion</code></td><td>Hipótesis por sesiones</td><td>Revisiones por sesión</td><td>Clic en celda: abrir esa versión</td><td>—</td><td><code>ComparadorVersiones</code></td></tr>
+    <tr><td><code>ComparadorVersiones</code></td><td>Dos versiones superpuestas en el mapa</td><td>Dos instantáneas</td><td>Elegir sesiones</td><td>Añadido · retirado · cambiado</td><td><code>MapaFuncional</code></td></tr>
+    <tr><td><code>ExplicaPorQue</code></td><td>Microexplicación (K)</td><td>Concepto y contexto del caso</td><td>Abrir y cerrar; no volver a mostrar</td><td>Primera vez · bajo demanda</td><td>Todos</td></tr>
+    <tr><td><code>CosteIA</code></td><td>«≈ 1 crédito» junto a cada acción que consume</td><td>Acción y saldo</td><td>Confirmación si el coste pasa de 1</td><td>Con saldo · sin saldo</td><td><code>FlujoSesion</code></td></tr>
+  </tbody>
+</table></div>
+
+<!-- ============================ P ============================ -->
+<h2 id="p"><span class="letra">P</span>Arquitectura técnica</h2>
+<h3>P.1 Entidades</h3>
+<div class="prosa"><p>Todas comparten una base: <code>id</code>, <code>caso_id</code>, <code>creado_en_sesion</code>, <code>procedencia</code>, <code>estado_revision</code> y <code>revision_actual</code>.</p></div>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Entidad</th><th>Campos clave</th><th>Notas</th></tr></thead>
+  <tbody>
+    <tr><td><code>Caso</code></td><td>alias, motivo, fase</td><td>Sin datos identificables</td></tr>
+    <tr><td><code>Sesion</code></td><td>n, fecha, version_formulacion_id</td><td></td></tr>
+    <tr><td><code>Nota</code></td><td>sesion_id, texto, segmentos</td><td><strong>Inmutable</strong> una vez analizada; las correcciones son addenda</td></tr>
+    <tr><td><code>Segmento</code></td><td>nota_id, línea, frase, texto</td><td>Id derivado de la nota (<code>S2·L1.3</code>): las citas sobreviven a todo</td></tr>
+    <tr><td><code>Conducta</code></td><td>rol (problema · alternativa · repertorio), descripción, manifiesta o encubierta, es_conducta_seguridad, deficit_o_interferencia</td><td>Una sola entidad para las tres columnas del repertorio</td></tr>
+    <tr><td><code>Evento</code></td><td>rol (antecedente · EC · RC · OM · privado · consecuencia · costo), texto</td><td>Hoy son campos 1:1 dentro de <code>CadenaOperante</code>; pasan a ser entidades</td></tr>
+    <tr><td><code>Contexto</code></td><td>rol (moduladora · acomodación · regla verbal · historia), nivel, dimensión, momento, modificabilidad</td><td></td></tr>
+    <tr><td><code>Relacion</code></td><td>desde, hasta, tipo (secuencial · moduladora · contingencia · bucle), contingencia (R+ · R− · C+ · C− · extinción, inmediatez, esquema), función, <strong>apoyo</strong></td><td>Evoluciona la <code>Arista</code> actual. La función vive aquí</td></tr>
+    <tr><td><code>ClaseFuncional</code></td><td>función, conducta_ids</td><td>Nueva; alimenta el nivel Caso</td></tr>
+    <tr><td><code>Hipotesis</code></td><td>tipo (mantenimiento · origen), relacion_ids, función, peso, estado, rival_de, criterio_revision, justificacion</td><td>El apoyo se calcula: mínimo de sus relaciones</td></tr>
+    <tr><td><code>Evidencia</code></td><td>objeto_id (nodo o relación), segmento_ids o respuesta_id, postura (a favor · en contra), nivel</td><td>Une notas y modelo; acumula entre sesiones</td></tr>
+    <tr><td><code>Pregunta</code></td><td>texto, hipotesis_id, dato_faltante, decision, estado, respuesta</td><td>Funde cuatro campos actuales</td></tr>
+    <tr><td><code>Blanco</code></td><td>conducta_ids, hipotesis_id, mecanismo, alternativa_ids, estrategia_ids, indicador_ids, criterio_revision, fase, prioridad</td><td>Solo referencias y lo propio</td></tr>
+    <tr><td><code>Estrategia</code></td><td>texto, actua_sobre (relación), contingencia_objetivo, precauciones</td><td>Evoluciona <code>LineaIntervencion</code></td></tr>
+    <tr><td><code>Indicador</code> y <code>Observacion</code></td><td>qué, unidad, registro, frecuencia, línea base · valor, sesión, fase</td><td></td></tr>
+    <tr><td><code>Tarea</code></td><td>blanco_id, descripción, asignada_en, revisar_en, resultado</td><td>Experimentos y autorregistros</td></tr>
+    <tr><td><code>Recurso</code></td><td>tipo (fortaleza · valor · reforzador perdido · apoyo), texto, evidencia</td><td></td></tr>
+    <tr><td><code>LecturaTeorica</code></td><td>modelo (ACT · DBT), objeto_id, proceso, justificación, evidencia</td><td>La interpretación, separada de los datos</td></tr>
+    <tr><td><code>Revision</code></td><td>objeto_id, sesion_id, autor (IA · clínico), antes, después, motivo</td><td>Solo se añaden</td></tr>
+    <tr><td><code>VersionFormulacion</code></td><td>sesion_id, revisión vigente de cada objeto</td><td>Instantánea por punteros</td></tr>
+    <tr><td><code>ConjuntoCambios</code> y <code>Propuesta</code></td><td>operación, objeto, contenido, evidencia, estado (pendiente · aceptada · rechazada · editada)</td><td>Lo que devuelve un análisis de actualización</td></tr>
+    <tr><td><code>Alerta</code></td><td>Se calcula; solo se guarda el reconocimiento: código, objeto, motivo, versión</td><td></td></tr>
+  </tbody>
+</table></div>
+
+<h3>P.2 De dónde sale cada cosa del esquema v3</h3>
+<div class="tabla ancha"><table>
+  <thead><tr><th>Hoy (<code>lib/types.ts</code>)</th><th>Pasa a</th></tr></thead>
+  <tbody>
+    <tr><td><code>conductas_problema</code>, <code>repertorio_disponible</code>, <code>conductas_alternativas</code></td><td><code>Conducta</code> con su rol</td></tr>
+    <tr><td><code>situaciones[].cadena_operante</code> y <code>cadena_respondiente</code></td><td><code>Evento</code> + <code>Relacion</code></td></tr>
+    <tr><td><code>situaciones[].funcion_hipotetizada</code></td><td><code>Relacion.funcion</code> de la contingencia</td></tr>
+    <tr><td><code>cadena_dbt.eslabones</code></td><td><code>Evento</code> privados + relaciones secuenciales</td></tr>
+    <tr><td><code>aristas</code></td><td><code>Relacion</code>, con apoyo</td></tr>
+    <tr><td><code>variables_moduladoras</code>, <code>acomodacion_entorno</code>, <code>reglas_verbales</code></td><td><code>Contexto</code></td></tr>
+    <tr><td><code>hipotesis_mantenimiento</code>, <code>hipotesis_origen</code>, <code>hipotesis_alternativas</code></td><td><code>Hipotesis</code> (las alternativas con <code>rival_de</code>)</td></tr>
+    <tr><td><code>preguntas_para_sesion</code>, <code>datos_faltantes</code></td><td><code>Pregunta</code></td></tr>
+    <tr><td><code>lineas_de_intervencion_tentativas</code></td><td><code>Estrategia</code>, enlazada a su <code>Blanco</code></td></tr>
+    <tr><td><code>plan_de_monitorizacion</code></td><td><code>Indicador</code> + <code>criterio_revision</code> del blanco</td></tr>
+    <tr><td><code>fortalezas_y_recursos</code>, <code>valores_y_metas</code>, <code>perdida_de_reforzadores</code></td><td><code>Recurso</code></td></tr>
+    <tr><td><code>capa_act</code>, <code>capa_dbt</code></td><td><code>LecturaTeorica</code></td></tr>
+    <tr><td><code>secciones_editadas</code>, <code>estados_plan</code></td><td><code>Revision</code> por objeto (el invariante 6 pasa a nivel de elemento); fase y estado de revisión del blanco</td></tr>
+  </tbody>
+</table></div>
+<div class="prosa"><p>La migración sigue el patrón que ya funciona con <code>migrarAV2</code> y <code>migrarAV3</code>: se migra al leer, nunca se descarta, y lo que no resuelve queda como hueco visible.</p></div>
+
+<h3>P.3 Qué necesita id persistente</h3>
+<div class="prosa">
+<p>Todo lo que una sesión posterior pueda tener que nombrar: <strong>Segmento</strong> (para que las citas de la sesión 1 sigan valiendo en la 7), <strong>Conducta</strong>, <strong>Evento</strong>, <strong>Contexto</strong>, <strong>Relacion</strong> (la hipótesis es un conjunto de relaciones), <strong>ClaseFuncional</strong>, <strong>Hipotesis</strong>, <strong>Pregunta</strong>, <strong>Blanco</strong>, <strong>Estrategia</strong> e <strong>Indicador</strong>. Las alertas no lo necesitan, porque se calculan.</p>
+</div>
+
+<h3>P.4 El protocolo de actualización</h3>
+<div class="prosa">
+<p>Es el invariante 1 generalizado. Hoy el modelo no escribe citas: devuelve líneas y el servidor recorta el texto. Mañana tampoco escribirá ids: referenciará lo que se le dio numerado, y el servidor resolverá y rechazará lo que no exista.</p>
+<ol>
+  <li>El servidor serializa la formulación vigente de forma compacta, con <strong>referencias cortas por llamada</strong> (<code>C1</code>, <code>R7</code>, <code>H2</code>, <code>P3</code>), y la nota nueva con frases numeradas.</li>
+  <li>El modelo devuelve operaciones que solo usan esas referencias: <code>añadir_evidencia(R7, L1.3, a_favor)</code>, <code>proponer_estado(H2, debilitada, [L1.2])</code>, <code>crear(conducta, N1, …)</code>, <code>modificar(E4, campo, valor, [L1.1])</code>, <code>responder(P3, L1.2)</code>.</li>
+  <li>El servidor traduce las referencias a ids y rechaza las inexistentes. Resuelve las citas, crea los ids nuevos (nunca el modelo), pasa los validadores y guarda un <code>ConjuntoCambios</code> pendiente.</li>
+  <li>Una propuesta que toca algo confirmado se marca como tal. Nada se aplica sin el clínico.</li>
+  <li>El <code>razonamiento_previo</code> sigue sin salir del servidor (invariante 5). «¿Por qué la IA propone esto?» se alimenta de <code>justificacion</code> y de las evidencias, que son salida validada.</li>
+</ol>
+<p><strong>Coste.</strong> Una actualización envía la formulación compacta y la nota nueva, no todas las notas anteriores, así que su tamaño no crece con el número de sesiones. La revisión profunda sí las envía todas, y por eso cuesta tres créditos.</p>
+<p><strong>Almacenamiento.</strong> IndexedDB cifrado, como hoy, con el respaldo exportable que ya existe. La formulación vigente se materializa a partir de las revisiones. El servidor no guarda nada: recibe en cada llamada el contexto mínimo y lo olvida. La nota no se registra en ningún log (invariante 5), y tampoco la formulación serializada que viaja con ella.</p>
+<p><strong>Evals.</strong> Los casos de <code>evals/casos/</code> necesitan segundas sesiones con comprobaciones sobre operaciones: «debe proponer debilitar la rival», «no debe tocar un elemento confirmado», «toda referencia existe». Sin eso, la calidad de la actualización, que es el núcleo del producto, no se puede medir.</p>
+</div>
+
+<!-- ============================ Q ============================ -->
+<h2 id="q"><span class="letra">Q</span>Flujo completo con el caso M.</h2>
+<div class="prosa"><p>Las notas de la sesión 2 en adelante son ficticias, inventadas para el ejemplo y coherentes con la del caso 01.</p></div>
+<div class="flujo">
+  <div><div>
+    <h4>Crea el caso</h4>
+    <dl><dt>Ve</dt><dd>Casos, vacío, con el caso de ejemplo de tres sesiones y «Nuevo caso».</dd>
+    <dt>Hace</dt><dd>Escribe el alias «M.» y, si quiere, el motivo. No hay campo para el nombre.</dd>
+    <dt>Sistema</dt><dd>Crea el caso, local y cifrado, y abre la sesión 1 en el paso Nota.</dd></dl>
+  </div></div>
+  <div><div>
+    <h4>Pega la nota de la primera sesión</h4>
+    <dl><dt>Ve</dt><dd>El editor de nota, el aviso si detecta datos identificables y el botón «Analizar · 1 crédito».</dd>
+    <dt>Hace</dt><dd>Enmascara un teléfono y responde las preguntas previas. A «¿con qué frecuencia ocurren los episodios?» contesta «No sé».</dd>
+    <dt>Sistema</dt><dd>El «No sé» se convierte en una Pregunta abierta antes de llamar a la IA.</dd></dl>
+  </div></div>
+  <div><div>
+    <h4>La IA analiza</h4>
+    <dl><dt>Ve</dt><dd>Durante unos veinte segundos, el esqueleto del nivel Caso. Después: «Formulación inicial · 24 propuestas · ▲ 1 · ◆ 3 · 5 frases sin usar».</dd>
+    <dt>Hace</dt><dd>Nada todavía.</dd>
+    <dt>Sistema</dt><dd>Resuelve citas por frase, asigna ids, materializa relaciones con su apoyo, pasa los validadores y la pasada crítica.</dd></dl>
+  </div></div>
+  <div><div>
+    <h4>Revisa</h4>
+    <dl><dt>Ve</dt><dd>El nivel Caso con dos funciones probables. La alternativa «exponer usando técnicas de respiración» con ▲. La relación sueño → salir al baño, discontinua y con ◆ «se usa para priorizar». La cobertura: urgencias, ocultarlo a la supervisora, la pareja y el ascenso sin usar.</dd>
+    <dt>Hace</dt><dd>Rechaza la alternativa y escribe la suya. Convierte la relación del sueño en pregunta. Arrastra la frase L9.1 al lienzo y crea la acomodación de la pareja; crea el valor del ascenso desde L11.3. Confirma H1. Desde H1, «Crear blanco»: pide propuesta para indicador y revisión (0,25), corrige el indicador y activa el blanco.</dd>
+    <dt>Sistema</dt><dd>Marca cada elemento: confirmado, editado o tuyo. Recalcula el apoyo de H1 y el orden de los blancos. Ya no aparece «por dónde moverla: sueño».</dd></dl>
+  </div></div>
+  <div><div>
+    <h4>Prepara la sesión 2</h4>
+    <dl><dt>Ve</dt><dd>En el móvil, Preparar: tres preguntas (qué hace la supervisora, si duerme mal solo los domingos, frecuencia), la tarea de autorregistro y el riesgo.</dd>
+    <dt>Hace</dt><dd>Fija la pregunta de la supervisora.</dd>
+    <dt>Sistema</dt><dd>Nada que cueste: todo se deriva del estado.</dd></dl>
+  </div></div>
+  <div><div>
+    <h4>Añade la nota de la sesión 2</h4>
+    <dl><dt>Ve</dt><dd>El mismo flujo de nota. Anota en «Registrar» los datos del autorregistro: expuso en 1 de 2 reuniones.</dd>
+    <dt>Hace</dt><dd>Pega la nota (J.2) y pulsa «Analizar · 1 crédito».</dd>
+    <dt>Sistema</dt><dd>Envía la formulación compacta con referencias y la nota numerada.</dd></dl>
+  </div></div>
+  <div><div>
+    <h4>El sistema detecta evidencia nueva</h4>
+    <dl><dt>Ve</dt><dd>«Revisar cambios», agrupado por hipótesis: evidencia a favor de H1, el antecedente que pasa a «seis o más», evidencia en contra de la rival, dos preguntas respondidas y una conducta nueva (no llamar al seguro).</dd>
+    <dt>Hace</dt><dd>Acepta la evidencia en lote y el resto una a una. Edita la conducta nueva.</dd>
+    <dt>Sistema</dt><dd>Escribe revisiones y guarda la versión de la sesión 2.</dd></dl>
+  </div></div>
+  <div><div>
+    <h4>La hipótesis cambia</h4>
+    <dl><dt>Ve</dt><dd>H1 sostenida y modificada; la rival, debilitada. En el Mapa, píldoras «S2» en lo nuevo.</dd>
+    <dt>Hace</dt><dd>Abre H1 en el Inspector y compara con la versión de la sesión 1.</dd>
+    <dt>Sistema</dt><dd>Propaga: el blanco 1 recibe ◆ «La hipótesis cambió: revisa mecanismo y estrategia».</dd></dl>
+  </div></div>
+  <div><div>
+    <h4>La intervención se ajusta</h4>
+    <dl><dt>Ve</dt><dd>La cadena del blanco 1 con la ranura de estrategia marcada.</dd>
+    <dt>Hace</dt><dd>Gradúa la exposición por tamaño de grupo, añade el «bien hecho» de la supervisora a lo que mantendrá la alternativa y divide el indicador entre reuniones pequeñas y grandes.</dd>
+    <dt>Sistema</dt><dd>Revalida sin IA. Sin alertas nuevas.</dd></dl>
+  </div></div>
+  <div><div>
+    <h4>Varias sesiones después</h4>
+    <dl><dt>Ve</dt><dd>De la sesión 3 a la 5 el indicador sube a 4 de 4. En la 5, la nota dice que bebió cuatro copas antes de quedar porque «la semana la deja agotada». Aparece ◆ «Otra conducta de la misma clase funcional está aumentando» y el chip de riesgo pasa a «revisar consumo».</dd>
+    <dt>Hace</dt><dd>Activa el blanco 2 y acepta la rival propuesta, «alivio del cansancio», con su pregunta discriminante. En la sesión 7 abre Evolución: H1 sostenida desde la 2, la rival descartada en la 3, el consumo al alza en la 5 y a la baja en la 7. Compara la formulación de la 1 con la de la 7 y exporta un resumen para supervisión.</dd>
+    <dt>Sistema</dt><dd>Mantiene todas las versiones, cada cambio con su frase y su autor.</dd></dl>
+  </div></div>
+</div>
+
+<!-- ============================ R ============================ -->
+<h2 id="r"><span class="letra">R</span>Crítica final</h2>
+<div class="prosa"><p>Un chat genérico ya produce un análisis funcional decente a partir de una nota, en una sola respuesta. Esa ya no es la barra. Lo que un psicólogo pagaría es lo que un chat no puede hacer por diseño. Me quedo con tres ventajas.</p></div>
+<div class="ventajas">
+  <div><div>
+    <h3>Continuidad verificable</h3>
+    <p>El caso recuerda. Cada sesión propone cambios concretos sobre la formulación vigente, cada uno con la frase que lo justifica, y el clínico decide. Nada se reescribe. Ahorra volver a explicar el caso y hace visible lo que cambió. Un chat no tiene estado propio del caso, no puede comprobar sus citas y regenera en vez de actualizar.</p>
+  </div></div>
+  <div><div>
+    <h3>Apoyo medido en las relaciones</h3>
+    <p>Cada hipótesis sabe qué frase la sostiene, qué la contradice y qué parte es inferencia, y nada derivado es más fuerte que su relación más débil. El caso del sueño (A.4) muestra por qué importa: sin esto, una inferencia de una línea acaba encabezando la formulación con aspecto de dato. Es lo que permite usar un análisis generado en clínica sin tener que releerlo entero cada vez.</p>
+  </div></div>
+  <div><div>
+    <h3>Un razonamiento que se comprueba solo</h3>
+    <p>La cadena evidencia → función → alternativa → estrategia → indicador → criterio de revisión es obligatoria, y la verifican comprobaciones que no dependen de que el modelo obedezca: conducta de seguridad prescrita, intervención contraria a la función, blanco sin función, relación sin apoyo. Atrapan los errores del modelo y los del terapeuta por igual, y enseñan a pensar funcionalmente sin dar una clase.</p>
+  </div></div>
+</div>
+<div class="prosa">
+<p>Las tres convergen en <strong>Preparar</strong>, que es la razón para volver cada semana, pero no es una ventaja aparte: sin las tres de arriba sería una lista de tareas.</p>
+<h4>Qué dejar de hacer</h4>
+<p>Pulir la exportación, añadir secciones y añadir lentes. Cada una de esas mejoras hace el informe más completo y el producto más parecido a lo que el encargo quiere dejar atrás.</p>
+<h4>Los dos riesgos que deciden el proyecto</h4>
+<p><strong>La calidad de las actualizaciones.</strong> Si las propuestas de la sesión n son ruidosas, revisar se vuelve una carga y el clínico vuelve a pegar notas en un chat. Hay que medirlas con evals de varias sesiones antes de construir la interfaz de revisión. <strong>La base legal.</strong> Sin DPA ni retención cero no se puede cobrar por procesar notas reales, y ningún rediseño cambia eso.</p>
+</div>
+
+<p class="nota-lateral" style="margin-top:56px">Documento preparado a partir de la maqueta publicada y del repositorio de ACIA el 4 de octubre de 2026. Las referencias <span class="ref">L3.4</span> usan la segmentación por frases que se propone en A.7. Las notas de la sesión 2 en adelante son ficticias.</p>
+</main>
+</div>
