@@ -50,6 +50,7 @@ const {
   seccionDeRuta,
   revalidarTrasReanalisis,
   yaEnRepertorio,
+  mismaTopografia,
 } = require(join(RAIZ, ".tmp-evals/validadores.js"));
 const { construirRedFuncional } = require(join(RAIZ, ".tmp-evals/redFuncional.js"));
 const { calcularCobertura } = require(join(RAIZ, ".tmp-evals/cobertura.js"));
@@ -865,6 +866,149 @@ prueba("toda alerta del caso 01 aterriza en una sección conocida", () => {
     [],
     "hay rutas que no se traducen a ninguna sección del informe"
   );
+});
+
+console.log("\nCadena de ocho ranuras por blanco (fase 6D)\n");
+
+/** El informe del caso 01 con blancos, listo para mutar y volver a validar. */
+const conBlancos = () => normalizarAnalisis(JSON.parse(JSON.stringify(fixture.analisis)), lineas);
+const alertasDe = (a, codigo) => validarAnalisis(a, nota).alertas.filter((x) => x.codigo === codigo);
+
+prueba("el informe migrado trae un blanco por conducta, y los avisos nuevos usan la gravedad que les toca", () => {
+  const a = conBlancos();
+  assert.equal(a.blancos.length, a.conductas_problema.length);
+  for (const x of validarAnalisis(a, nota).alertas) {
+    if (x.codigo === "blanco_activo_sin_hipotesis") assert.equal(x.gravedad, "alta", "▲");
+    if (/^(alternativa_|estrategia_sin|blanco_sin)/.test(x.codigo)) assert.equal(x.gravedad, "media", "◆");
+  }
+});
+
+prueba("blanco activo sin hipótesis: ▲, y solo si está activo y no rechazado", () => {
+  const a = conBlancos();
+  a.blancos[0].hipotesis_id = null;
+  const propios = alertasDe(a, "blanco_activo_sin_hipotesis").filter((x) => x.ruta === "blancos[0]");
+  assert.equal(propios.length, 1);
+  assert.equal(propios[0].gravedad, "alta");
+  assert.equal(propios[0].origen, "validador");
+
+  const enPausa = conBlancos();
+  enPausa.blancos[0].hipotesis_id = null;
+  enPausa.blancos[0].fase = "en_pausa";
+  assert.ok(!alertasDe(enPausa, "blanco_activo_sin_hipotesis").some((x) => x.ruta === "blancos[0]"));
+
+  // La decisión que el clínico toma en estados_plan manda sobre la copia del blanco.
+  const rechazado = conBlancos();
+  rechazado.blancos[0].hipotesis_id = null;
+  rechazado.estados_plan = { [rechazado.blancos[0].conducta_ids[0]]: { revision: "rechazado", fase: null } };
+  assert.ok(!alertasDe(rechazado, "blanco_activo_sin_hipotesis").some((x) => x.ruta === "blancos[0]"));
+});
+
+prueba("una hipótesis que ya no existe cuenta como falta de hipótesis", () => {
+  const a = conBlancos();
+  a.blancos[0].hipotesis_id = "hip_999";
+  assert.ok(alertasDe(a, "blanco_activo_sin_hipotesis").some((x) => x.ruta === "blancos[0]"));
+});
+
+prueba("alternativa sin nada en «la mantendrá»: ◆", () => {
+  const a = conBlancos();
+  a.conductas_alternativas[0].la_mantendra = [];
+  assert.ok(alertasDe(a, "alternativa_sin_mantenimiento").some((x) => x.ruta === "conductas_alternativas[0]"));
+  const b = conBlancos();
+  b.conductas_alternativas[0].la_mantendra = ["Que su equipo valore su criterio"];
+  assert.ok(!alertasDe(b, "alternativa_sin_mantenimiento").some((x) => x.ruta === "conductas_alternativas[0]"));
+  const vacia = conBlancos();
+  vacia.conductas_alternativas[0].la_mantendra = ["  "];
+  assert.ok(alertasDe(vacia, "alternativa_sin_mantenimiento").some((x) => x.ruta === "conductas_alternativas[0]"));
+});
+
+prueba("misma topografía: la alternativa que repite la conducta problema se señala", () => {
+  assert.equal(mismaTopografia("Pedir ir al baño durante la reunión", "Pide ir al baño durante la reunión de equipo"), true);
+  // Dead man: «no evitar» sigue siendo la misma conducta, no una alternativa.
+  assert.equal(mismaTopografia("No evitar exponer resultados en reuniones", "Evita exponer resultados en reuniones"), true);
+});
+
+prueba("misma topografía: exponer sí sustituye a evitar exponer, aunque compartan palabras", () => {
+  assert.equal(
+    mismaTopografia("Exponer los resultados trimestrales en la reunión de equipo", "Evita exponer los resultados trimestrales en la reunión de equipo"),
+    false
+  );
+  assert.equal(mismaTopografia("Pedir una pausa de cinco minutos", "Cede ante las peticiones del cliente sin negociar"), false);
+  assert.equal(mismaTopografia("Hablar", "Habla poco"), false, "una sola raíz no basta");
+});
+
+prueba("misma topografía: solo se compara si la alternativa declara a qué sustituye", () => {
+  const a = conBlancos();
+  const conducta = a.conductas_problema[0];
+  a.conductas_alternativas[0].conducta_propuesta = conducta.descripcion;
+  a.conductas_alternativas[0].sustituye_a = null;
+  assert.equal(alertasDe(a, "alternativa_misma_topografia").length, 0);
+  a.conductas_alternativas[0].sustituye_a = conducta.id;
+  const avisos = alertasDe(a, "alternativa_misma_topografia");
+  assert.equal(avisos.length, 1);
+  assert.equal(avisos[0].ruta, "conductas_alternativas[0]");
+  assert.equal(avisos[0].gravedad, "media");
+});
+
+prueba("estrategia sin «actúa sobre»: ◆, también si apunta a una relación que ya no existe", () => {
+  const a = conBlancos();
+  const sin = alertasDe(a, "estrategia_sin_actua_sobre").map((x) => x.ruta);
+  a.lineas_de_intervencion_tentativas.forEach((l, i) => {
+    if (l.intervencion.trim()) assert.ok(sin.includes(`lineas_de_intervencion_tentativas[${i}]`), `falta el aviso de [${i}]`);
+  });
+
+  const b = conBlancos();
+  b.lineas_de_intervencion_tentativas[0].actua_sobre = b.aristas[0].id;
+  assert.ok(!alertasDe(b, "estrategia_sin_actua_sobre").some((x) => x.ruta === "lineas_de_intervencion_tentativas[0]"));
+
+  const c = conBlancos();
+  c.lineas_de_intervencion_tentativas[0].actua_sobre = "ari_999";
+  const colgante = alertasDe(c, "estrategia_sin_actua_sobre").find((x) => x.ruta === "lineas_de_intervencion_tentativas[0]");
+  assert.ok(colgante && /ya no existe/.test(colgante.mensaje));
+});
+
+prueba("blanco sin indicador, o con indicador pero sin criterio de revisión: ◆, un solo aviso por blanco", () => {
+  const a = conBlancos();
+  a.blancos[0].fase = "activo";
+  a.blancos[0].indicador_ids = [];
+  const sinIndicador = alertasDe(a, "blanco_sin_indicador_o_revision").filter((x) => x.ruta === "blancos[0]");
+  assert.equal(sinIndicador.length, 1);
+  assert.match(sinIndicador[0].mensaje, /sin indicador/);
+
+  const b = conBlancos();
+  b.plan_de_monitorizacion.push({ id: "ind_900", conducta: "", conducta_id: null, que_se_mide: "Salidas al baño", con_que: "Registro", cada_cuanto: "Semanal", criterio_de_revision: "" });
+  b.blancos[0].indicador_ids = ["ind_900"];
+  const sinCriterio = alertasDe(b, "blanco_sin_indicador_o_revision").filter((x) => x.ruta === "blancos[0]");
+  assert.equal(sinCriterio.length, 1);
+  assert.match(sinCriterio[0].mensaje, /criterio de revisión/);
+
+  b.plan_de_monitorizacion[b.plan_de_monitorizacion.length - 1].criterio_de_revision = "Si tras 4 sesiones no baja, rehacer la hipótesis.";
+  assert.equal(alertasDe(b, "blanco_sin_indicador_o_revision").filter((x) => x.ruta === "blancos[0]").length, 0);
+});
+
+prueba("lo que solo pertenece a un blanco rechazado no avisa; lo «Por asignar» sí", () => {
+  const a = conBlancos();
+  // En el informe v0.1.2 las intervenciones no nombran blanco: se le da una al primero.
+  const blanco = a.blancos[0];
+  blanco.estrategia_ids = [a.lineas_de_intervencion_tentativas[0].id];
+  const idsDeEsteBlanco = [...blanco.estrategia_ids];
+  a.estados_plan = { [blanco.conducta_ids[0]]: { revision: "rechazado", fase: null } };
+  const rutas = alertasDe(a, "estrategia_sin_actua_sobre").map((x) => x.ruta);
+  for (const id of idsDeEsteBlanco) {
+    const i = a.lineas_de_intervencion_tentativas.findIndex((l) => l.id === id);
+    assert.ok(!rutas.includes(`lineas_de_intervencion_tentativas[${i}]`), "avisó de una estrategia de un blanco rechazado");
+  }
+  // Y una suelta sí: nadie la ha descartado.
+  const suelta = conBlancos();
+  suelta.lineas_de_intervencion_tentativas.push({ id: "est_900", actua_sobre: null, conducta: "", conducta_id: null, intervencion: "Suelta", porque: "", pregunta_id: null, depende_de: null, contingencia_objetivo: null, precauciones: null });
+  assert.ok(alertasDe(suelta, "estrategia_sin_actua_sobre").some((x) => x.elemento === "Suelta"));
+});
+
+prueba("los avisos del blanco llegan a una sección conocida y también al revalidar tras reanalizar", () => {
+  assert.notEqual(seccionDeRuta("blancos[0]"), null);
+  const a = conBlancos();
+  a.blancos[0].hipotesis_id = null;
+  const tras = revalidarTrasReanalisis(a, nota);
+  assert.ok(tras.some((x) => x.codigo === "blanco_activo_sin_hipotesis"));
 });
 
 console.log(`\n${pasadas} pruebas correctas`);

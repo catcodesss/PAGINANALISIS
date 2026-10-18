@@ -41,6 +41,11 @@ export function destinoDeAlerta(
       const plan = analisis.plan_de_monitorizacion[i];
       return plan ? { vista: "blancos", id: plan.conducta_id } : null;
     }
+    // Un aviso de la cadena del blanco se ve en la tarjeta de su primera conducta.
+    case "blancos": {
+      const blanco = analisis.blancos?.[i];
+      return blanco ? { vista: "blancos", id: blanco.conducta_ids[0] ?? null } : null;
+    }
     case "hipotesis_mantenimiento": {
       const h = analisis.hipotesis_mantenimiento[i];
       return h ? { vista: "mapa", id: h.id } : null;

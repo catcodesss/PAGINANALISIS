@@ -31,6 +31,7 @@ export function normalizarLineasIntervencion(valor: unknown): LineaIntervencion[
     if (typeof v === "string") {
       return v.trim()
         ? [{
+            id: "", actua_sobre: null,
             conducta: "", conducta_id: null, intervencion: v, porque: "", pregunta_id: null, depende_de: null,
             contingencia_objetivo: null, precauciones: null,
           }]
@@ -40,6 +41,8 @@ export function normalizarLineasIntervencion(valor: unknown): LineaIntervencion[
     if (!d) return [];
     const depende = texto(d.depende_de).trim();
     const linea: LineaIntervencion = {
+      id: id(d.id) ?? "",
+      actua_sobre: id(d.actua_sobre),
       conducta: texto(d.conducta),
       conducta_id: id(d.conducta_id),
       intervencion: texto(d.intervencion),
@@ -59,6 +62,7 @@ function normalizarUnPlan(valor: unknown): PlanDeMonitorizacion | null {
   const d = objeto(valor);
   if (!d) return null;
   const plan: PlanDeMonitorizacion = {
+    id: id(d.id) ?? "",
     conducta: texto(d.conducta),
     conducta_id: id(d.conducta_id),
     que_se_mide: texto(d.que_se_mide),

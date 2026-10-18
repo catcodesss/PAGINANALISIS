@@ -1,6 +1,6 @@
 import { resolverCita } from "./citas";
 import { ESTADOS_HIPOTESIS, normalizarPreguntas } from "./preguntas";
-import { migrarAV7 } from "./identidad";
+import { migrarAV8 } from "./identidad";
 import { procesoAV3 } from "./procesosACT";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 import {
@@ -407,6 +407,13 @@ function normalizarConductaAlternativa(valor: unknown): ConductaAlternativa {
     situacion_id: comoIdONulo(d.situacion_id),
     conducta_propuesta: comoTexto(d.conducta_propuesta),
     consecuencia_necesaria: comoTexto(d.consecuencia_necesaria),
+    sustituye_a: comoIdONulo(d.sustituye_a),
+    antecedente: comoTexto(d.antecedente),
+    funcion_que_cumple: comoTexto(d.funcion_que_cumple),
+    la_mantendra: comoArregloDeTexto(d.la_mantendra),
+    habilidades_necesarias: comoTexto(d.habilidades_necesarias),
+    recurso_ids: comoArregloDeTexto(d.recurso_ids),
+    pregunta_ids: comoArregloDeTexto(d.pregunta_ids),
   };
 }
 
@@ -576,6 +583,7 @@ const CAMPOS_DEL_SERVIDOR = new Set<string>([
   "estados_plan",
   "procedencia",
   "citas_del_clinico",
+  "blancos",
 ]);
 
 /**
@@ -672,6 +680,10 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     // Igual: una respuesta del modelo que trajera citas «del clínico» se
     // descarta aquí, porque la salida se construye clave por clave.
     citas_del_clinico: {},
+    // Los construye migrarAV8 desde lo que enlaza hoy; el modelo no los emite.
+    // Sin definir y no `[]`: una lista ya existente se toma por decisión del
+    // clínico y no se regenera (igual que `aristas`).
+    blancos: undefined as unknown as AnalisisFuncional["blancos"],
   };
   // La capa MC ya no es parte del esquema, pero un JSON anterior a la v3 (el
   // informe de ejemplo, o uno pegado a mano) la trae. Se pasa tal cual para
@@ -685,7 +697,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
   for (const clave of ["datos_faltantes", "preguntas_para_sesion"]) {
     if (clave in d) (analisis as unknown as Record<string, unknown>)[clave] = d[clave];
   }
-  return migrarAV7(analisis);
+  return migrarAV8(analisis);
 }
 
 /**
@@ -792,6 +804,7 @@ const NORMALIZADORES_POR_CAMPO: {
   estados_plan: () => ({}),
   procedencia: () => ({}),
   citas_del_clinico: () => ({}),
+  blancos: () => [],
 };
 
 function esCampoDeAnalisis(campo: string): campo is keyof AnalisisFuncional {

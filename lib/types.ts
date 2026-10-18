@@ -374,6 +374,66 @@ export interface ConductaAlternativa {
   situacion_id: Id | null;
   conducta_propuesta: string;
   consecuencia_necesaria: string;
+  /**
+   * La conducta problema a la que sustituye. null = no declarada (toda
+   * alternativa anterior a la v8): se ve como hueco y no se deduce de la
+   * situación, que puede tener varias conductas.
+   */
+  sustituye_a: Id | null;
+  /** Bajo qué antecedente debería emitirse. "" = no declarado. */
+  antecedente: string;
+  /** Qué función cumple para quien la emite; la que cumplía la conducta problema. */
+  funcion_que_cumple: string;
+  /**
+   * Qué la mantendrá una vez fuera de consulta: consecuencias naturales,
+   * programadas o valores. Vacío es el hueco que más importa de la cadena: una
+   * alternativa sin nada que la mantenga se extingue.
+   */
+  la_mantendra: string[];
+  habilidades_necesarias: string;
+  /** Lo que la persona ya tiene y la sostiene: ids de `repertorio_disponible`. */
+  recurso_ids: Id[];
+  /** Las preguntas clínicas de las que depende (`preguntas`). */
+  pregunta_ids: Id[];
+}
+
+/**
+ * Un blanco: la cadena de ocho ranuras que reúne, para una o varias conductas
+ * problema, lo que el plan decide sobre ellas (fase 6).
+ *
+ * REFERENCIA, NO COPIA. Un blanco guarda ids y lo que es solo suyo
+ * (`operacionalizacion`, `mecanismo`, `revisar_en_sesion`, la prioridad y su
+ * estado). Evidencia, hipótesis, alternativas, estrategias e indicadores se
+ * leen en vivo de su fuente, así que no pueden contradecirse con ella.
+ *
+ * Las ranuras: 1 evidencia y 2 hipótesis (referencias), 3 `operacionalizacion`,
+ * 4 `mecanismo`, 5 `alternativa_ids`, 6 `estrategia_ids`, 7 `indicador_ids`,
+ * 8 el criterio de revisión (el de cada indicador) con `revisar_en_sesion`.
+ *
+ * El modelo no emite blancos: los construye el servidor al migrar (lib/plan.ts
+ * #blancosDeLegado) y después los gobierna el clínico. La evidencia (ranura 1)
+ * no se guarda aquí: es la de las conductas y la hipótesis a las que apunta.
+ */
+export interface Blanco {
+  id: Id;
+  conducta_ids: Id[];
+  hipotesis_id: Id | null;
+  /** Qué se observará exactamente, con qué criterio. "" = hueco, no «no aplica». */
+  operacionalizacion: string;
+  /** Qué mecanismo del mantenimiento se quiere modificar. "" = hueco. */
+  mecanismo: string;
+  /** `conductas_alternativas[].id` */
+  alternativa_ids: Id[];
+  /** `lineas_de_intervencion_tentativas[].id` */
+  estrategia_ids: Id[];
+  /** `plan_de_monitorizacion[].id` */
+  indicador_ids: Id[];
+  revision: RevisionBlanco;
+  fase: FaseBlanco | null;
+  /** 1 = el primero que se aborda; null si el clínico y el análisis no lo ordenaron. */
+  prioridad: number | null;
+  /** Número de sesión en que se revisa el blanco; null = sin fecha de revisión. */
+  revisar_en_sesion: number | null;
 }
 
 /**
@@ -469,6 +529,13 @@ export type EstadoHipotesis =
  * no se intenta adivinar su blanco por las palabras de la intervención.
  */
 export interface LineaIntervencion {
+  id: Id;
+  /**
+   * La relación del mapa (id de `Arista`) sobre la que actúa la estrategia.
+   * Es lo que permite comprobarla contra la función. null = no declarada: se ve
+   * como hueco y el validador lo avisa.
+   */
+  actua_sobre: Id | null;
   /** A qué conducta problema se dirige, con las palabras del modelo. "" si es común al caso. */
   conducta: string;
   conducta_id: Id | null;
@@ -509,6 +576,7 @@ export interface LineaIntervencion {
  * preferible a un plan de medición inventado que el clínico acabaría siguiendo.
  */
 export interface PlanDeMonitorizacion {
+  id: Id;
   /**
    * De qué blanco es. Desde el prompt 1.7.0 hay uno por blanco: una sola tabla
    * para exposición laboral, alcohol y asertividad mezclaba indicadores que se
@@ -722,7 +790,13 @@ export interface Alerta {
     | "prescribe_conducta_seguridad"
     | "intervencion_depende_de_dato_faltante"
     | "riesgo_posible_no_detectado"
-    | "pasada_critica";
+    | "pasada_critica"
+    // Fase 6D: la cadena de ocho ranuras de cada blanco. ▲ = alta, ◆ = media.
+    | "blanco_activo_sin_hipotesis"
+    | "alternativa_sin_mantenimiento"
+    | "alternativa_misma_topografia"
+    | "estrategia_sin_actua_sobre"
+    | "blanco_sin_indicador_o_revision";
   gravedad: "alta" | "media";
   ruta: string;
   /**
@@ -780,10 +854,11 @@ export interface ProcedenciaElemento {
  * procedencia a cada elemento; la 6 unifica preguntas y datos faltantes en
  * `preguntas`, da identidad a las hipótesis alternativas y estado a las de
  * mantenimiento; la 7 guarda aparte las citas que añade el clínico
- * (`citas_del_clinico`). Un informe guardado de una versión anterior se migra
- * al leerlo; nunca se descarta. Ver lib/identidad.ts#migrarAV7.
+ * (`citas_del_clinico`); la 8 añade los blancos (`blancos`) y da identidad a
+ * estrategias e indicadores. Un informe guardado de una versión anterior se
+ * migra al leerlo; nunca se descarta. Ver lib/identidad.ts#migrarAV8.
  */
-export const VERSION_ANALISIS = 7;
+export const VERSION_ANALISIS = 8;
 
 export interface AnalisisFuncional {
   version: number;
@@ -886,6 +961,12 @@ export interface AnalisisFuncional {
    * OM, función, relaciones…). La escribe solo la interfaz, como `procedencia`.
    */
   citas_del_clinico: Record<Id, Extract<Cita, { verificada: true }>[]>;
+  /**
+   * Los blancos del plan (fase 6). Los construye el servidor al migrar y los
+   * gobierna el clínico; el modelo nunca los envía. Lo que ninguno referencia
+   * está «Por asignar» (lib/plan.ts#porAsignar), no se pierde.
+   */
+  blancos: Blanco[];
 }
 
 /**
@@ -935,6 +1016,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "estados_plan",
   "procedencia",
   "citas_del_clinico",
+  "blancos",
 ] as const satisfies readonly (keyof AnalisisFuncional)[];
 
 type _TodasLasClavesCubiertas =

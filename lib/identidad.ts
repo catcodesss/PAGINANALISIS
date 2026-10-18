@@ -4,6 +4,7 @@ import { raicesSignificativas } from "./validadores";
 import {
   VERSION_ANALISIS,
   type AnalisisFuncional,
+  type Blanco,
   type CadenaDBT,
   type Id,
   type Situacion,
@@ -14,7 +15,7 @@ import { construirNodosGrafo } from "./grafo";
 import { ANCLAS_DE_BLOQUE } from "./secciones";
 import { esProcesoV3, procesoAV3 } from "./procesosACT";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
-import { estadoBlancoGuardado } from "./plan";
+import { blancosDeLegado, estadoBlancoGuardado } from "./plan";
 
 /**
  * Identidad de las entidades del análisis: asignarla y resolver las referencias
@@ -254,6 +255,16 @@ function asignarIds(a: AnalisisFuncional): number {
   // no puede dejar su id a otra, porque una intervención podría seguir
   // apuntándole.
   for (const p of a.preguntas) ponerId(p, nuevoIdPregunta(a.preguntas));
+  // Estrategias e indicadores (esquema v8) toman el número libre de su
+  // prefijo, no la posición: un blanco las referencia por id, y tras un
+  // reanálisis parcial la posición de una entrada nueva puede coincidir con el
+  // id de una que ya existía.
+  for (const l of a.lineas_de_intervencion_tentativas) {
+    if (sinId(l)) l.id = idLibre("est", a.lineas_de_intervencion_tentativas);
+  }
+  for (const p of a.plan_de_monitorizacion) {
+    if (sinId(p)) p.id = idLibre("ind", a.plan_de_monitorizacion);
+  }
 
   a.situaciones.forEach((s, i) => {
     ponerId(s, idDe("sit", i));
@@ -269,8 +280,14 @@ function asignarIds(a: AnalisisFuncional): number {
     }
   });
 
-  // El próximo libre sale del mayor número visto, no del recuento: si se borra
-  // la conducta 2 de tres, el recuento diría 3 y reutilizaría un id vivo.
+  return siguienteLibre(a);
+}
+
+/**
+ * El próximo libre sale del mayor número visto, no del recuento: si se borra
+ * la conducta 2 de tres, el recuento diría 3 y reutilizaría un id vivo.
+ */
+function siguienteLibre(a: AnalisisFuncional): number {
   let mayor = 0;
   for (const id of todosLosIds(a)) {
     for (const trozo of id.split("_")) {
@@ -279,6 +296,16 @@ function asignarIds(a: AnalisisFuncional): number {
     }
   }
   return mayor + 1;
+}
+
+/** `prefijo_N` con el mayor N visto entre `existentes` + 1. */
+function idLibre(prefijo: string, existentes: readonly { id?: unknown }[]): Id {
+  let mayor = 0;
+  for (const e of existentes) {
+    const m = typeof e.id === "string" ? e.id.match(/^([a-z]+)_(\d+)$/) : null;
+    if (m && m[1] === prefijo) mayor = Math.max(mayor, Number(m[2]));
+  }
+  return `${prefijo}_${mayor + 1}`;
 }
 
 /** Todos los ids asignados, para calcular el próximo libre y para las pruebas. */
@@ -296,6 +323,9 @@ export function todosLosIds(a: AnalisisFuncional): Id[] {
     ...a.hipotesis_alternativas.map((h) => h.id),
     ...a.preguntas.map((p) => p.id),
     ...a.situaciones.map((s) => s.id),
+    ...a.lineas_de_intervencion_tentativas.map((l) => l.id),
+    ...a.plan_de_monitorizacion.map((p) => p.id),
+    ...(a.blancos ?? []).map((b) => b.id),
   ];
   for (const s of a.situaciones) {
     for (const e of s.cadena_dbt?.eslabones ?? []) ids.push(e.id);
@@ -305,7 +335,7 @@ export function todosLosIds(a: AnalisisFuncional): Id[] {
       if (dem) ids.push(dem.id);
     }
   }
-  return ids.filter((id) => id.length > 0);
+  return ids.filter((id) => typeof id === "string" && id.length > 0);
 }
 
 /**
@@ -738,7 +768,76 @@ function llevarPreguntasAV6(analisis: AnalisisFuncional): void {
 }
 
 /**
- * Lleva un análisis de cualquier versión anterior a la actual (v7).
+ * Lleva un análisis de cualquier versión anterior a la actual (v8).
+ *
+ * La v8 añade los blancos (fase 6): la cadena de ocho ranuras que reúne, por
+ * conducta problema, hipótesis, alternativas, estrategias e indicadores. Un
+ * informe anterior recibe un blanco por conducta con lo que ya enlazaba
+ * (`blancosDeLegado`); lo que no enlazaba queda en «Por asignar» y nada se
+ * descarta. También completa los campos nuevos de las alternativas
+ * (`sustituye_a`, `la_mantendra`…), de las estrategias (`actua_sobre`) y da id a
+ * estrategias e indicadores. Un informe que ya tiene `blancos` conserva los
+ * suyos: son decisión del clínico y no se regeneran. Idempotente.
+ *
+ * Se aplica donde se aplicaba migrarAV8: al normalizar la respuesta del
+ * modelo, al leer del historial, al cargar el ejemplo y tras un reanálisis.
+ */
+export function migrarAV8(analisis: AnalisisFuncional): AnalisisFuncional {
+  migrarAV7(analisis);
+
+  for (const alt of analisis.conductas_alternativas) {
+    if (alt.sustituye_a === undefined) alt.sustituye_a = null;
+    if (typeof alt.antecedente !== "string") alt.antecedente = "";
+    if (typeof alt.funcion_que_cumple !== "string") alt.funcion_que_cumple = "";
+    if (typeof alt.habilidades_necesarias !== "string") alt.habilidades_necesarias = "";
+    // `consecuencia_necesaria` ya decía qué debe seguir a la alternativa para
+    // que se sostenga, que es lo que `la_mantendra` pide. Se copia una sola
+    // vez, al llegar de una versión anterior, para que ninguna alternativa
+    // antigua salga como «sin nada que la mantenga» por haberse escrito antes
+    // del campo. Después los dos pueden diferir y no se vuelven a unir.
+    if (!Array.isArray(alt.la_mantendra)) {
+      alt.la_mantendra = alt.consecuencia_necesaria?.trim() ? [alt.consecuencia_necesaria] : [];
+    }
+    if (!Array.isArray(alt.recurso_ids)) alt.recurso_ids = [];
+    if (!Array.isArray(alt.pregunta_ids)) alt.pregunta_ids = [];
+  }
+  for (const l of analisis.lineas_de_intervencion_tentativas) {
+    if (l.actua_sobre === undefined) l.actua_sobre = null;
+  }
+
+  if (!Array.isArray(analisis.blancos)) {
+    analisis.blancos = blancosDeLegado(analisis);
+  } else {
+    for (const b of analisis.blancos) completarBlanco(b);
+  }
+  analisis.siguiente_id = Math.max(analisis.siguiente_id, siguienteLibre(analisis));
+  analisis.version = VERSION_ANALISIS;
+  return analisis;
+}
+
+/** Rellena con lo neutro lo que un blanco guardado no traiga. No quita nada. */
+function completarBlanco(b: Blanco): void {
+  const lista = (v: unknown): Id[] =>
+    Array.isArray(v) ? v.filter((x): x is Id => typeof x === "string") : [];
+  b.conducta_ids = lista(b.conducta_ids);
+  b.alternativa_ids = lista(b.alternativa_ids);
+  b.estrategia_ids = lista(b.estrategia_ids);
+  b.indicador_ids = lista(b.indicador_ids);
+  if (typeof b.hipotesis_id !== "string") b.hipotesis_id = null;
+  if (typeof b.operacionalizacion !== "string") b.operacionalizacion = "";
+  if (typeof b.mecanismo !== "string") b.mecanismo = "";
+  if (!["propuesto", "confirmado", "modificado", "rechazado"].includes(b.revision)) {
+    b.revision = "propuesto";
+  }
+  if (b.fase !== null && !["activo", "en_pausa", "resuelto"].includes(b.fase as string)) {
+    b.fase = "activo";
+  }
+  if (typeof b.prioridad !== "number") b.prioridad = null;
+  if (typeof b.revisar_en_sesion !== "number") b.revisar_en_sesion = null;
+}
+
+/**
+ * Lleva un análisis de cualquier versión anterior a la v7.
  *
  * La v7 añade `citas_del_clinico` (fase 5C): las frases de la nota que el
  * clínico une a un nodo o a una relación. Un informe anterior no tiene
@@ -749,7 +848,7 @@ function llevarPreguntasAV6(analisis: AnalisisFuncional): void {
  * Se aplica donde se aplicaba migrarAV6: al normalizar la respuesta del
  * modelo, al leer del historial, al cargar el ejemplo y tras un reanálisis.
  */
-export function migrarAV7(analisis: AnalisisFuncional): AnalisisFuncional {
+function migrarAV7(analisis: AnalisisFuncional): AnalisisFuncional {
   migrarAV6(analisis);
   const crudo = (analisis as unknown as Record<string, unknown>).citas_del_clinico;
   const limpio: AnalisisFuncional["citas_del_clinico"] = {};

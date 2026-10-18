@@ -1,5 +1,53 @@
 # CAMBIOS
 
+## Rediseño · fase 6 (parcial): blancos y validadores de la cadena (esquema v8, sin cambio de prompt)
+
+Hecho: **6A** (esquema y migración) y **6D** (validadores). **Pendiente: 6B (prompt, necesita crédito de
+OpenAI y evals antes/después) y 6C (interfaz: vista Blancos, ranuras, «Pedir propuesta», «Crear blanco»,
+bandeja «Por asignar», reconocer ▲).** `VERSION_PROMPT` no cambia.
+
+- **`Blanco`** (`lib/types.ts`, campo `blancos` de `AnalisisFuncional`): `id, conducta_ids, hipotesis_id,
+  operacionalizacion, mecanismo, alternativa_ids, estrategia_ids, indicador_ids, revision, fase, prioridad,
+  revisar_en_sesion`. Referencia ids; no copia texto. El modelo no lo emite: `normalizarAnalisis` lo deja
+  sin definir y `migrarAV8` lo construye (`lib/plan.ts#blancosDeLegado`), igual que `aristas`.
+- **Migración `migrarAV8`** (la v7 pasa a interna). Un blanco por conducta problema con lo que ya enlazaba
+  (mismos criterios que la tarjeta: alternativa por situación a la primera conducta que no es de seguridad;
+  intervención y monitorización por `conducta_id`). Hipótesis = la primera que apunta a la conducta.
+  Revisión y fase salen de `estados_plan`. `operacionalizacion` y `mecanismo` nacen vacíos (copiarlos los
+  presentaría como decididos). Lo que no enlaza queda en **«Por asignar»** (`lib/plan.ts#porAsignar`,
+  calculada, no guardada); nada se descarta. Un informe que ya tiene `blancos` conserva los suyos
+  (decisión del clínico) y solo se le completan campos ausentes.
+- **Campos nuevos.** `LineaIntervencion.id` (`est_N`) y `actua_sobre`; `PlanDeMonitorizacion.id` (`ind_N`);
+  `ConductaAlternativa`: `sustituye_a, antecedente, funcion_que_cumple, la_mantendra, habilidades_necesarias,
+  recurso_ids` (ids de `repertorio_disponible`), `pregunta_ids`. Los ids nuevos toman el número libre de su
+  prefijo, no la posición (un reanálisis parcial podría repetirlos).
+- **Decisión a revisar:** en un informe anterior, `la_mantendra` se rellena **una vez** con
+  `consecuencia_necesaria` (decía lo mismo: qué debe seguir a la alternativa). Si no, toda alternativa
+  antigua saldría «sin nada que la mantenga». `sustituye_a` y `actua_sobre` quedan en `null`: no se deducen.
+- **`estados_plan` sigue mandando** hasta la 6C: `estadoEfectivoDeBlanco` lo lee primero, para que rechazar
+  un blanco en pantalla lo saque de las comprobaciones.
+- **6D · validadores** (`lib/validadores.ts#validarPlanPorBlanco`, deterministas, también en
+  `revalidarTrasEdicion` y `revalidarTrasReanalisis`). ▲ = gravedad alta, ◆ = media:
+  `blanco_activo_sin_hipotesis` ▲; `alternativa_sin_mantenimiento`, `alternativa_misma_topografia`,
+  `estrategia_sin_actua_sobre` (también si la relación ya no existe) y `blanco_sin_indicador_o_revision`
+  (un solo aviso por blanco, con el motivo que toque) ◆. Blancos rechazados y los que no están activos no
+  avisan; una entrada «Por asignar» sí.
+- **Heurística de misma topografía** (`mismaTopografia`): si una de las dos es evitación/negación («evita»,
+  «no…», «dejar de») y la otra no, son distintas aunque compartan palabras («Exponer» sustituye bien a
+  «Evita exponer»). Si no, palabras de 5 letras: ≥2 en común y ≥60 % de las de la alternativa. Solo se
+  evalúa si la alternativa declara `sustituye_a`.
+- **Fuera:** «criterio de revisión que no puede salir mal» como opinión de la pasada crítica: toca su prompt
+  y no se puede medir sin API.
+- **Ruido esperado hasta la 6B:** el modelo aún no emite `actua_sobre`, así que todo informe nuevo recibe un
+  `estrategia_sin_actua_sobre` por intervención (5 en el caso 01), y las intervenciones sin `conducta_id`
+  hacen que su blanco salga «sin indicador». Es el hueco real, pero la 6B es lo que lo arregla.
+- **Los avisos de `blancos[j]`** llevan destino (`destinoAlerta.ts`) y se ven en la tarjeta de la primera
+  conducta del blanco; `evals/espacio.test.mjs` lo exigió.
+- **Pruebas:** `migracion.test.mjs` 67 → 76, `validadores.test.mjs` 49 → 60. Limitación sin tratar: un
+  reanálisis parcial de `conductas_alternativas` o de las intervenciones asigna ids nuevos y deja ids
+  colgantes en los blancos (inofensivos: lo nuevo sale en «Por asignar»).
+
+
 ## Rediseño · fase 5B y 5C: el Mapa, edición donde se lee y citas del clínico (esquema v7, sin cambio de prompt)
 
 **5B · El Mapa** (`2247a10`).

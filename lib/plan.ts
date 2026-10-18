@@ -25,6 +25,7 @@ import { estaAbierta } from "./preguntas";
 import type {
   Alerta,
   AnalisisFuncional,
+  Blanco,
   ConductaAlternativa,
   ConductaProblema,
   EstadoBlanco,
@@ -268,7 +269,15 @@ export function construirPlanPorBlanco(analisis: AnalisisFuncional): PlanPorBlan
         .map(alternativaConAlertas),
       intervenciones: intervenciones.filter((x) => x.linea.conducta_id === conducta.id),
       monitorizacion: monitorizacion.filter((x) => x.plan.conducta_id === conducta.id),
-      alertasConducta: alertasDeRuta(analisis.alertas, `conductas_problema[${indice}]`),
+      // Incluye los avisos de la cadena de ocho ranuras (`blancos[j]`) cuyo blanco
+      // abarca esta conducta: hasta que la vista de blancos los pinte por ranura,
+      // la tarjeta es donde se ven.
+      alertasConducta: [
+        ...alertasDeRuta(analisis.alertas, `conductas_problema[${indice}]`),
+        ...(analisis.blancos ?? []).flatMap((b, j) =>
+          b.conducta_ids.includes(conducta.id) ? alertasDeRuta(analisis.alertas, `blancos[${j}]`) : []
+        ),
+      ],
     };
   });
 
@@ -348,4 +357,111 @@ export function preguntaDeDato(
 /** «Primero explorar: …». Los datos suelen traer su punto final; no se duplica. */
 export function enumerarDatosFaltantes(datos: readonly string[]): string {
   return `${datos.map((d) => d.trim().replace(/\.+$/, "")).join("; ")}.`;
+}
+
+/**
+ * Los blancos de un informe que aún no los tiene (esquema v8): uno por conducta
+ * problema, con lo que hoy se enlaza a ella.
+ *
+ * Reutiliza `construirPlanPorBlanco` a propósito: el blanco de la v8 reúne lo
+ * mismo que ya mostraba la tarjeta, con los mismos criterios (la alternativa va
+ * a la primera conducta no de seguridad de su situación; intervenciones y
+ * monitorización por `conducta_id`). Ninguna entrada cambia de dueño al migrar,
+ * y lo que no tenía dueño queda fuera de todo blanco —«Por asignar»— en vez de
+ * asignarse a la más parecida.
+ *
+ * La hipótesis del blanco es la primera que apunta a su conducta. Si hay varias,
+ * las demás siguen en el análisis y el Mapa las enseña; el blanco solo señala
+ * la que organiza su cadena, y el clínico puede cambiarla.
+ *
+ * `operacionalizacion` y `mecanismo` nacen vacíos: copiarlos de la hipótesis o
+ * de la descripción de la conducta los presentaría como decididos cuando nadie
+ * los ha decidido.
+ *
+ * Los ids de estrategias e indicadores deben existir ya (los da `asignarIds`).
+ */
+export function blancosDeLegado(analisis: AnalisisFuncional): Blanco[] {
+  const plan = construirPlanPorBlanco(analisis);
+  return plan.tarjetas.map((t, i): Blanco => {
+    const estado = estadoDeBlanco(analisis, t.conducta.id);
+    return {
+      id: `bln_${i + 1}`,
+      conducta_ids: [t.conducta.id],
+      hipotesis_id: t.hipotesis[0]?.id ?? null,
+      operacionalizacion: "",
+      mecanismo: "",
+      alternativa_ids: t.alternativas.map((x) => x.alternativa.id),
+      estrategia_ids: t.intervenciones.map((x) => x.linea.id),
+      indicador_ids: t.monitorizacion.map((x) => x.plan.id),
+      revision: estado.revision,
+      fase: estado.fase,
+      prioridad: t.prioridad,
+      revisar_en_sesion: null,
+    };
+  });
+}
+
+/**
+ * Revisión y fase de un blanco tal como valen HOY. Hasta que la interfaz de la
+ * fase 6C escriba el estado en el propio blanco, el clínico lo sigue decidiendo
+ * en `estados_plan` (por id de conducta), y esa decisión gana: si no, rechazar
+ * un blanco en pantalla no lo sacaría de las comprobaciones. Sin decisión
+ * explícita vale lo que guarda el blanco.
+ */
+export function estadoEfectivoDeBlanco(
+  analisis: AnalisisFuncional,
+  blanco: Blanco
+): EstadoBlanco {
+  for (const id of blanco.conducta_ids) {
+    const decidido = estadoBlancoGuardado(analisis.estados_plan?.[id]);
+    if (decidido) return decidido;
+  }
+  return { revision: blanco.revision, fase: blanco.fase };
+}
+
+/** ¿Cuenta este blanco para las comprobaciones? Uno rechazado ya no está en el tratamiento. */
+export function estaVigente(estado: EstadoBlanco): boolean {
+  return estado.revision !== "rechazado";
+}
+
+export interface PorAsignar {
+  alternativas: AlternativaDeBlanco[];
+  estrategias: IntervencionDeBlanco[];
+  indicadores: MonitorizacionDeBlanco[];
+}
+
+/**
+ * La bandeja «Por asignar»: alternativas, estrategias e indicadores que ningún
+ * blanco referencia. Sustituye a las tres listas «sin blanco» de la tarjeta
+ * (que seguían la conducta, no el blanco), y es lo que garantiza que ninguna
+ * entrada desaparece al pasar a blancos: lo que no está en uno está aquí.
+ *
+ * Un id guardado en un blanco que ya no existe (se borró la entrada) no cuenta
+ * como asignación de nada.
+ */
+export function porAsignar(analisis: AnalisisFuncional): PorAsignar {
+  const usados = (extraer: (b: Blanco) => Id[]) =>
+    new Set((analisis.blancos ?? []).flatMap(extraer));
+  const alternativas = usados((b) => b.alternativa_ids);
+  const estrategias = usados((b) => b.estrategia_ids);
+  const indicadores = usados((b) => b.indicador_ids);
+  return {
+    alternativas: analisis.conductas_alternativas
+      .map((a, indice): AlternativaDeBlanco => ({
+        indice,
+        alternativa: a,
+        alertas: alertasDeRuta(analisis.alertas, `conductas_alternativas[${indice}]`),
+      }))
+      .filter((x) => !alternativas.has(x.alternativa.id)),
+    estrategias: analisis.lineas_de_intervencion_tentativas
+      .map((linea, indice): IntervencionDeBlanco => ({
+        indice,
+        linea,
+        alertas: alertasDeRuta(analisis.alertas, `lineas_de_intervencion_tentativas[${indice}]`),
+      }))
+      .filter((x) => !estrategias.has(x.linea.id)),
+    indicadores: analisis.plan_de_monitorizacion
+      .map((plan, indice): MonitorizacionDeBlanco => ({ indice, plan }))
+      .filter((x) => !indicadores.has(x.plan.id)),
+  };
 }

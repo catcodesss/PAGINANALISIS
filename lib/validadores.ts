@@ -3,6 +3,7 @@ import type { AnalisisFuncional, Alerta } from "./types";
 import type { IdAncla } from "./secciones";
 import { normalizarTexto } from "./citas";
 import { estaAbierta } from "./preguntas";
+import { estadoEfectivoDeBlanco, estaVigente } from "./plan";
 
 /**
  * Comprobaciones deterministas sobre el informe ya generado. No usan IA: son
@@ -373,6 +374,171 @@ function validarRiesgoNoDetectado(a: AnalisisFuncional, nota: string): Alerta[] 
 }
 
 /**
+ * Fase 6D · La cadena de ocho ranuras de cada blanco.
+ *
+ * Todo determinista (invariante 3) y todo con el mismo propósito: que una
+ * ranura vacía o incoherente se vea, en vez de que el plan parezca completo
+ * porque tiene texto. ▲ = gravedad «alta» (revisar antes de usar) y ◆ =
+ * «media» (conviene revisar). Lo que no puede comprobarse sin IA no está aquí:
+ * eso es opinión y, si se hace, va por la pasada crítica con `origen: "ia"`.
+ *
+ * Los avisos de ítem (alternativa, estrategia) miran todo lo que no es solo de
+ * blancos rechazados: una entrada «Por asignar» también se puede usar. Los de
+ * blanco miran los activos: uno en pausa o resuelto no necesita hoy su cadena.
+ */
+
+/** Marcas de evitación o negación al inicio de una conducta: cambian su topografía. */
+const MARCA_EVITACION = /(^|\s)(evit|escap|huy|huir|rehu|aplaz|posterg|abandon|dej(a|o|ar|e)\s+de|no\s)/;
+
+/**
+ * Palabras de una conducta, para compararla con su alternativa: de cuatro
+ * letras en adelante y recortadas a cinco, que reconoce «pedir» y «pedirle» pero
+ * deja pasar el resto de la conjugación. Más corto que `raicesSignificativas`
+ * porque las conductas son frases cortas («Pedir ir al baño») y a seis letras
+ * casi no queda nada que comparar.
+ */
+function palabrasDeConducta(texto: string): Set<string> {
+  return new Set(
+    normalizarTexto(texto)
+      .split(/[^a-z0-9]+/)
+      .filter((p) => p.length >= 4 && !VACIAS.has(p) && !RELLENO_DE_CONDUCTA.has(p))
+      .map((p) => p.slice(0, 5))
+  );
+}
+const RELLENO_DE_CONDUCTA = new Set(["como", "tras", "pero", "cada", "sino", "mucho", "poco", "tambien"]);
+
+/**
+ * ¿La alternativa es, en la práctica, la misma conducta que la que sustituye?
+ *
+ * La heurística, entera: (1) si una de las dos es una evitación o una negación
+ * («evita exponer», «no ceder») y la otra no, son topografías distintas aunque
+ * compartan palabras — «Exponer resultados» sustituye bien a «Evita exponer
+ * resultados», y comparar solo palabras la daría por repetida; (2) si ninguna o
+ * las dos lo son, se mira cuánto de la alternativa ya estaba en la conducta
+ * problema: palabras de cinco letras, al menos dos en común y al menos el 60 %
+ * de las de la alternativa. Es aproximada a propósito, como el resto de
+ * comparaciones por palabras de este fichero: un falso aviso dice «revisa si
+ * esto es otra conducta», que es justo lo que hay que mirar, y no afirma nada.
+ */
+export function mismaTopografia(propuesta: string, problema: string): boolean {
+  if (MARCA_EVITACION.test(normalizarTexto(propuesta)) !== MARCA_EVITACION.test(normalizarTexto(problema))) {
+    return false;
+  }
+  const deLaAlternativa = palabrasDeConducta(propuesta);
+  if (deLaAlternativa.size < 2) return false;
+  const comunes = interseccion(deLaAlternativa, palabrasDeConducta(problema));
+  return comunes.length >= 2 && comunes.length / deLaAlternativa.size >= 0.6;
+}
+
+function validarPlanPorBlanco(a: AnalisisFuncional): Alerta[] {
+  const alertas: Alerta[] = [];
+  const blancos = a.blancos ?? [];
+  const nombreDe = (conductaIds: string[]) =>
+    a.conductas_problema.find((c) => c.id === conductaIds[0])?.descripcion ?? "Blanco sin conducta";
+
+  const vigentes = blancos
+    .map((blanco, indice) => ({ blanco, indice, estado: estadoEfectivoDeBlanco(a, blanco) }))
+    .filter((x) => estaVigente(x.estado));
+  const rechazados = blancos.filter((b) => !vigentes.some((v) => v.blanco === b));
+
+  for (const { blanco, indice, estado } of vigentes) {
+    if (estado.fase !== "activo") continue;
+    const ruta = `blancos[${indice}]`;
+    const elemento = nombreDe(blanco.conducta_ids);
+
+    if (!blanco.hipotesis_id || !a.hipotesis_mantenimiento.some((h) => h.id === blanco.hipotesis_id)) {
+      alertas.push({
+        codigo: "blanco_activo_sin_hipotesis",
+        origen: "validador",
+        gravedad: "alta",
+        ruta,
+        elemento,
+        mensaje:
+          "Blanco activo sin hipótesis de mantenimiento: el resto de la cadena no tiene una función en la que apoyarse. Revísalo antes de usarlo.",
+      });
+    }
+
+    const indicadores = a.plan_de_monitorizacion.filter((p) => blanco.indicador_ids.includes(p.id));
+    if (indicadores.length === 0) {
+      alertas.push({
+        codigo: "blanco_sin_indicador_o_revision",
+        origen: "validador",
+        gravedad: "media",
+        ruta,
+        elemento,
+        mensaje: "Blanco sin indicador: no hay nada con lo que saber si la intervención está funcionando.",
+      });
+    } else if (!indicadores.some((p) => p.criterio_de_revision.trim())) {
+      alertas.push({
+        codigo: "blanco_sin_indicador_o_revision",
+        origen: "validador",
+        gravedad: "media",
+        ruta,
+        elemento,
+        mensaje:
+          "Blanco sin criterio de revisión: nada dice qué observación obligaría a rehacer el análisis.",
+      });
+    }
+  }
+
+  // Una entrada que solo pertenece a blancos rechazados ya no se usa.
+  const soloDeRechazados = (clave: "alternativa_ids" | "estrategia_ids", id: string) =>
+    rechazados.some((b) => b[clave].includes(id)) &&
+    !vigentes.some((v) => v.blanco[clave].includes(id));
+
+  a.conductas_alternativas.forEach((alt, i) => {
+    if (soloDeRechazados("alternativa_ids", alt.id)) return;
+    const ruta = `conductas_alternativas[${i}]`;
+    const elemento = alt.conducta_propuesta.trim();
+    if (alt.la_mantendra.every((m) => !m.trim())) {
+      alertas.push({
+        codigo: "alternativa_sin_mantenimiento",
+        origen: "validador",
+        gravedad: "media",
+        ruta,
+        elemento,
+        mensaje:
+          "La alternativa no dice qué la mantendrá (consecuencia natural, programada o un valor). Sin eso es fácil que se extinga fuera de consulta.",
+      });
+    }
+    const sustituida = alt.sustituye_a
+      ? a.conductas_problema.find((c) => c.id === alt.sustituye_a)
+      : undefined;
+    if (sustituida && mismaTopografia(alt.conducta_propuesta, sustituida.descripcion)) {
+      alertas.push({
+        codigo: "alternativa_misma_topografia",
+        origen: "validador",
+        gravedad: "media",
+        ruta,
+        elemento,
+        mensaje:
+          "La alternativa se parece demasiado a la conducta a la que sustituye (comparación por palabras, puede ser un falso aviso). Una alternativa es otra conducta que cumple la misma función, no la misma con mejor calidad.",
+      });
+    }
+  });
+
+  const idsDeRelaciones = new Set(a.aristas.map((r) => r.id));
+  a.lineas_de_intervencion_tentativas.forEach((linea, i) => {
+    // Sin intervención (principio 29) no hay estrategia que situar en el mapa.
+    if (!linea.intervencion.trim()) return;
+    if (soloDeRechazados("estrategia_ids", linea.id)) return;
+    if (linea.actua_sobre && idsDeRelaciones.has(linea.actua_sobre)) return;
+    alertas.push({
+      codigo: "estrategia_sin_actua_sobre",
+      origen: "validador",
+      gravedad: "media",
+      ruta: `lineas_de_intervencion_tentativas[${i}]`,
+      elemento: linea.intervencion.trim(),
+      mensaje: linea.actua_sobre
+        ? "La relación sobre la que actúa la estrategia ya no existe en el mapa."
+        : "La estrategia no declara sobre qué relación del mapa actúa, así que no puede comprobarse contra la función.",
+    });
+  });
+
+  return alertas;
+}
+
+/**
  * Ejecuta todas las comprobaciones y devuelve el análisis con sus alertas.
  * Modifica confianzas cuando la evidencia no las sostiene (ver V1).
  */
@@ -386,6 +552,7 @@ export function validarAnalisis(
     ...validarConductasSeguridad(analisis, nota),
     ...validarDependenciaDeDatosFaltantes(analisis),
     ...validarRiesgoNoDetectado(analisis, nota),
+    ...validarPlanPorBlanco(analisis),
   ];
 
   analisis.alertas = sinDuplicados(alertas);
@@ -431,6 +598,8 @@ export function seccionDeRuta(ruta: string): IdAncla | null {
       return "intervencion";
     case "plan_de_monitorizacion":
       return "monitorizacion";
+    case "blancos":
+      return "conductas-alternativas";
     case "capa_act":
     case "capa_dbt":
       return "modalidad";
@@ -561,6 +730,7 @@ export function revalidarTrasEdicion(
     ...validarConductasSeguridad(analisis, nota),
     ...validarDependenciaDeDatosFaltantes(analisis),
     ...validarRiesgoNoDetectado(analisis, nota),
+    ...validarPlanPorBlanco(analisis),
   ]);
 }
 
@@ -581,7 +751,7 @@ export function revalidarTrasEdicion(
  * llamada que no se repite gratis, y perderlas al reanalizar una sola sección
  * descartaría hallazgos válidos sobre el resto del informe, que no cambió.
  *
- * Corre en el navegador, sin coste: son las mismas cinco comprobaciones
+ * Corre en el navegador, sin coste: son las mismas comprobaciones
  * deterministas de siempre, no una llamada nueva.
  */
 export function revalidarTrasReanalisis(
@@ -597,5 +767,6 @@ export function revalidarTrasReanalisis(
     ...validarConductasSeguridad(analisis, nota),
     ...validarDependenciaDeDatosFaltantes(analisis),
     ...validarRiesgoNoDetectado(analisis, nota),
+    ...validarPlanPorBlanco(analisis),
   ]);
 }

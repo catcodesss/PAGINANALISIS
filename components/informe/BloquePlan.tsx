@@ -393,6 +393,8 @@ function TarjetaDeBlanco({
       c.lineas_de_intervencion_tentativas = [
         ...c.lineas_de_intervencion_tentativas,
         {
+          id: `est_${c.siguiente_id++}`,
+          actua_sobre: null,
           conducta: conducta.descripcion,
           conducta_id: conducta.id,
           intervencion: texto,
