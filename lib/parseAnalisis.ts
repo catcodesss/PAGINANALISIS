@@ -339,6 +339,11 @@ const TIPOS_RELACION: TipoRelacion[] = ["causal", "moderadora", "mediadora"];
  * con contenido, la referencia queda sin resolver y lib/identidad.ts la intenta
  * una vez. Que se quede en null es un resultado válido y visible.
  */
+/** `cp_3`, `rel_12`…: un id interno, no las palabras del modelo. */
+export function pareceId(valor: unknown): boolean {
+  return typeof valor === "string" && /^[a-z]+_\d+$/.test(valor);
+}
+
 function comoIdONulo(valor: unknown): string | null {
   return typeof valor === "string" && valor.length > 0 ? valor : null;
 }
@@ -388,6 +393,7 @@ function normalizarPriorizacion(valor: unknown): PriorizacionBlanco {
     blanco: comoTexto(d.blanco),
     conducta_id: comoIdONulo(d.conducta_id),
     justificacion: comoTexto(d.justificacion),
+    mecanismo: comoTexto(d.mecanismo),
   };
 }
 
@@ -407,7 +413,12 @@ function normalizarConductaAlternativa(valor: unknown): ConductaAlternativa {
     situacion_id: comoIdONulo(d.situacion_id),
     conducta_propuesta: comoTexto(d.conducta_propuesta),
     consecuencia_necesaria: comoTexto(d.consecuencia_necesaria),
-    sustituye_a: comoIdONulo(d.sustituye_a),
+    // El modelo nombra la conducta con sus palabras (prompt 1.15.0); un id guardado se respeta.
+    sustituye_a: pareceId(d.sustituye_a) ? comoIdONulo(d.sustituye_a) : null,
+    sustituye_a_texto:
+      comoTexto(d.sustituye_a_texto) ||
+      comoTexto(d.sustituye_a_conducta) ||
+      (pareceId(d.sustituye_a) ? "" : comoTexto(d.sustituye_a)),
     antecedente: comoTexto(d.antecedente),
     funcion_que_cumple: comoTexto(d.funcion_que_cumple),
     la_mantendra: comoArregloDeTexto(d.la_mantendra),

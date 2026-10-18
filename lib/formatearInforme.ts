@@ -787,6 +787,13 @@ export function formatearInformeTexto(
         if (estado.revision === "rechazado") {
           return [cabecera, `  ${t.conducta.descripcion}`, ""];
         }
+        const blanco = (analisis.blancos ?? []).find((b) => b.conducta_ids.includes(t.conducta.id));
+        const extrasBlanco = [
+          ...(blanco?.operacionalizacion ? [`  Blanco operacionalizado: ${blanco.operacionalizacion}`] : []),
+          ...(blanco?.mecanismo ? [`  Mecanismo: ${blanco.mecanismo}`] : []),
+          ...(blanco?.revisar_en_sesion ? [`  Se revisa en la sesión ${blanco.revisar_en_sesion}`] : []),
+          ...(blanco?.motivo_alerta ? [`  Activado pese a una alerta. Motivo del clínico: ${blanco.motivo_alerta}`] : []),
+        ];
         const funciones =
           t.hipotesis.length > 0
             ? t.hipotesis.map((h) => h.funcion || h.enunciado)
@@ -794,6 +801,7 @@ export function formatearInformeTexto(
         return [
           cabecera,
           `  ${t.conducta.descripcion}`,
+          ...extrasBlanco,
           ...textoAvisos(t.alertasConducta, "  "),
           ...(t.priorizacion?.justificacion
             ? [`  Por qué se prioriza: ${t.priorizacion.justificacion}`]

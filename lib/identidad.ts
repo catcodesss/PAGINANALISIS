@@ -455,6 +455,11 @@ function resolverReferencias(a: AnalisisFuncional): void {
     if (c.situacion_id === null) {
       c.situacion_id = mejorCoincidencia(c.situacion, situaciones);
     }
+    // La conducta que sustituye la nombra el modelo con sus palabras; se
+    // resuelve una vez y, si no casa, queda null y se ve como hueco.
+    if (c.sustituye_a === null && c.sustituye_a_texto?.trim()) {
+      c.sustituye_a = mejorCoincidencia(c.sustituye_a_texto, conductas);
+    }
   }
 
   for (const h of a.capa_dbt.habilidades_sugeridas) {
@@ -787,6 +792,7 @@ export function migrarAV8(analisis: AnalisisFuncional): AnalisisFuncional {
 
   for (const alt of analisis.conductas_alternativas) {
     if (alt.sustituye_a === undefined) alt.sustituye_a = null;
+    if (typeof alt.sustituye_a_texto !== "string") alt.sustituye_a_texto = "";
     if (typeof alt.antecedente !== "string") alt.antecedente = "";
     if (typeof alt.funcion_que_cumple !== "string") alt.funcion_que_cumple = "";
     if (typeof alt.habilidades_necesarias !== "string") alt.habilidades_necesarias = "";
@@ -803,6 +809,18 @@ export function migrarAV8(analisis: AnalisisFuncional): AnalisisFuncional {
   }
   for (const l of analisis.lineas_de_intervencion_tentativas) {
     if (l.actua_sobre === undefined) l.actua_sobre = null;
+    if (typeof l.actua_sobre_texto !== "string") l.actua_sobre_texto = "";
+  }
+  for (const p of analisis.formulacion.priorizacion) {
+    if (typeof p.mecanismo !== "string") p.mecanismo = "";
+  }
+  resolverActuaSobre(analisis);
+  // Tras resolver `sustituye_a` de las alternativas que lo declaran por texto.
+  const conductas = analisis.conductas_problema.map((c) => ({ id: c.id, texto: c.descripcion }));
+  for (const alt of analisis.conductas_alternativas) {
+    if (alt.sustituye_a === null && alt.sustituye_a_texto.trim()) {
+      alt.sustituye_a = mejorCoincidencia(alt.sustituye_a_texto, conductas);
+    }
   }
 
   if (!Array.isArray(analisis.blancos)) {
@@ -813,6 +831,26 @@ export function migrarAV8(analisis: AnalisisFuncional): AnalisisFuncional {
   analisis.siguiente_id = Math.max(analisis.siguiente_id, siguienteLibre(analisis));
   analisis.version = VERSION_ANALISIS;
   return analisis;
+}
+
+/**
+ * La relación del mapa sobre la que actúa cada estrategia, a partir de las
+ * palabras del modelo. Se casa con los dos extremos de cada arista, y solo
+ * si hay coincidencia suficiente: si no, `actua_sobre` queda null, el validador
+ * lo avisa y el clínico la elige. Nunca se asigna «la más parecida».
+ */
+function resolverActuaSobre(a: AnalisisFuncional): void {
+  const pendientes = a.lineas_de_intervencion_tentativas.filter(
+    (l) => l.actua_sobre === null && l.actua_sobre_texto.trim()
+  );
+  if (pendientes.length === 0) return;
+  const etiqueta = new Map<Id, string>();
+  for (const n of construirNodosGrafo(a)) if (!etiqueta.has(n.id)) etiqueta.set(n.id, n.etiqueta);
+  const candidatos = a.aristas.map((r) => ({
+    id: r.id,
+    texto: `${etiqueta.get(r.desde) ?? ""} ${etiqueta.get(r.hasta) ?? ""}`,
+  }));
+  for (const l of pendientes) l.actua_sobre = mejorCoincidencia(l.actua_sobre_texto, candidatos);
 }
 
 /** Rellena con lo neutro lo que un blanco guardado no traiga. No quita nada. */
@@ -834,6 +872,8 @@ function completarBlanco(b: Blanco): void {
   }
   if (typeof b.prioridad !== "number") b.prioridad = null;
   if (typeof b.revisar_en_sesion !== "number") b.revisar_en_sesion = null;
+  b.alternativas_rechazadas = lista(b.alternativas_rechazadas);
+  if (typeof b.motivo_alerta !== "string") b.motivo_alerta = null;
 }
 
 /**

@@ -466,7 +466,7 @@ export function agregarNodo(
   }
   if (tipo === "alternativa") {
     const id = nuevoId(analisis, "alt");
-    analisis.conductas_alternativas.push({ id, situacion: situacion.nombre, situacion_id: situacion.id, conducta_propuesta: etiqueta, consecuencia_necesaria: "", sustituye_a: null, antecedente: "", funcion_que_cumple: "", la_mantendra: [], habilidades_necesarias: "", recurso_ids: [], pregunta_ids: [] });
+    analisis.conductas_alternativas.push({ id, situacion: situacion.nombre, situacion_id: situacion.id, conducta_propuesta: etiqueta, consecuencia_necesaria: "", sustituye_a: null, sustituye_a_texto: "", antecedente: "", funcion_que_cumple: "", la_mantendra: [], habilidades_necesarias: "", recurso_ids: [], pregunta_ids: [] });
     marcarCreado(analisis, id);
   }
   if (tipo === "consecuencia" && situacion.cadena_operante) {

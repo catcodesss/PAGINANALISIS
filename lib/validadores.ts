@@ -486,8 +486,12 @@ function validarPlanPorBlanco(a: AnalisisFuncional): Alerta[] {
     rechazados.some((b) => b[clave].includes(id)) &&
     !vigentes.some((v) => v.blanco[clave].includes(id));
 
+  const rechazadaEnSuBlanco = (id: string) =>
+    blancos.some((b) => (b.alternativas_rechazadas ?? []).includes(id)) &&
+    !vigentes.some((v) => v.blanco.alternativa_ids.includes(id));
+
   a.conductas_alternativas.forEach((alt, i) => {
-    if (soloDeRechazados("alternativa_ids", alt.id)) return;
+    if (soloDeRechazados("alternativa_ids", alt.id) || rechazadaEnSuBlanco(alt.id)) return;
     const ruta = `conductas_alternativas[${i}]`;
     const elemento = alt.conducta_propuesta.trim();
     if (alt.la_mantendra.every((m) => !m.trim())) {

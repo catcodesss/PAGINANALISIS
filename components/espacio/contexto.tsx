@@ -51,6 +51,8 @@ export interface EspacioValor {
 }
 
 const EspacioContext = createContext<EspacioValor | null>(null);
+/** Para quien puede vivir fuera del espacio (el informe impreso, el ejemplo). */
+export const EspacioContexto = EspacioContext;
 
 export function useEspacio(): EspacioValor {
   const valor = useContext(EspacioContext);

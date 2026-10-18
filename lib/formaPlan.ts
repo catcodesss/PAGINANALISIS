@@ -21,6 +21,7 @@
 import type { LineaIntervencion, PlanDeMonitorizacion } from "./types";
 
 const texto = (v: unknown): string => (typeof v === "string" ? v : "");
+const pareceId = (v: unknown): boolean => typeof v === "string" && /^[a-z]+_\d+$/.test(v);
 const id = (v: unknown): string | null => (typeof v === "string" && v.length > 0 ? v : null);
 const objeto = (v: unknown): Record<string, unknown> | null =>
   typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
@@ -31,7 +32,7 @@ export function normalizarLineasIntervencion(valor: unknown): LineaIntervencion[
     if (typeof v === "string") {
       return v.trim()
         ? [{
-            id: "", actua_sobre: null,
+            id: "", actua_sobre: null, actua_sobre_texto: "",
             conducta: "", conducta_id: null, intervencion: v, porque: "", pregunta_id: null, depende_de: null,
             contingencia_objetivo: null, precauciones: null,
           }]
@@ -42,7 +43,9 @@ export function normalizarLineasIntervencion(valor: unknown): LineaIntervencion[
     const depende = texto(d.depende_de).trim();
     const linea: LineaIntervencion = {
       id: id(d.id) ?? "",
-      actua_sobre: id(d.actua_sobre),
+      // Prompt 1.15.0: el modelo declara la relación por texto; un id guardado se respeta.
+      actua_sobre: pareceId(d.actua_sobre) ? id(d.actua_sobre) : null,
+      actua_sobre_texto: texto(d.actua_sobre_texto) || (pareceId(d.actua_sobre) ? "" : texto(d.actua_sobre)),
       conducta: texto(d.conducta),
       conducta_id: id(d.conducta_id),
       intervencion: texto(d.intervencion),

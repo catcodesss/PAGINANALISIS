@@ -62,7 +62,13 @@ const {
   datosFaltantesDe,
   estadoDeBlanco,
   estadoBlancoDeLegado,
+  ranurasDeBlanco,
+  ranurasListas,
+  moverBlanco,
+  ordenarBlancos,
+  porAsignar,
 } = require(join(RAIZ, ".tmp-evals/plan.js"));
+const { normalizarLineasIntervencion } = require(join(RAIZ, ".tmp-evals/formaPlan.js"));
 const { formatearInformeTexto } = require(join(RAIZ, ".tmp-evals/formatearInforme.js"));
 
 const NOTA = readFileSync(join(RAIZ, "evals/casos/01-ansiedad-social.md"), "utf8")
@@ -383,6 +389,66 @@ prueba("huérfanas: se sugiere un blanco, pero nada se asigna solo", () => {
   assert.equal(sugerirConducta(a, [l.intervencion, l.porque, l.contingencia_objetivo, l.precauciones, l.depende_de]), "cnd_1");
   // Sin candidato con dos raíces en común, no hay sugerencia que inventar.
   assert.equal(sugerirConducta(a, ["Exposición graduada"]), null);
+});
+
+prueba("6C: cada blanco tiene ocho ranuras en el orden fijo y ninguna sale completa sin serlo", () => {
+  const a = informe();
+  assert.ok(a.blancos.length > 0);
+  const r = ranurasDeBlanco(a, 0);
+  assert.deepEqual(r.map((x) => x.clave), ["evidencia", "hipotesis", "blanco", "mecanismo", "alternativa", "estrategia", "indicador", "revision"]);
+  // La operacionalización nace vacía: es un hueco, no una ranura lista.
+  assert.equal(r[2].estado, "hueco");
+  assert.ok(ranurasListas(r) < 8);
+});
+
+prueba("6C: la alternativa con respiración aparece con ▲ y al rechazarla deja de contar", () => {
+  const a = informe();
+  const i = a.blancos.findIndex((b, n) => ranurasDeBlanco(a, n)[4].estado === "alta");
+  assert.ok(i >= 0, "ningún blanco trae la alternativa prescrita marcada con ▲");
+  const b = a.blancos[i];
+  const alta = a.conductas_alternativas.findIndex((x, k) =>
+    b.alternativa_ids.includes(x.id) &&
+    a.alertas.some((al) => al.gravedad === "alta" && al.ruta.startsWith(`conductas_alternativas[${k}]`)));
+  const id = a.conductas_alternativas[alta].id;
+  b.alternativa_ids = b.alternativa_ids.filter((x) => x !== id);
+  b.alternativas_rechazadas = [id];
+  assert.notEqual(ranurasDeBlanco(a, i)[4].estado, "alta");
+  // Rechazada no vuelve a «Por asignar»: sigue en su blanco, tachada.
+  assert.ok(!porAsignar(a).alternativas.some((x) => x.alternativa.id === id));
+});
+
+prueba("6C: reordenar renumera la prioridad de todos los blancos", () => {
+  const a = informe();
+  assert.ok(a.blancos.length >= 2, "el caso 01 debería tener al menos dos blancos");
+  const primero = ordenarBlancos(a.blancos)[0].id;
+  moverBlanco(a, primero, 1);
+  const orden = ordenarBlancos(a.blancos);
+  assert.equal(orden[1].id, primero);
+  assert.deepEqual(orden.map((b) => b.prioridad), orden.map((_, n) => n + 1));
+  // En el borde no se mueve nada.
+  moverBlanco(a, orden[0].id, -1);
+  assert.equal(ordenarBlancos(a.blancos)[0].id, orden[0].id);
+});
+
+prueba("6B: actua_sobre y sustituye_a en palabras del modelo van a su campo de texto", () => {
+  const [l] = normalizarLineasIntervencion([{ intervencion: "x", actua_sobre: "silencio → alivio" }]);
+  assert.equal(l.actua_sobre, null);
+  assert.equal(l.actua_sobre_texto, "silencio → alivio");
+  const [g] = normalizarLineasIntervencion([{ intervencion: "x", actua_sobre: "rel_4" }]);
+  assert.equal(g.actua_sobre, "rel_4");
+  const c = crudo();
+  c.conductas_alternativas[0].sustituye_a = "quedarse callado";
+  const a = normalizarAnalisis(c, lineas);
+  assert.equal(a.conductas_alternativas[0].sustituye_a_texto, "quedarse callado");
+});
+
+prueba("6C: el motivo de activar con alerta y la sesión de revisión viajan a la exportación", () => {
+  const a = informe();
+  a.blancos[0].motivo_alerta = "Lo acordamos en sesión";
+  a.blancos[0].revisar_en_sesion = 4;
+  const texto = textoDelPlan(a);
+  assert.ok(texto.includes("Lo acordamos en sesión"));
+  assert.ok(texto.includes("sesión 4"));
 });
 
 console.log(`\n${pasadas} ok, ${fallos} fallos\n`);

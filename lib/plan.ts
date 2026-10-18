@@ -374,9 +374,10 @@ export function enumerarDatosFaltantes(datos: readonly string[]): string {
  * las demás siguen en el análisis y el Mapa las enseña; el blanco solo señala
  * la que organiza su cadena, y el clínico puede cambiarla.
  *
- * `operacionalizacion` y `mecanismo` nacen vacíos: copiarlos de la hipótesis o
- * de la descripción de la conducta los presentaría como decididos cuando nadie
- * los ha decidido.
+ * `operacionalizacion` nace vacía: copiarla de la descripción de la conducta la
+ * presentaría como decidida cuando nadie la ha decidido. `mecanismo` sí lo
+ * trae el modelo (6B) en la priorización del blanco, y se copia UNA vez: desde
+ * entonces es del blanco.
  *
  * Los ids de estrategias e indicadores deben existir ya (los da `asignarIds`).
  */
@@ -389,7 +390,7 @@ export function blancosDeLegado(analisis: AnalisisFuncional): Blanco[] {
       conducta_ids: [t.conducta.id],
       hipotesis_id: t.hipotesis[0]?.id ?? null,
       operacionalizacion: "",
-      mecanismo: "",
+      mecanismo: t.priorizacion?.mecanismo ?? "",
       alternativa_ids: t.alternativas.map((x) => x.alternativa.id),
       estrategia_ids: t.intervenciones.map((x) => x.linea.id),
       indicador_ids: t.monitorizacion.map((x) => x.plan.id),
@@ -397,6 +398,8 @@ export function blancosDeLegado(analisis: AnalisisFuncional): Blanco[] {
       fase: estado.fase,
       prioridad: t.prioridad,
       revisar_en_sesion: null,
+      alternativas_rechazadas: [],
+      motivo_alerta: null,
     };
   });
 }
@@ -442,7 +445,8 @@ export interface PorAsignar {
 export function porAsignar(analisis: AnalisisFuncional): PorAsignar {
   const usados = (extraer: (b: Blanco) => Id[]) =>
     new Set((analisis.blancos ?? []).flatMap(extraer));
-  const alternativas = usados((b) => b.alternativa_ids);
+  // Una alternativa rechazada sigue siendo de su blanco (tachada), no vuelve a la bandeja.
+  const alternativas = usados((b) => [...b.alternativa_ids, ...(b.alternativas_rechazadas ?? [])]);
   const estrategias = usados((b) => b.estrategia_ids);
   const indicadores = usados((b) => b.indicador_ids);
   return {
@@ -464,4 +468,138 @@ export function porAsignar(analisis: AnalisisFuncional): PorAsignar {
       .map((plan, indice): MonitorizacionDeBlanco => ({ indice, plan }))
       .filter((x) => !indicadores.has(x.plan.id)),
   };
+}
+
+/* ── Fase 6C · La cadena de ocho ranuras ───────────────────────────────── */
+
+/**
+ * ● completa · ⋯ hueco · ◆ conviene revisar · ▲ revisar antes de usar. Ninguna
+ * se pinta en verde: un plan no se apoya en la nota, se decide.
+ */
+export type EstadoRanura = "completa" | "hueco" | "revisar" | "alta";
+
+export type ClaveRanura =
+  | "evidencia"
+  | "hipotesis"
+  | "blanco"
+  | "mecanismo"
+  | "alternativa"
+  | "estrategia"
+  | "indicador"
+  | "revision";
+
+export interface Ranura {
+  clave: ClaveRanura;
+  etiqueta: string;
+  estado: EstadoRanura;
+  alertas: Alerta[];
+}
+
+export const SIMBOLO_RANURA: Record<EstadoRanura, string> = {
+  completa: "●",
+  hueco: "⋯",
+  revisar: "◆",
+  alta: "▲",
+};
+
+const ETIQUETA_RANURA: Record<ClaveRanura, string> = {
+  evidencia: "Evidencia",
+  hipotesis: "Hipótesis",
+  blanco: "Blanco",
+  mecanismo: "Mecanismo",
+  alternativa: "Alternativa",
+  estrategia: "Estrategia",
+  indicador: "Indicador",
+  revision: "Revisión",
+};
+
+/** Las alertas cuya ruta es esa entrada o un campo suyo. */
+function alertasDeEntrada(alertas: readonly Alerta[], ruta: string): Alerta[] {
+  return alertas.filter((a) => a.ruta === ruta || a.ruta?.startsWith(`${ruta}.`));
+}
+
+function estadoPorAlertas(lleno: boolean, alertas: readonly Alerta[]): EstadoRanura {
+  if (alertas.some((a) => a.gravedad === "alta")) return "alta";
+  if (alertas.length > 0) return "revisar";
+  return lleno ? "completa" : "hueco";
+}
+
+/**
+ * El estado de cada ranura de un blanco, en el orden fijo de la cadena. Todo
+ * sale de lo que el blanco referencia y de las alertas ya calculadas por los
+ * validadores: aquí no se decide nada nuevo, solo se reparte.
+ */
+export function ranurasDeBlanco(analisis: AnalisisFuncional, indiceBlanco: number): Ranura[] {
+  const blanco = analisis.blancos[indiceBlanco];
+  const alertas = analisis.alertas ?? [];
+  const deBlanco = alertasDeEntrada(alertas, `blancos[${indiceBlanco}]`);
+  const hipotesis = analisis.hipotesis_mantenimiento.find((h) => h.id === blanco.hipotesis_id);
+  const rechazadas = new Set(blanco.alternativas_rechazadas ?? []);
+
+  const entradas = <T extends { id: string }>(lista: readonly T[], ids: readonly string[], campo: string) =>
+    lista
+      .map((x, i) => ({ x, ruta: `${campo}[${i}]` }))
+      .filter(({ x }) => ids.includes(x.id) && !rechazadas.has(x.id));
+  const alternativas = entradas(analisis.conductas_alternativas, blanco.alternativa_ids, "conductas_alternativas");
+  const estrategias = entradas(analisis.lineas_de_intervencion_tentativas, blanco.estrategia_ids, "lineas_de_intervencion_tentativas");
+  const indicadores = analisis.plan_de_monitorizacion.filter((p) => blanco.indicador_ids.includes(p.id));
+
+  const r = (clave: ClaveRanura, estado: EstadoRanura, propias: Alerta[] = []): Ranura => ({
+    clave,
+    etiqueta: ETIQUETA_RANURA[clave],
+    estado,
+    alertas: propias,
+  });
+  const sinHipotesis = deBlanco.filter((a) => a.codigo === "blanco_activo_sin_hipotesis");
+  const sinIndicador = deBlanco.filter((a) => a.codigo === "blanco_sin_indicador_o_revision");
+  const deAlternativas = alternativas.flatMap(({ ruta }) => alertasDeEntrada(alertas, ruta));
+  const deEstrategias = estrategias.flatMap(({ ruta }) => alertasDeEntrada(alertas, ruta));
+  const criterio = indicadores.some((p) => p.criterio_de_revision.trim());
+
+  return [
+    r("evidencia", hipotesis ? (hipotesis.evidencia.verificada ? "completa" : "revisar") : "hueco"),
+    r("hipotesis", estadoPorAlertas(Boolean(hipotesis), sinHipotesis), sinHipotesis),
+    r("blanco", blanco.operacionalizacion.trim() ? "completa" : "hueco"),
+    r("mecanismo", blanco.mecanismo.trim() ? "completa" : "hueco"),
+    r("alternativa", estadoPorAlertas(alternativas.length > 0, deAlternativas), deAlternativas),
+    r("estrategia", estadoPorAlertas(estrategias.length > 0, deEstrategias), deEstrategias),
+    r(
+      "indicador",
+      indicadores.length === 0 ? (sinIndicador.length ? "revisar" : "hueco") : "completa",
+      indicadores.length === 0 ? sinIndicador : []
+    ),
+    r(
+      "revision",
+      criterio && blanco.revisar_en_sesion !== null ? "completa" : criterio || blanco.revisar_en_sesion !== null ? "revisar" : "hueco",
+      indicadores.length > 0 ? sinIndicador : []
+    ),
+  ];
+}
+
+/** «Listo N de 8»: solo cuentan las ranuras completas, sin avisos. */
+export function ranurasListas(ranuras: readonly Ranura[]): number {
+  return ranuras.filter((r) => r.estado === "completa").length;
+}
+
+/**
+ * Mueve un blanco en la lista y renumera la prioridad de todos (1 = el primero).
+ * Ordenar es decisión del clínico: quien llama lo aplica sin marcar texto editado.
+ */
+export function moverBlanco(analisis: AnalisisFuncional, id: Id, paso: -1 | 1): void {
+  const orden = ordenarBlancos(analisis.blancos);
+  const i = orden.findIndex((b) => b.id === id);
+  const j = i + paso;
+  if (i < 0 || j < 0 || j >= orden.length) return;
+  [orden[i], orden[j]] = [orden[j], orden[i]];
+  orden.forEach((b, n) => {
+    b.prioridad = n + 1;
+  });
+}
+
+/** Por prioridad; los que no la tienen, detrás y en su orden de siempre. */
+export function ordenarBlancos<T extends Pick<Blanco, "prioridad">>(blancos: readonly T[]): T[] {
+  return blancos
+    .map((b, i) => ({ b, i }))
+    .sort((x, y) => (x.b.prioridad ?? Infinity) - (y.b.prioridad ?? Infinity) || x.i - y.i)
+    .map((x) => x.b);
 }

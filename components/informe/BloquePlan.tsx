@@ -52,6 +52,8 @@ import { Apoyo, BloqueBase, MenuAcciones, TablaCadena } from "./primitivas";
 import { Seccion } from "./seccion";
 import { BotonAgregar, TextoEditable, useEdicion } from "../edicionManual";
 import { EnlacePregunta } from "./PreguntasClinicas";
+import CadenaBlanco, { hayAlertaAlta } from "./CadenaBlanco";
+import { moverBlanco, ordenarBlancos } from "@/lib/plan";
 
 type EditarSeccion = (
   seccionId: string | null,
@@ -67,7 +69,16 @@ export default function BloquePlan({
   analisis: AnalisisFuncional;
   onEditarSeccion: EditarSeccion;
 }) {
-  const plan = useMemo(() => construirPlanPorBlanco(analisis), [analisis]);
+  const plan = useMemo(() => {
+    const p = construirPlanPorBlanco(analisis);
+    // El orden lo da la prioridad del blanco, que el clínico puede cambiar.
+    const orden = ordenarBlancos(analisis.blancos ?? []);
+    const posicion = (conductaId: string) => {
+      const i = orden.findIndex((b) => b.conducta_ids.includes(conductaId));
+      return i < 0 ? Infinity : i;
+    };
+    return { ...p, tarjetas: [...p.tarjetas].sort((x, y) => posicion(x.conducta.id) - posicion(y.conducta.id)) };
+  }, [analisis]);
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
   const blancos = plan.tarjetas.map((t, n) => ({ id: t.conducta.id, numero: n + 1, etiqueta: t.conducta.descripcion }));
   // Asignar un blanco es una decisión del clínico sobre a qué se dirige una
@@ -76,10 +87,16 @@ export default function BloquePlan({
   const asignarIntervencion = (indice: number) => (conductaId: string) =>
     onEditarSeccion(null, (c) => {
       c.lineas_de_intervencion_tentativas[indice] = { ...c.lineas_de_intervencion_tentativas[indice], conducta_id: conductaId };
+      const id = c.lineas_de_intervencion_tentativas[indice].id;
+      const b = c.blancos.find((x) => x.conducta_ids.includes(conductaId));
+      if (b && id && !b.estrategia_ids.includes(id)) b.estrategia_ids = [...b.estrategia_ids, id];
     });
   const asignarMonitorizacion = (indice: number) => (conductaId: string) =>
     onEditarSeccion(null, (c) => {
       c.plan_de_monitorizacion[indice] = { ...c.plan_de_monitorizacion[indice], conducta_id: conductaId };
+      const id = c.plan_de_monitorizacion[indice].id;
+      const b = c.blancos.find((x) => x.conducta_ids.includes(conductaId));
+      if (b && id && !b.indicador_ids.includes(id)) b.indicador_ids = [...b.indicador_ids, id];
     });
 
   return (
@@ -104,6 +121,7 @@ export default function BloquePlan({
               <TarjetaDeBlanco
                 key={t.conducta.id}
                 numero={n + 1}
+                total={plan.tarjetas.length}
                 tarjeta={t}
                 analisis={analisis}
                 gradoFuncion={t.hipotesis.map((h) => gradoDeHipotesis(h, nodos, analisis.aristas))}
@@ -354,12 +372,14 @@ function Insuficiente({
 
 function TarjetaDeBlanco({
   numero,
+  total,
   tarjeta,
   analisis,
   gradoFuncion,
   onEditarSeccion,
 }: {
   numero: number;
+  total: number;
   tarjeta: TarjetaBlanco;
   analisis: AnalisisFuncional;
   gradoFuncion: ReturnType<typeof gradoDeHipotesis>[];
@@ -373,10 +393,33 @@ function TarjetaDeBlanco({
   const sinFuncion =
     tarjeta.hipotesis.length === 0 && tarjeta.funcionesDeSituacion.length === 0;
 
+  const indiceBlanco = (analisis.blancos ?? []).findIndex((b) => b.conducta_ids.includes(conducta.id));
+  const blanco = indiceBlanco >= 0 ? analisis.blancos[indiceBlanco] : null;
+  const [pendiente, setPendiente] = useState<Partial<EstadoBlanco> | null>(null);
+  const [motivo, setMotivo] = useState("");
+  // La cadena ya resume el blanco: el texto largo queda plegado (se imprime igual).
+  const [verDetalle, setVerDetalle] = useState(false);
+
+  // Reordenar es decisión del clínico: va con `null`. Alt+↑/↓ desde la tarjeta.
+  const mover = (paso: -1 | 1) => {
+    if (blanco) onEditarSeccion(null, (c) => moverBlanco(c, blanco.id, paso));
+  };
+
+  // Activar o confirmar un blanco con una alerta ▲ pide reconocerla con un motivo.
+  function pedirCambio(nuevo: Partial<EstadoBlanco>) {
+    const activa = nuevo.fase === "activo" || nuevo.revision === "confirmado" || nuevo.revision === "modificado";
+    if (activa && indiceBlanco >= 0 && hayAlertaAlta(analisis, indiceBlanco) && !blanco?.motivo_alerta) {
+      setPendiente(nuevo);
+      return;
+    }
+    cambiarEstado(nuevo);
+  }
+
   // Cambiar el estado es una decisión sobre la propuesta, no texto escrito a
   // mano: por eso va con `null` y no marca la sección como editada.
-  function cambiarEstado(nuevo: Partial<EstadoBlanco>) {
+  function cambiarEstado(nuevo: Partial<EstadoBlanco>, motivoAlerta?: string) {
     onEditarSeccion(null, (c) => {
+      if (motivoAlerta && indiceBlanco >= 0) c.blancos[indiceBlanco].motivo_alerta = motivoAlerta;
       const actual = estadoDeBlanco(c, conducta.id);
       const revision = nuevo.revision ?? actual.revision;
       // Un blanco rechazado no está en el tratamiento: no tiene fase. Al
@@ -395,6 +438,7 @@ function TarjetaDeBlanco({
         {
           id: `est_${c.siguiente_id++}`,
           actua_sobre: null,
+          actua_sobre_texto: "",
           conducta: conducta.descripcion,
           conducta_id: conducta.id,
           intervencion: texto,
@@ -412,6 +456,11 @@ function TarjetaDeBlanco({
     <li>
       <article
         aria-labelledby={`blanco-${conducta.id}`}
+        onKeyDown={(e) => {
+          if (!e.altKey || !edicion) return;
+          if (e.key === "ArrowUp") { e.preventDefault(); mover(-1); }
+          if (e.key === "ArrowDown") { e.preventDefault(); mover(1); }
+        }}
         className={`rounded-md border p-4 sm:p-5 print:border-black ${
           avisos.some((a) => a.gravedad === "alta") && !descartado
             ? "border-warn/50"
@@ -440,11 +489,17 @@ function TarjetaDeBlanco({
           <div className="shrink-0">
             {edicion ? (
               <div className="flex flex-wrap items-center gap-2 print:hidden">
+                {blanco && total > 1 && (
+                  <span className="flex gap-1">
+                    <button type="button" onClick={() => mover(-1)} disabled={numero === 1} aria-label={`Subir el blanco ${numero}`} title="Subir (Alt+↑)" className="rounded border border-divider px-1.5 py-0.5 text-xs text-ink-muted hover:text-ink disabled:opacity-40">↑</button>
+                    <button type="button" onClick={() => mover(1)} disabled={numero === total} aria-label={`Bajar el blanco ${numero}`} title="Bajar (Alt+↓)" className="rounded border border-divider px-1.5 py-0.5 text-xs text-ink-muted hover:text-ink disabled:opacity-40">↓</button>
+                  </span>
+                )}
                 <label className="flex items-center gap-2">
                   <span className="sr-only">Revisión del blanco {numero}</span>
                   <select
                     value={estado.revision}
-                    onChange={(e) => cambiarEstado({ revision: e.target.value as RevisionBlanco })}
+                    onChange={(e) => pedirCambio({ revision: e.target.value as RevisionBlanco })}
                     className="rounded border border-divider bg-surface px-2 py-1 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                   >
                     {REVISIONES.map((e) => (
@@ -459,7 +514,7 @@ function TarjetaDeBlanco({
                     <span className="sr-only">Fase del blanco {numero}</span>
                     <select
                       value={estado.fase}
-                      onChange={(e) => cambiarEstado({ fase: e.target.value as FaseBlanco })}
+                      onChange={(e) => pedirCambio({ fase: e.target.value as FaseBlanco })}
                       className="rounded border border-divider bg-surface px-2 py-1 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                     >
                       {FASES.map((e) => (
@@ -480,13 +535,47 @@ function TarjetaDeBlanco({
           </div>
         </div>
 
+        {pendiente && (
+          <div role="alert" className="mt-3 flex flex-wrap items-center gap-2 rounded border-l-[3px] border-warn bg-warn/5 py-1.5 pl-3 pr-2 text-sm print:hidden">
+            <span className="font-medium text-warn">▲ Motivo para activarlo:</span>
+            <input
+              autoFocus
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              aria-label="Motivo para activar el blanco pese a la alerta"
+              className="min-w-[12rem] flex-1 rounded border border-divider bg-surface px-2 py-1 text-sm text-ink"
+            />
+            <button
+              type="button"
+              disabled={!motivo.trim()}
+              onClick={() => { cambiarEstado(pendiente, motivo.trim()); setPendiente(null); setMotivo(""); }}
+              className="rounded border border-accent/50 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent disabled:opacity-50"
+            >
+              Reconocer
+            </button>
+            <button type="button" onClick={() => { setPendiente(null); setMotivo(""); }} className="rounded px-2 py-1 text-xs text-ink-muted hover:text-ink">
+              Cancelar
+            </button>
+          </div>
+        )}
+
+        {!descartado && blanco && (
+          <CadenaBlanco analisis={analisis} indiceBlanco={indiceBlanco} onEditarSeccion={onEditarSeccion} />
+        )}
+
         {descartado ? (
           <p className="mt-3 text-sm text-ink-muted">
             Descartado por ti. El contenido sigue en el informe; cambia el
             estado para volver a verlo aquí.
           </p>
         ) : (
-          <div className="mt-4 space-y-3">
+          <>
+          {blanco && (
+            <button type="button" onClick={() => setVerDetalle(!verDetalle)} aria-expanded={verDetalle} className="mt-3 text-xs text-ink-muted hover:text-ink print:hidden">
+              {verDetalle ? "▾ Ocultar detalle" : "▸ Ver detalle"}
+            </button>
+          )}
+          <div className={`mt-4 space-y-3 ${blanco && !verDetalle ? "hidden print:block" : ""}`}>
             {tarjeta.alertasConducta.map((a, i) => (
               <AvisoEnLinea key={i} alerta={a} />
             ))}
@@ -591,6 +680,7 @@ function TarjetaDeBlanco({
               ))
             )}
           </div>
+          </>
         )}
       </article>
     </li>

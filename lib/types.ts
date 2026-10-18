@@ -360,6 +360,8 @@ export interface PriorizacionBlanco {
   /** La conducta problema a la que corresponde, si se pudo resolver. */
   conducta_id: Id | null;
   justificacion: string;
+  /** Qué mecanismo del mantenimiento quiere modificar el blanco (6B). Se copia UNA vez al blanco. */
+  mecanismo: string;
 }
 
 export interface Formulacion {
@@ -380,6 +382,8 @@ export interface ConductaAlternativa {
    * situación, que puede tener varias conductas.
    */
   sustituye_a: Id | null;
+  /** Esa conducta con las palabras del modelo; el servidor la resuelve a `sustituye_a`. */
+  sustituye_a_texto: string;
   /** Bajo qué antecedente debería emitirse. "" = no declarado. */
   antecedente: string;
   /** Qué función cumple para quien la emite; la que cumplía la conducta problema. */
@@ -434,6 +438,10 @@ export interface Blanco {
   prioridad: number | null;
   /** Número de sesión en que se revisa el blanco; null = sin fecha de revisión. */
   revisar_en_sesion: number | null;
+  /** Alternativas que el clínico rechazó en este blanco: se ven tachadas y se pueden recuperar. */
+  alternativas_rechazadas: Id[];
+  /** Por qué se activó pese a una alerta ▲. Viaja a la exportación. null = no hubo que reconocer nada. */
+  motivo_alerta: string | null;
 }
 
 /**
@@ -536,6 +544,8 @@ export interface LineaIntervencion {
    * como hueco y el validador lo avisa.
    */
   actua_sobre: Id | null;
+  /** Esa relación con las palabras del modelo; el servidor la resuelve a `actua_sobre`. */
+  actua_sobre_texto: string;
   /** A qué conducta problema se dirige, con las palabras del modelo. "" si es común al caso. */
   conducta: string;
   conducta_id: Id | null;
