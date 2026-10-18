@@ -528,7 +528,7 @@ function Arco({
 }
 
 /** En el nivel Evidencia, cada nodo enseña su apoyo y la frase de la que sale. */
-function ConEvidencia({
+export function ConEvidencia({
   nodo,
   nivel,
   onCita,

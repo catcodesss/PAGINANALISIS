@@ -19,11 +19,16 @@
 import { Fragment, type ReactNode } from "react";
 import { ArrowLeftRight, ChartNoAxesColumnIncreasing, ClipboardList, Play, Target, type LucideIcon } from "lucide-react";
 import type { AnalisisFuncional, Id, Situacion } from "@/lib/types";
+import { ETIQUETA_ESQUEMA } from "@/lib/types";
+import type { NivelMapa } from "@/lib/preferencias";
 import { huecosDeSituacion, type CarrilGrafo, type HuecoGrafo, type NodoGrafo } from "@/lib/grafo";
-import { TERMINOS, type IdTermino } from "@/lib/terminos";
+import { TERMINOS, terminoDeContingencia, type IdTermino } from "@/lib/terminos";
 import { ETIQUETA_DESTINO_CARRIL, type DestinoCarril } from "@/lib/edicionMapa";
+import type { CitaVerificadaResuelta } from "@/lib/citas";
 import { TIPO_ARRASTRE_NODO, useEspacio } from "../espacio/contexto";
 import type { CapasMapa } from "./TableroSituacion";
+import CitaEmergente, { type FuenteCita } from "./CitaEmergente";
+import { etiquetaApoyo } from "./etiquetasNodo";
 import s from "./afc.module.css";
 
 export type AgruparMapa = "episodio" | "conducta";
@@ -33,7 +38,10 @@ interface TableroColumnasProps {
   nodos: readonly NodoGrafo[];
   capas: CapasMapa;
   agrupar: AgruparMapa;
+  /** Situación, Clínico o Evidencia: la misma estructura, con otra cosa resaltada. */
+  nivel: NivelMapa;
   ruta: Set<Id>;
+  onCita: (cita: CitaVerificadaResuelta) => void;
   renderNodo: (nodo: NodoGrafo) => ReactNode;
   renderAgregar: (carril: CarrilGrafo, situacionId: string, alternativa: boolean) => ReactNode;
   onSeleccionarId: (id: Id) => void;
@@ -110,8 +118,10 @@ function Episodio({
   titulo,
   nodos,
   capas,
+  nivel,
   ruta,
-  renderNodo,
+  onCita,
+  renderNodo: renderNodoBase,
   renderAgregar,
   onSeleccionarId,
   onAgregarFuncion,
@@ -147,6 +157,45 @@ function Episodio({
   const alternativas = deSituacion.filter((n) => n.alternativa && n.carril !== "inmediata");
   const necesarias = deSituacion.filter((n) => n.alternativa && n.carril === "inmediata");
   const funciones = deSituacion.filter((n) => n.tipo === "funcion");
+
+  // La estructura es la misma en los tres niveles; cambia lo que se resalta y
+  // lo que se sombrea. Clínico resalta lo que el modelo clínico añade al ABC
+  // (respondiente, cadena interna, conducta) y sombrea el resto; Evidencia
+  // enseña bajo cada nodo su apoyo y su frase, y sombrea lo inferido.
+  const esClinico = (n: NodoGrafo) => n.tipo === "ec" || n.tipo === "encubierta" || n.tipo === "conducta";
+  const renderNodo = (n: NodoGrafo): ReactNode => {
+    const fuentes: FuenteCita[] = [
+      ...(n.citas_clinico ?? []).map((cita) => ({ cita, tuya: true })),
+      ...(n.evidencia?.verificada ? [{ cita: n.evidencia }] : []),
+    ];
+    const pintado =
+      nivel === "evidencia" ? (
+        <div>
+          {renderNodoBase(n)}
+          <div className={s.evidenciaFila}>
+            <span>{etiquetaApoyo(n.apoyo)}</span>
+            {fuentes.length > 0 ? <CitaEmergente fuentes={fuentes} onVerEnNota={onCita} /> : <span>· sin frase de origen</span>}
+          </div>
+        </div>
+      ) : (
+        renderNodoBase(n)
+      );
+    if (nivel === "clinico") {
+      return <div className={esClinico(n) ? s.resaltado : s.sombreado}>{pintado}</div>;
+    }
+    if (nivel === "evidencia" && n.apoyo <= 1) return <div className={s.sombreado}>{pintado}</div>;
+    return pintado;
+  };
+
+  // Lo que dice la relación conducta → consecuencia: en Clínico, su contingencia;
+  // en Evidencia, además, el apoyo de la relación y las frases que la sostienen.
+  const inmediata = deSituacion.find((n) => n.tipo === "consecuencia" && n.carril === "inmediata");
+  const aristaFuncion = inmediata ? analisis.aristas.find((a) => a.hasta === inmediata.id) : undefined;
+  const operante = situacion.cadena_operante;
+  const contingencia = operante?.tipo_contingencia ? terminoDeContingencia(operante.tipo_contingencia) : null;
+  const citasFuncion = (aristaFuncion?.evidencia ?? []).filter((c): c is CitaVerificadaResuelta => c.verificada);
+  // Capa DBT (solo Clínico): numeración y soluciones sobre la cadena interna.
+  const eslabones = capas.dbt && nivel === "clinico" ? deSituacion.filter((n) => n.tipo === "encubierta") : [];
 
   return (
     <section className={s.situacion} data-situacion-id={situacion.id}>
@@ -222,7 +271,41 @@ function Episodio({
         {funciones.length === 0 && (
           <button type="button" onClick={() => onAgregarFuncion(situacion.id)} className={s.agregarBoton}>+ función hipotetizada</button>
         )}
+        {nivel !== "situacion" && operante && (
+          <p className={s.funcionDetalle}>
+            {contingencia && <span title={TERMINOS[contingencia].definicion}>{TERMINOS[contingencia].claro} · {TERMINOS[contingencia].tecnico}</span>}
+            <span>{operante.inmediatez}</span>
+            <span>{ETIQUETA_ESQUEMA[operante.esquema_de_contingencia]}</span>
+          </p>
+        )}
+        {nivel === "evidencia" && citasFuncion.length > 0 && (
+          <div className={s.evidenciaFila}>
+            <span>La relación se apoya en</span>
+            <CitaEmergente fuentes={citasFuncion.map((cita) => ({ cita }))} onVerEnNota={onCita} />
+          </div>
+        )}
       </div>
+
+      {eslabones.length > 0 && (
+        <div className={s.cadenaDbt}>
+          <p className={s.subzonaTitulo}>Cadena interna · DBT</p>
+          <ol>
+            {eslabones.map((e, i) => {
+              const soluciones = analisis.capa_dbt.analisis_de_soluciones.filter((x) => x.eslabon_id === e.id);
+              const habilidades = analisis.capa_dbt.habilidades_sugeridas.filter((h) => h.eslabon_id === e.id);
+              return (
+                <li key={e.id}>
+                  <button type="button" onClick={() => onSeleccionarId(e.id)}>
+                    <span>{i + 1}.</span> <span>{e.detalle}</span> {e.etiqueta}
+                  </button>
+                  {soluciones.map((x) => <p key={x.id}>◇ Solución: {x.alternativa_habil}</p>)}
+                  {habilidades.map((h, j) => <p key={j}>◇ Habilidad: {h.habilidad}</p>)}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
     </section>
   );
 }

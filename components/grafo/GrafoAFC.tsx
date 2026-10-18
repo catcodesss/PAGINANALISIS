@@ -22,7 +22,7 @@ import {
 } from "@/lib/grafo";
 import { EtiquetasProcesoACT, ProcesosSinAnclar } from "./AnotacionesACT";
 import VistaACT from "./estilos/act";
-import TableroSituacion, { type CapasMapa } from "./TableroSituacion";
+import { type CapasMapa } from "./TableroSituacion";
 import TableroColumnas, { type AgruparMapa } from "./TableroColumnas";
 import { rutaDeSeleccion, textoDeRuta } from "@/lib/rutaMapa";
 import { ETIQUETA_APOYO_ARISTA } from "@/lib/apoyoAristas";
@@ -433,7 +433,7 @@ function BotonAgregarNodo({
   );
 }
 
-export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto, onIrANivel }: GrafoAFCProps) {
+export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu, propsSoltarFrase, arrastrandoFrase, setNodoEnElAire } = useEspacio();
   const [modoConectar, setModoConectar] = useState(false);
@@ -466,10 +466,12 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
     if (nodo.evidencia?.verificada) irACita(nodo.evidencia);
   }
 
-  // Las líneas curvas solo existen en la vista Matrix: en los tableros las
-  // relaciones son arcos con su etiqueta y se seleccionan como un nodo.
+  // Las líneas curvas existen en la vista Matrix y en el nivel Clínico, donde
+  // las flechas cuentan el orden de la cadena. En Situación y Evidencia no hay:
+  // el tablero se lee por columnas y las relaciones se eligen desde el Inspector.
+  const conFlechas = matrix || nivel === "clinico";
   useLayoutEffect(() => {
-    if (!matrix) return;
+    if (!conFlechas) return;
     const contenedor = contenedorRef.current;
     if (!contenedor) return;
     let fotograma = 0;
@@ -479,17 +481,20 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
         const raiz = contenedorRef.current;
         if (!raiz) return;
         const cajaRaiz = raiz.getBoundingClientRect();
-        const caja = (id: string) => {
-          const elemento = raiz.querySelector<HTMLElement>(`[data-nodo-id="${CSS.escape(id)}"]`);
-          if (!elemento) return null;
+        const porId = (ambito: ParentNode, id: string) =>
+          ambito.querySelector<HTMLElement>(`[data-nodo-id="${CSS.escape(id)}"]`);
+        const aCaja = (elemento: HTMLElement) => {
           const rect = elemento.getBoundingClientRect();
           return { x: rect.left - cajaRaiz.left, y: rect.top - cajaRaiz.top, w: rect.width, h: rect.height };
         };
         setTrazos(analisis.aristas.flatMap((arista) => {
-          const desde = caja(arista.desde);
-          const hasta = caja(arista.hasta);
-          if (!desde || !hasta) return [];
-          return [{ id: arista.id, tipo: arista.tipo, apoyo: arista.apoyo, desde: arista.desde, hasta: arista.hasta, d: trazadoAFC(desde, hasta) }];
+          const origen = porId(raiz, arista.desde);
+          if (!origen) return [];
+          // En los tableros una flecha no cruza de una situación a otra: se
+          // busca el destino dentro de la misma situación que el origen.
+          const destino = porId(matrix ? raiz : (origen.closest("[data-situacion-id]") ?? raiz), arista.hasta);
+          if (!destino) return [];
+          return [{ id: arista.id, tipo: arista.tipo, apoyo: arista.apoyo, desde: arista.desde, hasta: arista.hasta, d: trazadoAFC(aCaja(origen), aCaja(destino)) }];
         }));
       });
     };
@@ -497,12 +502,16 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
     const observador = new ResizeObserver(dibujar);
     observador.observe(contenedor);
     window.addEventListener("resize", dibujar);
+    // El tablero se desplaza en horizontal dentro de su caja: las flechas
+    // siguen a las tarjetas.
+    contenedor.addEventListener("scroll", dibujar, true);
     return () => {
       cancelAnimationFrame(fotograma);
       observador.disconnect();
       window.removeEventListener("resize", dibujar);
+      contenedor.removeEventListener("scroll", dibujar, true);
     };
-  }, [analisis.aristas, nodos, matrix]);
+  }, [analisis.aristas, nodos, conFlechas, matrix, nivel, capas, agrupar]);
 
   // Los procesos ACT se leen sobre su nodo, por id y solo por id, cuando la capa
   // ACT está encendida y tienen base funcional. Lo demás va a la lista aparte.
@@ -600,7 +609,7 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
         >
           {origenConexion ? "Elige el destino" : "Conectar"}
         </button>
-        {nivel === "situacion" && !matrix && (
+        {!matrix && (
           <div role="group" aria-label="Separar el Mapa por" className="ml-2 flex items-center gap-1 text-xs">
             <span className="text-ink-muted">Separar por</span>
             {(["episodio", "conducta"] as const).map((opcion) => (
@@ -659,44 +668,30 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
           </>
         ) : (
           <div className="space-y-5">
-            {nivel === "situacion" ? (
-              <TableroColumnas
-                analisis={analisis}
-                nodos={nodos}
-                capas={capas}
-                agrupar={agrupar}
-                ruta={ruta.ids}
-                renderNodo={renderNodoMapa}
-                renderAgregar={renderAgregar}
-                onSeleccionarId={seleccionar}
-                onAgregarFuncion={(situacionId) => {
-                  const texto = window.prompt("Función hipotetizada")?.trim();
-                  if (texto) aplicar((copia) => agregarNodo(copia, situacionId, "funcion", texto));
-                }}
-              />
-            ) : analisis.situaciones.map((situacion) => (
-              <TableroSituacion
-                key={situacion.id}
-                analisis={analisis}
-                situacion={situacion}
-                nodos={nodos}
-                nivel={nivel}
-                capas={capas}
-                ruta={ruta.ids}
-                seleccionado={seleccionado}
-                renderNodo={renderNodoMapa}
-                renderAgregar={renderAgregar}
-                avisos={avisos}
-                onSeleccionarId={seleccionar}
-                onAgregarFuncion={(situacionId) => {
-                  const texto = window.prompt("Función hipotetizada")?.trim();
-                  if (texto) aplicar((copia) => agregarNodo(copia, situacionId, "funcion", texto));
-                }}
-                onCita={irACita}
-                onIrANivel={onIrANivel}
-                onMenu={abrirMenu}
-              />
-            ))}
+            {nivel === "clinico" && (
+              <svg className="pointer-events-none absolute inset-0 z-[5] hidden h-full w-full overflow-visible md:block" aria-hidden="true">
+                <defs><marker id="punta-clinico" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="currentColor" /></marker></defs>
+                {trazos.map((trazo) => (
+                  <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap={trazo.apoyo === "inferido" ? "round" : undefined} strokeDasharray={trazo.apoyo === "inferido" ? "0.1 5" : trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink/70"} markerEnd="url(#punta-clinico)" />
+                ))}
+              </svg>
+            )}
+            <TableroColumnas
+              analisis={analisis}
+              nodos={nodos}
+              capas={capas}
+              agrupar={agrupar}
+              nivel={nivel}
+              ruta={ruta.ids}
+              onCita={irACita}
+              renderNodo={renderNodoMapa}
+              renderAgregar={renderAgregar}
+              onSeleccionarId={seleccionar}
+              onAgregarFuncion={(situacionId) => {
+                const texto = window.prompt("Función hipotetizada")?.trim();
+                if (texto) aplicar((copia) => agregarNodo(copia, situacionId, "funcion", texto));
+              }}
+            />
             <FueraDeSituacion
               analisis={analisis}
               nodos={nodos}
