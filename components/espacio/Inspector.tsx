@@ -21,6 +21,7 @@ import { alertasPorNodo } from "@/lib/alertasNodo";
 import { etiquetaCita, type CitaVerificadaResuelta } from "@/lib/citas";
 import type { Cita } from "@/lib/types";
 import { confirmarElemento } from "@/lib/procedencia";
+import { ETIQUETA_PROCESO_ACT, tieneBaseFuncional } from "@/lib/procesosACT";
 import { aristaDeHipotesis, ETIQUETA_APOYO_ARISTA } from "@/lib/apoyoAristas";
 import { gradoDeHipotesis, relacionInferida, verboRelacion } from "@/lib/gradoApoyo";
 import {
@@ -69,6 +70,7 @@ export default function Inspector({
   // Una conducta que ninguna situación analiza no es nodo del grafo, pero se
   // elige desde el raíl y sus avisos tienen que verse.
   const conducta = analisis.conductas_problema.find((c) => c.id === seleccionado) ?? null;
+  const arista = analisis.aristas.find((a) => a.id === seleccionado) ?? null;
 
   return (
     <aside aria-label="Inspector" className="flex h-full min-h-0 flex-col">
@@ -99,6 +101,8 @@ export default function Inspector({
           <p className="text-sm text-ink-muted">
             El historial de cada elemento llegará con los casos y las sesiones.
           </p>
+        ) : arista ? (
+          <DetalleRelacion analisis={analisis} arista={arista} nodos={nodos} pestana={pestana} onEditarSeccion={onEditarSeccion} />
         ) : nodo ? (
           <DetalleNodo analisis={analisis} nodo={nodo} nodos={nodos} pestana={pestana} onEditarSeccion={onEditarSeccion} />
         ) : hipotesis ? (
@@ -164,7 +168,9 @@ function DetalleNodo({
         etiqueta: otro ? `${etiquetaTipoNodo(otro)}: ${otro.etiqueta}` : "[elemento sin etiqueta]",
       };
     });
-  const procesos = analisis.capa_act.procesos_act.filter((p) => p.nodo_id === nodo.id);
+  // Solo lo que tiene base funcional: una etiqueta ACT sin justificación se
+  // revisa en la lista aparte del Mapa, no se presenta como interpretación.
+  const procesos = analisis.capa_act.procesos_act.filter((p) => p.nodo_id === nodo.id && tieneBaseFuncional(p));
 
   if (pestana === "evidencia") {
     return (
@@ -247,7 +253,7 @@ function DetalleNodo({
           <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Interpretación · ACT</p>
           {procesos.map((p) => (
             <p key={p.id} className="mt-1 text-sm leading-relaxed text-ink">
-              {p.proceso}: {p.justificacion_funcional || "sin justificación funcional declarada"}
+              <span className="font-medium">{ETIQUETA_PROCESO_ACT[p.proceso]}:</span> {p.justificacion_funcional}
             </p>
           ))}
         </section>
@@ -297,6 +303,150 @@ function DetalleNodo({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Inspector de una relación: qué une, de qué tipo es, la función si es la
+ * contingencia de una situación, cuánto la sostiene la nota, qué la apoya y qué
+ * la contradice, y qué hipótesis y blancos se apoyan en ella.
+ */
+function DetalleRelacion({
+  analisis,
+  arista,
+  nodos,
+  pestana,
+  onEditarSeccion,
+}: {
+  analisis: AnalisisFuncional;
+  arista: AnalisisFuncional["aristas"][number];
+  nodos: readonly NodoGrafo[];
+  pestana: Pestana;
+  onEditarSeccion: EditarSeccion;
+}) {
+  const { aplicar, irACita, seleccionar, elegirVista } = useEspacio();
+  const desde = nodos.find((n) => n.id === arista.desde);
+  const hasta = nodos.find((n) => n.id === arista.hasta);
+  const citas = arista.evidencia.filter(esCitaVerificada);
+  // Si llega a la consecuencia inmediata de una situación, es su contingencia:
+  // la función hipotetizada vive en esta relación.
+  const situacion =
+    hasta?.tipo === "consecuencia" && hasta.carril === "inmediata"
+      ? analisis.situaciones.find((s) => s.id === hasta.situacion_id)
+      : undefined;
+  const operante = situacion?.cadena_operante;
+  const funcion = situacion ? nodos.find((n) => n.tipo === "funcion" && n.situacion_id === situacion.id) : undefined;
+  const hipotesis = analisis.hipotesis_mantenimiento.filter((h) => aristaDeHipotesis(analisis, h)?.id === arista.id);
+  const blancos = analisis.conductas_problema.filter((c) => c.id === arista.desde || c.id === arista.hasta);
+  const extremo = (n: NodoGrafo | undefined, id: string) =>
+    n ? (
+      <button type="button" onClick={() => seleccionar(n.id)} className="text-left text-ink hover:text-accent">
+        {etiquetaTipoNodo(n)}: {n.etiqueta}
+      </button>
+    ) : (
+      <span className="text-ink-muted">[{id}]</span>
+    );
+
+  if (pestana === "evidencia") {
+    return (
+      <div className="space-y-3 text-sm">
+        <p className="text-ink-muted">Apoyo de la relación: <span className="text-ink">{ETIQUETA_APOYO_ARISTA[arista.apoyo]}</span></p>
+        <section>
+          <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">A favor</p>
+          {citas.length === 0 ? (
+            <p className="text-ink-muted">Ninguna frase de la nota afirma esta relación: es inferida.</p>
+          ) : (
+            citas.map((c, i) => (
+              <button key={i} type="button" onClick={() => irACita(c)} className="mt-1 block text-left italic text-ink-muted hover:text-accent">
+                {etiquetaCita(c)} · &quot;{c.texto}&quot;
+              </button>
+            ))
+          )}
+        </section>
+        <section>
+          <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">En contra</p>
+          {/* No se inventa: la nota no trae evidencia en contra marcada, y el
+              análisis no la busca. Lo que no cuadra se registra como hipótesis
+              alternativa, que se lee en la hipótesis que use esta relación. */}
+          <p className="text-ink-muted">El análisis no registra evidencia en contra de esta relación. Revisa las hipótesis rivales de las hipótesis que la usan.</p>
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 text-sm">
+      <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Relación · {TIPO_RELACION[arista.tipo]}</p>
+      <div className="space-y-1">
+        <p className="text-ink-muted">Desde: {extremo(desde, arista.desde)}</p>
+        <p className="text-ink-muted">Hasta: {extremo(hasta, arista.hasta)}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <MuestraTrazo apoyo={arista.apoyo} />
+        <ApoyoRelacion apoyo={arista.apoyo} />
+      </div>
+      <InsigniaProcedencia
+        analisis={analisis}
+        id={arista.id}
+        onConfirmar={() => onEditarSeccion(null, (copia) => confirmarElemento(copia, arista.id))}
+      />
+      {situacion && operante && (
+        <section className="rounded border border-divider p-2">
+          <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Contingencia de «{situacion.nombre}»</p>
+          {funcion ? (
+            <p className="mt-1 text-ink">
+              Función:{" "}
+              <button type="button" onClick={() => seleccionar(funcion.id)} className="text-left underline decoration-divider underline-offset-2 hover:text-accent">
+                {funcion.etiqueta}
+              </button>
+            </p>
+          ) : (
+            <p className="mt-1 text-ink-muted">Sin función hipotetizada.</p>
+          )}
+          <p className="text-ink-muted">{operante.tipo_contingencia} · {operante.inmediatez}</p>
+        </section>
+      )}
+      {hipotesis.length > 0 && (
+        <section>
+          <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Hipótesis que la usan</p>
+          {hipotesis.map((h) => (
+            <button key={h.id} type="button" onClick={() => seleccionar(h.id)} className="mt-1 block text-left text-ink hover:text-accent">
+              {rotuloHipotesis(h)}
+            </button>
+          ))}
+        </section>
+      )}
+      {blancos.length > 0 && (
+        <section>
+          <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Blancos que la usan</p>
+          {blancos.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => {
+                elegirVista("blancos");
+                requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(`blanco-${c.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })));
+              }}
+              className="mt-1 block text-left text-ink hover:text-accent"
+            >
+              {c.descripcion}
+            </button>
+          ))}
+        </section>
+      )}
+      <button
+        type="button"
+        onClick={() => {
+          seleccionar(null);
+          aplicar((copia) => {
+            copia.aristas = copia.aristas.filter((a) => a.id !== arista.id);
+          });
+        }}
+        className="block rounded border border-warn/50 px-2 py-1 text-xs text-warn"
+      >
+        Borrar relación
+      </button>
     </div>
   );
 }

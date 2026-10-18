@@ -106,7 +106,6 @@ function Contenido({
               analisisConProsa={analisisConProsa}
               notaOriginal={notaOriginal}
               referenciaCaso={referenciaCaso}
-              onEditarSeccion={onEditarSeccion}
             />
           ) : (
             <div className="space-y-6">

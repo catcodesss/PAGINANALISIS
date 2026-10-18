@@ -480,3 +480,46 @@ export function agregarNodo(
     }
   }
 }
+
+/** Palabras que no distinguen una acción de otra. */
+const VACIAS_ESLABON = new Set(["para", "pero", "porque", "como", "cuando", "donde", "desde", "hasta", "sobre", "entre", "sin", "con", "una", "unos", "unas", "este", "esta", "esto"]);
+
+/** Raíces de tres letras de las palabras de cuatro o más: aguanta conjugaciones («pide»/«pidiendo»). */
+function raicesCortas(texto: string): Set<string> {
+  return new Set(
+    texto
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((p) => p.length >= 4 && !VACIAS_ESLABON.has(p))
+      .map((p) => p.slice(0, 3))
+  );
+}
+
+/** Lo que tiene que compartir un eslabón «acción» con su conducta para fundirse con ella. */
+export const UMBRAL_ESLABON_REPITE_CONDUCTA = 0.8;
+
+/**
+ * ¿Es este eslabón «acción» la misma conducta que la de su situación, dicha
+ * otra vez? Pasa cuando el modelo cierra la cadena DBT con la conducta problema
+ * («Pide ir al baño y evita exponer» frente a «Evita exponer resultados en
+ * reuniones, pidiendo ir al baño»), y el Mapa la pintaba dos veces.
+ *
+ * Criterio acordado con el clínico: el 80 % de las raíces del eslabón está en
+ * la conducta, y el eslabón tiene al menos dos. Raíces de tres letras porque
+ * en frases tan cortas las conjugaciones se comen las de seis. NO se borra
+ * nada: el eslabón sigue en los datos y en la exportación; el Mapa solo deja de
+ * pintarlo como un paso aparte de la cadena interna.
+ */
+export function eslabonRepiteConducta(
+  eslabon: { tipo: string; descripcion: string },
+  conducta: { descripcion: string }
+): boolean {
+  if (eslabon.tipo !== "accion") return false;
+  const propias = raicesCortas(eslabon.descripcion);
+  if (propias.size < 2) return false;
+  const deConducta = raicesCortas(conducta.descripcion);
+  const comunes = [...propias].filter((r) => deConducta.has(r)).length;
+  return comunes / propias.size >= UMBRAL_ESLABON_REPITE_CONDUCTA;
+}

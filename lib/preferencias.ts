@@ -37,6 +37,30 @@ export type EstiloGrafo = "afc" | "dbt" | "act";
 export const ESTILO_GRAFO_POR_DEFECTO: EstiloGrafo = "afc";
 export const CLAVE_ESTILO_GRAFO = "acia-estilo-grafo";
 
+/**
+ * Desde la fase 5B el Mapa no tiene «estilos» sino niveles de lectura de las
+ * mismas entidades: Situación (Ed → conducta → consecuencia, con la función en
+ * el arco), Clínico (cadena interna, respondiente, reglas, moduladoras) y
+ * Evidencia (apoyo y frase de origen de cada pieza). Las lecturas DBT y ACT
+ * pasan a ser capas encima de esos niveles.
+ */
+export type NivelMapa = "situacion" | "clinico" | "evidencia";
+export const NIVELES_MAPA: readonly NivelMapa[] = ["situacion", "clinico", "evidencia"];
+export const NIVEL_MAPA_POR_DEFECTO: NivelMapa = "situacion";
+
+/**
+ * Lo guardado en el navegador, como nivel actual. Se guarda en la misma clave
+ * que el antiguo estilo del grafo para que la preferencia de cada caso no se
+ * pierda: AFC era la lectura por situación, y DBT y ACT eran lecturas
+ * clínicas. Un valor que no se reconoce cae al nivel por defecto.
+ */
+export function nivelDeGuardado(valor: string | null | undefined): NivelMapa {
+  if (valor === "situacion" || valor === "clinico" || valor === "evidencia") return valor;
+  if (valor === "afc") return "situacion";
+  if (valor === "dbt" || valor === "act") return "clinico";
+  return NIVEL_MAPA_POR_DEFECTO;
+}
+
 /** La referencia es un código local; nunca se guarda texto clínico en la clave. */
 export function claveEstiloGrafo(referenciaCaso: string): string {
   const referencia = referenciaCaso.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-");

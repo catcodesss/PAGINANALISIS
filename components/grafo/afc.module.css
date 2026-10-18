@@ -260,7 +260,7 @@
   box-shadow: 0 0 0 1px var(--afc-acento), var(--afc-shadow);
 }
 .seleccionado:hover { box-shadow: 0 0 0 1px var(--afc-acento), var(--afc-shadow-hover); }
-.atenuado { opacity: .25; }
+.atenuado { opacity: .35; }
 
 .nodoCuerpo { display: flex; align-items: center; margin-top: 2px; }
 .nodoTexto { min-width: 0; flex: 1; }

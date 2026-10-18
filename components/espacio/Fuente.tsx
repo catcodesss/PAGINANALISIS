@@ -39,9 +39,14 @@ export default function Fuente({
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
 
   // Lo que se resalta: la cita que se pulsó o, si no, la del elemento elegido.
+  // Una relación también se elige en el Mapa, y su frase es la que la afirma.
   const nodoElegido = nodos.find((n) => n.id === seleccionado);
+  const aristaElegida = analisis.aristas.find((a) => a.id === seleccionado);
   const cita =
-    citaEnFuente ?? (nodoElegido?.evidencia?.verificada ? nodoElegido.evidencia : null);
+    citaEnFuente ??
+    (nodoElegido?.evidencia?.verificada
+      ? nodoElegido.evidencia
+      : (aristaElegida?.evidencia.find((c) => c.verificada) ?? null));
 
   // Llevar la nota a la frase resaltada. Solo mueve el scroll del cajón: no
   // toca estado, así que no provoca otro render.
@@ -73,7 +78,7 @@ export default function Fuente({
       if (a.evidencia.some((c) => c.verificada && citaCubreFrase(c, linea, frase, total))) {
         const desde = nodos.find((n) => n.id === a.desde);
         const hasta = nodos.find((n) => n.id === a.hasta);
-        salida.push({ id: a.desde, texto: `Relación: ${desde?.etiqueta ?? "?"} → ${hasta?.etiqueta ?? "?"}` });
+        salida.push({ id: a.id, texto: `Relación: ${desde?.etiqueta ?? "?"} → ${hasta?.etiqueta ?? "?"}` });
       }
     }
     return salida;
