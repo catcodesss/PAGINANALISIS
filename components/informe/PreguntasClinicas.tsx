@@ -18,7 +18,7 @@ import {
   estaAbierta,
   rotuloHipotesis,
 } from "@/lib/preguntas";
-import { TextoEditable, useEdicion } from "../edicionManual";
+import { BotonBorrar, TextoEditable, useEdicion } from "../edicionManual";
 import { useEspacio } from "../espacio/contexto";
 
 export type EditarSeccion = (
@@ -97,26 +97,28 @@ export function TarjetaPregunta({
           etiqueta={`Pregunta ${pregunta.id}`}
           className="text-[15px] leading-relaxed text-ink"
           onCambio={(v) => cambiar(SECCION, { texto: v })}
-          onBorrar={
-            compacta
-              ? undefined
-              : () =>
-                  onEditarSeccion(SECCION, (c) => {
-                    c.preguntas = c.preguntas.filter((p) => p.id !== pregunta.id);
-                    // Una intervención atada a una pregunta borrada no pierde la
-                    // dependencia: pasa a texto, que es como llega sin resolver.
-                    for (const l of c.lineas_de_intervencion_tentativas) {
-                      if (l.pregunta_id === pregunta.id) {
-                        l.pregunta_id = null;
-                        l.depende_de = pregunta.dato_faltante || pregunta.texto;
-                      }
-                    }
-                    for (const alt of c.hipotesis_alternativas) {
-                      if (alt.pregunta_id === pregunta.id) alt.pregunta_id = null;
-                    }
-                  })
-          }
         />
+        {!compacta && (
+          <BotonBorrar
+            etiqueta={`pregunta ${pregunta.id}`}
+            onBorrar={() =>
+              onEditarSeccion(SECCION, (c) => {
+                c.preguntas = c.preguntas.filter((p) => p.id !== pregunta.id);
+                // Una intervención atada a una pregunta borrada no pierde la
+                // dependencia: pasa a texto, que es como llega sin resolver.
+                for (const l of c.lineas_de_intervencion_tentativas) {
+                  if (l.pregunta_id === pregunta.id) {
+                    l.pregunta_id = null;
+                    l.depende_de = pregunta.dato_faltante || pregunta.texto;
+                  }
+                }
+                for (const alt of c.hipotesis_alternativas) {
+                  if (alt.pregunta_id === pregunta.id) alt.pregunta_id = null;
+                }
+              })
+            }
+          />
+        )}
       </div>
 
       {pregunta.revisar && (

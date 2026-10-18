@@ -74,7 +74,6 @@ export function TextoEditable({
   etiqueta,
   className = "text-[15px] leading-relaxed text-ink",
   multilinea = true,
-  onBorrar,
 }: {
   valor: string;
   onCambio: (nuevo: string) => void;
@@ -83,16 +82,10 @@ export function TextoEditable({
   etiqueta: string;
   className?: string;
   multilinea?: boolean;
-  /**
-   * Quitar el elemento entero. Vive dentro del editor abierto y no en la línea:
-   * un botón por línea llenaba el informe de controles que casi nunca se usan.
-   */
-  onBorrar?: () => void;
 }) {
   const edicion = useEdicion();
   const [editando, setEditando] = useState(false);
   const [borrador, setBorrador] = useState(valor);
-  const [confirmandoBorrar, setConfirmandoBorrar] = useState(false);
 
   if (!edicion) return <p className={className}>{valor}</p>;
 
@@ -101,7 +94,6 @@ export function TextoEditable({
 
   function abrir() {
     setBorrador(valor);
-    setConfirmandoBorrar(false);
     setEditando(true);
   }
 
@@ -153,58 +145,68 @@ export function TextoEditable({
           >
             Cancelar
           </button>
-          {onBorrar &&
-            (confirmandoBorrar ? (
-              <span className="ml-auto inline-flex items-center gap-2">
-                <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">¿Borrar?</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditando(false);
-                    onBorrar();
-                  }}
-                  className={CLASE_BOTON_SUTIL}
-                >
-                  Sí, borrar
-                </button>
-                <button type="button" onClick={() => setConfirmandoBorrar(false)} className={CLASE_BOTON_SUTIL}>
-                  No
-                </button>
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmandoBorrar(true)}
-                aria-label={`Borrar: ${etiquetaCompleta}`}
-                className={`${CLASE_BOTON_SUTIL} ml-auto`}
-              >
-                Borrar
-              </button>
-            ))}
         </div>
       </div>
     );
   }
 
-  // El texto es el control: parece texto y se edita al hacer clic, sin un
-  // botón «Editar» por línea (fase 5C).
   return (
-    <p
-      role="button"
-      tabIndex={0}
-      onClick={abrir}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          abrir();
-        }
-      }}
-      aria-label={`${valor}. Editar ${etiquetaCompleta}`}
-      title="Clic para editar"
-      className={`${className} -mx-1 cursor-text rounded px-1 transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 print:mx-0 print:px-0`}
-    >
+    <p className={`${className} group/edit relative`}>
       {valor}
+      <button
+        type="button"
+        onClick={abrir}
+        aria-label={`Editar: ${etiquetaCompleta}`}
+        className={`${CLASE_BOTON_SUTIL} ml-2 align-middle opacity-0 group-hover/edit:opacity-100 focus:opacity-100 print:hidden`}
+      >
+        Editar
+      </button>
     </p>
+  );
+}
+
+/** Botón para quitar un elemento que la IA no debería haber producido. */
+export function BotonBorrar({
+  onBorrar,
+  etiqueta,
+}: {
+  onBorrar: () => void;
+  etiqueta: string;
+}) {
+  const edicion = useEdicion();
+  const [confirmando, setConfirmando] = useState(false);
+
+  if (!edicion) return null;
+
+  if (confirmando) {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+          ¿Borrar?
+        </span>
+        <button type="button" onClick={onBorrar} className={CLASE_BOTON_SUTIL}>
+          Sí, borrar
+        </button>
+        <button
+          type="button"
+          onClick={() => setConfirmando(false)}
+          className={CLASE_BOTON_SUTIL}
+        >
+          No
+        </button>
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setConfirmando(true)}
+      aria-label={`Borrar: ${etiqueta}`}
+      className={`${CLASE_BOTON_SUTIL} print:hidden`}
+    >
+      Borrar
+    </button>
   );
 }
 

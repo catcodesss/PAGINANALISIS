@@ -25,7 +25,6 @@ import Rail from "./Rail";
 import Inspector from "./Inspector";
 import Fuente from "./Fuente";
 import VistaMapa from "./VistaMapa";
-import MenuElemento from "./MenuElemento";
 
 export interface EspacioTrabajoProps {
   analisis: AnalisisFuncional;
@@ -42,7 +41,6 @@ export default function EspacioTrabajo(props: EspacioTrabajoProps) {
   return (
     <ProveedorEspacio
       analisis={props.analisis}
-      notaOriginal={props.notaOriginal}
       onEditar={(mutar) => props.onEditarSeccion("situaciones", mutar)}
     >
       <Contenido {...props} />
@@ -108,6 +106,7 @@ function Contenido({
               analisisConProsa={analisisConProsa}
               notaOriginal={notaOriginal}
               referenciaCaso={referenciaCaso}
+              onEditarSeccion={onEditarSeccion}
             />
           ) : (
             <div className="space-y-6">
@@ -144,7 +143,6 @@ function Contenido({
       )}
 
       <Fuente analisis={analisis} notaOriginal={notaOriginal} />
-      <MenuElemento analisis={analisis} onEditarSeccion={onEditarSeccion} />
     </div>
   );
 }

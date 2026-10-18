@@ -373,11 +373,13 @@ export function BloqueCorregir() {
 
       <Marca titulo="Corregir a mano">
         <p className="text-sm leading-relaxed text-ink-muted">
-          Haz clic en cualquier texto del informe para editarlo. Con el texto
-          abierto tienes además <em>borrar</em> —para una conducta que la IA no
-          debería haber producido—; en las listas, <em>+ agregar</em> para lo
-          que faltaba. En el Mapa, el clic derecho sobre un nodo abre sus
-          acciones. Se editan los textos; las clasificaciones (manifiesta,
+          Pasa el ratón sobre cualquier texto del informe y aparece{" "}
+          <span className="font-mono text-[11px] uppercase tracking-wide text-accent">
+            editar
+          </span>
+          . En las listas tienes además <em>borrar</em> —para una conducta que la
+          IA no debería haber producido— y <em>+ agregar</em>, para lo que
+          faltaba. Se editan los textos; las clasificaciones (manifiesta,
           importancia, confianza) no, porque dejarían de concordar con el resto
           del análisis.
         </p>

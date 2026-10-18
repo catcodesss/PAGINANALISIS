@@ -123,21 +123,3 @@ export function tieneBaseFuncional(p: Pick<ProcesoACT, "justificacion_funcional"
   return p.justificacion_funcional.trim().length > 0 && !p.revisar_proceso;
 }
 
-
-/**
- * La capa ACT del Mapa solo interpreta lo que está anclado a un nodo visible y
- * tiene base funcional. Lo demás no se esconde: va aparte, con su recuento,
- * porque una etiqueta ACT sin justificación sobre un nodo parecería un hallazgo.
- */
-export function repartirProcesosACT<P extends Pick<ProcesoACT, "nodo_id" | "justificacion_funcional" | "revisar_proceso">>(
-  procesos: readonly P[],
-  idsNodos: ReadonlySet<Id>
-): { interpretables: P[]; aparte: P[] } {
-  const interpretables: P[] = [];
-  const aparte: P[] = [];
-  for (const p of procesos) {
-    const anclado = p.nodo_id !== null && idsNodos.has(p.nodo_id);
-    (anclado && tieneBaseFuncional(p) ? interpretables : aparte).push(p);
-  }
-  return { interpretables, aparte };
-}

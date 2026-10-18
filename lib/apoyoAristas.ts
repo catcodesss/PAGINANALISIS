@@ -181,12 +181,6 @@ function calcular(
     }
   }
 
-  // Una frase que uniste tú a la relación es una frase de la nota que la
-  // afirma: sube el techo a textual. Sus extremos siguen poniendo el tope, y
-  // la cita no entra en `evidencia`, que es solo del modelo: se lee aparte, en
-  // `citas_del_clinico`.
-  if ((analisis.citas_del_clinico?.[arista.id] ?? []).length > 0) techo = NUMERO_TEXTUAL;
-
   const extremos = Math.min(origen.apoyo, destino.apoyo);
   const numero = Math.min(techo, extremos) as 1 | 2 | 3;
   return {
@@ -206,10 +200,7 @@ export function calcularApoyoAristas(analisis: AnalisisFuncional): void {
   for (const n of construirNodosGrafo(analisis)) if (!nodos.has(n.id)) nodos.set(n.id, n);
 
   for (const arista of analisis.aristas) {
-    // Una relación tuya no hereda apoyo de nada... salvo de la frase que tú
-    // le unas: entonces vale lo que esa frase, con el tope de sus extremos.
-    const conCitaTuya = (analisis.citas_del_clinico?.[arista.id] ?? []).length > 0;
-    if (procedenciaDe(analisis, arista.id).estado === "creado" && !conCitaTuya) {
+    if (procedenciaDe(analisis, arista.id).estado === "creado") {
       arista.apoyo = "inferido";
       arista.evidencia = [];
       continue;

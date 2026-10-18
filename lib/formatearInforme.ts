@@ -1,6 +1,5 @@
 import { ETIQUETA_ESQUEMA, type Alerta, type AnalisisFuncional, type Cita, type Situacion } from "./types";
 import { referenciaEnTexto } from "./citas";
-import { citasDelClinicoEnTexto } from "./edicionMapa";
 import {
   ETIQUETA_ESTADO_HIPOTESIS,
   ETIQUETA_ESTADO_PREGUNTA,
@@ -615,18 +614,11 @@ export function formatearInformeTexto(
       analisis.acomodacion_entorno
         .map(
           (a) =>
-            `- [${a.quien || "quién: sin indicar"}] ${a.conducta_acomodacion}${a.funcion ? `\n  Función: ${a.funcion}` : ""}\n  De la nota: ${textoCita(a.evidencia)}\n  Procedencia: ${marcaDeExportacion(analisis, a.id)}`
+            `- [${a.quien}] ${a.conducta_acomodacion}${a.funcion ? `\n  Función: ${a.funcion}` : ""}\n  De la nota: ${textoCita(a.evidencia)}`
         )
         .join("\n")
     )
   );
-
-  // Las frases que el clínico unió a un elemento o una relación (fase 5C). En
-  // su propio apartado y marcadas: no son citas del modelo (invariante 6).
-  const citasTuyas = citasDelClinicoEnTexto(analisis, referenciaEnTexto);
-  if (citasTuyas.length > 0) {
-    bloques["situaciones"] += SALTO + seccion("CITAS AÑADIDAS POR EL PROFESIONAL", citasTuyas.join("\n"));
-  }
 
   // Conducta gobernada por reglas: es análisis conductual general, no de ACT,
   // así que va con el AFC. Sin comillas: una regla no lleva cita, y aunque el

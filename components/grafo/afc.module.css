@@ -106,18 +106,6 @@
    el área principal mide 779 px (medido): un mínimo mayor obligaba a scroll
    horizontal y dejaba "Consecuencias" fuera de vista. */
 .lienzo { min-width: 760px; }
-/* El tablero del nivel Situación convive con el raíl y el Inspector: a 1440 px
-   le quedan unos 685 px (medido). Por encima de esto cabe sin desplazarse. */
-.lienzoColumnas { min-width: 600px; }
-/* Con poco sitio, el tablero aprieta cabeceras y márgenes antes de desplazarse. */
-.contenedorColumnas { container-type: inline-size; }
-@container (max-width: 760px) {
-  .lienzoColumnas { gap: 12px; }
-  .lienzoColumnas .columnaCabecera { gap: 6px; min-height: 46px; padding: 0 10px; }
-  .lienzoColumnas .columnaIcono { width: 18px; height: 18px; }
-  .lienzoColumnas .columnaTitulo { font-size: .95rem; }
-  .lienzoColumnas .columnaCuerpo { padding: 10px; }
-}
 
 .pila { display: flex; flex-direction: column; gap: 1.25rem; }
 
@@ -272,22 +260,10 @@
   box-shadow: 0 0 0 1px var(--afc-acento), var(--afc-shadow);
 }
 .seleccionado:hover { box-shadow: 0 0 0 1px var(--afc-acento), var(--afc-shadow-hover); }
-.atenuado { opacity: .35; }
+.atenuado { opacity: .25; }
 
 .nodoCuerpo { display: flex; align-items: center; margin-top: 2px; }
 .nodoTexto { min-width: 0; flex: 1; }
-/* Propuesta de la IA sin revisar: el borde lo dice sin color (fase 5C). */
-.propuesta { border-style: dashed; }
-/* Mientras se arrastra una frase de la Fuente: aquí se puede soltar. */
-.destinoCita { outline: 1.5px dashed var(--afc-acento); outline-offset: 3px; }
-.marcaProcedencia {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  font-size: .625rem;
-  line-height: 1;
-  color: var(--afc-text-tertiary);
-}
 .chip {
   display: inline-block;
   font-size: .625rem;
@@ -433,42 +409,6 @@
   color: var(--afc-text-secondary);
 }
 .funcionTexto { min-width: 0; }
-.funcionDetalle {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .25rem 1rem;
-  margin: 6px 2px 0;
-  font-size: .75rem;
-  color: var(--afc-text-secondary);
-}
-/* Bajo cada tarjeta en Evidencia: el grado de apoyo y el botón que abre la frase. */
-.evidenciaFila {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .25rem .5rem;
-  margin: 6px 2px 0;
-  font-size: .75rem;
-  color: var(--afc-text-secondary);
-}
-
-/* Niveles del Mapa: la estructura no cambia, cambia lo que se lee primero. */
-.resaltado { border-radius: 12px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--afc-acento, var(--afc-line)) 55%, transparent); }
-.sombreado { opacity: .5; transition: opacity 150ms ease; }
-.sombreado:hover, .sombreado:focus-within { opacity: 1; }
-
-.cadenaDbt {
-  margin-top: 12px;
-  padding: 12px 16px;
-  background: var(--afc-neutral-bg);
-  border: 1px solid var(--afc-neutral-border);
-  border-radius: 10px;
-  font-size: .8125rem;
-  color: var(--afc-text);
-}
-.cadenaDbt ol { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
-.cadenaDbt button { background: none; border: 0; padding: 0; font: inherit; text-align: left; color: inherit; cursor: pointer; }
-.cadenaDbt li > p { margin: 2px 0 0 1.25rem; font-size: .75rem; color: var(--afc-text-secondary); }
 
 /* ---------- Entidades globales ---------- */
 .globales {

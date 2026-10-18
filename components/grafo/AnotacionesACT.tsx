@@ -55,10 +55,10 @@ export function ProcesosSinAnclar({ procesos }: { procesos: readonly ProcesoACT[
   if (procesos.length === 0) return null;
   return (
     <section className="rounded-xl border border-dashed border-divider bg-surface p-3">
-      <h4 className="font-serif text-base font-semibold text-ink">Procesos ACT sin anclar o sin justificar</h4>
+      <h4 className="font-serif text-base font-semibold text-ink">Procesos ACT sin anclar</h4>
       <p className="mt-1 text-xs text-ink-muted">
-        No se pudieron enganchar a un elemento concreto del análisis, o no declaran qué los controla.
-        Se muestran aparte en vez de presentarlos sobre un nodo como si fueran un hallazgo.
+        No se pudieron enganchar a un elemento concreto del análisis. Se muestran aparte en vez de
+        repartirlos por una situación entera.
       </p>
       <ul className="mt-3 space-y-2">
         {procesos.map((p) => (
