@@ -209,6 +209,29 @@ export function calcularApoyoAristas(analisis: AnalisisFuncional): void {
     arista.apoyo = apoyo;
     arista.evidencia = evidencia;
   }
+  marcarContradichas(analisis);
+}
+
+/**
+ * ⊘ (fase 8): una frase de una sesión posterior, aceptada por el clínico, va en
+ * contra de la relación, de su hipótesis, o la hipótesis quedó descartada. Su
+ * apoyo baja al mínimo y no lista citas: la nota ya no la sostiene sin más.
+ */
+function marcarContradichas(a: AnalisisFuncional): void {
+  const enContra = (id: string | null | undefined) =>
+    !!id && (a.seguimiento?.evidencia?.[id] ?? []).some((e) => e.postura === "en_contra");
+  for (const arista of a.aristas) {
+    const contradicha =
+      enContra(arista.id) ||
+      hipotesisDeArista(a, arista.desde, arista.hasta).some((h) => enContra(h.id) || h.estado === "descartada");
+    if (contradicha) {
+      arista.contradicha = true;
+      arista.apoyo = "inferido";
+      arista.evidencia = [];
+    } else {
+      delete arista.contradicha;
+    }
+  }
 }
 
 /** El más débil de varios apoyos de relación. Vacío = sin relaciones = inferido. */

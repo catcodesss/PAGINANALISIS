@@ -10,11 +10,14 @@
  *   node run.mjs --endpoint=http://localhost:3000/api/analizar
  *   node run.mjs --caso=01 --reps=3
  *   node run.mjs --caso=01 --fixture=fixtures/01-v0.1.2.json   (sin gastar API)
+ *   node run.mjs --sesion --endpoint=http://localhost:3000/api/actualizar --reps=3
+ *     (varias sesiones, fase 8: ver evals/sesiones.mjs)
  */
 
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ejecutarSesiones } from './sesiones.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const DIR_CASOS = join(AQUI, 'casos');
@@ -189,7 +192,19 @@ const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── ejecución ───────────────────────────────────────────────
 async function main() {
-  const casos = cargarCasos();
+  if (process.argv.includes('--sesion')) {
+    const ok = await ejecutarSesiones({
+      raiz: join(AQUI, '..'),
+      dirCasos: DIR_CASOS,
+      endpoint: arg('endpoint', 'http://localhost:3000/api/actualizar'),
+      reps: REPS,
+      solo: SOLO,
+      pausa: PAUSA_MS,
+    });
+    process.exit(ok ? 0 : 1);
+  }
+  // Los casos de varias sesiones no tienen «## NOTA» de sesión 1: se saltan aquí.
+  const casos = cargarCasos().filter((c) => c.nota);
   if (!casos.length) {
     console.error('No hay casos que ejecutar.');
     process.exit(1);

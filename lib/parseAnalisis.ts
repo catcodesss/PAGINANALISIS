@@ -595,6 +595,7 @@ const CAMPOS_DEL_SERVIDOR = new Set<string>([
   "procedencia",
   "citas_del_clinico",
   "blancos",
+  "seguimiento",
 ]);
 
 /**
@@ -695,6 +696,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     // Sin definir y no `[]`: una lista ya existente se toma por decisión del
     // clínico y no se regenera (igual que `aristas`).
     blancos: undefined as unknown as AnalisisFuncional["blancos"],
+    seguimiento: seguimientoVacio(),
   };
   // La capa MC ya no es parte del esquema, pero un JSON anterior a la v3 (el
   // informe de ejemplo, o uno pegado a mano) la trae. Se pasa tal cual para
@@ -816,7 +818,12 @@ const NORMALIZADORES_POR_CAMPO: {
   procedencia: () => ({}),
   citas_del_clinico: () => ({}),
   blancos: () => [],
+  seguimiento: () => seguimientoVacio(),
 };
+
+export function seguimientoVacio(): AnalisisFuncional["seguimiento"] {
+  return { evidencia: {}, estados_rivales: {}, blancos_a_revisar: {}, novedades: {} };
+}
 
 function esCampoDeAnalisis(campo: string): campo is keyof AnalisisFuncional {
   return (CAMPOS_ANALISIS_FUNCIONAL as readonly string[]).includes(campo);

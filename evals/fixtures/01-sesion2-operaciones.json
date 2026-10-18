@@ -1,0 +1,12 @@
+{
+  "nota_de_mantenimiento": "Respuesta simulada de /api/actualizar para el caso 01 con la nota de evals/casos/10-sesion2-registro.md. Escrita a mano, no generada: sirve al modo maqueta y a evals/actualizacion.test.mjs. Las referencias son las de construirReferencias sobre fixtures/01-v0.1.2.json (node evals/actualizacion.test.mjs --refs).",
+  "razonamiento_previo": "Borrador interno: no debe salir del servidor.",
+  "operaciones": [
+    { "op": "añadir_evidencia", "ref": "H1", "frases": ["L2.1", "L2.2"], "postura": "a_favor", "justificacion": "Vuelve a salir antes de su turno y evita exponer." },
+    { "op": "modificar", "ref": "S1", "campo": "antecedente", "valor": "Supervisora pide exponer resultados en una reunión grande; en grupos pequeños expone sin problema.", "frases": ["L1.2", "L2.1"], "justificacion": "El antecedente depende del tamaño del grupo." },
+    { "op": "responder", "ref": "P3", "estado": "respondida_en_parte", "frases": ["L1.3"], "justificacion": "La supervisora refuerza cuando expone." },
+    { "op": "añadir_evidencia", "ref": "R23", "frases": ["L3.1"], "postura": "a_favor", "justificacion": "El mal sueño se repite antes de reuniones." },
+    { "op": "crear", "tipo": "conducta", "contenido": { "descripcion": "No llama al seguro y deja que su pareja lo haga.", "misma_clase_que": "C3" }, "frases": ["L4.1"], "justificacion": "Misma evitación de exposición social, en otro contexto." },
+    { "op": "nueva_pregunta", "texto": "¿A partir de cuántas personas aparece la evitación?", "ref_hipotesis": "H1", "frases": ["L1.2"], "justificacion": "Separa el tamaño del grupo de otros antecedentes." }
+  ]
+}

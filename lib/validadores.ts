@@ -543,6 +543,28 @@ function validarPlanPorBlanco(a: AnalisisFuncional): Alerta[] {
 }
 
 /**
+ * Propagación de la fase 8: si la hipótesis de un blanco cambió con una sesión
+ * posterior, el blanco avisa hasta que el clínico lo revise (lo toque).
+ */
+function validarHipotesisCambiada(a: AnalisisFuncional): Alerta[] {
+  const pendientes = a.seguimiento?.blancos_a_revisar ?? {};
+  const alertas: Alerta[] = [];
+  (a.blancos ?? []).forEach((b, indice) => {
+    const sesion = pendientes[b.id];
+    if (sesion === undefined) return;
+    alertas.push({
+      codigo: "hipotesis_cambiada",
+      origen: "validador",
+      gravedad: "media",
+      ruta: `blancos[${indice}]`,
+      elemento: a.conductas_problema.find((c) => c.id === b.conducta_ids[0])?.descripcion ?? "Blanco",
+      mensaje: `La hipótesis cambió en la sesión ${sesion}: revisa mecanismo y estrategia.`,
+    });
+  });
+  return alertas;
+}
+
+/**
  * Ejecuta todas las comprobaciones y devuelve el análisis con sus alertas.
  * Modifica confianzas cuando la evidencia no las sostiene (ver V1).
  */
@@ -557,6 +579,7 @@ export function validarAnalisis(
     ...validarDependenciaDeDatosFaltantes(analisis),
     ...validarRiesgoNoDetectado(analisis, nota),
     ...validarPlanPorBlanco(analisis),
+    ...validarHipotesisCambiada(analisis),
   ];
 
   analisis.alertas = sinDuplicados(alertas);
@@ -735,6 +758,7 @@ export function revalidarTrasEdicion(
     ...validarDependenciaDeDatosFaltantes(analisis),
     ...validarRiesgoNoDetectado(analisis, nota),
     ...validarPlanPorBlanco(analisis),
+    ...validarHipotesisCambiada(analisis),
   ]);
 }
 
@@ -772,5 +796,6 @@ export function revalidarTrasReanalisis(
     ...validarDependenciaDeDatosFaltantes(analisis),
     ...validarRiesgoNoDetectado(analisis, nota),
     ...validarPlanPorBlanco(analisis),
+    ...validarHipotesisCambiada(analisis),
   ]);
 }

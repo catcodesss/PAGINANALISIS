@@ -117,3 +117,46 @@ Cada ejecución completa son 6 llamadas a OpenAI (más si usas `--reps`). Usa
 
 **No uses notas de pacientes reales en esta carpeta.** Todos los casos son
 ficticios y están pensados para vivir en el repositorio.
+
+
+## Varias sesiones (fase 8)
+
+Un caso con `## NOTA SESIÓN 2` no se analiza desde cero: parte del informe
+guardado que nombra `## FIXTURE` (en `fixtures/`) y prueba `/api/actualizar`.
+
+```
+## FIXTURE
+01-v0.1.2.json
+
+## NOTA SESIÓN 2
+…
+
+## COMPROBACIONES SESIÓN 2
+```json
+[
+  { "id": "…", "tipo": "debe_proponer", "op": "proponer_estado", "objetivo": "rival", "estado": "debilitada" },
+  { "id": "…", "tipo": "no_debe_proponer", "op": "crear|modificar" },
+  { "id": "…", "tipo": "no_toca_confirmados" },
+  { "id": "…", "tipo": "referencias_validas" },
+  { "id": "…", "tipo": "citas_validas" }
+]
+```
+```
+
+- `op` admite varias separadas por `|`; `objetivo` es el tipo de referencia
+  (`conducta`, `hipotesis`, `rival`, `pregunta`, `situacion`, `blanco`,
+  `relacion`); `patron` se busca en el valor, la justificación y las frases.
+- `no_toca_confirmados`: el runner confirma la segunda conducta del caso antes
+  de enviar, y falla si alguna propuesta la modifica o cambia su estado.
+- `referencias_validas` y `citas_validas` fallan si el servidor tuvo que
+  descartar referencias o frases inventadas.
+
+Ejecutar (gasta una llamada por caso y repetición):
+
+```bash
+npm run dev:evals                                                           # consola 1
+node evals/run.mjs --sesion --endpoint=http://localhost:3000/api/actualizar --reps=3   # consola 2
+```
+
+`evals/actualizacion.test.mjs` prueba sin API la parte determinista: referencias
+inventadas, frases inexistentes, confirmados, autoría, propagación y ⊘.

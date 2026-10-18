@@ -52,6 +52,13 @@ import {
   type AutorRevision,
   type Expediente,
 } from "@/lib/casos";
+import RevisarCambios from "@/components/RevisarCambios";
+import {
+  aplicarPropuestas,
+  limpiarBlancosRevisados,
+  type Aceptada,
+  type ConjuntoCambios,
+} from "@/lib/actualizacion";
 import PreguntasDatosFaltantes, {
   type ResultadoPreguntas,
 } from "@/components/PreguntasDatosFaltantes";
@@ -109,6 +116,9 @@ export default function Home() {
   const [notaSesion, setNotaSesion] = useState("");
   const [registroSesion, setRegistroSesion] = useState("");
   const [avisoGuardado, setAvisoGuardado] = useState("");
+  // Fase 8: el conjunto de cambios pendiente de la sesión recién añadida.
+  const [revision, setRevision] = useState<{ conjunto: ConjuntoCambios; sesionId: string } | null>(null);
+  const [actualizando, setActualizando] = useState(false);
   // Refs para los guardados asíncronos: leen el caso de ahora, no el del render
   // en que empezaron.
   const expedienteRef = useRef<Expediente | null>(null);
@@ -204,6 +214,66 @@ export default function Home() {
     setPanelSesion(false);
     setNotaSesion("");
     setRegistroSesion("");
+    return { sesion, analisis };
+  }
+
+  /**
+   * «Analizar sesión»: la nota se guarda primero (inmutable, aunque la
+   * llamada falle) y luego el modelo propone cambios. Nada se aplica aquí.
+   */
+  async function analizarNuevaSesion() {
+    const nota = notaSesion;
+    setActualizando(true);
+    const guardada = await guardarNuevaSesion();
+    if (!guardada) {
+      setActualizando(false);
+      return;
+    }
+    try {
+      const r = await fetch("/api/actualizar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nota, analisis: guardada.analisis, sesion: guardada.sesion.n }),
+      });
+      const datos = await r.json().catch(() => null);
+      if (!r.ok || !datos?.conjunto) {
+        setAvisoGuardado(
+          `Sesión guardada sin análisis. ${typeof datos?.message === "string" ? datos.message : MENSAJE_ERROR_GENERICO}`
+        );
+        return;
+      }
+      setRevision({ conjunto: datos.conjunto as ConjuntoCambios, sesionId: guardada.sesion.id });
+    } catch {
+      setAvisoGuardado(`Sesión guardada sin análisis. ${MENSAJE_ERROR_GENERICO}`);
+    } finally {
+      setActualizando(false);
+    }
+  }
+
+  /**
+   * Aplica solo lo aceptado. Dos pasos para la autoría (invariante 6): lo
+   * aceptado tal cual deja revisiones de la IA; lo editado, del clínico.
+   */
+  async function aplicarRevision(aceptadas: Aceptada[]) {
+    const exp = expedienteRef.current;
+    if (!revision || !exp || !analisis) return;
+    const n = revision.conjunto.sesion;
+    const editada = (x: Aceptada) =>
+      x.valorEditado !== undefined && x.valorEditado.trim() !== "" && x.valorEditado !== x.propuesta.valor;
+    const conIA = structuredClone(analisis);
+    aplicarPropuestas(conIA, aceptadas.filter((x) => !editada(x)), n);
+    const final = structuredClone(conIA);
+    aplicarPropuestas(final, aceptadas.filter(editada), n);
+    calcularApoyoAristas(final);
+    final.alertas = revalidarTrasEdicion(final, ultimoTextoEnviado);
+    const datos = { caso_id: exp.caso.id, sesion_id: revision.sesionId, motivo: `Sesión ${n}` };
+    const revisiones = [
+      ...revisionesEntre(analisis, conIA, { ...datos, autor: "ia" }),
+      ...revisionesEntre(conIA, final, { ...datos, autor: "clinico" }),
+    ];
+    await persistir(guardarVersion(registrarRevisiones(exp, revisiones), revision.sesionId, final));
+    setAnalisis(final);
+    setRevision(null);
   }
 
   const ultima = expediente ? ultimaSesion(expediente) : null;
@@ -456,6 +526,8 @@ export default function Home() {
       const copia = structuredClone(previo);
       mutar(copia);
       cerrarEdicion(previo, copia, seccionId === null);
+      // Un blanco que el clínico toca deja de pedir revisión por la hipótesis.
+      limpiarBlancosRevisados(previo, copia);
       // null = decisión sobre la propuesta (estado del plan), no texto propio.
       if (seccionId !== null && !previo.secciones_editadas.includes(seccionId)) {
         copia.secciones_editadas = [...previo.secciones_editadas, seccionId];
@@ -856,17 +928,28 @@ export default function Home() {
                     </button>
                   </p>
                 )}
-                <p className="mt-2 text-xs text-ink-muted">Se guarda sin IA. La formulación no cambia.</p>
-                <div className="mt-4 flex justify-end gap-2">
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
                   <button type="button" onClick={() => setPanelSesion(false)} className="rounded border border-divider px-4 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-canvas">
                     Cancelar
                   </button>
-                  <button type="button" onClick={() => void guardarNuevaSesion()} disabled={!notaSesion.trim()} className="rounded bg-accent px-4 py-1.5 text-sm font-medium texto-sobre-acento transition-colors hover:bg-accent/90 disabled:opacity-50">
-                    Guardar sesión
+                  <button type="button" onClick={() => void guardarNuevaSesion()} disabled={!notaSesion.trim() || actualizando} title="Guarda la nota sin IA; la formulación no cambia" className="rounded border border-divider px-4 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-canvas disabled:opacity-50">
+                    Solo guardar
+                  </button>
+                  <button type="button" onClick={() => void analizarNuevaSesion()} disabled={!notaSesion.trim() || actualizando} className="rounded bg-accent px-4 py-1.5 text-sm font-medium texto-sobre-acento transition-colors hover:bg-accent/90 disabled:opacity-50">
+                    {actualizando ? "Analizando…" : "Analizar sesión · 1 crédito"}
                   </button>
                 </div>
               </div>
             </div>
+          )}
+
+          {revision && analisis && (
+            <RevisarCambios
+              analisis={analisis}
+              conjunto={revision.conjunto}
+              onAplicar={(aceptadas) => void aplicarRevision(aceptadas)}
+              onCancelar={() => setRevision(null)}
+            />
           )}
 
           {vista === "casos" && (

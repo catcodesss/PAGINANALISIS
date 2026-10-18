@@ -828,6 +828,15 @@ export function migrarAV8(analisis: AnalisisFuncional): AnalisisFuncional {
   } else {
     for (const b of analisis.blancos) completarBlanco(b);
   }
+  // Fase 8, sin subir la versión: un campo nuevo que nace vacío no cambia nada
+  // de lo que ya había.
+  const seg = (analisis.seguimiento ?? {}) as Partial<AnalisisFuncional["seguimiento"]>;
+  analisis.seguimiento = {
+    evidencia: seg.evidencia ?? {},
+    estados_rivales: seg.estados_rivales ?? {},
+    blancos_a_revisar: seg.blancos_a_revisar ?? {},
+    novedades: seg.novedades ?? {},
+  };
   analisis.siguiente_id = Math.max(analisis.siguiente_id, siguienteLibre(analisis));
   analisis.version = VERSION_ANALISIS;
   return analisis;

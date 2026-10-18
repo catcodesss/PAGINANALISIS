@@ -71,6 +71,11 @@ jobs:
       - name: Cifrado del historial local
         run: node --experimental-strip-types evals/cifrado.test.mjs
 
+      # Fase 8: una referencia inventada por el modelo no llega al cliente, un
+      # elemento confirmado no cambia sin aceptación y el razonamiento no sale.
+      - name: Actualización por sesión
+        run: node evals/actualizacion.test.mjs
+
       # El plan por blanco no pierde ni repite contenido, y todo aviso del
       # validador sobre una propuesta llega a su tarjeta y al texto exportado.
       - name: Plan por blanco sin perder contenido ni avisos

@@ -110,7 +110,10 @@ prueba("el análisis vacío deja toda la nota sin usar", () => {
 });
 
 prueba("segmentar los nueve casos reconstruye cada línea sin perder texto", () => {
-  const archivos = readdirSync(join(RAIZ, "evals/casos")).filter((f) => f.endsWith(".md"));
+  // Solo los casos de sesión 1: los de varias sesiones (fase 8) no tienen «## NOTA».
+  const archivos = readdirSync(join(RAIZ, "evals/casos")).filter(
+    (f) => f.endsWith(".md") && /^##\s+NOTA\s*$/m.test(readFileSync(join(RAIZ, "evals/casos", f), "utf8"))
+  );
   assert.equal(archivos.length, 9);
   for (const archivo of archivos) {
     for (const linea of notaDe(archivo).split("\n")) {

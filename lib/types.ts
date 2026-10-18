@@ -307,6 +307,8 @@ export interface Arista {
   apoyo: ApoyoArista;
   /** Las citas verificadas que sostienen la relación. Vacío = ninguna frase. */
   evidencia: Cita[];
+  /** Una frase de una sesión posterior, aceptada por el clínico, la contradice (⊘). Fuerza el apoyo al mínimo. */
+  contradicha?: boolean;
 }
 
 export interface HipotesisMantenimiento {
@@ -806,7 +808,9 @@ export interface Alerta {
     | "alternativa_sin_mantenimiento"
     | "alternativa_misma_topografia"
     | "estrategia_sin_actua_sobre"
-    | "blanco_sin_indicador_o_revision";
+    | "blanco_sin_indicador_o_revision"
+    // Fase 8: la hipótesis del blanco cambió con una sesión posterior.
+    | "hipotesis_cambiada";
   gravedad: "alta" | "media";
   ruta: string;
   /**
@@ -977,6 +981,34 @@ export interface AnalisisFuncional {
    * está «Por asignar» (lib/plan.ts#porAsignar), no se pierde.
    */
   blancos: Blanco[];
+  /**
+   * Lo que aportan las sesiones posteriores (fase 8). Lo escribe solo la
+   * interfaz al aplicar los cambios que el clínico acepta; el modelo nunca.
+   */
+  seguimiento: Seguimiento;
+}
+
+/**
+ * Una frase de la nota de la sesión N a favor o en contra de un elemento. Va
+ * aparte de `evidencia` porque esa cita se resuelve contra la nota de la
+ * sesión 1; esta, contra la de su propia sesión.
+ */
+export interface EvidenciaSesion {
+  sesion: number;
+  cita: Extract<Cita, { verificada: true }>;
+  postura: "a_favor" | "en_contra";
+  /** "ia" si se aceptó tal cual; "clinico" si se editó antes de aceptar. */
+  autor: "ia" | "clinico";
+}
+
+export interface Seguimiento {
+  evidencia: Record<Id, EvidenciaSesion[]>;
+  /** Estado de las hipótesis rivales (`hipotesis_alternativas`), que no tienen campo propio. */
+  estados_rivales: Record<Id, EstadoHipotesis>;
+  /** Blancos cuya hipótesis cambió, con la sesión: ◆ hasta que el clínico los toque. */
+  blancos_a_revisar: Record<Id, number>;
+  /** Elementos que cambiaron en una sesión, para la capa «Cambios desde Sn». */
+  novedades: Record<Id, number>;
 }
 
 /**
@@ -1027,6 +1059,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "procedencia",
   "citas_del_clinico",
   "blancos",
+  "seguimiento",
 ] as const satisfies readonly (keyof AnalisisFuncional)[];
 
 type _TodasLasClavesCubiertas =
