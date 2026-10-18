@@ -117,7 +117,6 @@ export default function Inspector({
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {pestana === "historial" ? (
           <HistorialElemento objetoId={seleccionado} />
-          </p>
         ) : arista ? (
           <DetalleRelacion analisis={analisis} arista={arista} nodos={nodos} pestana={pestana} onEditarSeccion={onEditarSeccion} />
         ) : nodo ? (
