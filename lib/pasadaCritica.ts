@@ -12,7 +12,7 @@ interface HallazgoCrudo {
 }
 
 /**
- * Segunda llamada, opt-in (ver PASADA_CRITICA en app/api/analizar/route.ts),
+ * Segunda llamada, incluida siempre en el informe completo (app/api/analizar/route.ts),
  * con un modelo más barato que solo busca fallos en el análisis ya generado:
  * contenido de la nota no recogido, confianza por encima de la evidencia,
  * contradicciones. A diferencia de lib/validadores.ts, esto SÍ depende de que
@@ -28,13 +28,18 @@ export async function ejecutarPasadaCritica(
   notaNumerada: string,
   apiKey: string
 ): Promise<Alerta[]> {
-  const { texto } = await generarTexto(apiKey, {
+  const { texto, tokensEntrada, tokensSalida } = await generarTexto(apiKey, {
     modelo: MODELO_PASADA_CRITICA,
     maxTokens: 1500,
     temperatura: 0,
     sistema: construirPromptPasadaCritica(),
     usuario: `Nota clínica con líneas numeradas:\n\n${notaNumerada}\n\nAnálisis funcional generado (JSON):\n\n${JSON.stringify(analisis)}`,
   });
+
+  // Solo cifras, nunca contenido (invariante 5).
+  console.log(
+    `[tokens] pasada-critica entrada=${tokensEntrada} salida=${tokensSalida}`
+  );
 
   let hallazgos: unknown;
   try {

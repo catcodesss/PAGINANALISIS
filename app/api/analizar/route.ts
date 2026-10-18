@@ -21,9 +21,6 @@ import { maquetaActivada } from "@/lib/maqueta";
 import { informeDeMaqueta } from "@/lib/maquetaInforme";
 
 const MODELO = MODELO_PRINCIPAL;
-// Opt-in: duplica el coste del análisis (segunda llamada, ver lib/pasadaCritica.ts).
-// Desactivada por defecto; se activa con PASADA_CRITICA=true.
-const PASADA_CRITICA_ACTIVADA = process.env.PASADA_CRITICA === "true";
 const RUTA = "analizar";
 const LIMITE_PETICIONES = Number(process.env.LIMITE_ANALISIS_POR_VENTANA ?? 5);
 const VENTANA_MS = Number(process.env.LIMITE_VENTANA_MS ?? 10 * 60 * 1000);
@@ -295,10 +292,11 @@ export async function POST(request: Request) {
     // Trazabilidad: qué modelo y qué versión del prompt generaron este informe.
     analisis.meta = { modelo: MODELO, version_prompt: VERSION_PROMPT };
 
-    // Opt-in y solo para el informe completo: sobre un análisis parcial, la
+    // Siempre activa (invariante 4: va incluida en cada análisis, sin coste
+    // aparte) y solo para el informe completo: sobre un análisis parcial, la
     // pasada crítica generaría falsas alarmas de "contenido no recogido" por
     // secciones que ni se pidieron.
-    if (PASADA_CRITICA_ACTIVADA && bloquesPedidos.length === IDS_TODOS.length) {
+    if (bloquesPedidos.length === IDS_TODOS.length) {
       try {
         const hallazgos = await ejecutarPasadaCritica(analisis, notaNumerada, apiKey);
         const vistos = new Set(analisis.alertas.map((a) => `${a.ruta}|${a.mensaje}`));

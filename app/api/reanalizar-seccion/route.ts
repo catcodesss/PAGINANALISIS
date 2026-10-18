@@ -133,7 +133,7 @@ export async function POST(request: Request) {
     const documento = `${notaOriginal}\n\n--- Nota adicional del clínico ---\n\n${notaAdicional}`;
     const { lineas, texto: documentoNumerado } = numerarNota(documento);
 
-    const { texto } = await generarTexto(apiKey, {
+    const { texto, tokensEntrada, tokensSalida } = await generarTexto(apiKey, {
       modelo: MODELO,
       // Mismo criterio que en /api/analizar: la temperatura baja se reserva
       // para las evals, y el techo deja sitio al razonamiento previo.
@@ -144,6 +144,10 @@ export async function POST(request: Request) {
             analisisActual
           )}`,
     });
+
+    console.log(
+      `[tokens] reanalizar-seccion entrada=${tokensEntrada} salida=${tokensSalida}`
+    );
 
     const json = JSON.parse(extraerJSON(texto));
     const fragmento = normalizarFragmento(campos, json, lineas);
