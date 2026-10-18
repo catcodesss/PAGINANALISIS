@@ -6,8 +6,8 @@
  * SITUACIÓN (por defecto): antecedente → conducta → consecuencia. La función no
  * es una caja ni una fila final: va como etiqueta del arco conducta →
  * consecuencia, con el tipo de contingencia, la inmediatez y el apoyo de esa
- * relación. La operación motivacional va en una banda encima, con su trazo
- * hacia ese arco («aumenta el valor de…»); el costo demorado, debajo de la
+ * relación. La operación motivacional va en una banda debajo del ABC, con su
+ * trazo hacia ese arco («aumenta el valor de…»); el costo demorado, debajo de la
  * conducta. Los huecos —lo que falta en la cadena y las preguntas abiertas que
  * la afectan— son nodos punteados. El plan (alternativa → consecuencia que la
  * mantendría) va en su propia banda, con otro fondo.
@@ -218,27 +218,10 @@ export default function TableroSituacion({
         )}
       </header>
 
-      {/* Banda de la operación motivacional, con su trazo hacia el arco de la función. */}
-      {om && (
-        <div className={`mb-3 flex flex-wrap items-center gap-2 rounded border border-dashed border-divider bg-canvas px-3 py-2 text-xs text-ink-muted ${enRuta(om.id) ? "" : "opacity-35"}`}>
-          <span className="font-mono text-[10px] uppercase tracking-wide" title={TERMINOS.om.definicion}>{TERMINOS.om.claro}</span>
-          <div className="min-w-0 max-w-sm">{conEvidencia(om)}</div>
-          <span aria-hidden="true">┈┈▸</span>
-          <span>aumenta el valor de</span>
-          {aristaFuncion ? (
-            <button type="button" onClick={() => onSeleccionarId(aristaFuncion.id)} className="underline decoration-dotted underline-offset-2 hover:text-accent">
-              {inmediata ? `«${recortar(inmediata.etiqueta, 50)}»` : "la consecuencia"}
-            </button>
-          ) : (
-            <span>{inmediata ? `«${recortar(inmediata.etiqueta, 50)}»` : "la consecuencia"}</span>
-          )}
-        </div>
-      )}
-
       <div className="grid gap-3 @2xl:grid-cols-[minmax(0,1fr)_4.5rem_minmax(0,1.3fr)_minmax(7rem,9rem)_minmax(0,1fr)] @2xl:items-start">
         {/* Antecedente (y, en Clínico, la subpista respondiente) */}
         <div className="space-y-2">
-          <Rotulo>Antecedente</Rotulo>
+          <RotuloABC letra="A">Antecedente</RotuloABC>
           {zona("ed")}
           {ed && conEvidencia(ed)}
           {zona("ec")}
@@ -257,7 +240,7 @@ export default function TableroSituacion({
 
         {/* Conducta, con la cadena interna en Clínico y el costo demorado debajo */}
         <div className="space-y-2">
-          <Rotulo>Conducta</Rotulo>
+          <RotuloABC letra="B">Conducta</RotuloABC>
           {enfocada ? conEvidencia(enfocada) : null}
           {huecosEn("conducta").map((h) => <Hueco key={h.id} texto={h.etiqueta} />)}
 
@@ -382,13 +365,30 @@ export default function TableroSituacion({
         </Arco>
 
         <div className="space-y-2">
-          <Rotulo>Consecuencia</Rotulo>
+          <RotuloABC letra="C">Consecuencia</RotuloABC>
           {zona("inmediata")}
           {inmediata && conEvidencia(inmediata)}
           {huecosEn("inmediata").map((h) => <Hueco key={h.id} texto={h.etiqueta} />)}
           {renderAgregar("inmediata", situacion.id, false)}
         </div>
       </div>
+
+      {/* La operación motivacional, debajo del ABC: lo modula, no lo encabeza. */}
+      {om && (
+        <div className={`mt-3 flex flex-wrap items-center gap-2 rounded border border-dashed border-divider bg-canvas px-3 py-2 text-xs text-ink-muted ${enRuta(om.id) ? "" : "opacity-35"}`}>
+          <span className="font-mono text-[10px] uppercase tracking-wide" title={TERMINOS.om.definicion}>{TERMINOS.om.claro}</span>
+          <div className="min-w-0 max-w-sm">{conEvidencia(om)}</div>
+          <span aria-hidden="true">┈┈▸</span>
+          <span>aumenta el valor de</span>
+          {aristaFuncion ? (
+            <button type="button" onClick={() => onSeleccionarId(aristaFuncion.id)} className="underline decoration-dotted underline-offset-2 hover:text-accent">
+              {inmediata ? `«${recortar(inmediata.etiqueta, 50)}»` : "la consecuencia"}
+            </button>
+          ) : (
+            <span>{inmediata ? `«${recortar(inmediata.etiqueta, 50)}»` : "la consecuencia"}</span>
+          )}
+        </div>
+      )}
 
       {capas.huecos && (huecosEn("contexto").length > 0 || preguntas.length > 0) && (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -432,6 +432,16 @@ function recortar(texto: string, max: number) {
 
 function Rotulo({ children }: { children: ReactNode }) {
   return <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">{children}</p>;
+}
+
+/** La cabecera de una columna del ABC: la letra primero, que es lo que se busca con la vista. */
+function RotuloABC({ letra, children }: { letra: string; children: ReactNode }) {
+  return (
+    <p className="flex items-center gap-2 border-b border-divider pb-1.5 text-sm font-semibold text-ink">
+      <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-full bg-accent font-mono text-xs texto-sobre-acento">{letra}</span>
+      {children}
+    </p>
+  );
 }
 
 function Hueco({ texto }: { texto: string }) {

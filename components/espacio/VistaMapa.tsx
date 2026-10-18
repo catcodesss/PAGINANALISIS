@@ -28,7 +28,6 @@ import { siguientePorTeclado } from "@/lib/rutaMapa";
 import { calcularCoberturaNota, PALABRAS_MINIMAS_FRASE, recogerCitas } from "@/lib/coberturaNota";
 import { citaCubreFrase, segmentarFrases } from "@/lib/citas";
 import { estaAbierta } from "@/lib/preguntas";
-import { repartirProcesosACT } from "@/lib/procesosACT";
 import { INTRO_GRADO_APOYO, NIVELES_APOYO, NOTA_PIE_GRADO_APOYO, traducirMensajeAlerta } from "@/lib/gradoApoyo";
 import { estadoVacio } from "@/lib/vacios";
 import GrafoAFC from "../grafo/GrafoAFC";
@@ -78,13 +77,13 @@ export default function VistaMapa({
     const nodos = construirNodosGrafo(analisis);
     const ids = new Set(nodos.map((n) => n.id));
     const huecos = analisis.situaciones.reduce((t, s) => t + huecosDeSituacion(analisis, s, nodos).length, 0);
-    const act = repartirProcesosACT(analisis.capa_act.procesos_act, ids);
+    const anclados = analisis.capa_act.procesos_act.filter((p) => p.nodo_id && ids.has(p.nodo_id)).length;
     return {
       plan: analisis.conductas_alternativas.length,
       huecos: huecos + analisis.preguntas.filter((p) => estaAbierta(p) && p.pone_a_prueba).length,
       dbt: analisis.situaciones.reduce((t, s) => t + (s.cadena_dbt?.eslabones.length ?? 0), 0),
-      act: act.interpretables.length,
-      actAparte: act.aparte.length,
+      act: anclados,
+      actSinAnclar: analisis.capa_act.procesos_act.length - anclados,
     };
   }, [analisis]);
 
@@ -118,8 +117,7 @@ export default function VistaMapa({
       <span id="variables-moduladoras" className="scroll-mt-24" />
       <span id="modalidad" className="scroll-mt-24" />
 
-      {/* relative: en el móvil la leyenda se ancla a la barra entera, no a su botón. */}
-      <div className="relative mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         <div role="group" aria-label="Nivel del Mapa" className="flex overflow-hidden rounded border border-divider">
           {NIVELES_MAPA.map((n, i) => (
             <button
@@ -163,15 +161,15 @@ export default function VistaMapa({
           <BotonCapa activa={capas.plan} contador={contadores.plan} onClick={() => alternar("plan")}>Plan</BotonCapa>
           <BotonCapa activa={capas.huecos} contador={contadores.huecos} onClick={() => alternar("huecos")}>Huecos</BotonCapa>
           <BotonCapa activa={capas.dbt} contador={contadores.dbt} onClick={() => alternar("dbt")} titulo="Numeración y puntos de solución sobre la cadena interna (nivel Clínico)">DBT</BotonCapa>
-          {/* Cuenta los anclados con base funcional; el resto va aparte y
-              también enciende la capa, que es donde se listan para revisarlos. */}
+          {/* Cuenta los anclados; los sin anclar van aparte y también encienden
+              la capa, que es donde se listan para colocarlos. */}
           <BotonCapa
             activa={capas.act}
             contador={contadores.act}
-            habilitada={contadores.act + contadores.actAparte > 0}
+            habilitada={contadores.act + contadores.actSinAnclar > 0}
             onClick={() => alternar("act")}
             titulo="Procesos ACT anclados a un nodo, con su justificación funcional"
-            extra={contadores.actAparte > 0 ? `${contadores.actAparte} sin anclar o sin justificar` : undefined}
+            extra={contadores.actSinAnclar > 0 ? `${contadores.actSinAnclar} sin anclar` : undefined}
           >
             ACT
           </BotonCapa>
@@ -316,11 +314,11 @@ function AvisosSinNodo({ analisis }: { analisis: AnalisisFuncional }) {
  */
 function LeyendaApoyo() {
   return (
-    <details id="niveles-confianza" className="sm:relative print:hidden">
+    <details id="niveles-confianza" className="relative print:hidden">
       <summary className="cursor-pointer list-none rounded border border-divider px-2.5 py-1 text-xs text-ink-muted hover:text-ink">
         Grado de apoyo ⓘ
       </summary>
-      <div className="absolute inset-x-0 z-40 mt-1 rounded-md sm:inset-x-auto sm:left-0 sm:w-96 border border-divider bg-surface p-4 shadow-lg">
+      <div className="absolute left-0 z-40 mt-1 w-96 max-w-[90vw] rounded-md border border-divider bg-surface p-4 shadow-lg">
         <p className="text-sm leading-relaxed text-ink-muted">{INTRO_GRADO_APOYO}</p>
         <ul className="mt-3 space-y-2">
           {NIVELES_APOYO.map(({ grado, etiqueta, clase, frase, resto }) => (
