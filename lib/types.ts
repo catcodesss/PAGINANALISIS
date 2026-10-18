@@ -332,6 +332,15 @@ export interface HipotesisMantenimiento {
   funcion: string;
   confianza: NivelConfianza;
   /**
+   * La frase que afirma la RELACIÓN, no sus extremos: «al volver ya habían
+   * pasado a otro punto… sintió alivio» afirma que salir trae alivio; que la
+   * nota diga «duerme mal» y diga «evita» no afirma que lo uno mantenga lo otro.
+   * La resuelve el servidor desde una referencia a líneas (invariante 1). Sin
+   * ella (informes anteriores a la 3B, o el modelo no encontró frase) la
+   * relación es inferida o, como mucho, dato parcial: ver lib/apoyoAristas.ts.
+   */
+  evidencia: Cita;
+  /**
    * Cuánto pesa esta relación en el mantenimiento. Distinta de `confianza`,
    * que mide cuánto respalda la nota lo afirmado: una relación puede estar
    * bien documentada y pesar poco, o ser una inferencia sobre algo central.

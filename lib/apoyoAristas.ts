@@ -50,10 +50,13 @@ import type {
  * operación motivacional ni el papel de cada pieza. La consecuencia demorada
  * queda en parcial por lo mismo: es lo que menos suele decir la nota.
  *
- * CUANDO UNA HIPÓTESIS TENGA CITA PROPIA (sub-fase 3B, pendiente): con cita
- * verificada y confianza alta o media, el techo de las aristas que salen de
- * ella sube a textual, y su cita pasa a `evidencia`. Es el único punto que
- * cambia: `techoDeHipotesis` y `citasDeArista`.
+ * HIPÓTESIS CON CITA PROPIA (sub-fase 3B). La hipótesis trae `evidencia`: la
+ * frase que afirma la RELACIÓN. Con cita verificada y confianza alta o media,
+ * el techo de sus aristas sube a textual y esa cita pasa a la arista. Sin cita
+ * verificada sigue en parcial; con confianza baja, en inferido aunque la traiga
+ * (el modelo mismo declara que es inferencia). El servidor solo comprueba que
+ * la frase EXISTA en la nota, no que afirme la relación: eso lo juzga el
+ * clínico al verla en la Ficha.
  *
  * LO CALCULA EL SERVIDOR (invariante 3), no el modelo, y es determinista: el
  * mismo informe da siempre los mismos apoyos.
@@ -97,10 +100,21 @@ export function aristaDeHipotesis(
  * propia, como mucho «parcial»; con confianza baja, «inferido». Si hay varias
  * hipótesis sobre el mismo par, vale la mejor apoyada.
  */
+function techoDeUna(h: HipotesisMantenimiento): 1 | 2 | 3 {
+  if (h.confianza === "baja") return NUMERO_INFERIDO;
+  return citaVerificada(h.evidencia) ? NUMERO_TEXTUAL : NUMERO_PARCIAL;
+}
+
 function techoDeHipotesis(hipotesis: readonly HipotesisMantenimiento[]): 1 | 2 | 3 {
-  return Math.max(
-    ...hipotesis.map((h) => (h.confianza === "baja" ? NUMERO_INFERIDO : NUMERO_PARCIAL))
-  ) as 1 | 2 | 3;
+  return Math.max(...hipotesis.map(techoDeUna)) as 1 | 2 | 3;
+}
+
+/** Las citas propias de las hipótesis que alcanzan el techo dado. */
+function citasDeHipotesis(
+  hipotesis: readonly HipotesisMantenimiento[],
+  techo: number
+): Cita[] {
+  return hipotesis.filter((h) => techoDeUna(h) === techo).map((h) => h.evidencia);
 }
 
 function citaVerificada(cita: Cita | null | undefined): cita is Extract<Cita, { verificada: true }> {
@@ -150,6 +164,7 @@ function calcular(
   const hipotesis = hipotesisDeArista(analisis, arista.desde, arista.hasta);
   if (hipotesis.length > 0) {
     techo = techoDeHipotesis(hipotesis);
+    if (techo === NUMERO_TEXTUAL) citas = citasDeHipotesis(hipotesis, techo);
   } else if (origen.situacion_id && origen.situacion_id === destino.situacion_id) {
     const situacion = analisis.situaciones.find((s) => s.id === origen.situacion_id);
     if (situacion) {

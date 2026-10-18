@@ -69,6 +69,7 @@ const { priorizarBlancos } = require(join(RAIZ, ".tmp-evals/priorizacion.js"));
 const { estadoVacio, TEXTO_VACIO } = require(join(RAIZ, ".tmp-evals/vacios.js"));
 const { alertasPorNodo } = require(join(RAIZ, ".tmp-evals/alertasNodo.js"));
 const { validarAnalisis } = require(join(RAIZ, ".tmp-evals/validadores.js"));
+const { relacionInferida } = require(join(RAIZ, ".tmp-evals/gradoApoyo.js"));
 const { calcularApoyoAristas, hipotesisDeArista } = require(join(RAIZ, ".tmp-evals/apoyoAristas.js"));
 const { procedenciaDe, confirmarElemento } = require(join(RAIZ, ".tmp-evals/procedencia.js"));
 const { cerrarEdicion } = require(join(RAIZ, ".tmp-evals/procedenciaEdicion.js"));
@@ -946,6 +947,68 @@ prueba("v6: el exportado trae las preguntas, el estado de la hipótesis y la res
   assert.doesNotMatch(texto, /## Datos faltantes/);
   for (const p of a.preguntas) assert.ok(texto.includes(p.texto), `falta en el exportado: ${p.texto}`);
   assert.doesNotMatch(texto, /confirmada/i);
+});
+
+prueba("3B: una hipótesis con cita propia verificada deja de ser inferida y su relación llega a lo que permitan sus extremos", () => {
+  const crudo = crudoV1();
+  const normal = normalizarAnalisis(JSON.parse(JSON.stringify(crudo)), lineas);
+  const base = normal.hipotesis_mantenimiento.findIndex((x) => x.origen_id && x.destino_id && x.confianza !== "baja");
+  assert.ok(base >= 0, "el fixture no trae una hipótesis resuelta de confianza media o alta");
+  assert.equal(relacionInferida(normal.hipotesis_mantenimiento[base]), true, "sin cita debe ser inferida");
+
+  crudo.hipotesis_mantenimiento[base].evidencia = { linea_inicio: 1, frase_inicio: 1, linea_fin: 1, frase_fin: 1 };
+  const a = normalizarAnalisis(crudo, lineas);
+  const h = a.hipotesis_mantenimiento[base];
+  assert.equal(h.evidencia.verificada, true, "la referencia debería resolver contra la nota");
+  assert.equal(relacionInferida(h), false);
+
+  const nodos = new Map(construirNodosGrafo(a).map((n) => [n.id, n]));
+  const arista = a.aristas.find((r) => r.desde === h.origen_id && r.hasta === h.destino_id);
+  assert.ok(arista, "no hay relación trazada para la hipótesis");
+  const tope = Math.min(3, nodos.get(h.origen_id).apoyo, nodos.get(h.destino_id).apoyo);
+  assert.ok(numeroDeApoyoArista(arista.apoyo) <= tope, "la relación supera a sus extremos");
+  if (arista.apoyo !== "inferido") {
+    assert.ok(arista.evidencia.some((c) => c.verificada && c.linea_inicio === 1), "la cita de la hipótesis no pasó a la relación");
+  }
+});
+
+prueba("3B: con confianza baja la cita propia no sube la relación; sin cita verificada no pasa de parcial", () => {
+  const crudo = crudoV1();
+  const i = normalizarAnalisis(JSON.parse(JSON.stringify(crudo)), lineas).hipotesis_mantenimiento.findIndex(
+    (x) => x.origen_id && x.destino_id
+  );
+  crudo.hipotesis_mantenimiento[i].evidencia = { linea_inicio: 1, frase_inicio: 1, linea_fin: 1, frase_fin: 1 };
+  crudo.hipotesis_mantenimiento[i].confianza = "baja";
+  const baja = normalizarAnalisis(JSON.parse(JSON.stringify(crudo)), lineas);
+  const h = baja.hipotesis_mantenimiento[i];
+  assert.equal(relacionInferida(h), true);
+  const otras = hipotesisDeArista(baja, h.origen_id, h.destino_id).filter((x) => x !== h);
+  if (otras.every((x) => x.confianza === "baja")) {
+    const ar = baja.aristas.find((r) => r.desde === h.origen_id && r.hasta === h.destino_id);
+    assert.equal(ar.apoyo, "inferido");
+    assert.deepEqual(ar.evidencia, []);
+  }
+
+  crudo.hipotesis_mantenimiento[i].confianza = "alta";
+  crudo.hipotesis_mantenimiento[i].evidencia = "frase que no está en la nota en absoluto";
+  const sinResolver = normalizarAnalisis(crudo, lineas);
+  const h2 = sinResolver.hipotesis_mantenimiento[i];
+  assert.equal(h2.evidencia.verificada, false);
+  assert.equal(relacionInferida(h2), true);
+  const ar2 = sinResolver.aristas.find((r) => r.desde === h2.origen_id && r.hasta === h2.destino_id);
+  assert.ok(numeroDeApoyoArista(ar2.apoyo) <= 2, "sin cita verificada no puede ser textual");
+});
+
+prueba("3B: un informe guardado sin evidencia en las hipótesis se abre y la deja «sin referencia»", () => {
+  const a = normalizarAnalisis(crudoV1(), lineas);
+  const guardado = JSON.parse(JSON.stringify(a));
+  for (const h of guardado.hipotesis_mantenimiento) delete h.evidencia;
+  const reabierto = migrarAV6(guardado);
+  assert.ok(reabierto.hipotesis_mantenimiento.every((h) => h.evidencia.verificada === false));
+  assert.deepEqual(
+    reabierto.aristas.map((r) => r.apoyo),
+    a.aristas.map((r) => r.apoyo)
+  );
 });
 
 console.log(

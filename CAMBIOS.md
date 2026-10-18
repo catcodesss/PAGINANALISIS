@@ -2,9 +2,9 @@
 
 ## Rediseño · fase 3: apoyo en las relaciones y procedencia por elemento (esquema v5, sin cambio de prompt)
 
-Hecho: 3A (esquema y cálculo) y 3C (interfaz mínima). **3B no se ha hecho**: toca
-el prompt, exige medir con la API y el encargo pide preguntar antes. Medir y
-subir `VERSION_PROMPT` queda pendiente (ver al final).
+Hecho: 3A (esquema y cálculo), 3C (interfaz mínima) y 3B (cita propia de cada
+hipótesis, prompt 1.14.0; ver el final de esta sección). **3B está implementada
+pero sin medir**: las evals las corre el autor.
 
 - **Apoyo en las aristas** (`lib/apoyoAristas.ts`, determinista, lo calcula el
   servidor). `Arista` gana `apoyo: "textual" | "parcial" | "inferido"` y
@@ -73,9 +73,36 @@ subir `VERSION_PROMPT` queda pendiente (ver al final).
 - **Sin medir con la API** (no hay crédito): el prompt no cambia, así que no hay
   nada que medir de la fase.
 
-Pendiente de esta fase: **3B** (cita propia por hipótesis, prompt; pedir permiso,
-correr evals antes y después y contar cuántas hipótesis traen cita y cuántas
-resuelven) y, cuando exista, retirar el parche de `relacionInferida`.
+### 3B · Cita propia de cada hipótesis (prompt 1.14.0, sin medir)
+
+- `HipotesisMantenimiento.evidencia: Cita` (siempre presente; `SIN_CITA` si no
+  hay). El modelo devuelve una referencia a líneas y el servidor recorta el
+  texto (invariante 1). El prompt pide la frase que afirma la **relación**, no
+  la que menciona cada extremo, y `null` si ninguna la afirma (principio 28 y
+  esquema del campo). Sube `VERSION_PROMPT` de 1.13.2 a 1.14.0.
+- **Techo de la arista que sale de una hipótesis** (`lib/apoyoAristas.ts`):
+  cita verificada y confianza alta/media → textual, y la cita pasa a la
+  arista; sin cita verificada → parcial; confianza baja → inferido aunque
+  traiga cita. Con varias hipótesis sobre el mismo par vale la mejor. Después
+  sigue el tope del extremo más débil.
+- **`relacionInferida(h)`** deja de ser siempre verdadera: es inferida si la
+  confianza es baja o no hay cita verificada. Es el parche de la fase 1: la
+  palanca de la priorización vuelve a puntuar solo cuando una frase afirma la
+  relación. El servidor solo comprueba que la frase **exista**, no que afirme
+  la relación; eso lo juzga el clínico al verla en la Ficha.
+- **Informes guardados**: `migrarAV5` da `SIN_CITA("sin_referencia")` a las
+  hipótesis sin `evidencia` y recalcula; sus apoyos no cambian.
+- **No añadido a propósito**: V1 (confianza alta sin cita) sigue sin aplicarse
+  a hipótesis; el prompt ya lo pide y degradar aquí movería las alertas de la
+  maqueta. Decídelo tras ver cuántas hipótesis altas llegan sin cita.
+- **Pruebas** (`evals/migracion.test.mjs`, 61 → 64): cita verificada deja de
+  ser inferida y respeta el tope de los extremos; confianza baja o cita sin
+  resolver no suben; informe guardado sin `evidencia` se abre igual.
+  `evals/run.mjs` imprime «hipótesis con cita propia de la relación: N/M» por
+  caso, que es el número a comparar antes y después.
+- **Pendiente**: correr `npm run dev:evals` y las evals antes/después (misma
+  temperatura) y anotar puntuación, integridad de citas y cuántas hipótesis
+  traen cita y cuántas resuelven en el commit.
 
 ## Rediseño · fase 1B: verificar en la misma pantalla
 

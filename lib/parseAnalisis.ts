@@ -343,7 +343,10 @@ function comoIdONulo(valor: unknown): string | null {
   return typeof valor === "string" && valor.length > 0 ? valor : null;
 }
 
-function normalizarHipotesisMantenimiento(valor: unknown): HipotesisMantenimiento {
+function normalizarHipotesisMantenimiento(
+  valor: unknown,
+  lineas: string[]
+): HipotesisMantenimiento {
   const d = comoObjeto(valor);
   return {
     id: typeof d.id === "string" ? d.id : SIN_ID,
@@ -354,6 +357,8 @@ function normalizarHipotesisMantenimiento(valor: unknown): HipotesisMantenimient
     enunciado: comoTexto(d.enunciado),
     funcion: comoTexto(d.funcion),
     confianza: comoConfianza(d.confianza),
+    // Un informe anterior a la 3B no la trae: queda sin cita, no inventada.
+    evidencia: resolverCita(lineas, d.evidencia),
     fuerza: comoConfianza(d.fuerza),
     // "unidireccional" por defecto: declarar un bucle es una afirmación más
     // fuerte que declarar una flecha, y la red funcional resalta los bucles
@@ -628,7 +633,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     ),
     hipotesis_mantenimiento: comoArreglo<unknown>(
       d.hipotesis_mantenimiento
-    ).map(normalizarHipotesisMantenimiento),
+    ).map((h) => normalizarHipotesisMantenimiento(h, lineas)),
     hipotesis_origen: comoArregloDeTexto(d.hipotesis_origen),
     formulacion: normalizarFormulacion(d.formulacion),
     fortalezas_y_recursos: comoArregloDeTexto(d.fortalezas_y_recursos),
@@ -746,9 +751,9 @@ const NORMALIZADORES_POR_CAMPO: {
     comoArreglo<unknown>(d.situaciones).map((s, i) =>
       normalizarSituacion(s, i, lineas)
     ),
-  hipotesis_mantenimiento: (d) =>
-    comoArreglo<unknown>(d.hipotesis_mantenimiento).map(
-      normalizarHipotesisMantenimiento
+  hipotesis_mantenimiento: (d, lineas) =>
+    comoArreglo<unknown>(d.hipotesis_mantenimiento).map((h) =>
+      normalizarHipotesisMantenimiento(h, lineas)
     ),
   hipotesis_origen: (d) => comoArregloDeTexto(d.hipotesis_origen),
   formulacion: (d) => normalizarFormulacion(d.formulacion),

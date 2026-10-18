@@ -158,25 +158,27 @@ export function gradoDeHipotesis(
 
 /**
  * Si la RELACIÓN de una hipótesis (su origen → su conducta) está apoyada por
- * alguna línea de la nota. Hoy, nunca: el esquema no da cita a ninguna
- * relación, y la `confianza` que la acompaña la declara el modelo sin señalar
+ * alguna línea de la nota: solo si trae una cita verificada propia y su
+ * confianza no es baja. Antes de la 3B nunca lo estaba: el esquema no daba cita
+ * a ninguna relación, y la `confianza` la declara el modelo sin señalar
  * línea. En el caso de ejemplo, «duerme mal los domingos» respalda el DATO del
  * sueño con cita textual; que el sueño mantenga la evitación no lo dice
  * ninguna línea, y aun así acababa de «por dónde moverla» con aspecto de
  * citado (mesa-clínica §A.4).
  *
  * Por eso todo lo que se deriva de una relación —la palanca de un blanco, un
- * bucle, la formulación— tiene que decir que se apoya en una inferencia.
+ * bucle, la formulación— tiene que decir que se apoya en una inferencia cuando
+ * ninguna frase afirma la relación.
  *
- * FASE 3. Las aristas ya llevan su apoyo (lib/apoyoAristas.ts) y la tarjeta de
- * la hipótesis, la red y los bucles lo leen de ahí. Esto NO se retira: una
+ * FASE 3. Las aristas llevan su apoyo (lib/apoyoAristas.ts) y la tarjeta de la
+ * hipótesis, la red y los bucles lo leen de ahí. Esto NO se retira: una
  * hipótesis sin cita propia llega como mucho a «dato parcial», y «parcial» no
- * debe bastar para que la palanca ordene el plan. Se escribe como la regla
- * general —sin cita propia, la relación es inferida— y es el único punto que
- * cambia cuando las hipótesis traigan cita (sub-fase 3B, pendiente).
+ * debe bastar para que la palanca ordene el plan. Con 3B, la regla es la misma
+ * —sin cita propia verificada, la relación es inferida— y deja de ser siempre
+ * verdadera.
  */
 export function relacionInferida(h: HipotesisMantenimiento): boolean {
-  return !("evidencia" in h);
+  return h.confianza === "baja" || !h.evidencia?.verificada;
 }
 
 /**

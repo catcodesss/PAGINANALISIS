@@ -801,6 +801,16 @@ function migrarAV5(analisis: AnalisisFuncional): AnalisisFuncional {
     }
   }
 
+  // 3B: la cita propia de cada hipótesis. Un informe anterior no la tiene y no
+  // puede reconstruirse: queda «sin referencia», que se lee como relación sin
+  // frase que la afirme, no como cita rota.
+  for (const h of analisis.hipotesis_mantenimiento) {
+    const c = h.evidencia as unknown;
+    if (!c || typeof c !== "object" || typeof (c as { verificada?: unknown }).verificada !== "boolean") {
+      h.evidencia = SIN_CITA("sin_referencia");
+    }
+  }
+
   calcularApoyoAristas(analisis);
   analisis.version = VERSION_ANALISIS;
   return analisis;

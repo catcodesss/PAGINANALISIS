@@ -152,7 +152,21 @@ function verificarCitas(entradas, nota) {
   }
 
   const total = textos.length + antiguas.length + noResueltas.length;
-  return { total, verificadas, fallos };
+  // 3B: las hipótesis de mantenimiento llevan la cita de la RELACIÓN. Se cuentan
+  // aparte porque "null" es legítimo ahí (la nota puede no afirmarla) y aun así
+  // cuenta como no resuelta en el total de arriba: para comparar antes y después
+  // importan cuántas traen cita y cuántas de ellas resuelven.
+  const hipotesisRutas = new Set(
+    entradas
+      .map((e) => e.ruta.match(/^(?:analisis\.)?(hipotesis_mantenimiento\[\d+\])(?:\{[^}]*\})?\.evidencia\.verificada$/)?.[1])
+      .filter(Boolean)
+  );
+  const hipotesisConCita = entradas.filter(
+    (e) => /(^|\.)hipotesis_mantenimiento\[\d+\](?:\{[^}]*\})?\.evidencia\.verificada$/.test(e.ruta) && e.valor === 'true'
+  ).length;
+  const hipotesis = { total: hipotesisRutas.size, conCita: hipotesisConCita };
+
+  return { total, verificadas, fallos, hipotesis };
 }
 
 // ── llamada a la API ────────────────────────────────────────
@@ -244,6 +258,9 @@ async function main() {
     } else {
       console.log('  citas literales: ninguna encontrada (¿cambió el nombre del campo?)');
     }
+    const hTot = citasPorRep.reduce((a, c) => a + c.hipotesis.total, 0);
+    const hCon = citasPorRep.reduce((a, c) => a + c.hipotesis.conCita, 0);
+    if (hTot) console.log(`  hipótesis con cita propia de la relación: ${hCon}/${hTot}`);
 
     resultados.push({ caso: caso.id, titulo: caso.titulo, detalle, citas: { total: cTot, verificadas: cOk }, errores });
   }
