@@ -14,7 +14,6 @@ import { TERMINOS, type IdTermino } from "@/lib/terminos";
 import { TEXTO_VACIO, type EstadoVacio } from "@/lib/vacios";
 import {
   BotonAgregar,
-  BotonBorrar,
   TextoEditable,
   useEdicion,
 } from "../edicionManual";
@@ -225,7 +224,7 @@ export function ListaEditable({
 }) {
   const edicion = useEdicion();
   if (items.length === 0 && !edicion) return <>{vacio ?? <SinHallazgos estado={estadoVacio} />}</>;
-  return <>{items.length === 0 ? (vacio ?? <SinHallazgos estado={estadoVacio} />) : <ul className="list-disc space-y-2 pl-5">{items.map((item, i) => <li key={i} className={claseItem}><span className="flex flex-wrap items-baseline gap-x-2"><TextoEditable valor={item} seccionId={seccionId} etiqueta={`${etiqueta} ${i + 1}`} className={claseItem} onCambio={(valor) => onCambiar(items.map((actual, j) => j === i ? valor : actual))} /><BotonBorrar etiqueta={`${etiqueta} ${i + 1}`} onBorrar={() => onCambiar(items.filter((_, j) => j !== i))} /></span></li>)}</ul>}<BotonAgregar etiqueta={etiqueta} onAgregar={(texto) => onCambiar([...items, texto])} /></>;
+  return <>{items.length === 0 ? (vacio ?? <SinHallazgos estado={estadoVacio} />) : <ul className="list-disc space-y-2 pl-5">{items.map((item, i) => <li key={i} className={claseItem}><TextoEditable valor={item} seccionId={seccionId} etiqueta={`${etiqueta} ${i + 1}`} className={claseItem} onCambio={(valor) => onCambiar(items.map((actual, j) => j === i ? valor : actual))} onBorrar={() => onCambiar(items.filter((_, j) => j !== i))} /></li>)}</ul>}<BotonAgregar etiqueta={etiqueta} onAgregar={(texto) => onCambiar([...items, texto])} /></>;
 }
 
 export function SeccionInforme({

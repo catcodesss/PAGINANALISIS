@@ -77,7 +77,8 @@ const fuentesInforme = [...leerCarpeta("components/informe"), ...leerCarpeta("co
 const fuente = (ruta) => readFileSync(join(RAIZ, ruta), "utf8");
 const codigoInforme = [reportView, ...fuentesInforme].join("\n");
 const grafoAFC = readFileSync(join(RAIZ, "components/grafo/GrafoAFC.tsx"), "utf8");
-const estilosGrafo = ["dbt", "act"].map((estilo) =>
+const tablero = readFileSync(join(RAIZ, "components/grafo/TableroSituacion.tsx"), "utf8");
+const estilosGrafo = ["act"].map((estilo) =>
   readFileSync(join(RAIZ, `components/grafo/estilos/${estilo}.tsx`), "utf8")
 );
 
@@ -295,33 +296,36 @@ prueba("lo impreso sale del mismo texto que el Word y el portapapeles", () => {
   assert.match(espacio, /print:hidden/);
 });
 
-/* ── Selector de lente ───────────────────────────────────────────────────── */
+/* ── Niveles del Mapa ────────────────────────────────────────────────────── */
 
 const vistaMapa = FUENTE_DE_LUGAR.mapa;
 
-prueba("el selector de lente aparece una sola vez en el informe", () => {
+prueba("el selector de nivel aparece una sola vez en el informe", () => {
   // Repetir el mando en cada sección no daba más control: daba ocasiones de
-  // leer una situación en ACT y la de al lado en DBT sin darse cuenta.
-  // codigoInforme ya incluye components/espacio/, donde vive el Mapa.
-  const usos = [...codigoInforme.matchAll(/<SelectorDeLente\b/g)].length;
-  assert.equal(usos, 1, `el selector de lente se pinta ${usos} veces; tiene que ser una`);
+  // leer una situación a un nivel y la de al lado a otro sin darse cuenta.
+  const usos = [...codigoInforme.matchAll(/aria-label="Nivel del Mapa"/g)].length;
+  assert.equal(usos, 1, `el selector de nivel se pinta ${usos} veces; tiene que ser una`);
 });
 
-prueba("la lente elegida no vive en el estado del componente", () => {
-  assert.ok(/useLente\(/.test(vistaMapa), "el Mapa ya no usa la preferencia persistida de lente");
-  assert.ok(!/useState<EstiloGrafo>/.test(vistaMapa), "la lente volvió a un useState local");
+prueba("el nivel elegido no vive en el estado del componente", () => {
+  // Es una preferencia del terapeuta, por caso (components/useLente.ts).
+  assert.ok(/useNivelMapa\(/.test(vistaMapa), "el Mapa ya no usa la preferencia persistida de nivel");
+  assert.ok(!/useState<NivelMapa>/.test(vistaMapa), "el nivel volvió a un useState local");
 });
 
-prueba("los estilos del grafo son proyecciones locales de una sola colección", () => {
+prueba("los niveles y las capas son proyecciones locales de una sola colección", () => {
   assert.equal(
     [...grafoAFC.matchAll(/construirNodosGrafo\(analisis\)/g)].length,
     1,
     "el contenedor dejó de construir una única colección de nodos"
   );
-  for (const fuente of estilosGrafo) {
+  for (const fuente of [...estilosGrafo, tablero]) {
     assert.ok(/nodos:\s*readonly NodoGrafo\[\]/.test(fuente));
     assert.ok(/renderNodo/.test(fuente));
-    assert.ok(!/\bfetch\s*\(/.test(fuente), "un cambio de estilo hace una petición de red");
+    assert.ok(!/\bfetch\s*\(/.test(fuente), "cambiar de nivel o de capa hace una petición de red");
+  }
+  for (const fuente of [grafoAFC, vistaMapa]) {
+    assert.ok(!/\bfetch\s*\(/.test(fuente), "cambiar de nivel o de capa hace una petición de red");
   }
 });
 
@@ -388,5 +392,15 @@ prueba("el orden elegido entre bloques se respeta entero", () => {
 });
 
 
+
+/* ── Edición donde se lee (fase 5C) ──────────────────────────────────────── */
+
+prueba("sin botones «Editar» ni «Borrar» por línea", () => {
+  // El texto es el control y el borrado vive dentro del editor abierto: un
+  // botón por línea llenaba el informe de controles que casi nunca se usan.
+  const todo = [codigoInforme, fuente("components/edicionManual.tsx"), ...leerCarpeta("components/espacio")].join("\n");
+  assert.ok(!/\bBotonBorrar\b/.test(todo), "volvió BotonBorrar");
+  assert.ok(!/>\s*Editar\s*</.test(todo), "volvió un botón «Editar» suelto");
+});
 
 console.log(`\n${pasadas} pruebas correctas\n`);

@@ -1,14 +1,16 @@
 "use client";
 
 import {
+  Fragment,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type KeyboardEvent,
+  type ReactNode,
 } from "react";
 import type { Alerta, AnalisisFuncional, TipoArista } from "@/lib/types";
-import type { EstiloGrafo } from "@/lib/preferencias";
+import type { NivelMapa } from "@/lib/preferencias";
 import {
   agregarArista,
   agregarNodo,
@@ -18,30 +20,36 @@ import {
   type NodoGrafo,
   type TipoNodoGrafo,
 } from "@/lib/grafo";
-import VistaAFC from "./estilos/afc";
 import { EtiquetasProcesoACT, ProcesosSinAnclar } from "./AnotacionesACT";
 import VistaACT from "./estilos/act";
-import VistaDBT, { IconoNodo, subtipoDeNodo } from "./estilos/dbt";
+import { type CapasMapa } from "./TableroSituacion";
+import TableroColumnas, { type AgruparMapa } from "./TableroColumnas";
+import { rutaDeSeleccion, textoDeRuta } from "@/lib/rutaMapa";
+import { ETIQUETA_APOYO_ARISTA } from "@/lib/apoyoAristas";
+import { repartirProcesosACT } from "@/lib/procesosACT";
+import { destinosPosibles } from "@/lib/edicionMapa";
+import { TIPO_ARRASTRE_NODO } from "../espacio/contexto";
 import s from "./afc.module.css";
-import { TERMINOS, terminoDeContingencia, terminoEnTexto, type IdTermino } from "@/lib/terminos";
-import { describirGrado, gradoDeNumero } from "@/lib/gradoApoyo";
+import { TERMINOS, terminoDeContingencia, type IdTermino } from "@/lib/terminos";
 import { interAfc, poppinsAfc } from "./fuentesAfc";
-import { ChevronRight } from "lucide-react";
 import { ETIQUETA_TIPO, etiquetaApoyo, etiquetaTipoNodo } from "./etiquetasNodo";
 import { useEspacio } from "../espacio/contexto";
 import { alertasPorNodo } from "@/lib/alertasNodo";
 import { InsigniaAlerta } from "./InsigniaAlerta";
+import { procedenciaDe, ROTULOS_PROCEDENCIA } from "@/lib/procedencia";
+import type { ProcedenciaElemento } from "@/lib/types";
 import type { ApoyoArista } from "@/lib/types";
 
 interface GrafoAFCProps {
   analisis: AnalisisFuncional;
-  notaOriginal: string;
-  estilo: EstiloGrafo;
-  /**
-   * Una decisión sobre la propuesta de la IA (confirmar), no texto del clínico:
-   * no marca la sección como editada. Confirmar no es editar (invariante 6).
-   */
-  onDecidir: (mutar: (copia: AnalisisFuncional) => void) => void;
+  /** Situación, Clínico o Evidencia: la misma colección de nodos, leída a otra profundidad. */
+  nivel: NivelMapa;
+  capas: CapasMapa;
+  /** La Matrix ACT como vista alternativa de los mismos nodos. */
+  matrix: boolean;
+  /** La ruta seleccionada como lista lineal, para lectores de pantalla. */
+  leerComoTexto: boolean;
+  onIrANivel: (nivel: NivelMapa) => void;
 }
 
 interface Trazo {
@@ -122,6 +130,14 @@ function textoDetalle(nodo: NodoGrafo): { texto: string; definicion?: string } |
   return { texto: nodo.detalle };
 }
 
+/** La marca escrita de la procedencia: sin color, porque el color ya es el apoyo. */
+const MARCA_PROCEDENCIA: Record<ProcedenciaElemento["estado"], string> = {
+  propuesta: "IA",
+  confirmado: "✓",
+  editado: "✎",
+  creado: "Tuyo",
+};
+
 const CLASE_TIPO: Record<TipoNodoGrafo, string> = {
   om: "border-l-sky-500",
   moduladora: "border-l-violet-500",
@@ -148,6 +164,11 @@ function Nodo({
   onCita,
   variante,
   alertas = [],
+  procedencia,
+  onMenu,
+  soltarFrase,
+  destinoCita = false,
+  arrastre,
 }: {
   nodo: NodoGrafo;
   seleccionado: boolean;
@@ -156,8 +177,18 @@ function Nodo({
   onSeleccionar: (nodo: NodoGrafo) => void;
   onEditar: (nodo: NodoGrafo, texto: string) => void;
   onCita: (nodo: NodoGrafo) => void;
-  variante?: "afc" | "dbt";
+  variante?: "afc";
   alertas?: readonly Alerta[];
+  /** Quién tiene la última palabra sobre el nodo. Sin esto no se pinta marca. */
+  procedencia?: ProcedenciaElemento;
+  /** Abre el menú del nodo en un punto de la pantalla. */
+  onMenu?: (x: number, y: number) => void;
+  /** Recibe una frase arrastrada desde la Fuente (contexto.tsx#propsSoltarFrase). */
+  soltarFrase?: { onDragOver: (e: React.DragEvent) => void; onDrop: (e: React.DragEvent) => void };
+  /** Hay una frase en el aire: se marca como sitio donde soltarla. */
+  destinoCita?: boolean;
+  /** Si el nodo se puede llevar a otro carril, cómo empieza y acaba el arrastre. */
+  arrastre?: { onDragStart: (e: React.DragEvent) => void; onDragEnd: () => void };
 }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(nodo.etiqueta);
@@ -173,6 +204,13 @@ function Nodo({
     if (evento.key === "Enter" || evento.key === " ") {
       evento.preventDefault();
       onSeleccionar(nodo);
+    }
+    // La tecla Menú y Shift+F10 son el clic derecho del teclado.
+    if (onMenu && (evento.key === "ContextMenu" || (evento.key === "F10" && evento.shiftKey))) {
+      evento.preventDefault();
+      const r = evento.currentTarget.getBoundingClientRect();
+      onSeleccionar(nodo);
+      onMenu(r.left + 12, r.bottom - 8);
     }
   }
 
@@ -221,6 +259,15 @@ function Nodo({
       setEditando(true);
     },
     onKeyDown: manejarTecla,
+    onContextMenu: onMenu
+      ? (evento: React.MouseEvent) => {
+          evento.preventDefault();
+          onSeleccionar(nodo);
+          onMenu(evento.clientX, evento.clientY);
+        }
+      : undefined,
+    ...soltarFrase,
+    ...(arrastre ? { draggable: true, ...arrastre } : {}),
   } as const;
 
   if (variante === "afc") {
@@ -230,10 +277,23 @@ function Nodo({
       nodo.tipo === "conducta" ? s.conducta : "",
       seleccionado ? s.seleccionado : "",
       atenuado ? s.atenuado : "",
+      procedencia?.estado === "propuesta" ? s.propuesta : "",
+      destinoCita ? s.destinoCita : "",
     ].join(" ");
+    const rotulo = procedencia ? ROTULOS_PROCEDENCIA[procedencia.estado] : null;
     return (
       <article {...comunes} aria-label={`${nodo.tipo === "encubierta" ? ETIQUETA_TIPO.conducta : ETIQUETA_TIPO[nodo.tipo]}: ${nodo.etiqueta}${conectando ? ". Seleccionar para conectar" : ""}`} className={clases}>
         {barraApoyo(s.barraApoyo)}
+        {procedencia && rotulo && (
+          <span
+            className={s.marcaProcedencia}
+            data-procedencia={procedencia.estado}
+            title={`${rotulo.frase}${procedencia.estado === "editado" ? (procedencia.original ? ` Texto original de la IA: ${procedencia.original}` : " No se conserva el texto original de la IA.") : ""}`}
+          >
+            {MARCA_PROCEDENCIA[procedencia.estado]}
+            <span className="sr-only"> {rotulo.etiqueta}</span>
+          </span>
+        )}
         <div className={s.nodoCuerpo}>
           <div className={s.nodoTexto}>
             <span className={s.chip}>{nodo.tipo === "encubierta" ? ETIQUETA_TIPO.conducta : ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} /></span>
@@ -242,49 +302,6 @@ function Nodo({
             {detalle && <p className={s.detalle} title={detalle.definicion}>{detalle.texto}</p>}
           </div>
         </div>
-      </article>
-    );
-  }
-
-  if (variante === "dbt") {
-    // Sin color por tipo: lo dicen el icono y el subtipo. El color queda para
-    // el grado de apoyo, y la selección es solo borde y un fondo muy tenue.
-    const grado = describirGrado(gradoDeNumero(nodo.apoyo));
-    const conducta = nodo.tipo === "conducta";
-    // En una columna estrecha (reglas verbales) la píldora baja bajo el texto:
-    // a su lado, dejaba al texto sin anchura.
-    const pildora = (clase: string) => (
-      <button
-        type="button"
-        title={grado.corta}
-        aria-label={`${grado.etiqueta}. Ir a la línea citada`}
-        onClick={(evento) => {
-          evento.stopPropagation();
-          onCita(nodo);
-        }}
-        className={`${clase} items-center gap-1.5 whitespace-nowrap rounded-full border border-divider bg-canvas px-2 py-0.5 text-[11px] text-ink-muted`}
-      >
-        <span aria-hidden="true" data-apoyo={nodo.apoyo} className={`${s.marcaApoyo} !h-1.5 !w-1.5 rounded-full`} />
-        {grado.etiqueta}
-      </button>
-    );
-    return (
-      <article
-        {...comunes}
-        className={`@container/tarjeta relative flex min-w-0 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${seleccionado ? "border-accent bg-accent-soft ring-1 ring-accent" : conducta ? "border-ink-muted/35 bg-canvas hover:border-ink-muted/60" : "border-divider bg-surface hover:border-ink-muted/40"} ${atenuado ? "opacity-25" : ""}`}
-      >
-        <IconoNodo nodo={nodo} className={`h-5 w-5 flex-none ${seleccionado ? "text-accent" : "text-ink-muted"}`} />
-        <div className="min-w-0 flex-1">
-          {alertas.length > 0 && <InsigniaAlerta alertas={alertas} className="mb-1" />}
-          {editando
-            ? editor("w-full rounded border border-accent bg-canvas px-1.5 py-1 text-sm text-ink outline-none")
-            : <p className={`break-words text-sm leading-snug text-ink ${conducta ? "font-medium" : ""}`}>{nodo.etiqueta}</p>}
-          <p className="mt-0.5 text-[11px] text-ink-muted">{subtipoDeNodo(nodo) ?? ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} /></p>
-          {detalle && nodo.tipo !== "encubierta" && <p className="mt-0.5 text-[11px] text-ink-muted" title={detalle.definicion}>{detalle.texto}</p>}
-          {pildora("mt-1.5 inline-flex @xs/tarjeta:hidden")}
-        </div>
-        {pildora("hidden flex-none @xs/tarjeta:inline-flex")}
-        <ChevronRight className="hidden h-4 w-4 flex-none text-ink-muted/60 @xs/tarjeta:block" aria-hidden="true" />
       </article>
     );
   }
@@ -416,22 +433,19 @@ function BotonAgregarNodo({
   );
 }
 
-export default function GrafoAFC({ analisis, notaOriginal, estilo, onDecidir }: GrafoAFCProps) {
+export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
-  const redibujar = useRef<() => void>(() => {});
-  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita: abrirCita, citaEnFuente } = useEspacio();
+  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu, propsSoltarFrase, arrastrandoFrase, setNodoEnElAire } = useEspacio();
   const [modoConectar, setModoConectar] = useState(false);
   const [origenConexion, setOrigenConexion] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<1 | 2 | 3 | null>(null);
   const [soloApoyado, setSoloApoyado] = useState(false);
+  const [agrupar, setAgrupar] = useState<AgruparMapa>("episodio");
   const [trazos, setTrazos] = useState<Trazo[]>([]);
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
   const alertasDeNodo = useMemo(() => alertasPorNodo(analisis), [analisis]);
   const avisos = (id: string) => alertasDeNodo.get(id) ?? [];
-  // La vista DBT sigue pintando su propio panel de detalle hasta la 5B: le
-  // basta con las líneas de la nota y la que resalta la Fuente.
-  const lineas = useMemo(() => notaOriginal.replace(/\r\n/g, "\n").split("\n"), [notaOriginal]);
-  const lineaActiva = citaEnFuente?.linea_inicio ?? null;
+  const ruta = useMemo(() => rutaDeSeleccion(analisis, nodos, seleccionado), [analisis, nodos, seleccionado]);
 
   function seleccionarNodo(nodo: NodoGrafo) {
     if (!modoConectar) {
@@ -448,11 +462,16 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onDecidir }: 
     seleccionar(nodo.id);
   }
 
-  function irACita(nodo: NodoGrafo) {
-    if (nodo.evidencia?.verificada) abrirCita(nodo.evidencia);
+  function citaDeNodo(nodo: NodoGrafo) {
+    if (nodo.evidencia?.verificada) irACita(nodo.evidencia);
   }
 
+  // Las líneas curvas existen en la vista Matrix y en el nivel Clínico, donde
+  // las flechas cuentan el orden de la cadena. En Situación y Evidencia no hay:
+  // el tablero se lee por columnas y las relaciones se eligen desde el Inspector.
+  const conFlechas = matrix || nivel === "clinico";
   useLayoutEffect(() => {
+    if (!conFlechas) return;
     const contenedor = contenedorRef.current;
     if (!contenedor) return;
     let fotograma = 0;
@@ -462,83 +481,100 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onDecidir }: 
         const raiz = contenedorRef.current;
         if (!raiz) return;
         const cajaRaiz = raiz.getBoundingClientRect();
-        const situacionDe = (id: string) =>
-          raiz.querySelector<HTMLElement>(`[data-nodo-id="${CSS.escape(id)}"]`)?.closest<HTMLElement>("[data-situacion-id]")?.dataset.situacionId ?? null;
-        const caja = (id: string) => {
-          const elemento = raiz.querySelector<HTMLElement>(`[data-nodo-id="${CSS.escape(id)}"]`);
-          if (!elemento) return null;
+        const porId = (ambito: ParentNode, id: string) =>
+          ambito.querySelector<HTMLElement>(`[data-nodo-id="${CSS.escape(id)}"]`);
+        const aCaja = (elemento: HTMLElement) => {
           const rect = elemento.getBoundingClientRect();
           return { x: rect.left - cajaRaiz.left, y: rect.top - cajaRaiz.top, w: rect.width, h: rect.height };
         };
         setTrazos(analisis.aristas.flatMap((arista) => {
-          const desde = caja(arista.desde);
-          const hasta = caja(arista.hasta);
-          if (!desde || !hasta) return [];
-          if (estilo === "afc") {
-            const origen = situacionDe(arista.desde);
-            const lejana = origen === null || origen !== situacionDe(arista.hasta);
-            return [{ id: arista.id, tipo: arista.tipo, apoyo: arista.apoyo, desde: arista.desde, hasta: arista.hasta, lejana, d: trazadoAFC(desde, hasta) }];
-          }
-          const x1 = desde.x + desde.w;
-          const y1 = desde.y + desde.h / 2;
-          const x2 = hasta.x;
-          const y2 = hasta.y + hasta.h / 2;
-          const curva = Math.max(24, Math.abs(x2 - x1) / 2);
-          return [{ id: arista.id, tipo: arista.tipo, apoyo: arista.apoyo, desde: arista.desde, hasta: arista.hasta, d: `M ${x1} ${y1} C ${x1 + curva} ${y1}, ${x2 - curva} ${y2}, ${x2} ${y2}` }];
+          const origen = porId(raiz, arista.desde);
+          if (!origen) return [];
+          // En los tableros una flecha no cruza de una situación a otra: se
+          // busca el destino dentro de la misma situación que el origen.
+          const destino = porId(matrix ? raiz : (origen.closest("[data-situacion-id]") ?? raiz), arista.hasta);
+          if (!destino) return [];
+          return [{ id: arista.id, tipo: arista.tipo, apoyo: arista.apoyo, desde: arista.desde, hasta: arista.hasta, d: trazadoAFC(aCaja(origen), aCaja(destino)) }];
         }));
       });
     };
-    redibujar.current = dibujar;
     dibujar();
     const observador = new ResizeObserver(dibujar);
     observador.observe(contenedor);
     window.addEventListener("resize", dibujar);
-    window.addEventListener("scroll", dibujar, true);
+    // El tablero se desplaza en horizontal dentro de su caja: las flechas
+    // siguen a las tarjetas.
+    contenedor.addEventListener("scroll", dibujar, true);
     return () => {
       cancelAnimationFrame(fotograma);
       observador.disconnect();
       window.removeEventListener("resize", dibujar);
-      window.removeEventListener("scroll", dibujar, true);
+      contenedor.removeEventListener("scroll", dibujar, true);
     };
-  }, [analisis.aristas, nodos, estilo]);
+  }, [analisis.aristas, nodos, conFlechas, matrix, nivel, capas, agrupar]);
 
-  const renderNodo = (n: NodoGrafo) => (
-    <Nodo
-      nodo={n}
-      seleccionado={seleccionado === n.id}
-      atenuado={(filtro !== null && n.apoyo !== filtro) || (soloApoyado && n.apoyo < 3)}
-      conectando={estilo === "afc" && modoConectar}
-      onSeleccionar={seleccionarNodo}
-      onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
-      onCita={irACita}
-      alertas={avisos(n.id)}
-    />
+  // Los procesos ACT se leen sobre su nodo, por id y solo por id, cuando la capa
+  // ACT está encendida y tienen base funcional. Lo demás va a la lista aparte.
+  const { interpretables: procesosACT, aparte: procesosSinAnclar } = repartirProcesosACT(
+    analisis.capa_act.procesos_act,
+    new Set(nodos.map((n) => n.id))
   );
+  const atenuado = (n: NodoGrafo) =>
+    (filtro !== null && n.apoyo !== filtro) ||
+    (soloApoyado && n.apoyo < 3) ||
+    (ruta.ids.size > 0 && !ruta.ids.has(n.id));
 
-  // Los procesos ACT se leen sobre su nodo, por id y solo por id. Lo que no
-  // ancla (o apunta a un nodo que ya no está) va a la lista «sin anclar».
-  const idsNodos = new Set(nodos.map((n) => n.id));
-  const procesosACT = analisis.capa_act.procesos_act;
-  const procesosSinAnclar = procesosACT.filter((p) => !p.nodo_id || !idsNodos.has(p.nodo_id));
-  const renderNodoAFC = (n: NodoGrafo) => {
-    const nodoAFC = (
+  // Un nodo con un carril compatible al que ir se puede arrastrar; mientras
+  // vuela, el tablero enseña dónde se puede soltar (TableroSituacion).
+  const arrastreDe = (n: NodoGrafo) => {
+    const destinos = destinosPosibles(analisis, n.id);
+    if (destinos.length === 0) return undefined;
+    return {
+      onDragStart: (e: React.DragEvent) => {
+        e.dataTransfer.setData(TIPO_ARRASTRE_NODO, n.id);
+        e.dataTransfer.effectAllowed = "move";
+        setNodoEnElAire({ id: n.id, situacionId: n.situacion_id, destinos });
+      },
+      onDragEnd: () => setNodoEnElAire(null),
+    };
+  };
+
+  const renderNodoMapa = (n: NodoGrafo) => {
+    const nodo = (
       <Nodo
         variante="afc"
         nodo={n}
         seleccionado={seleccionado === n.id}
-        atenuado={(filtro !== null && n.apoyo !== filtro) || (soloApoyado && n.apoyo < 3)}
+        atenuado={atenuado(n)}
         conectando={modoConectar}
         onSeleccionar={seleccionarNodo}
         onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
-        onCita={irACita}
+        onCita={citaDeNodo}
         alertas={avisos(n.id)}
+        procedencia={procedenciaDe(analisis, n.id)}
+        onMenu={(x, y) => abrirMenu(n.id, x, y)}
+        soltarFrase={propsSoltarFrase(n.id)}
+        destinoCita={arrastrandoFrase}
+        arrastre={arrastreDe(n)}
       />
     );
-    const suyos = procesosACT.filter((p) => p.nodo_id === n.id);
-    if (suyos.length === 0) return nodoAFC;
-    return <div><EtiquetasProcesoACT procesos={suyos} />{nodoAFC}</div>;
+    const suyos = capas.act ? procesosACT.filter((p) => p.nodo_id === n.id) : [];
+    if (suyos.length === 0) return nodo;
+    return <div><EtiquetasProcesoACT procesos={suyos} />{nodo}</div>;
   };
-  const renderAgregarAFC = (carril: CarrilGrafo, situacionId: string, alternativa: boolean) => (
+  const renderNodoMatrix = (n: NodoGrafo) => (
+    <Nodo
+      nodo={n}
+      seleccionado={seleccionado === n.id}
+      atenuado={atenuado(n)}
+      conectando={false}
+      onSeleccionar={seleccionarNodo}
+      onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
+      onCita={citaDeNodo}
+      alertas={avisos(n.id)}
+    />
+  );
+  const renderAgregar = (carril: CarrilGrafo, situacionId: string, alternativa: boolean) => (
     <BotonAgregarNodo
       variante="afc"
       carril={carril}
@@ -554,24 +590,9 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onDecidir }: 
     />
   );
 
-  const esAFC = estilo === "afc";
-  // DBT pinta sus propias relaciones y su propio panel de detalle.
-  const esDBT = estilo === "dbt";
-  const conectable = esAFC || esDBT;
-
-  const renderNodoDBT = (n: NodoGrafo) => (
-    <Nodo
-      variante="dbt"
-      nodo={n}
-      seleccionado={seleccionado === n.id}
-      atenuado={(filtro !== null && n.apoyo !== filtro) || (soloApoyado && n.apoyo < 3)}
-      conectando={modoConectar}
-      onSeleccionar={seleccionarNodo}
-      onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
-      onCita={irACita}
-      alertas={avisos(n.id)}
-    />
-  );
+  const lectura = leerComoTexto
+    ? textoDeRuta(analisis, nodos, seleccionado, (n) => `${etiquetaTipoNodo(n)}: ${n.etiqueta}`, (a) => ETIQUETA_APOYO_ARISTA[a.apoyo])
+    : [];
 
   return (
     <div className="print:contents">
@@ -580,23 +601,39 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onDecidir }: 
         <button type="button" disabled={!puedeRehacer} onClick={rehacer} className="rounded border border-divider px-3 py-1.5 text-xs text-ink disabled:opacity-40">Rehacer</button>
         <button
           type="button"
-          disabled={!conectable}
+          disabled={matrix}
           aria-pressed={modoConectar}
           onClick={() => { setModoConectar((v) => !v); setOrigenConexion(null); }}
-          title={conectable ? "Crear una relación entre dos nodos" : "Las relaciones se editan en la vista AFC o DBT"}
+          title={matrix ? "Las relaciones se editan en los tableros" : "Crear una relación entre dos nodos"}
           className={`rounded border px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${modoConectar ? "border-accent bg-accent/10 text-accent" : "border-divider text-ink"}`}
         >
           {origenConexion ? "Elige el destino" : "Conectar"}
         </button>
+        {!matrix && (
+          <div role="group" aria-label="Separar el Mapa por" className="ml-2 flex items-center gap-1 text-xs">
+            <span className="text-ink-muted">Separar por</span>
+            {(["episodio", "conducta"] as const).map((opcion) => (
+              <button
+                key={opcion}
+                type="button"
+                aria-pressed={agrupar === opcion}
+                onClick={() => setAgrupar(opcion)}
+                className="rounded-full border border-divider px-2.5 py-1 text-ink-muted aria-pressed:border-accent aria-pressed:text-accent"
+              >
+                {opcion === "episodio" ? "Episodio" : "Conducta"}
+              </button>
+            ))}
+          </div>
+        )}
         <span className="ml-auto text-xs text-ink-muted">{nodos.length} nodos · {analisis.aristas.length} relaciones</span>
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2 text-xs print:hidden" aria-label="Filtro de apoyo en la nota">
         <span className="font-medium text-ink">Apoyo en la nota</span>
-        {([3, 2, 1] as const).map((nivel) => (
-          <button key={nivel} type="button" aria-pressed={filtro === nivel} onClick={() => setFiltro(filtro === nivel ? null : nivel)} className="rounded-full border border-divider px-2.5 py-1 text-ink-muted aria-pressed:border-accent aria-pressed:text-accent">
-            <span className={`${s.marcaApoyo} mr-1 align-middle`} data-apoyo={nivel} aria-hidden="true" />
-            {etiquetaApoyo(nivel)}
+        {([3, 2, 1] as const).map((n) => (
+          <button key={n} type="button" aria-pressed={filtro === n} onClick={() => setFiltro(filtro === n ? null : n)} className="rounded-full border border-divider px-2.5 py-1 text-ink-muted aria-pressed:border-accent aria-pressed:text-accent">
+            <span className={`${s.marcaApoyo} mr-1 align-middle`} data-apoyo={n} aria-hidden="true" />
+            {etiquetaApoyo(n)}
           </button>
         ))}
         <label className="ml-2 flex items-center gap-1.5 text-ink-muted">
@@ -605,68 +642,162 @@ export default function GrafoAFC({ analisis, notaOriginal, estilo, onDecidir }: 
         </label>
       </div>
 
-      <div className="min-w-0 print:block">
-        <div className={esAFC ? `${s.scroll} min-w-0 print:hidden` : "contents"}>
-        <div
-          ref={contenedorRef}
-          className={esAFC ? `relative ${s.raiz} ${s.lienzo} ${poppinsAfc.variable} ${interAfc.variable}` : "relative min-w-0 print:hidden"}
-        >
-          {/* En la vista AFC las relaciones ya se leen en las columnas y en la
-              Ficha ("Relaciones del nodo"); las líneas curvas encima del
-              tablero sobraban como trazo visual y no se dibujan aquí. */}
-          {!esAFC && !esDBT && (
+      {leerComoTexto && (
+        <section aria-label="La ruta como texto" aria-live="polite" className="mb-5 rounded border border-divider bg-canvas p-3">
+          <p className="mb-1 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+            {seleccionado ? "Ruta del elemento elegido" : "Cadena de cada situación"}
+          </p>
+          <ol className="list-decimal space-y-1 pl-5 text-sm leading-relaxed text-ink">
+            {lectura.map((linea, i) => <li key={i}>{linea}</li>)}
+          </ol>
+        </section>
+      )}
+
+      <div ref={contenedorRef} className={`relative min-w-0 ${s.raiz} ${poppinsAfc.variable} ${interAfc.variable} print:hidden`}>
+        {matrix ? (
+          <>
             <svg className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full overflow-visible md:block" aria-hidden="true">
               <defs><marker id="punta-afc" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="currentColor" /></marker></defs>
               {trazos.map((trazo) => (
                 <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap={trazo.apoyo === "inferido" ? "round" : undefined} strokeDasharray={trazo.apoyo === "inferido" ? "0.1 5" : trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink-muted/60"} markerEnd="url(#punta-afc)" />
               ))}
             </svg>
-          )}
-
-          {estilo !== "afc" ? (
-            <div className={esDBT ? "relative" : "relative z-10"}>
-              {esDBT && (
-                <VistaDBT
-                  analisis={analisis}
-                  nodos={nodos}
-                  renderNodo={renderNodoDBT}
-                  seleccionado={seleccionado}
-                  onSeleccionar={seleccionarNodo}
-                  onCerrar={() => seleccionar(null)}
-                  describirTipo={(n) => ETIQUETA_TIPO[n.tipo]}
-                  lineas={lineas}
-                  lineaActiva={lineaActiva}
-                  onEditar={aplicar}
-                  onDecidir={onDecidir}
-                />
-              )}
-              {estilo === "act" && <VistaACT analisis={analisis} nodos={nodos} renderNodo={renderNodo} />}
+            <div className="relative z-10">
+              <VistaACT analisis={analisis} nodos={nodos} renderNodo={renderNodoMatrix} />
             </div>
-          ) : (
-            <VistaAFC
+          </>
+        ) : (
+          <div className="space-y-5">
+            {nivel === "clinico" && (
+              <svg className="pointer-events-none absolute inset-0 z-[5] hidden h-full w-full overflow-visible md:block" aria-hidden="true">
+                <defs><marker id="punta-clinico" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="currentColor" /></marker></defs>
+                {trazos.map((trazo) => (
+                  <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap={trazo.apoyo === "inferido" ? "round" : undefined} strokeDasharray={trazo.apoyo === "inferido" ? "0.1 5" : trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink/70"} markerEnd="url(#punta-clinico)" />
+                ))}
+              </svg>
+            )}
+            <TableroColumnas
               analisis={analisis}
               nodos={nodos}
-              renderNodo={renderNodoAFC}
-              renderAgregar={renderAgregarAFC}
-              onSeleccionar={seleccionarNodo}
-              onReacomodo={() => redibujar.current()}
+              capas={capas}
+              agrupar={agrupar}
+              nivel={nivel}
+              ruta={ruta.ids}
+              onCita={irACita}
+              renderNodo={renderNodoMapa}
+              renderAgregar={renderAgregar}
+              onSeleccionarId={seleccionar}
               onAgregarFuncion={(situacionId) => {
                 const texto = window.prompt("Función hipotetizada")?.trim();
                 if (texto) aplicar((copia) => agregarNodo(copia, situacionId, "funcion", texto));
               }}
             />
-          )}
-          {esAFC && procesosSinAnclar.length > 0 && (
-            <div className="mt-5"><ProcesosSinAnclar procesos={procesosSinAnclar} /></div>
-          )}
-        </div>
-        </div>
-
+            <FueraDeSituacion
+              analisis={analisis}
+              nodos={nodos}
+              nivel={nivel}
+              renderNodo={renderNodoMapa}
+              seleccionado={seleccionado}
+              onSeleccionarId={seleccionar}
+            />
+            {capas.act && procesosSinAnclar.length > 0 && <ProcesosSinAnclar procesos={procesosSinAnclar} />}
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
 
-      <div className="hidden print:block">
-        {analisis.situaciones.map((situacion) => <table key={situacion.id} className="mb-5 w-full table-fixed border-collapse text-xs"><caption className="mb-2 text-left font-serif text-base font-semibold">{situacion.nombre}</caption><thead><tr>{[terminoEnTexto("ed"), terminoEnTexto("om"), "Conducta", "Consecuencia", terminoEnTexto("consecuencia_demorada")].map((h) => <th key={h} className="border border-divider p-2 text-left">{h}</th>)}</tr></thead><tbody><tr><td className="border border-divider p-2">{situacion.cadena_operante?.antecedente || "—"}</td><td className="border border-divider p-2">{situacion.cadena_operante?.operacion_motivacional || "—"}</td><td className="border border-divider p-2">{situacion.cadena_operante?.respuesta || "—"}</td><td className="border border-divider p-2">{situacion.cadena_operante?.consecuencia.texto || "—"}</td><td className="border border-divider p-2">{situacion.cadena_operante?.consecuencias_largo_plazo?.texto || "—"}</td></tr></tbody></table>)}
-      </div>
+/**
+ * Lo del caso que no pertenece a una situación concreta: moduladoras,
+ * repertorio, reglas verbales, valores y acomodación del entorno. En el nivel
+ * Situación va plegado (es el marco, no la cadena); en Clínico y Evidencia,
+ * abierto y agrupado.
+ */
+function FueraDeSituacion({
+  analisis,
+  nodos,
+  nivel,
+  renderNodo,
+  seleccionado,
+  onSeleccionarId,
+}: {
+  analisis: AnalisisFuncional;
+  nodos: readonly NodoGrafo[];
+  nivel: NivelMapa;
+  renderNodo: (n: NodoGrafo) => ReactNode;
+  seleccionado: string | null;
+  onSeleccionarId: (id: string) => void;
+}) {
+  const globales = nodos.filter((n) => n.situacion_id === null);
+  const grupo = (tipo: NodoGrafo["tipo"]) => globales.filter((n) => n.tipo === tipo);
+  const total = globales.length + analisis.acomodacion_entorno.length;
+  if (total === 0) return null;
+  const contenido = (
+    <div className="grid gap-4 md:grid-cols-2">
+      {grupo("moduladora").length > 0 && (
+        <Grupito titulo="Variables moduladoras">{grupo("moduladora").map((n) => <Fragment key={n.id}>{renderNodo(n)}</Fragment>)}</Grupito>
+      )}
+      {analisis.reglas_verbales.length > 0 && (
+        <Grupito titulo="Reglas verbales">
+          {analisis.reglas_verbales.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              data-nodo-id={r.id}
+              onClick={() => onSeleccionarId(r.id)}
+              className={`block w-full rounded border border-divider bg-surface px-2 py-1.5 text-left text-sm text-ink ${seleccionado === r.id ? "ring-2 ring-accent/50" : ""}`}
+            >
+              {/* Entre comillas solo lo que la nota dice así: una regla inferida
+                  la redactó el análisis y no se presenta como dicha. */}
+              {r.textual_o_inferida === "textual" ? `«${r.regla}»` : r.regla}
+              <span className="block text-[11px] text-ink-muted">
+                {TERMINOS[r.clase].claro} · {r.textual_o_inferida === "textual" ? "textual" : "inferida"}
+              </span>
+            </button>
+          ))}
+        </Grupito>
+      )}
+      {analisis.acomodacion_entorno.length > 0 && (
+        <Grupito titulo="Acomodación del entorno">
+          {analisis.acomodacion_entorno.map((a) => (
+            <p key={a.id} className="rounded border border-divider bg-surface px-2 py-1.5 text-sm text-ink">
+              <span className="font-medium">{a.quien}:</span> {a.conducta_acomodacion}
+              {a.funcion && <span className="block text-[11px] text-ink-muted">{a.funcion}</span>}
+            </p>
+          ))}
+        </Grupito>
+      )}
+      {grupo("repertorio").length > 0 && (
+        <Grupito titulo="Repertorio disponible">{grupo("repertorio").map((n) => <Fragment key={n.id}>{renderNodo(n)}</Fragment>)}</Grupito>
+      )}
+      {grupo("valor").length > 0 && (
+        <Grupito titulo="Valores">{grupo("valor").map((n) => <Fragment key={n.id}>{renderNodo(n)}</Fragment>)}</Grupito>
+      )}
+    </div>
+  );
+  return (
+    <section aria-label="Fuera de una situación" className="rounded-lg border border-divider bg-canvas p-4">
+      {nivel === "situacion" ? (
+        <details>
+          <summary className="cursor-pointer font-serif text-sm font-semibold text-ink">Fuera de una situación concreta ({total})</summary>
+          <div className="mt-3">{contenido}</div>
+        </details>
+      ) : (
+        <>
+          <h4 className="mb-3 font-serif text-sm font-semibold text-ink">Fuera de una situación concreta</h4>
+          {contenido}
+        </>
+      )}
+    </section>
+  );
+}
+
+function Grupito({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">{titulo}</p>
+      {children}
     </div>
   );
 }
