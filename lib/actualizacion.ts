@@ -527,6 +527,9 @@ export function aplicarPropuestas(a: AnalisisFuncional, aceptadas: readonly Acep
         a.conductas_problema.push(conducta);
         if (hermana) {
           for (const s of a.situaciones) if (s.conductas_ids.includes(hermana.id)) s.conductas_ids.push(id);
+          // Misma clase funcional, mismo blanco: si no, una conducta sin
+          // situación no se vería en ninguna parte.
+          for (const b of a.blancos ?? []) if (b.conducta_ids.includes(hermana.id)) b.conducta_ids.push(id);
         }
         if (editada) a.procedencia[id] = { estado: "creado" };
         anotarEvidencia(a, id, p, sesion, autor, "a_favor");

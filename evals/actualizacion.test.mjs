@@ -168,6 +168,7 @@ prueba("lo editado por el clínico queda como suyo; lo aceptado tal cual, de la 
   assert.equal(nueva.descripcion, "Evita llamar al seguro");
   assert.equal(tal.seguimiento.evidencia[nueva.id][0].autor, "ia");
   assert.ok(!tal.procedencia[nueva.id], "propuesta de la IA");
+  assert.ok(tal.blancos.some((b) => b.conducta_ids.includes(c.id) && b.conducta_ids.includes(nueva.id)), "entra en el blanco de su clase");
   const editado = structuredClone(a);
   A.aplicarPropuestas(editado, [{ propuesta: r.propuestas[0], valorEditado: "No llama a la aseguradora" }], 2);
   const suya = editado.conductas_problema.at(-1);

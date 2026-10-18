@@ -18,6 +18,12 @@ import {
   type Propuesta,
 } from "@/lib/actualizacion";
 import { ETIQUETA_ESTADO_HIPOTESIS } from "@/lib/preguntas";
+import { construirNodosGrafo } from "@/lib/grafo";
+
+/** Una hipótesis sin origen nombrado se lee por su función. */
+function rotuloHipotesis(h: { origen: string; funcion: string; conducta: string }) {
+  return `${h.origen.trim() || h.funcion} → ${h.conducta}`;
+}
 
 type Decision = "aceptar" | "rechazar";
 
@@ -34,7 +40,7 @@ function etiquetaObjetivo(a: AnalisisFuncional, o: Objetivo | null): string {
       return recorte(buscar(a.conductas_problema)?.descripcion);
     case "hipotesis": {
       const h = buscar(a.hipotesis_mantenimiento);
-      return recorte(h ? `${h.origen} → ${h.conducta}` : "");
+      return recorte(h ? rotuloHipotesis(h) : "");
     }
     case "rival":
       return recorte(buscar(a.hipotesis_alternativas)?.enunciado);
@@ -44,6 +50,12 @@ function etiquetaObjetivo(a: AnalisisFuncional, o: Objetivo | null): string {
       return recorte(buscar(a.situaciones)?.nombre);
     case "blanco":
       return recorte(a.conductas_problema.find((c) => c.id === buscar(a.blancos ?? [])?.conducta_ids[0])?.descripcion);
+    case "relacion": {
+      const r = a.aristas.find((x) => x.id === o.id);
+      const nodos = construirNodosGrafo(a);
+      const nombre = (id?: string) => nodos.find((n) => n.id === id)?.etiqueta ?? "";
+      return r ? recorte(`${nombre(r.desde)} → ${nombre(r.hasta)}`) : o.ref;
+    }
     default:
       return o.ref;
   }
@@ -76,7 +88,7 @@ function resumen(a: AnalisisFuncional, p: Propuesta): string {
 function tituloGrupo(a: AnalisisFuncional, grupo: string | null): string {
   if (!grupo) return "Otros";
   const h = a.hipotesis_mantenimiento.find((x) => x.id === grupo);
-  if (h) return recorte(`${h.origen} → ${h.conducta}`, 80);
+  if (h) return recorte(rotuloHipotesis(h), 80);
   const b = (a.blancos ?? []).find((x) => x.id === grupo);
   if (b) return `Blanco · ${recorte(a.conductas_problema.find((c) => c.id === b.conducta_ids[0])?.descripcion, 70)}`;
   return "Otros";
