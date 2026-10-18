@@ -175,7 +175,7 @@ prueba("un estilo guardado por una versión anterior cae en su nivel", () => {
   assert.equal(nivelDeGuardado("afc"), "situacion");
   assert.equal(nivelDeGuardado("dbt"), "clinico");
   assert.equal(nivelDeGuardado("act"), "clinico");
-  assert.equal(nivelDeGuardado("evidencia"), "evidencia");
+  assert.equal(nivelDeGuardado("evidencia"), "situacion");
 });
 
 prueba("un valor que no existe cae al nivel por defecto", () => {

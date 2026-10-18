@@ -25,14 +25,12 @@ import { NIVELES_MAPA, type NivelMapa } from "@/lib/preferencias";
 import { construirNodosGrafo, huecosDeSituacion } from "@/lib/grafo";
 import { destinoDeAlerta } from "@/lib/destinoAlerta";
 import { siguientePorTeclado } from "@/lib/rutaMapa";
-import { calcularCoberturaNota, PALABRAS_MINIMAS_FRASE, recogerCitas } from "@/lib/coberturaNota";
-import { citaCubreFrase, segmentarFrases } from "@/lib/citas";
 import { estaAbierta } from "@/lib/preguntas";
 import { repartirProcesosACT } from "@/lib/procesosACT";
 import { INTRO_GRADO_APOYO, NIVELES_APOYO, NOTA_PIE_GRADO_APOYO, traducirMensajeAlerta } from "@/lib/gradoApoyo";
 import { estadoVacio } from "@/lib/vacios";
 import GrafoAFC from "../grafo/GrafoAFC";
-import type { CapasMapa } from "../grafo/TableroSituacion";
+import type { CapasMapa } from "../grafo/TableroColumnas";
 import { InsigniaAlerta } from "../grafo/InsigniaAlerta";
 import { useNivelMapa } from "../useLente";
 import { Plegable, SinHallazgos } from "../informe/primitivas";
@@ -43,18 +41,15 @@ import { useEspacio } from "./contexto";
 const ETIQUETA_NIVEL: Record<NivelMapa, string> = {
   situacion: "Situación",
   clinico: "Clínico",
-  evidencia: "Evidencia",
 };
 
 export default function VistaMapa({
   analisis,
   analisisConProsa,
-  notaOriginal,
   referenciaCaso,
 }: {
   analisis: AnalisisFuncional;
   analisisConProsa: AnalisisFuncional;
-  notaOriginal: string;
   referenciaCaso: string;
 }) {
   const { nivel, elegirNivel } = useNivelMapa(referenciaCaso);
@@ -94,7 +89,7 @@ export default function VistaMapa({
       const destino = e.target;
       if (destino instanceof Element && destino.closest("input, textarea, select, [contenteditable]")) return;
       if (e.altKey || e.ctrlKey || e.metaKey) return;
-      if (e.key === "1" || e.key === "2" || e.key === "3") {
+      if (e.key === "1" || e.key === "2") {
         elegirNivel(NIVELES_MAPA[Number(e.key) - 1]);
       } else if (e.key === "f" || e.key === "F") {
         abrirFuente(!fuenteAbierta);
@@ -180,7 +175,6 @@ export default function VistaMapa({
       {acciones.panel}
 
       <AvisosSinNodo analisis={analisis} />
-      {nivel === "evidencia" && !matrix && <FranjaCobertura analisis={analisis} notaOriginal={notaOriginal} />}
 
       {analisis.situaciones.length === 0 ? (
         <SinHallazgos estado={estadoVacio(analisis, "situaciones")} />
@@ -236,50 +230,6 @@ function BotonCapa({
       {children} <span className="font-mono">{contador}</span>
       {extra && <span className="text-ink-muted"> · {extra}</span>}
     </button>
-  );
-}
-
-/**
- * La cobertura de la nota en una franja: un tramo por frase que cuenta, lleno
- * si algún elemento la cita y en ámbar si no. Pulsar un tramo abre la Fuente
- * en esa frase.
- */
-function FranjaCobertura({ analisis, notaOriginal }: { analisis: AnalisisFuncional; notaOriginal: string }) {
-  const { irACita } = useEspacio();
-  const lineas = useMemo(() => notaOriginal.replace(/\r\n/g, "\n").split("\n"), [notaOriginal]);
-  const tramos = useMemo(() => {
-    const citas = recogerCitas(analisis);
-    return lineas.flatMap((linea, i) => {
-      const frases = segmentarFrases(linea);
-      return frases.flatMap((texto, j) => {
-        if (texto.split(/\s+/).filter(Boolean).length < PALABRAS_MINIMAS_FRASE) return [];
-        const usada = citas.some((c) => citaCubreFrase(c, i + 1, j + 1, frases.length));
-        return [{ linea: i + 1, frase: j + 1, texto, usada }];
-      });
-    });
-  }, [analisis, lineas]);
-  const cobertura = useMemo(() => calcularCoberturaNota(lineas, analisis), [analisis, lineas]);
-  if (tramos.length === 0) return null;
-  return (
-    <section aria-label="Cobertura de la nota" className="mb-4">
-      <p className="mb-1 text-xs text-ink-muted">
-        Cobertura: {cobertura.usadas} de {cobertura.total} frases de la nota usadas por el análisis
-      </p>
-      <div className="flex h-3 gap-px overflow-hidden rounded">
-        {tramos.map((t) => (
-          <button
-            key={`${t.linea}.${t.frase}`}
-            type="button"
-            title={`L${t.linea}.${t.frase}: ${t.texto}`}
-            aria-label={`Frase L${t.linea}.${t.frase}, ${t.usada ? "usada" : "sin usar"}`}
-            onClick={() =>
-              irACita({ texto: t.texto, linea_inicio: t.linea, linea_fin: t.linea, frase_inicio: t.frase, frase_fin: t.frase, verificada: true })
-            }
-            className={`h-full flex-1 ${t.usada ? "bg-accent/60" : "bg-warn/40"}`}
-          />
-        ))}
-      </div>
-    </section>
   );
 }
 

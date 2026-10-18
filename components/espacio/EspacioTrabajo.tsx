@@ -107,7 +107,6 @@ function Contenido({
             <VistaMapa
               analisis={analisis}
               analisisConProsa={analisisConProsa}
-              notaOriginal={notaOriginal}
               referenciaCaso={referenciaCaso}
             />
           ) : (

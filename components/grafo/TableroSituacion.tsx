@@ -192,9 +192,7 @@ export default function TableroSituacion({
     capas.huecos ? huecos.filter((h) => h.carril === carril) : [];
 
   const conEvidencia = (n: NodoGrafo) => (
-    <ConEvidencia key={n.id} nodo={n} nivel={nivel} onCita={onCita}>
-      {renderNodo(n)}
-    </ConEvidencia>
+    <Fragment key={n.id}>{renderNodo(n)}</Fragment>
   );
 
   const contingencia = operante?.tipo_contingencia ? terminoDeContingencia(operante.tipo_contingencia) : null;
@@ -511,61 +509,6 @@ function Arco({
         </span>
         <span className="text-ink-muted">{ETIQUETA_APOYO_ARISTA[arista.apoyo]}</span>
       </button>
-      {nivel === "evidencia" &&
-        citas.map((c, i) => (
-          <button key={i} type="button" onClick={() => onCita(c)} className="mt-0.5 text-center text-[11px] italic text-ink-muted hover:text-accent">
-            {etiquetaCita(c)} · «{recortar(c.texto, 60)}»
-          </button>
-        ))}
-      {nivel === "evidencia" &&
-        citasTuyas.map((c, i) => (
-          <button key={`t${i}`} type="button" onClick={() => onCita(c)} className="mt-0.5 text-center text-[11px] italic text-ink-muted hover:text-accent">
-            {etiquetaCita(c)} · «{recortar(c.texto, 60)}» · cita tuya
-          </button>
-        ))}
-    </div>
-  );
-}
-
-/** En el nivel Evidencia, cada nodo enseña su apoyo y la frase de la que sale. */
-export function ConEvidencia({
-  nodo,
-  nivel,
-  onCita,
-  children,
-}: {
-  nodo: NodoGrafo;
-  nivel: NivelMapa;
-  onCita: (cita: CitaVerificadaResuelta) => void;
-  children: ReactNode;
-}) {
-  if (nivel !== "evidencia") return <>{children}</>;
-  const cita = nodo.evidencia?.verificada ? nodo.evidencia : null;
-  const tuyas = nodo.citas_clinico ?? [];
-  return (
-    <div>
-      {children}
-      <p className="mt-1 text-[11px] text-ink-muted">
-        {etiquetaApoyo(nodo.apoyo)}
-        {tuyas.map((c, i) => (
-          <Fragment key={i}>
-            {" · "}
-            <button type="button" onClick={() => onCita(c)} className="italic hover:text-accent">
-              {etiquetaCita(c)} «{recortar(c.texto, 70)}» (cita tuya)
-            </button>
-          </Fragment>
-        ))}
-        {cita ? (
-          <>
-            {" · "}
-            <button type="button" onClick={() => onCita(cita)} className="italic hover:text-accent">
-              {etiquetaCita(cita)} «{recortar(cita.texto, 70)}»
-            </button>
-          </>
-        ) : tuyas.length > 0 ? null : (
-          " · sin frase de origen"
-        )}
-      </p>
     </div>
   );
 }

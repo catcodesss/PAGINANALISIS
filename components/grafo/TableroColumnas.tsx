@@ -26,9 +26,15 @@ import { TERMINOS, terminoDeContingencia, type IdTermino } from "@/lib/terminos"
 import { ETIQUETA_DESTINO_CARRIL, type DestinoCarril } from "@/lib/edicionMapa";
 import type { CitaVerificadaResuelta } from "@/lib/citas";
 import { TIPO_ARRASTRE_NODO, useEspacio } from "../espacio/contexto";
-import type { CapasMapa } from "./TableroSituacion";
 import PuntoEvidencia from "./PuntoEvidencia";
 import s from "./afc.module.css";
+
+export interface CapasMapa {
+  plan: boolean;
+  huecos: boolean;
+  dbt: boolean;
+  act: boolean;
+}
 
 export type AgruparMapa = "episodio" | "conducta";
 
@@ -161,19 +167,17 @@ function Episodio({
   // enseña bajo cada nodo su apoyo y su frase, y sombrea lo inferido.
   const esClinico = (n: NodoGrafo) => n.tipo === "ec" || n.tipo === "encubierta" || n.tipo === "conducta";
   const renderNodo = (n: NodoGrafo): ReactNode => {
-    const pintado =
-      nivel === "evidencia" ? (
-        <div className={s.conPunto}>
-          {renderNodoBase(n)}
-          <PuntoEvidencia id={n.id} apoyo={n.apoyo} />
-        </div>
-      ) : (
-        renderNodoBase(n)
-      );
+    // El punto de color de cada tarjeta abre su evidencia: la frase de la nota
+    // ya no vive en el tablero.
+    const pintado = (
+      <div className={s.conPunto}>
+        {renderNodoBase(n)}
+        <PuntoEvidencia id={n.id} apoyo={n.apoyo} />
+      </div>
+    );
     if (nivel === "clinico") {
       return <div className={esClinico(n) ? s.resaltado : s.sombreado}>{pintado}</div>;
     }
-    if (nivel === "evidencia" && n.apoyo <= 1) return <div className={s.sombreado}>{pintado}</div>;
     return pintado;
   };
 
@@ -268,7 +272,7 @@ function Episodio({
             <span>{ETIQUETA_ESQUEMA[operante.esquema_de_contingencia]}</span>
           </p>
         )}
-        {nivel === "evidencia" && aristaFuncion && citasFuncion.length > 0 && (
+        {aristaFuncion && citasFuncion.length > 0 && (
           <div className={s.evidenciaFila}>
             <span>La relación se apoya en la nota</span>
             <PuntoEvidencia id={aristaFuncion.id} apoyo={numeroDeApoyoArista(aristaFuncion.apoyo)} enLinea />

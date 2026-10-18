@@ -529,3 +529,16 @@
 .puntoEvidenciaPunto { display: block; width: 10px; height: 10px; border-radius: 999px; background: var(--afc-apoyo-inferencia, #AAA59D); }
 .puntoEvidenciaPunto[data-apoyo="3"] { background: var(--afc-apoyo-cita, #15705A); }
 .puntoEvidenciaPunto[data-apoyo="2"] { background: var(--afc-apoyo-parcial, #B58A35); }
+
+/* Tarjeta de evidencia: etiqueta del grado y cita con el color del apoyo. */
+.evidenciaEtiqueta, .evidenciaCita { --ev: var(--afc-apoyo-inferencia, #AAA59D); }
+.evidenciaEtiqueta[data-apoyo="3"], .evidenciaCita[data-apoyo="3"] { --ev: var(--afc-apoyo-cita, #15705A); }
+.evidenciaEtiqueta[data-apoyo="2"], .evidenciaCita[data-apoyo="2"] { --ev: var(--afc-apoyo-parcial, #B58A35); }
+.evidenciaEtiqueta {
+  display: inline-block; padding: 1px 9px; border: 1px solid var(--ev); border-radius: 999px;
+  font-size: .72rem; color: var(--ev); filter: brightness(.85);
+}
+.evidenciaCita {
+  margin: 0; padding: 8px 12px; border-left: 3px solid var(--ev); border-radius: 0 6px 6px 0;
+  background: color-mix(in srgb, var(--ev) 9%, transparent); font-style: italic; line-height: 1.45;
+}

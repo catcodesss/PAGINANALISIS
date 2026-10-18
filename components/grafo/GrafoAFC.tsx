@@ -23,8 +23,7 @@ import {
 } from "@/lib/grafo";
 import { EtiquetasProcesoACT, ProcesosSinAnclar } from "./AnotacionesACT";
 import VistaACT from "./estilos/act";
-import { type CapasMapa } from "./TableroSituacion";
-import TableroColumnas, { type AgruparMapa } from "./TableroColumnas";
+import TableroColumnas, { type AgruparMapa, type CapasMapa } from "./TableroColumnas";
 import { rutaDeSeleccion, textoDeRuta } from "@/lib/rutaMapa";
 import { ETIQUETA_APOYO_ARISTA } from "@/lib/apoyoAristas";
 import { repartirProcesosACT } from "@/lib/procesosACT";
