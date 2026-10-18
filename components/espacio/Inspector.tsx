@@ -34,7 +34,7 @@ import { ApoyoRelacion, InsigniaProcedencia, MuestraTrazo } from "../grafo/Proce
 import { etiquetaApoyo, etiquetaTipoNodo, TIPO_RELACION } from "../grafo/etiquetasNodo";
 import { Apoyo, Chip, Termino } from "../informe/primitivas";
 import { TarjetaPregunta, type EditarSeccion } from "../informe/PreguntasClinicas";
-import { useEdicion } from "../edicionManual";
+import { TextoEditable, useEdicion } from "../edicionManual";
 import { useEspacio } from "./contexto";
 
 const esCitaVerificada = (c: Cita): c is CitaVerificadaResuelta => c.verificada;
@@ -217,19 +217,18 @@ function DetalleNodo({
   return (
     <div className="space-y-3">
       <AvisosDelNodo alertas={avisos} />
-      <label className="block text-xs text-ink-muted">
-        Etiqueta
-        <textarea
+      <div>
+        <p className="text-xs text-ink-muted">Etiqueta</p>
+        {/* Parece texto y se edita al hacer clic, como el resto del informe. */}
+        <TextoEditable
           key={nodo.id + nodo.etiqueta}
-          defaultValue={nodo.etiqueta}
-          onBlur={(e) => {
-            const valor = e.target.value.trim();
-            if (valor && valor !== nodo.etiqueta) aplicar((copia) => actualizarEtiquetaNodo(copia, nodo.id, valor));
-          }}
-          rows={3}
-          className="mt-1 w-full rounded border border-divider bg-surface p-2 text-sm text-ink"
+          valor={nodo.etiqueta}
+          seccionId="situaciones"
+          etiqueta={`Etiqueta de ${etiquetaTipoNodo(nodo)}`}
+          className="text-sm leading-relaxed text-ink"
+          onCambio={(valor) => aplicar((copia) => actualizarEtiquetaNodo(copia, nodo.id, valor))}
         />
-      </label>
+      </div>
       <InsigniaProcedencia
         analisis={analisis}
         id={nodo.id}

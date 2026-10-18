@@ -393,4 +393,14 @@ prueba("el orden elegido entre bloques se respeta entero", () => {
 
 
 
+/* ── Edición donde se lee (fase 5C) ──────────────────────────────────────── */
+
+prueba("sin botones «Editar» ni «Borrar» por línea", () => {
+  // El texto es el control y el borrado vive dentro del editor abierto: un
+  // botón por línea llenaba el informe de controles que casi nunca se usan.
+  const todo = [codigoInforme, fuente("components/edicionManual.tsx"), ...leerCarpeta("components/espacio")].join("\n");
+  assert.ok(!/\bBotonBorrar\b/.test(todo), "volvió BotonBorrar");
+  assert.ok(!/>\s*Editar\s*</.test(todo), "volvió un botón «Editar» suelto");
+});
+
 console.log(`\n${pasadas} pruebas correctas\n`);
