@@ -30,7 +30,10 @@ export function irADestino(
             ? `[data-nodo-id="${CSS.escape(destino.id)}"], [data-situacion-id="${CSS.escape(destino.id)}"]`
             : 'section[aria-label="Avisos sin nodo"]';
       if (!selector) return;
-      document.querySelector(selector)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const elemento = document.querySelector(selector);
+      // La franja va plegada en una línea; quien llega desde un aviso viene a leerlo.
+      if (destino.vista === "mapa" && !destino.id) elemento?.querySelector("details")?.setAttribute("open", "");
+      elemento?.scrollIntoView({ behavior: "smooth", block: "center" });
     })
   );
 }

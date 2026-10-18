@@ -58,9 +58,15 @@ export function confirmarElemento(analisis: AnalisisFuncional, id: Id): void {
   analisis.procedencia[id] = { estado: "confirmado" };
 }
 
-/** Al borrar un elemento no queda su rastro: un id no se reutiliza, pero tampoco se acumula. */
+/**
+ * Al borrar un elemento no queda su rastro: ni su procedencia ni las citas que
+ * le uniste. Un id no se reutiliza, pero tampoco se acumula.
+ */
 export function olvidarProcedencia(analisis: AnalisisFuncional, ids: readonly Id[]): void {
-  for (const id of ids) delete analisis.procedencia[id];
+  for (const id of ids) {
+    delete analisis.procedencia[id];
+    if (analisis.citas_del_clinico) delete analisis.citas_del_clinico[id];
+  }
 }
 
 export interface RotuloProcedencia {
