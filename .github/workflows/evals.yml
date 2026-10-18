@@ -53,6 +53,9 @@ jobs:
       - name: Niveles del Mapa, fusión del eslabón y recorrido
         run: node evals/mapa.test.mjs
 
+      - name: Edición del Mapa (menú, citas del clínico, carriles)
+        run: node evals/edicion.test.mjs
+
       - name: Coherencia entre TypeScript, CSS y componentes
         run: node evals/coherencia.test.mjs
 

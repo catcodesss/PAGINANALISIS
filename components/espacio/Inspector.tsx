@@ -14,9 +14,9 @@
  * seleccionado»: mejor un Inspector vacío que uno que adivina.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { AnalisisFuncional, EstadoHipotesis } from "@/lib/types";
-import { actualizarEtiquetaNodo, borrarNodo, construirNodosGrafo, type NodoGrafo } from "@/lib/grafo";
+import { actualizarEtiquetaNodo, construirNodosGrafo, type NodoGrafo } from "@/lib/grafo";
 import { alertasPorNodo } from "@/lib/alertasNodo";
 import { etiquetaCita, type CitaVerificadaResuelta } from "@/lib/citas";
 import type { Cita } from "@/lib/types";
@@ -35,11 +35,11 @@ import { etiquetaApoyo, etiquetaTipoNodo, TIPO_RELACION } from "../grafo/etiquet
 import { Apoyo, Chip, Termino } from "../informe/primitivas";
 import { TarjetaPregunta, type EditarSeccion } from "../informe/PreguntasClinicas";
 import { TextoEditable, useEdicion } from "../edicionManual";
-import { useEspacio } from "./contexto";
+import { useEspacio, type PestanaInspector } from "./contexto";
 
 const esCitaVerificada = (c: Cita): c is CitaVerificadaResuelta => c.verificada;
 
-type Pestana = "detalle" | "evidencia" | "historial";
+type Pestana = PestanaInspector;
 
 const PESTANAS: { id: Pestana; titulo: string }[] = [
   { id: "detalle", titulo: "Detalle" },
@@ -60,8 +60,7 @@ export default function Inspector({
   /** En pantallas estrechas el Inspector es un cajón: esto lo cierra. */
   onCerrar?: () => void;
 }) {
-  const { seleccionado } = useEspacio();
-  const [pestana, setPestana] = useState<Pestana>("detalle");
+  const { seleccionado, pestanaInspector: pestana, elegirPestanaInspector: setPestana, abrirMenu, menu } = useEspacio();
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
   const nodo = nodos.find((n) => n.id === seleccionado) ?? null;
   const hipotesis =
@@ -89,8 +88,24 @@ export default function Inspector({
             </button>
           ))}
         </div>
+        {(nodo || arista) && seleccionado && (
+          // El camino del teclado y la pantalla táctil al menú del elemento.
+          <button
+            type="button"
+            aria-label="Acciones del elemento"
+            aria-haspopup="menu"
+            aria-expanded={menu?.id === seleccionado}
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              abrirMenu(seleccionado, r.right - 192, r.bottom + 4);
+            }}
+            className="ml-auto rounded px-2 py-0.5 text-sm text-ink-muted hover:bg-canvas hover:text-ink"
+          >
+            ⋯
+          </button>
+        )}
         {onCerrar && (
-          <button type="button" onClick={onCerrar} aria-label="Cerrar el Inspector" className="ml-auto rounded px-2 py-0.5 text-sm text-ink-muted hover:text-ink">
+          <button type="button" onClick={onCerrar} aria-label="Cerrar el Inspector" className={`${nodo || arista ? "" : "ml-auto "}rounded px-2 py-0.5 text-sm text-ink-muted hover:text-ink`}>
             ✕
           </button>
         )}
@@ -257,16 +272,6 @@ function DetalleNodo({
           ))}
         </section>
       )}
-      <button
-        type="button"
-        onClick={() => {
-          seleccionar(null);
-          aplicar((copia) => borrarNodo(copia, nodo.id));
-        }}
-        className="block rounded border border-warn/50 px-2 py-1 text-xs text-warn"
-      >
-        Borrar nodo
-      </button>
       <div className="border-t border-divider pt-3">
         <p className="mb-2 text-xs font-medium text-ink">Relaciones del nodo</p>
         {relaciones.length === 0 && <p className="text-[11px] text-ink-muted">Sin relaciones trazadas.</p>}
@@ -287,17 +292,15 @@ function DetalleNodo({
                 <InsigniaProcedencia analisis={analisis} id={r.arista.id} />
               </span>
             </span>
+            {/* La relación se abre como un elemento más; sus acciones (también
+                borrar) están en su menú, no en un botón por línea. */}
             <button
               type="button"
-              aria-label={`Borrar la relación con ${r.etiqueta}`}
-              onClick={() =>
-                aplicar((copia) => {
-                  copia.aristas = copia.aristas.filter((actual) => actual.id !== r.arista.id);
-                })
-              }
-              className="text-warn"
+              aria-label={`Abrir la relación con ${r.etiqueta}`}
+              onClick={() => seleccionar(r.arista.id)}
+              className="shrink-0 text-ink-muted hover:text-accent"
             >
-              Borrar
+              Abrir →
             </button>
           </div>
         ))}
@@ -324,7 +327,7 @@ function DetalleRelacion({
   pestana: Pestana;
   onEditarSeccion: EditarSeccion;
 }) {
-  const { aplicar, irACita, seleccionar, elegirVista } = useEspacio();
+  const { irACita, seleccionar, elegirVista } = useEspacio();
   const desde = nodos.find((n) => n.id === arista.desde);
   const hasta = nodos.find((n) => n.id === arista.hasta);
   const citas = arista.evidencia.filter(esCitaVerificada);
@@ -434,18 +437,6 @@ function DetalleRelacion({
           ))}
         </section>
       )}
-      <button
-        type="button"
-        onClick={() => {
-          seleccionar(null);
-          aplicar((copia) => {
-            copia.aristas = copia.aristas.filter((a) => a.id !== arista.id);
-          });
-        }}
-        className="block rounded border border-warn/50 px-2 py-1 text-xs text-warn"
-      >
-        Borrar relación
-      </button>
     </div>
   );
 }

@@ -66,6 +66,8 @@ export interface TableroSituacionProps {
   onAgregarFuncion: (situacionId: Id) => void;
   onCita: (cita: CitaVerificadaResuelta) => void;
   onIrANivel: (nivel: NivelMapa) => void;
+  /** Abre el menú de un nodo o una relación (clic derecho, tecla Menú). */
+  onMenu: (id: Id, x: number, y: number) => void;
 }
 
 export default function TableroSituacion({
@@ -83,7 +85,25 @@ export default function TableroSituacion({
   onAgregarFuncion,
   onCita,
   onIrANivel,
+  onMenu,
 }: TableroSituacionProps) {
+  // Clic derecho y teclado (tecla Menú, Shift+F10) para lo que no es un Nodo:
+  // los arcos y los eslabones de la cadena interna.
+  const menuDe = (id: Id) => ({
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault();
+      onSeleccionarId(id);
+      onMenu(id, e.clientX, e.clientY);
+    },
+    onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
+      if (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) {
+        e.preventDefault();
+        const r = e.currentTarget.getBoundingClientRect();
+        onSeleccionarId(id);
+        onMenu(id, r.left + 12, r.bottom - 8);
+      }
+    },
+  });
   const deSituacion = nodos.filter((n) => n.situacion_id === situacion.id);
   const ids = new Set(deSituacion.map((n) => n.id));
   const deTipo = (tipo: NodoGrafo["tipo"]) => deSituacion.filter((n) => n.tipo === tipo && !n.alternativa);
@@ -206,7 +226,7 @@ export default function TableroSituacion({
           {renderAgregar("antecedente", situacion.id, false)}
         </div>
 
-        <Arco arista={aristaAConducta} nivel={nivel} atenuado={!enRuta(aristaAConducta?.id)} seleccionado={seleccionado === aristaAConducta?.id} onElegir={onSeleccionarId} onCita={onCita} />
+        <Arco arista={aristaAConducta} nivel={nivel} atenuado={!enRuta(aristaAConducta?.id)} seleccionado={seleccionado === aristaAConducta?.id} onElegir={onSeleccionarId} onCita={onCita} menuDe={menuDe} />
 
         {/* Conducta, con la cadena interna en Clínico y el costo demorado debajo */}
         <div className="space-y-2">
@@ -238,6 +258,7 @@ export default function TableroSituacion({
                         type="button"
                         data-nodo-id={e.id}
                         onClick={() => onSeleccionarId(e.id)}
+                        {...menuDe(e.id)}
                         className={`flex w-full items-start gap-1.5 rounded px-1 py-0.5 text-left text-xs leading-snug text-ink hover:bg-surface ${seleccionado === e.id ? "ring-1 ring-accent" : ""}`}
                       >
                         {capas.dbt && <span className="font-mono text-[10px] text-ink-muted">{i + 1}.</span>}
@@ -296,6 +317,7 @@ export default function TableroSituacion({
           seleccionado={seleccionado === aristaFuncion?.id}
           onElegir={onSeleccionarId}
           onCita={onCita}
+          menuDe={menuDe}
           destacado
         >
           {funcion ? (
@@ -401,6 +423,7 @@ function Arco({
   onElegir,
   onCita,
   destacado = false,
+  menuDe,
   children,
 }: {
   arista: Arista | undefined;
@@ -410,6 +433,7 @@ function Arco({
   onElegir: (id: Id) => void;
   onCita: (cita: CitaVerificadaResuelta) => void;
   destacado?: boolean;
+  menuDe?: (id: Id) => Pick<React.HTMLAttributes<HTMLElement>, "onContextMenu" | "onKeyDown">;
   children?: ReactNode;
 }) {
   if (!arista) {
@@ -429,6 +453,7 @@ function Arco({
         type="button"
         data-arista-id={arista.id}
         onClick={() => onElegir(arista.id)}
+        {...menuDe?.(arista.id)}
         aria-label={`Relación: ${ETIQUETA_APOYO_ARISTA[arista.apoyo]}`}
         className={`flex flex-col items-center gap-1 rounded px-1.5 py-1 text-center text-[11px] leading-snug transition-colors hover:bg-canvas ${seleccionado ? "ring-2 ring-accent/60" : ""} ${destacado ? "w-full" : ""}`}
       >

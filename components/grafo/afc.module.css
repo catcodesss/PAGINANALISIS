@@ -264,6 +264,16 @@
 
 .nodoCuerpo { display: flex; align-items: center; margin-top: 2px; }
 .nodoTexto { min-width: 0; flex: 1; }
+/* Propuesta de la IA sin revisar: el borde lo dice sin color (fase 5C). */
+.propuesta { border-style: dashed; }
+.marcaProcedencia {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: .625rem;
+  line-height: 1;
+  color: var(--afc-text-tertiary);
+}
 .chip {
   display: inline-block;
   font-size: .625rem;

@@ -25,6 +25,7 @@ import Rail from "./Rail";
 import Inspector from "./Inspector";
 import Fuente from "./Fuente";
 import VistaMapa from "./VistaMapa";
+import MenuElemento from "./MenuElemento";
 
 export interface EspacioTrabajoProps {
   analisis: AnalisisFuncional;
@@ -142,6 +143,7 @@ function Contenido({
       )}
 
       <Fuente analisis={analisis} notaOriginal={notaOriginal} />
+      <MenuElemento analisis={analisis} onEditarSeccion={onEditarSeccion} />
     </div>
   );
 }

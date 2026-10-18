@@ -32,6 +32,15 @@ import type { IdVista } from "@/lib/secciones";
 
 type CitaResuelta = Extract<Cita, { verificada: true }>;
 
+export type PestanaInspector = "detalle" | "evidencia" | "historial";
+
+/** El menú de un nodo o una relación, abierto en un punto de la pantalla. */
+export interface MenuAbierto {
+  id: string;
+  x: number;
+  y: number;
+}
+
 export interface EspacioValor {
   seleccionado: string | null;
   seleccionar: (id: string | null) => void;
@@ -48,6 +57,12 @@ export interface EspacioValor {
   rehacer: () => void;
   puedeDeshacer: boolean;
   puedeRehacer: boolean;
+  /** Sube aquí para que «Ver evidencia» del menú pueda cambiarla. */
+  pestanaInspector: PestanaInspector;
+  elegirPestanaInspector: (p: PestanaInspector) => void;
+  menu: MenuAbierto | null;
+  abrirMenu: (id: string, x: number, y: number) => void;
+  cerrarMenu: () => void;
 }
 
 const EspacioContext = createContext<EspacioValor | null>(null);
@@ -121,6 +136,10 @@ export function ProveedorEspacio({
     : "mapa";
 
   const [fuenteAbierta, abrirFuente] = useState(false);
+  const [pestanaInspector, elegirPestanaInspector] = useState<PestanaInspector>("detalle");
+  const [menu, setMenu] = useState<MenuAbierto | null>(null);
+  const abrirMenu = useCallback((id: string, x: number, y: number) => setMenu({ id, x, y }), []);
+  const cerrarMenu = useCallback(() => setMenu(null), []);
   const [citaPulsada, setCitaPulsada] = useState<CitaResuelta | null>(null);
 
   const seleccionar = useCallback((id: string | null) => {
@@ -210,6 +229,11 @@ export function ProveedorEspacio({
       rehacer,
       puedeDeshacer,
       puedeRehacer,
+      pestanaInspector,
+      elegirPestanaInspector,
+      menu,
+      abrirMenu,
+      cerrarMenu,
     }),
     [
       seleccionado,
@@ -224,6 +248,10 @@ export function ProveedorEspacio({
       rehacer,
       puedeDeshacer,
       puedeRehacer,
+      pestanaInspector,
+      menu,
+      abrirMenu,
+      cerrarMenu,
     ]
   );
 

@@ -33,6 +33,8 @@ import { ETIQUETA_TIPO, etiquetaApoyo, etiquetaTipoNodo } from "./etiquetasNodo"
 import { useEspacio } from "../espacio/contexto";
 import { alertasPorNodo } from "@/lib/alertasNodo";
 import { InsigniaAlerta } from "./InsigniaAlerta";
+import { procedenciaDe, ROTULOS_PROCEDENCIA } from "@/lib/procedencia";
+import type { ProcedenciaElemento } from "@/lib/types";
 import type { ApoyoArista } from "@/lib/types";
 
 interface GrafoAFCProps {
@@ -125,6 +127,14 @@ function textoDetalle(nodo: NodoGrafo): { texto: string; definicion?: string } |
   return { texto: nodo.detalle };
 }
 
+/** La marca escrita de la procedencia: sin color, porque el color ya es el apoyo. */
+const MARCA_PROCEDENCIA: Record<ProcedenciaElemento["estado"], string> = {
+  propuesta: "IA",
+  confirmado: "✓",
+  editado: "✎",
+  creado: "Tuyo",
+};
+
 const CLASE_TIPO: Record<TipoNodoGrafo, string> = {
   om: "border-l-sky-500",
   moduladora: "border-l-violet-500",
@@ -151,6 +161,8 @@ function Nodo({
   onCita,
   variante,
   alertas = [],
+  procedencia,
+  onMenu,
 }: {
   nodo: NodoGrafo;
   seleccionado: boolean;
@@ -161,6 +173,10 @@ function Nodo({
   onCita: (nodo: NodoGrafo) => void;
   variante?: "afc";
   alertas?: readonly Alerta[];
+  /** Quién tiene la última palabra sobre el nodo. Sin esto no se pinta marca. */
+  procedencia?: ProcedenciaElemento;
+  /** Abre el menú del nodo en un punto de la pantalla. */
+  onMenu?: (x: number, y: number) => void;
 }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(nodo.etiqueta);
@@ -176,6 +192,13 @@ function Nodo({
     if (evento.key === "Enter" || evento.key === " ") {
       evento.preventDefault();
       onSeleccionar(nodo);
+    }
+    // La tecla Menú y Shift+F10 son el clic derecho del teclado.
+    if (onMenu && (evento.key === "ContextMenu" || (evento.key === "F10" && evento.shiftKey))) {
+      evento.preventDefault();
+      const r = evento.currentTarget.getBoundingClientRect();
+      onSeleccionar(nodo);
+      onMenu(r.left + 12, r.bottom - 8);
     }
   }
 
@@ -224,6 +247,13 @@ function Nodo({
       setEditando(true);
     },
     onKeyDown: manejarTecla,
+    onContextMenu: onMenu
+      ? (evento: React.MouseEvent) => {
+          evento.preventDefault();
+          onSeleccionar(nodo);
+          onMenu(evento.clientX, evento.clientY);
+        }
+      : undefined,
   } as const;
 
   if (variante === "afc") {
@@ -233,10 +263,22 @@ function Nodo({
       nodo.tipo === "conducta" ? s.conducta : "",
       seleccionado ? s.seleccionado : "",
       atenuado ? s.atenuado : "",
+      procedencia?.estado === "propuesta" ? s.propuesta : "",
     ].join(" ");
+    const rotulo = procedencia ? ROTULOS_PROCEDENCIA[procedencia.estado] : null;
     return (
       <article {...comunes} aria-label={`${nodo.tipo === "encubierta" ? ETIQUETA_TIPO.conducta : ETIQUETA_TIPO[nodo.tipo]}: ${nodo.etiqueta}${conectando ? ". Seleccionar para conectar" : ""}`} className={clases}>
         {barraApoyo(s.barraApoyo)}
+        {procedencia && rotulo && (
+          <span
+            className={s.marcaProcedencia}
+            data-procedencia={procedencia.estado}
+            title={`${rotulo.frase}${procedencia.estado === "editado" ? (procedencia.original ? ` Texto original de la IA: ${procedencia.original}` : " No se conserva el texto original de la IA.") : ""}`}
+          >
+            {MARCA_PROCEDENCIA[procedencia.estado]}
+            <span className="sr-only"> {rotulo.etiqueta}</span>
+          </span>
+        )}
         <div className={s.nodoCuerpo}>
           <div className={s.nodoTexto}>
             <span className={s.chip}>{nodo.tipo === "encubierta" ? ETIQUETA_TIPO.conducta : ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} /></span>
@@ -378,7 +420,7 @@ function BotonAgregarNodo({
 
 export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto, onIrANivel }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
-  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita } = useEspacio();
+  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu } = useEspacio();
   const [modoConectar, setModoConectar] = useState(false);
   const [origenConexion, setOrigenConexion] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<1 | 2 | 3 | null>(null);
@@ -469,6 +511,8 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
         onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
         onCita={citaDeNodo}
         alertas={avisos(n.id)}
+        procedencia={procedenciaDe(analisis, n.id)}
+        onMenu={(x, y) => abrirMenu(n.id, x, y)}
       />
     );
     const suyos = capas.act ? procesosACT.filter((p) => p.nodo_id === n.id) : [];
@@ -585,6 +629,7 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
                 }}
                 onCita={irACita}
                 onIrANivel={onIrANivel}
+                onMenu={abrirMenu}
               />
             ))}
             <FueraDeSituacion
