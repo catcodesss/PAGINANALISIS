@@ -1,5 +1,70 @@
 # CAMBIOS
 
+## Rediseño · fase 5B y 5C: el Mapa, edición donde se lee y citas del clínico (esquema v7, sin cambio de prompt)
+
+**5B · El Mapa** (`2247a10`).
+- Niveles Situación · Clínico · Evidencia en lugar de estilos. El nivel se
+  recuerda por caso en la clave del antiguo estilo, y afc/dbt/act guardados
+  caen en su nivel (`lib/preferencias.ts#nivelDeGuardado`).
+- `components/grafo/TableroSituacion.tsx` sustituye a `estilos/afc` y
+  `estilos/dbt`:
+  - la función va en el arco conducta → consecuencia;
+  - la OM en una banda; el costo demorado debajo; huecos punteados; el Plan en
+    su banda;
+  - en Clínico, EC → RC y la cadena DBT dentro de la conducta.
+- El tablero pasa a horizontal según el ancho de su contenedor (`@2xl`), no el
+  de la ventana.
+- Eslabón «acción» que repite la conducta: se funde con ella. Criterio
+  aprobado: 80 % de raíces, al menos dos, solo de tipo acción. No borra datos,
+  y lo que colgaba del eslabón se pinta junto a la nota de la fusión.
+- Capas Plan, Huecos, DBT y ACT con contador. ACT solo interpreta lo anclado
+  y con base funcional (`repartirProcesosACT`).
+- Relaciones seleccionables, con su Inspector.
+- `lib/rutaMapa.ts`: ruta resaltada y resto atenuado al 35 %, que atraviesa EC
+  y eslabones; «Leer como texto»; teclado 1–3, flechas, F y Esc.
+
+**5C · Edición y procedencia visibles** (`aedf9da`, `d0023ae`, `bda2671`,
+`6ac5c42`).
+- **5C-1. Sin botones por línea.** `TextoEditable` se abre con un clic; Borrar
+  vive dentro del editor abierto. Sale `BotonBorrar`.
+- **5C-2. Procedencia y menú.**
+  - Cada nodo del Mapa marca su procedencia sin color: discontinuo e «IA», ✓,
+    ✎ (con el original al pasar el cursor) y «Tuyo».
+  - Menú del elemento (`components/espacio/MenuElemento.tsx`): clic derecho,
+    tecla Menú, Shift+F10 o «⋯» en el Inspector.
+  - Acciones: Confirmar, Convertir en pregunta, Ver evidencia, Crear blanco
+    (deshabilitado hasta la fase 6), Mover a… y Borrar.
+- **5C-3. Citas del clínico, esquema v7.**
+  - Campo nuevo `citas_del_clinico: Record<Id, CitaVerificada[]>`, solo de la
+    interfaz. El modelo no puede traerlo. `migrarAV7` (la v6 pasa a interna).
+  - El campo `evidencia` de cada entidad sigue siendo solo del modelo: las
+    citas de la IA y las tuyas no se mezclan (invariantes 2 y 6).
+  - La cita se construye con la posición de la frase; el texto se saca de la
+    nota.
+  - Una frase se arrastra desde la Fuente a un nodo, un arco o un eslabón. Sin
+    ratón: «Citar en <elegido>».
+  - Apoyo: un nodo sin cita propia toma la tuya; una relación con cita tuya
+    sube su techo a textual, con el tope de sus extremos. La procedencia del
+    elemento no cambia.
+  - Una frase sin usar se convierte en conducta (con o sin situación),
+    acomodación, valor o moduladora, que nace «Tuyo».
+  - Exportación: apartado «CITAS AÑADIDAS POR EL PROFESIONAL», solo si hay.
+- **5C-4. Reclasificar.** Se arrastra un nodo a otro carril, o se usa «Mover
+  a…».
+  - Solo dentro de la situación, con el destino vacío y en pares sin pérdida:
+    inmediata ↔ demorada y Ed ↔ EC.
+  - Moduladora → OM queda fuera: la OM no tiene campo de cita y se perdería la
+    del modelo.
+  - Lo movido queda ✎ con lo que era antes.
+- Pruebas: `evals/mapa.test.mjs` (14) y `evals/edicion.test.mjs` (21), las dos
+  nuevas y en CI. `migracion.test.mjs` pasa a 67 y `coherencia.test.mjs` a 22.
+
+Pendiente:
+- Citas del clínico en las hipótesis, que no son nodos.
+- La moduladora → OM, si algún día la OM tiene cita propia.
+- La lista de suites de `Desktop/CLAUDE.md` no recoge `cobertura`, `espacio`,
+  `mapa` ni `edicion`, que sí están en `.github/workflows/evals.yml`.
+
 ## Rediseño · fase 3: apoyo en las relaciones y procedencia por elemento (esquema v5, sin cambio de prompt)
 
 Hecho: 3A (esquema y cálculo), 3C (interfaz mínima) y 3B (cita propia de cada
