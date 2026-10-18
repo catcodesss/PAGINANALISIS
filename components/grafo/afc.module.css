@@ -516,3 +516,16 @@
   .columnaCuerpo { padding: 12px; }
   .tablero { gap: 12px; }
 }
+
+/* Nivel Evidencia: un punto de color por tarjeta en lugar de la frase siempre a la vista. */
+.conPunto { position: relative; }
+.puntoEvidencia, .puntoEvidenciaEnLinea {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; border: 0; border-radius: 999px;
+  background: transparent; cursor: pointer;
+}
+.puntoEvidencia { position: absolute; right: 6px; bottom: 6px; }
+.puntoEvidencia:hover, .puntoEvidenciaEnLinea:hover { background: color-mix(in srgb, var(--afc-text-secondary) 14%, transparent); }
+.puntoEvidenciaPunto { display: block; width: 10px; height: 10px; border-radius: 999px; background: var(--afc-apoyo-inferencia, #AAA59D); }
+.puntoEvidenciaPunto[data-apoyo="3"] { background: var(--afc-apoyo-cita, #15705A); }
+.puntoEvidenciaPunto[data-apoyo="2"] { background: var(--afc-apoyo-parcial, #B58A35); }

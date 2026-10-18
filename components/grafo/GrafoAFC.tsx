@@ -2,6 +2,7 @@
 
 import {
   Fragment,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -166,6 +167,7 @@ function Nodo({
   alertas = [],
   procedencia,
   onMenu,
+  onPulsacionLarga,
   soltarFrase,
   destinoCita = false,
   arrastre,
@@ -183,6 +185,8 @@ function Nodo({
   procedencia?: ProcedenciaElemento;
   /** Abre el menú del nodo en un punto de la pantalla. */
   onMenu?: (x: number, y: number) => void;
+  /** Pulsación larga con el dedo (~0,5 s): abre la evidencia donde equivale al clic derecho del ratón. */
+  onPulsacionLarga?: (x: number, y: number) => void;
   /** Recibe una frase arrastrada desde la Fuente (contexto.tsx#propsSoltarFrase). */
   soltarFrase?: { onDragOver: (e: React.DragEvent) => void; onDrop: (e: React.DragEvent) => void };
   /** Hay una frase en el aire: se marca como sitio donde soltarla. */
@@ -193,6 +197,15 @@ function Nodo({
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(nodo.etiqueta);
   const detalle = textoDetalle(nodo);
+  // Pulsación larga: el temporizador, de dónde partió el dedo y si el contacto
+  // fue táctil (el navegador móvil dispara además un «clic derecho» propio).
+  const pulsacion = useRef<{ t: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null);
+  const tactil = useRef(false);
+  const soltarPulsacion = () => {
+    if (pulsacion.current) clearTimeout(pulsacion.current.t);
+    pulsacion.current = null;
+  };
+  useEffect(() => soltarPulsacion, []);
 
   function guardar() {
     const limpio = texto.trim();
@@ -262,10 +275,42 @@ function Nodo({
     onContextMenu: onMenu
       ? (evento: React.MouseEvent) => {
           evento.preventDefault();
+          if (tactil.current) return;
           onSeleccionar(nodo);
           onMenu(evento.clientX, evento.clientY);
         }
       : undefined,
+    ...(onPulsacionLarga
+      ? {
+          onTouchStart: (evento: React.TouchEvent) => {
+            tactil.current = true;
+            soltarPulsacion();
+            const { clientX: x, clientY: y } = evento.touches[0];
+            pulsacion.current = {
+              x,
+              y,
+              t: setTimeout(() => {
+                pulsacion.current = null;
+                if (navigator.vibrate) navigator.vibrate(15);
+                onSeleccionar(nodo);
+                onPulsacionLarga(x, y);
+              }, 500),
+            };
+          },
+          // Si el dedo se desplaza es un scroll, no una pulsación.
+          onTouchMove: (evento: React.TouchEvent) => {
+            const p = pulsacion.current;
+            const d = evento.touches[0];
+            if (p && Math.hypot(d.clientX - p.x, d.clientY - p.y) > 10) soltarPulsacion();
+          },
+          onTouchEnd: () => {
+            soltarPulsacion();
+            setTimeout(() => (tactil.current = false), 800);
+          },
+          onTouchCancel: soltarPulsacion,
+          style: { WebkitTouchCallout: "none" as const },
+        }
+      : {}),
     ...soltarFrase,
     ...(arrastre ? { draggable: true, ...arrastre } : {}),
   } as const;
@@ -435,7 +480,7 @@ function BotonAgregarNodo({
 
 export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
-  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu, propsSoltarFrase, arrastrandoFrase, setNodoEnElAire } = useEspacio();
+  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu, abrirEvidencia, propsSoltarFrase, arrastrandoFrase, setNodoEnElAire } = useEspacio();
   const [modoConectar, setModoConectar] = useState(false);
   const [origenConexion, setOrigenConexion] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<1 | 2 | 3 | null>(null);
@@ -553,6 +598,7 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
         alertas={avisos(n.id)}
         procedencia={procedenciaDe(analisis, n.id)}
         onMenu={(x, y) => abrirMenu(n.id, x, y)}
+        onPulsacionLarga={(x, y) => abrirEvidencia(n.id, x, y)}
         soltarFrase={propsSoltarFrase(n.id)}
         destinoCita={arrastrandoFrase}
         arrastre={arrastreDe(n)}
@@ -683,7 +729,6 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
               agrupar={agrupar}
               nivel={nivel}
               ruta={ruta.ids}
-              onCita={irACita}
               renderNodo={renderNodoMapa}
               renderAgregar={renderAgregar}
               onSeleccionarId={seleccionar}

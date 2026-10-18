@@ -77,6 +77,10 @@ export interface EspacioValor {
   menu: MenuAbierto | null;
   abrirMenu: (id: string, x: number, y: number) => void;
   cerrarMenu: () => void;
+  /** La tarjeta con la frase de la nota que sostiene un elemento: sale a petición, no vive en el tablero. */
+  evidencia: MenuAbierto | null;
+  abrirEvidencia: (id: string, x: number, y: number) => void;
+  cerrarEvidencia: () => void;
   /** La nota partida en líneas: de aquí sale el texto de toda cita del clínico. */
   lineasNota: readonly string[];
   /**
@@ -178,6 +182,9 @@ export function ProveedorEspacio({
   const [menu, setMenu] = useState<MenuAbierto | null>(null);
   const abrirMenu = useCallback((id: string, x: number, y: number) => setMenu({ id, x, y }), []);
   const cerrarMenu = useCallback(() => setMenu(null), []);
+  const [evidencia, setEvidencia] = useState<MenuAbierto | null>(null);
+  const abrirEvidencia = useCallback((id: string, x: number, y: number) => setEvidencia({ id, x, y }), []);
+  const cerrarEvidencia = useCallback(() => setEvidencia(null), []);
   const lineasNota = useMemo(() => notaOriginal.replace(/\r\n/g, "\n").split("\n"), [notaOriginal]);
   const [arrastrandoFrase, setArrastrandoFrase] = useState(false);
   const [nodoEnElAire, setNodoEnElAire] = useState<NodoEnElAire | null>(null);
@@ -328,6 +335,9 @@ export function ProveedorEspacio({
       menu,
       abrirMenu,
       cerrarMenu,
+      evidencia,
+      abrirEvidencia,
+      cerrarEvidencia,
       lineasNota,
       citarFrase,
       arrastrandoFrase,
@@ -354,6 +364,9 @@ export function ProveedorEspacio({
       menu,
       abrirMenu,
       cerrarMenu,
+      evidencia,
+      abrirEvidencia,
+      cerrarEvidencia,
       lineasNota,
       citarFrase,
       arrastrandoFrase,

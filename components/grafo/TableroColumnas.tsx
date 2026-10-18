@@ -21,14 +21,13 @@ import { ArrowLeftRight, ChartNoAxesColumnIncreasing, ClipboardList, Play, Targe
 import type { AnalisisFuncional, Id, Situacion } from "@/lib/types";
 import { ETIQUETA_ESQUEMA } from "@/lib/types";
 import type { NivelMapa } from "@/lib/preferencias";
-import { huecosDeSituacion, type CarrilGrafo, type HuecoGrafo, type NodoGrafo } from "@/lib/grafo";
+import { huecosDeSituacion, numeroDeApoyoArista, type CarrilGrafo, type HuecoGrafo, type NodoGrafo } from "@/lib/grafo";
 import { TERMINOS, terminoDeContingencia, type IdTermino } from "@/lib/terminos";
 import { ETIQUETA_DESTINO_CARRIL, type DestinoCarril } from "@/lib/edicionMapa";
 import type { CitaVerificadaResuelta } from "@/lib/citas";
 import { TIPO_ARRASTRE_NODO, useEspacio } from "../espacio/contexto";
 import type { CapasMapa } from "./TableroSituacion";
-import CitaEmergente, { type FuenteCita } from "./CitaEmergente";
-import { etiquetaApoyo } from "./etiquetasNodo";
+import PuntoEvidencia from "./PuntoEvidencia";
 import s from "./afc.module.css";
 
 export type AgruparMapa = "episodio" | "conducta";
@@ -41,7 +40,6 @@ interface TableroColumnasProps {
   /** Situación, Clínico o Evidencia: la misma estructura, con otra cosa resaltada. */
   nivel: NivelMapa;
   ruta: Set<Id>;
-  onCita: (cita: CitaVerificadaResuelta) => void;
   renderNodo: (nodo: NodoGrafo) => ReactNode;
   renderAgregar: (carril: CarrilGrafo, situacionId: string, alternativa: boolean) => ReactNode;
   onSeleccionarId: (id: Id) => void;
@@ -120,7 +118,6 @@ function Episodio({
   capas,
   nivel,
   ruta,
-  onCita,
   renderNodo: renderNodoBase,
   renderAgregar,
   onSeleccionarId,
@@ -164,18 +161,11 @@ function Episodio({
   // enseña bajo cada nodo su apoyo y su frase, y sombrea lo inferido.
   const esClinico = (n: NodoGrafo) => n.tipo === "ec" || n.tipo === "encubierta" || n.tipo === "conducta";
   const renderNodo = (n: NodoGrafo): ReactNode => {
-    const fuentes: FuenteCita[] = [
-      ...(n.citas_clinico ?? []).map((cita) => ({ cita, tuya: true })),
-      ...(n.evidencia?.verificada ? [{ cita: n.evidencia }] : []),
-    ];
     const pintado =
       nivel === "evidencia" ? (
-        <div>
+        <div className={s.conPunto}>
           {renderNodoBase(n)}
-          <div className={s.evidenciaFila}>
-            <span>{etiquetaApoyo(n.apoyo)}</span>
-            {fuentes.length > 0 ? <CitaEmergente fuentes={fuentes} onVerEnNota={onCita} /> : <span>· sin frase de origen</span>}
-          </div>
+          <PuntoEvidencia id={n.id} apoyo={n.apoyo} />
         </div>
       ) : (
         renderNodoBase(n)
@@ -278,10 +268,10 @@ function Episodio({
             <span>{ETIQUETA_ESQUEMA[operante.esquema_de_contingencia]}</span>
           </p>
         )}
-        {nivel === "evidencia" && citasFuncion.length > 0 && (
+        {nivel === "evidencia" && aristaFuncion && citasFuncion.length > 0 && (
           <div className={s.evidenciaFila}>
-            <span>La relación se apoya en</span>
-            <CitaEmergente fuentes={citasFuncion.map((cita) => ({ cita }))} onVerEnNota={onCita} />
+            <span>La relación se apoya en la nota</span>
+            <PuntoEvidencia id={aristaFuncion.id} apoyo={numeroDeApoyoArista(aristaFuncion.apoyo)} enLinea />
           </div>
         )}
       </div>

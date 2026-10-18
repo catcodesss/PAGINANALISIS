@@ -33,7 +33,7 @@ export default function MenuElemento({
   analisis: AnalisisFuncional;
   onEditarSeccion: EditarSeccion;
 }) {
-  const { menu, cerrarMenu, seleccionar, aplicar, elegirPestanaInspector, moverNodo } = useEspacio();
+  const { menu, cerrarMenu, seleccionar, aplicar, abrirEvidencia, moverNodo } = useEspacio();
   const raiz = useRef<HTMLDivElement>(null);
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
 
@@ -68,11 +68,13 @@ export default function MenuElemento({
         },
       });
     }
+    // La frase sale en una tarjeta junto al sitio donde se abrió el menú.
+    const { x, y } = menu;
     lista.push({
       etiqueta: "Ver evidencia",
       ejecutar: () => {
         seleccionar(id);
-        elegirPestanaInspector("evidencia");
+        abrirEvidencia(id, x, y);
       },
     });
     if (esNodo) {
@@ -93,7 +95,7 @@ export default function MenuElemento({
       },
     });
     return lista;
-  }, [menu, nodos, analisis, onEditarSeccion, aplicar, seleccionar, elegirPestanaInspector, moverNodo]);
+  }, [menu, nodos, analisis, onEditarSeccion, aplicar, seleccionar, abrirEvidencia, moverNodo]);
 
   // Se cierra al pulsar fuera, al hacer scroll o con Esc. Son manejadores de
   // evento: no corrigen estado de React desde el efecto.
