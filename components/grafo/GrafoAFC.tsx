@@ -26,6 +26,8 @@ import TableroSituacion, { type CapasMapa } from "./TableroSituacion";
 import { rutaDeSeleccion, textoDeRuta } from "@/lib/rutaMapa";
 import { ETIQUETA_APOYO_ARISTA } from "@/lib/apoyoAristas";
 import { repartirProcesosACT } from "@/lib/procesosACT";
+import { destinosPosibles } from "@/lib/edicionMapa";
+import { TIPO_ARRASTRE_NODO } from "../espacio/contexto";
 import s from "./afc.module.css";
 import { TERMINOS, terminoDeContingencia, type IdTermino } from "@/lib/terminos";
 import { interAfc, poppinsAfc } from "./fuentesAfc";
@@ -165,6 +167,7 @@ function Nodo({
   onMenu,
   soltarFrase,
   destinoCita = false,
+  arrastre,
 }: {
   nodo: NodoGrafo;
   seleccionado: boolean;
@@ -183,6 +186,8 @@ function Nodo({
   soltarFrase?: { onDragOver: (e: React.DragEvent) => void; onDrop: (e: React.DragEvent) => void };
   /** Hay una frase en el aire: se marca como sitio donde soltarla. */
   destinoCita?: boolean;
+  /** Si el nodo se puede llevar a otro carril, cómo empieza y acaba el arrastre. */
+  arrastre?: { onDragStart: (e: React.DragEvent) => void; onDragEnd: () => void };
 }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(nodo.etiqueta);
@@ -261,6 +266,7 @@ function Nodo({
         }
       : undefined,
     ...soltarFrase,
+    ...(arrastre ? { draggable: true, ...arrastre } : {}),
   } as const;
 
   if (variante === "afc") {
@@ -428,7 +434,7 @@ function BotonAgregarNodo({
 
 export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto, onIrANivel }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
-  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu, propsSoltarFrase, arrastrandoFrase } = useEspacio();
+  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu, propsSoltarFrase, arrastrandoFrase, setNodoEnElAire } = useEspacio();
   const [modoConectar, setModoConectar] = useState(false);
   const [origenConexion, setOrigenConexion] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<1 | 2 | 3 | null>(null);
@@ -507,6 +513,21 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
     (soloApoyado && n.apoyo < 3) ||
     (ruta.ids.size > 0 && !ruta.ids.has(n.id));
 
+  // Un nodo con un carril compatible al que ir se puede arrastrar; mientras
+  // vuela, el tablero enseña dónde se puede soltar (TableroSituacion).
+  const arrastreDe = (n: NodoGrafo) => {
+    const destinos = destinosPosibles(analisis, n.id);
+    if (destinos.length === 0) return undefined;
+    return {
+      onDragStart: (e: React.DragEvent) => {
+        e.dataTransfer.setData(TIPO_ARRASTRE_NODO, n.id);
+        e.dataTransfer.effectAllowed = "move";
+        setNodoEnElAire({ id: n.id, situacionId: n.situacion_id, destinos });
+      },
+      onDragEnd: () => setNodoEnElAire(null),
+    };
+  };
+
   const renderNodoMapa = (n: NodoGrafo) => {
     const nodo = (
       <Nodo
@@ -523,6 +544,7 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
         onMenu={(x, y) => abrirMenu(n.id, x, y)}
         soltarFrase={propsSoltarFrase(n.id)}
         destinoCita={arrastrandoFrase}
+        arrastre={arrastreDe(n)}
       />
     );
     const suyos = capas.act ? procesosACT.filter((p) => p.nodo_id === n.id) : [];

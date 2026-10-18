@@ -256,4 +256,83 @@ prueba("la exportación lleva las citas tuyas en su apartado, marcadas; sin ella
   assert.ok(texto.includes(`Operación motivadora: ${om.etiqueta}`));
 });
 
+/* ── Reclasificar por carril ─────────────────────────────────────────────── */
+
+/** Una situación con consecuencia inmediata y sin costo demorado. */
+function sinDemorada() {
+  const a = informe();
+  const s = a.situaciones.find((x) => x.cadena_operante?.consecuencia.texto);
+  s.cadena_operante.consecuencias_largo_plazo = null;
+  return { a, s };
+}
+
+prueba("solo se ofrecen carriles compatibles y vacíos", () => {
+  const a = informe();
+  const s = a.situaciones[0];
+  // Con inmediata y demorada llenas, ninguna puede ir a la otra.
+  assert.deepEqual(edicion.destinosPosibles(a, s.cadena_operante.consecuencia.id), []);
+  // Una conducta no se reclasifica.
+  assert.deepEqual(edicion.destinosPosibles(a, s.conductas_ids[0]), []);
+  assert.equal(edicion.reclasificarNodo(a, s.conductas_ids[0], "inmediata"), null);
+  const { a: b, s: t } = sinDemorada();
+  assert.deepEqual(edicion.destinosPosibles(b, t.cadena_operante.consecuencia.id), ["demorada"]);
+});
+
+prueba("inmediata → demorada conserva texto, relaciones y citas tuyas, y queda ✎ con lo que era", () => {
+  const { a, s } = sinDemorada();
+  const viejo = s.cadena_operante.consecuencia.id;
+  const texto = s.cadena_operante.consecuencia.texto;
+  const relaciones = a.aristas.filter((r) => r.desde === viejo || r.hasta === viejo).length;
+  edicion.citarEnElemento(a, viejo, edicion.citaDeFrase(lineas, 3, 2));
+  const nuevo = edicion.reclasificarNodo(a, viejo, "demorada");
+  assert.ok(nuevo && nuevo !== viejo);
+  const n = construirNodosGrafo(a).find((x) => x.id === nuevo);
+  assert.equal(n.carril, "demorada");
+  assert.equal(n.etiqueta, texto);
+  assert.ok(!construirNodosGrafo(a).some((x) => x.id === viejo), "el nodo viejo sigue");
+  assert.equal(a.aristas.filter((r) => r.desde === nuevo || r.hasta === nuevo).length, relaciones);
+  assert.equal(a.citas_del_clinico[nuevo].length, 1);
+  const p = procedenciaDe(a, nuevo);
+  assert.equal(p.estado, "editado");
+  assert.match(p.original, /Consecuencia inmediata/);
+});
+
+prueba("y vuelve: demorada → inmediata deja el informe como estaba", () => {
+  const { a, s } = sinDemorada();
+  const viejo = s.cadena_operante.consecuencia.id;
+  const texto = s.cadena_operante.consecuencia.texto;
+  const nuevo = edicion.reclasificarNodo(a, viejo, "demorada");
+  assert.equal(edicion.reclasificarNodo(a, nuevo, "inmediata"), viejo);
+  assert.equal(s.cadena_operante.consecuencia.texto, texto);
+  assert.equal(s.cadena_operante.consecuencias_largo_plazo, null);
+});
+
+prueba("Ed → EC y EC → Ed, sin perder la respuesta condicionada ni la cita", () => {
+  const a = informe();
+  const s = a.situaciones.find((x) => x.cadena_operante?.antecedente);
+  s.cadena_respondiente = null;
+  const ed = `${s.id}_ed`;
+  const texto = s.cadena_operante.antecedente;
+  const ec = edicion.reclasificarNodo(a, ed, "ec");
+  assert.equal(ec, `${s.id}_ec`);
+  assert.equal(s.cadena_respondiente.estimulo, texto);
+  assert.deepEqual(s.cadena_respondiente.evidencia, s.cadena_operante.evidencia);
+  assert.equal(s.cadena_operante.antecedente, "");
+  s.cadena_respondiente.respuesta_condicionada = "Taquicardia";
+  assert.equal(edicion.reclasificarNodo(a, ec, "ed"), ed);
+  assert.equal(s.cadena_operante.antecedente, texto);
+  // El nodo EC desaparece, pero la cadena respondiente no se borra.
+  assert.equal(s.cadena_respondiente.respuesta_condicionada, "Taquicardia");
+  assert.ok(!construirNodosGrafo(a).some((n) => n.id === ec));
+});
+
+prueba("lo tuyo sigue siendo tuyo al moverlo", () => {
+  const { a, s } = sinDemorada();
+  const viejo = s.cadena_operante.consecuencia.id;
+  a.procedencia[viejo] = { estado: "creado" };
+  const nuevo = edicion.reclasificarNodo(a, viejo, "demorada");
+  assert.equal(procedenciaDe(a, nuevo).estado, "creado");
+  assert.ok(!(viejo in a.procedencia));
+});
+
 console.log(`\n${pasadas} pruebas correctas\n`);

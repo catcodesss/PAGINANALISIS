@@ -40,7 +40,8 @@ import { ETIQUETA_APOYO_ARISTA } from "@/lib/apoyoAristas";
 import type { Alerta } from "@/lib/types";
 import { InsigniaAlerta } from "./InsigniaAlerta";
 import { etiquetaApoyo } from "./etiquetasNodo";
-import { useEspacio } from "../espacio/contexto";
+import { TIPO_ARRASTRE_NODO, useEspacio } from "../espacio/contexto";
+import { ETIQUETA_DESTINO_CARRIL, type DestinoCarril } from "@/lib/edicionMapa";
 
 export interface CapasMapa {
   plan: boolean;
@@ -91,7 +92,26 @@ export default function TableroSituacion({
   // Clic derecho y teclado (tecla Menú, Shift+F10) para lo que no es un Nodo
   // —los arcos y los eslabones de la cadena interna—, y soltar ahí una frase
   // de la Fuente para citarla.
-  const { propsSoltarFrase, arrastrandoFrase } = useEspacio();
+  const { propsSoltarFrase, arrastrandoFrase, nodoEnElAire, moverNodo } = useEspacio();
+  // Dónde se puede soltar el nodo que vuela: solo en su situación, solo en un
+  // carril compatible y vacío (lib/edicionMapa.ts#destinosPosibles).
+  const zona = (destino: DestinoCarril) =>
+    nodoEnElAire && nodoEnElAire.situacionId === situacion.id && nodoEnElAire.destinos.includes(destino) ? (
+      <div
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes(TIPO_ARRASTRE_NODO)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          moverNodo(nodoEnElAire.id, destino);
+        }}
+        className="rounded border-2 border-dashed border-accent/60 px-2 py-3 text-center text-xs text-accent"
+      >
+        Soltar aquí: {ETIQUETA_DESTINO_CARRIL[destino]}
+      </div>
+    ) : null;
   const marcaDestino = arrastrandoFrase ? "outline-dashed outline-1 outline-offset-2 outline-accent" : "";
   const menuDe = (id: Id) => ({
     ...propsSoltarFrase(id),
@@ -219,7 +239,9 @@ export default function TableroSituacion({
         {/* Antecedente (y, en Clínico, la subpista respondiente) */}
         <div className="space-y-2">
           <Rotulo>Antecedente</Rotulo>
+          {zona("ed")}
           {ed && conEvidencia(ed)}
+          {zona("ec")}
           {nivel !== "situacion" && ec && (
             <div className="rounded border-l-2 border-divider pl-2">
               <Rotulo>Respondiente · EC → RC</Rotulo>
@@ -296,6 +318,7 @@ export default function TableroSituacion({
             </div>
           )}
 
+          {zona("demorada")}
           {(demorada || huecosEn("demorada").length > 0) && (
             <div className={`mt-3 border-t border-dashed border-divider pt-2 ${enRuta(demorada?.id) ? "" : "opacity-35"}`}>
               <Rotulo>
@@ -360,6 +383,7 @@ export default function TableroSituacion({
 
         <div className="space-y-2">
           <Rotulo>Consecuencia</Rotulo>
+          {zona("inmediata")}
           {inmediata && conEvidencia(inmediata)}
           {huecosEn("inmediata").map((h) => <Hueco key={h.id} texto={h.etiqueta} />)}
           {renderAgregar("inmediata", situacion.id, false)}

@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { AnalisisFuncional } from "@/lib/types";
 import { borrarNodo, construirNodosGrafo } from "@/lib/grafo";
 import { confirmarElemento, procedenciaDe } from "@/lib/procedencia";
-import { convertirEnPregunta } from "@/lib/edicionMapa";
+import { convertirEnPregunta, destinosPosibles, ETIQUETA_DESTINO_CARRIL } from "@/lib/edicionMapa";
 import { nuevoIdPregunta } from "@/lib/preguntas";
 import type { EditarSeccion } from "../informe/PreguntasClinicas";
 import { useEspacio } from "./contexto";
@@ -33,7 +33,7 @@ export default function MenuElemento({
   analisis: AnalisisFuncional;
   onEditarSeccion: EditarSeccion;
 }) {
-  const { menu, cerrarMenu, seleccionar, aplicar, elegirPestanaInspector } = useEspacio();
+  const { menu, cerrarMenu, seleccionar, aplicar, elegirPestanaInspector, moverNodo } = useEspacio();
   const raiz = useRef<HTMLDivElement>(null);
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
 
@@ -77,6 +77,10 @@ export default function MenuElemento({
     });
     if (esNodo) {
       lista.push({ etiqueta: "Crear blanco", deshabilitada: "Llega en la fase 6", ejecutar: () => {} });
+      // El camino sin ratón de arrastrar el nodo a otro carril.
+      for (const destino of destinosPosibles(analisis, id)) {
+        lista.push({ etiqueta: `Mover a: ${ETIQUETA_DESTINO_CARRIL[destino]}`, ejecutar: () => moverNodo(id, destino) });
+      }
     }
     lista.push({
       etiqueta: "Borrar",
@@ -89,7 +93,7 @@ export default function MenuElemento({
       },
     });
     return lista;
-  }, [menu, nodos, analisis, onEditarSeccion, aplicar, seleccionar, elegirPestanaInspector]);
+  }, [menu, nodos, analisis, onEditarSeccion, aplicar, seleccionar, elegirPestanaInspector, moverNodo]);
 
   // Se cierra al pulsar fuera, al hacer scroll o con Esc. Son manejadores de
   // evento: no corrigen estado de React desde el efecto.

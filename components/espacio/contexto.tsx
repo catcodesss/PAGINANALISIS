@@ -29,10 +29,20 @@ import {
 } from "react";
 import type { AnalisisFuncional, Cita } from "@/lib/types";
 import type { IdVista } from "@/lib/secciones";
-import { citaDeFrase, citarEnElemento } from "@/lib/edicionMapa";
+import { citaDeFrase, citarEnElemento, reclasificarNodo, type DestinoCarril } from "@/lib/edicionMapa";
 
 /** El tipo del arrastre de una frase de la Fuente: solo lleva su posición. */
 export const TIPO_ARRASTRE_FRASE = "application/x-acia-frase";
+
+/** El tipo del arrastre de un nodo a otro carril: lleva su id. */
+export const TIPO_ARRASTRE_NODO = "application/x-acia-nodo";
+
+/** Un nodo que se arrastra a otro carril, y a cuáles puede ir. */
+export interface NodoEnElAire {
+  id: string;
+  situacionId: string | null;
+  destinos: readonly DestinoCarril[];
+}
 
 type CitaResuelta = Extract<Cita, { verificada: true }>;
 
@@ -77,6 +87,11 @@ export interface EspacioValor {
   /** Hay una frase en el aire: los destinos donde se puede soltar se marcan. */
   arrastrandoFrase: boolean;
   setArrastrandoFrase: (v: boolean) => void;
+  /** El nodo que se está arrastrando a otro carril, si hay uno. */
+  nodoEnElAire: NodoEnElAire | null;
+  setNodoEnElAire: (v: NodoEnElAire | null) => void;
+  /** Reclasifica un nodo a otro carril compatible, con deshacer, y lo elige. */
+  moverNodo: (id: string, destino: DestinoCarril) => void;
   /** Lo que necesita un nodo o un arco para recibir una frase arrastrada. */
   propsSoltarFrase: (id: string) => {
     onDragOver: (e: React.DragEvent) => void;
@@ -163,6 +178,7 @@ export function ProveedorEspacio({
   const cerrarMenu = useCallback(() => setMenu(null), []);
   const lineasNota = useMemo(() => notaOriginal.replace(/\r\n/g, "\n").split("\n"), [notaOriginal]);
   const [arrastrandoFrase, setArrastrandoFrase] = useState(false);
+  const [nodoEnElAire, setNodoEnElAire] = useState<NodoEnElAire | null>(null);
   const [citaPulsada, setCitaPulsada] = useState<CitaResuelta | null>(null);
 
   const seleccionar = useCallback((id: string | null) => {
@@ -248,6 +264,21 @@ export function ProveedorEspacio({
     [lineasNota, aplicar]
   );
 
+  const moverNodo = useCallback(
+    (id: string, destino: DestinoCarril) => {
+      // `aplicar` puede ejecutar la mutación más tarde: el id nuevo se
+      // averigua con un ensayo sobre una copia del estado del que parte.
+      const nuevo = reclasificarNodo(structuredClone(analisis), id, destino);
+      if (!nuevo) return;
+      aplicar((copia) => {
+        reclasificarNodo(copia, id, destino);
+      });
+      setNodoEnElAire(null);
+      escribirParametro("foco", nuevo);
+    },
+    [analisis, aplicar]
+  );
+
   const propsSoltarFrase = useCallback(
     (id: string) => ({
       onDragOver: (e: React.DragEvent) => {
@@ -300,6 +331,9 @@ export function ProveedorEspacio({
       arrastrandoFrase,
       setArrastrandoFrase,
       propsSoltarFrase,
+      nodoEnElAire,
+      setNodoEnElAire,
+      moverNodo,
     }),
     [
       seleccionado,
@@ -322,6 +356,8 @@ export function ProveedorEspacio({
       citarFrase,
       arrastrandoFrase,
       propsSoltarFrase,
+      nodoEnElAire,
+      moverNodo,
     ]
   );
 

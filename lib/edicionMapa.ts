@@ -2,7 +2,8 @@ import type { AnalisisFuncional, Cita, Id } from "./types";
 import { borrarNodo, construirNodosGrafo, reservarId } from "./grafo";
 import { nuevoIdPregunta } from "./preguntas";
 import { segmentarFrases, SIN_CITA } from "./citas";
-import { marcarCreado } from "./procedencia";
+import { marcarCreado, procedenciaDe } from "./procedencia";
+import { idNodoSituacion } from "./aristas";
 
 export type CitaDeLaNota = Extract<Cita, { verificada: true }>;
 
@@ -165,6 +166,109 @@ export function convertirFrase(
   analisis.citas_del_clinico ??= {};
   analisis.citas_del_clinico[id] = [cita];
   return id;
+}
+
+/* ── Reclasificar por carril ───────────────────────────────────────────── */
+
+/**
+ * A qué carril se puede mover un nodo. Solo pares compatibles, dentro de la
+ * misma situación y con el destino vacío, y solo los que no pierden nada:
+ *
+ * - consecuencia inmediata ↔ demorada;
+ * - antecedente (Ed, operante) ↔ estímulo condicionado (EC, respondiente),
+ *   que es justo la confusión que el análisis funcional ayuda a deshacer.
+ *
+ * Una moduladora no pasa a OM: la OM no tiene campo de cita, y la de la
+ * moduladora es del modelo; pasarla a otro sitio la presentaría como algo que
+ * no es.
+ */
+export type DestinoCarril = "inmediata" | "demorada" | "ed" | "ec";
+
+export const ETIQUETA_DESTINO_CARRIL: Record<DestinoCarril, string> = {
+  inmediata: "Consecuencia inmediata",
+  demorada: "Costo demorado",
+  ed: "Antecedente (Ed)",
+  ec: "Estímulo condicionado (EC)",
+};
+
+export function destinosPosibles(analisis: AnalisisFuncional, id: Id): DestinoCarril[] {
+  for (const s of analisis.situaciones) {
+    const op = s.cadena_operante;
+    const resp = s.cadena_respondiente;
+    if (op?.consecuencia.id === id && op.consecuencia.texto && !op.consecuencias_largo_plazo?.texto) return ["demorada"];
+    if (op?.consecuencias_largo_plazo?.id === id && op.consecuencias_largo_plazo.texto && !op.consecuencia.texto) return ["inmediata"];
+    if (id === idNodoSituacion(s, "ed") && op?.antecedente && !resp?.estimulo) return ["ec"];
+    if (id === idNodoSituacion(s, "ec") && resp?.estimulo && op && !op.antecedente) return ["ed"];
+  }
+  return [];
+}
+
+/**
+ * Mueve un nodo a otro carril compatible: su texto, su cita, sus relaciones,
+ * los procesos ACT anclados, las hipótesis que lo nombran y las citas que le
+ * uniste. Lo movido queda «editado» (✎) con lo que era antes como original,
+ * salvo que fuera tuyo, que sigue siendo tuyo. Devuelve el id nuevo, o null si
+ * el movimiento no es compatible.
+ */
+export function reclasificarNodo(analisis: AnalisisFuncional, id: Id, destino: DestinoCarril): Id | null {
+  if (!destinosPosibles(analisis, id).includes(destino)) return null;
+  const nodo = construirNodosGrafo(analisis).find((n) => n.id === id);
+  const situacion = analisis.situaciones.find((s) => s.id === nodo?.situacion_id);
+  const op = situacion?.cadena_operante;
+  if (!nodo || !situacion) return null;
+  const antes = `Antes: ${nodo.tipo === "ed" ? "Antecedente (Ed)" : nodo.tipo === "ec" ? "Estímulo condicionado (EC)" : nodo.carril === "inmediata" ? "Consecuencia inmediata" : "Costo demorado"}: ${nodo.etiqueta}`;
+  let nuevo: Id;
+
+  if (destino === "demorada" && op) {
+    const largo = op.consecuencias_largo_plazo ?? { id: reservarId(analisis, "cns"), texto: "" };
+    largo.texto = op.consecuencia.texto;
+    op.consecuencias_largo_plazo = largo;
+    op.consecuencia.texto = "";
+    nuevo = largo.id;
+  } else if (destino === "inmediata" && op?.consecuencias_largo_plazo) {
+    op.consecuencia.texto = op.consecuencias_largo_plazo.texto;
+    op.consecuencias_largo_plazo = null;
+    nuevo = op.consecuencia.id;
+  } else if (destino === "ec" && op) {
+    // La cita de la cadena describe el episodio entero: el estímulo la conserva.
+    if (situacion.cadena_respondiente) situacion.cadena_respondiente.estimulo = op.antecedente;
+    else situacion.cadena_respondiente = { estimulo: op.antecedente, respuesta_condicionada: "", conexion_con_operante: null, evidencia: op.evidencia };
+    op.antecedente = "";
+    nuevo = idNodoSituacion(situacion, "ec");
+  } else if (destino === "ed" && op && situacion.cadena_respondiente) {
+    // La respuesta condicionada y su cita se quedan en la cadena respondiente:
+    // vaciar el estímulo quita el nodo sin borrar nada.
+    op.antecedente = situacion.cadena_respondiente.estimulo;
+    situacion.cadena_respondiente.estimulo = "";
+    nuevo = idNodoSituacion(situacion, "ed");
+  } else {
+    return null;
+  }
+
+  trasladarId(analisis, id, nuevo, antes);
+  return nuevo;
+}
+
+function trasladarId(analisis: AnalisisFuncional, viejo: Id, nuevo: Id, antes: string): void {
+  if (viejo === nuevo) return;
+  for (const a of analisis.aristas) {
+    if (a.desde === viejo) a.desde = nuevo;
+    if (a.hasta === viejo) a.hasta = nuevo;
+  }
+  for (const p of analisis.capa_act.procesos_act) if (p.nodo_id === viejo) p.nodo_id = nuevo;
+  for (const h of analisis.hipotesis_mantenimiento) {
+    if (h.destino_id === viejo) h.destino_id = nuevo;
+    if (h.origen_id === viejo) h.origen_id = nuevo;
+  }
+  const citas = analisis.citas_del_clinico?.[viejo];
+  if (citas) {
+    analisis.citas_del_clinico[nuevo] = citas;
+    delete analisis.citas_del_clinico[viejo];
+  }
+  const previa = procedenciaDe(analisis, viejo);
+  delete analisis.procedencia[viejo];
+  analisis.procedencia[nuevo] =
+    previa.estado === "creado" ? { estado: "creado" } : { estado: "editado", original: previa.original ?? antes };
 }
 
 /* ── En la exportación ─────────────────────────────────────────────────── */
