@@ -55,7 +55,7 @@ execFileSync(
 const require = createRequire(import.meta.url);
 const { numerarNota } = require(join(RAIZ, ".tmp-evals/citas.js"));
 const { normalizarAnalisis } = require(join(RAIZ, ".tmp-evals/parseAnalisis.js"));
-const { migrarAV6, sugerirConducta } = require(join(RAIZ, ".tmp-evals/identidad.js"));
+const { migrarAV7, sugerirConducta } = require(join(RAIZ, ".tmp-evals/identidad.js"));
 const { validarAnalisis } = require(join(RAIZ, ".tmp-evals/validadores.js"));
 const {
   construirPlanPorBlanco,
@@ -231,13 +231,13 @@ prueba("estado: un informe guardado con estados v5 se migra por la tabla, idempo
   const a = informe();
   const [uno, dos, tres, cuatro, cinco] = a.conductas_problema.map((c) => c.id);
   a.estados_plan = { [uno]: "revisar", [dos]: "aprobado", [tres]: "en_curso", [cuatro]: "descartado", [cinco]: "inventado" };
-  const migrado = migrarAV6(a);
+  const migrado = migrarAV7(a);
   assert.deepEqual(migrado.estados_plan[uno], { revision: "propuesto", fase: "activo" });
   assert.deepEqual(migrado.estados_plan[dos], { revision: "confirmado", fase: "activo" });
   assert.deepEqual(migrado.estados_plan[tres], { revision: "confirmado", fase: "activo" });
   assert.deepEqual(migrado.estados_plan[cuatro], { revision: "rechazado", fase: null });
   assert.equal(cinco in migrado.estados_plan, false, "un valor inválido se descarta");
-  assert.deepEqual(migrarAV6(JSON.parse(JSON.stringify(migrado))), migrado);
+  assert.deepEqual(migrarAV7(JSON.parse(JSON.stringify(migrado))), migrado);
 });
 
 prueba("el estado viaja al texto exportado", () => {
@@ -252,7 +252,7 @@ prueba("el estado viaja al texto exportado", () => {
 prueba("un informe guardado sin estados se abre con estados vacíos", () => {
   const a = informe();
   delete a.estados_plan;
-  const migrado = migrarAV6(a);
+  const migrado = migrarAV7(a);
   assert.deepEqual(migrado.estados_plan, {});
   assert.doesNotThrow(() => construirPlanPorBlanco(migrado));
 });
@@ -352,7 +352,7 @@ prueba("un informe anterior (textos sueltos, un solo plan) se migra sin blanco y
   viejo.plan_de_monitorizacion = {
     que_se_mide: "Evitaciones.", con_que: "Autorregistro.", cada_cuanto: "Diario.", criterio_de_revision: "",
   };
-  const a = migrarAV6(viejo);
+  const a = migrarAV7(viejo);
   assert.deepEqual(
     a.lineas_de_intervencion_tentativas.map((l) => [l.intervencion, l.conducta_id]),
     [["Entrenamiento en asertividad.", null], ["Reducir el consumo.", null]]
@@ -363,7 +363,7 @@ prueba("un informe anterior (textos sueltos, un solo plan) se migra sin blanco y
   assert.equal(plan.intervencionesSinBlanco.length, 2);
   assert.equal(plan.monitorizacionSinBlanco.length, 1);
   // Y abrirlo dos veces no cambia nada.
-  assert.deepEqual(migrarAV6(structuredClone(a)).lineas_de_intervencion_tentativas, a.lineas_de_intervencion_tentativas);
+  assert.deepEqual(migrarAV7(structuredClone(a)).lineas_de_intervencion_tentativas, a.lineas_de_intervencion_tentativas);
 });
 
 prueba("sin ningún plan de medición, el exportado lo dice en vez de callarlo", () => {

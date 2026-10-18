@@ -36,6 +36,7 @@ import { Apoyo, Chip, Termino } from "../informe/primitivas";
 import { TarjetaPregunta, type EditarSeccion } from "../informe/PreguntasClinicas";
 import { TextoEditable, useEdicion } from "../edicionManual";
 import { useEspacio, type PestanaInspector } from "./contexto";
+import { quitarCitaDelClinico } from "@/lib/edicionMapa";
 
 const esCitaVerificada = (c: Cita): c is CitaVerificadaResuelta => c.verificada;
 
@@ -200,9 +201,10 @@ function DetalleNodo({
             </button>
             <p className="mt-1 italic leading-relaxed text-ink-muted">&quot;{cita.texto}&quot;</p>
           </blockquote>
-        ) : (
+        ) : (nodo.citas_clinico ?? []).length === 0 ? (
           <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Inferido — sin cita literal en la nota</p>
-        )}
+        ) : null}
+        <CitasTuyas analisis={analisis} id={nodo.id} />
         {relaciones.length > 0 && (
           <div className="border-t border-divider pt-3">
             <p className="mb-2 text-xs font-medium text-ink">Apoyo de sus relaciones</p>
@@ -258,6 +260,10 @@ function DetalleNodo({
       {cita ? (
         <button type="button" onClick={() => irACita(cita)} className="text-xs text-accent underline underline-offset-2">
           Ver en la nota · {etiquetaCita(cita)}
+        </button>
+      ) : (nodo.citas_clinico ?? []).length > 0 ? (
+        <button type="button" onClick={() => irACita(nodo.citas_clinico![0])} className="text-xs text-accent underline underline-offset-2">
+          Ver en la nota · {etiquetaCita(nodo.citas_clinico![0])} · cita tuya
         </button>
       ) : (
         <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Inferido — sin cita literal en la nota</p>
@@ -356,7 +362,7 @@ function DetalleRelacion({
         <p className="text-ink-muted">Apoyo de la relación: <span className="text-ink">{ETIQUETA_APOYO_ARISTA[arista.apoyo]}</span></p>
         <section>
           <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">A favor</p>
-          {citas.length === 0 ? (
+          {citas.length === 0 && (analisis.citas_del_clinico?.[arista.id] ?? []).length === 0 ? (
             <p className="text-ink-muted">Ninguna frase de la nota afirma esta relación: es inferida.</p>
           ) : (
             citas.map((c, i) => (
@@ -365,6 +371,7 @@ function DetalleRelacion({
               </button>
             ))
           )}
+          <CitasTuyas analisis={analisis} id={arista.id} />
         </section>
         <section>
           <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">En contra</p>
@@ -563,5 +570,39 @@ function DetalleHipotesis({
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * Las frases que uniste tú a un nodo o una relación: aparte de las del
+ * modelo, cada una marcada como tuya y con «Quitar». Debajo, cómo añadir otra.
+ */
+function CitasTuyas({ analisis, id }: { analisis: AnalisisFuncional; id: string }) {
+  const { irACita, aplicar } = useEspacio();
+  const citas = analisis.citas_del_clinico?.[id] ?? [];
+  return (
+    <section className="space-y-1">
+      {citas.length > 0 && (
+        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Citas añadidas por ti</p>
+      )}
+      {citas.map((c, i) => (
+        <div key={i} className="flex items-start gap-2">
+          <button type="button" onClick={() => irACita(c)} className="min-w-0 flex-1 text-left italic text-ink-muted hover:text-accent">
+            {etiquetaCita(c)} · &quot;{c.texto}&quot;
+          </button>
+          <button
+            type="button"
+            onClick={() => aplicar((copia) => quitarCitaDelClinico(copia, id, i))}
+            aria-label={`Quitar la cita ${etiquetaCita(c)}`}
+            className="shrink-0 text-xs text-ink-muted hover:text-warn"
+          >
+            Quitar
+          </button>
+        </div>
+      ))}
+      <p className="text-[11px] leading-snug text-ink-muted">
+        Arrastra una frase de la Fuente hasta aquí en el Mapa, o elígela en la Fuente y pulsa «Citar en».
+      </p>
+    </section>
   );
 }

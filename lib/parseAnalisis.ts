@@ -1,6 +1,6 @@
 import { resolverCita } from "./citas";
 import { ESTADOS_HIPOTESIS, normalizarPreguntas } from "./preguntas";
-import { migrarAV6 } from "./identidad";
+import { migrarAV7 } from "./identidad";
 import { procesoAV3 } from "./procesosACT";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 import {
@@ -575,6 +575,7 @@ const CAMPOS_DEL_SERVIDOR = new Set<string>([
   "secciones_editadas",
   "estados_plan",
   "procedencia",
+  "citas_del_clinico",
 ]);
 
 /**
@@ -668,6 +669,9 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     estados_plan: {},
     // Solo la escribe la interfaz; el modelo nunca (ni entra en su esquema).
     procedencia: {},
+    // Igual: una respuesta del modelo que trajera citas «del clínico» se
+    // descarta aquí, porque la salida se construye clave por clave.
+    citas_del_clinico: {},
   };
   // La capa MC ya no es parte del esquema, pero un JSON anterior a la v3 (el
   // informe de ejemplo, o uno pegado a mano) la trae. Se pasa tal cual para
@@ -681,7 +685,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
   for (const clave of ["datos_faltantes", "preguntas_para_sesion"]) {
     if (clave in d) (analisis as unknown as Record<string, unknown>)[clave] = d[clave];
   }
-  return migrarAV6(analisis);
+  return migrarAV7(analisis);
 }
 
 /**
@@ -787,6 +791,7 @@ const NORMALIZADORES_POR_CAMPO: {
   secciones_editadas: () => [],
   estados_plan: () => ({}),
   procedencia: () => ({}),
+  citas_del_clinico: () => ({}),
 };
 
 function esCampoDeAnalisis(campo: string): campo is keyof AnalisisFuncional {

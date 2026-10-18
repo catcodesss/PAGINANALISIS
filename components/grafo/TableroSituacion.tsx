@@ -40,6 +40,7 @@ import { ETIQUETA_APOYO_ARISTA } from "@/lib/apoyoAristas";
 import type { Alerta } from "@/lib/types";
 import { InsigniaAlerta } from "./InsigniaAlerta";
 import { etiquetaApoyo } from "./etiquetasNodo";
+import { useEspacio } from "../espacio/contexto";
 
 export interface CapasMapa {
   plan: boolean;
@@ -87,9 +88,13 @@ export default function TableroSituacion({
   onIrANivel,
   onMenu,
 }: TableroSituacionProps) {
-  // Clic derecho y teclado (tecla Menú, Shift+F10) para lo que no es un Nodo:
-  // los arcos y los eslabones de la cadena interna.
+  // Clic derecho y teclado (tecla Menú, Shift+F10) para lo que no es un Nodo
+  // —los arcos y los eslabones de la cadena interna—, y soltar ahí una frase
+  // de la Fuente para citarla.
+  const { propsSoltarFrase, arrastrandoFrase } = useEspacio();
+  const marcaDestino = arrastrandoFrase ? "outline-dashed outline-1 outline-offset-2 outline-accent" : "";
   const menuDe = (id: Id) => ({
+    ...propsSoltarFrase(id),
     onContextMenu: (e: React.MouseEvent) => {
       e.preventDefault();
       onSeleccionarId(id);
@@ -226,7 +231,7 @@ export default function TableroSituacion({
           {renderAgregar("antecedente", situacion.id, false)}
         </div>
 
-        <Arco arista={aristaAConducta} nivel={nivel} atenuado={!enRuta(aristaAConducta?.id)} seleccionado={seleccionado === aristaAConducta?.id} onElegir={onSeleccionarId} onCita={onCita} menuDe={menuDe} />
+        <Arco arista={aristaAConducta} nivel={nivel} atenuado={!enRuta(aristaAConducta?.id)} seleccionado={seleccionado === aristaAConducta?.id} onElegir={onSeleccionarId} onCita={onCita} menuDe={menuDe} citasTuyas={aristaAConducta ? analisis.citas_del_clinico?.[aristaAConducta.id] : undefined} marcaDestino={marcaDestino} />
 
         {/* Conducta, con la cadena interna en Clínico y el costo demorado debajo */}
         <div className="space-y-2">
@@ -259,7 +264,7 @@ export default function TableroSituacion({
                         data-nodo-id={e.id}
                         onClick={() => onSeleccionarId(e.id)}
                         {...menuDe(e.id)}
-                        className={`flex w-full items-start gap-1.5 rounded px-1 py-0.5 text-left text-xs leading-snug text-ink hover:bg-surface ${seleccionado === e.id ? "ring-1 ring-accent" : ""}`}
+                        className={`flex w-full items-start gap-1.5 rounded px-1 py-0.5 text-left text-xs leading-snug text-ink hover:bg-surface ${seleccionado === e.id ? "ring-1 ring-accent" : ""} ${marcaDestino}`}
                       >
                         {capas.dbt && <span className="font-mono text-[10px] text-ink-muted">{i + 1}.</span>}
                         <span className="font-mono text-[10px] uppercase text-ink-muted">{e.detalle}</span>
@@ -318,6 +323,8 @@ export default function TableroSituacion({
           onElegir={onSeleccionarId}
           onCita={onCita}
           menuDe={menuDe}
+          citasTuyas={aristaFuncion ? analisis.citas_del_clinico?.[aristaFuncion.id] : undefined}
+          marcaDestino={marcaDestino}
           destacado
         >
           {funcion ? (
@@ -424,6 +431,8 @@ function Arco({
   onCita,
   destacado = false,
   menuDe,
+  citasTuyas = [],
+  marcaDestino = "",
   children,
 }: {
   arista: Arista | undefined;
@@ -433,7 +442,10 @@ function Arco({
   onElegir: (id: Id) => void;
   onCita: (cita: CitaVerificadaResuelta) => void;
   destacado?: boolean;
-  menuDe?: (id: Id) => Pick<React.HTMLAttributes<HTMLElement>, "onContextMenu" | "onKeyDown">;
+  menuDe?: (id: Id) => Pick<React.HTMLAttributes<HTMLElement>, "onContextMenu" | "onKeyDown" | "onDragOver" | "onDrop">;
+  /** Las frases que uniste tú a esta relación: van aparte de las del modelo. */
+  citasTuyas?: readonly CitaVerificadaResuelta[];
+  marcaDestino?: string;
   children?: ReactNode;
 }) {
   if (!arista) {
@@ -455,7 +467,7 @@ function Arco({
         onClick={() => onElegir(arista.id)}
         {...menuDe?.(arista.id)}
         aria-label={`Relación: ${ETIQUETA_APOYO_ARISTA[arista.apoyo]}`}
-        className={`flex flex-col items-center gap-1 rounded px-1.5 py-1 text-center text-[11px] leading-snug transition-colors hover:bg-canvas ${seleccionado ? "ring-2 ring-accent/60" : ""} ${destacado ? "w-full" : ""}`}
+        className={`flex flex-col items-center gap-1 rounded px-1.5 py-1 text-center text-[11px] leading-snug transition-colors hover:bg-canvas ${seleccionado ? "ring-2 ring-accent/60" : ""} ${destacado ? "w-full" : ""} ${marcaDestino}`}
       >
         {children}
         <span className="flex w-full items-center gap-1 text-ink-muted" aria-hidden="true">
@@ -469,6 +481,12 @@ function Arco({
         citas.map((c, i) => (
           <button key={i} type="button" onClick={() => onCita(c)} className="mt-0.5 text-center text-[11px] italic text-ink-muted hover:text-accent">
             {etiquetaCita(c)} · «{recortar(c.texto, 60)}»
+          </button>
+        ))}
+      {nivel === "evidencia" &&
+        citasTuyas.map((c, i) => (
+          <button key={`t${i}`} type="button" onClick={() => onCita(c)} className="mt-0.5 text-center text-[11px] italic text-ink-muted hover:text-accent">
+            {etiquetaCita(c)} · «{recortar(c.texto, 60)}» · cita tuya
           </button>
         ))}
     </div>
@@ -489,11 +507,20 @@ function ConEvidencia({
 }) {
   if (nivel !== "evidencia") return <>{children}</>;
   const cita = nodo.evidencia?.verificada ? nodo.evidencia : null;
+  const tuyas = nodo.citas_clinico ?? [];
   return (
     <div>
       {children}
       <p className="mt-1 text-[11px] text-ink-muted">
         {etiquetaApoyo(nodo.apoyo)}
+        {tuyas.map((c, i) => (
+          <Fragment key={i}>
+            {" · "}
+            <button type="button" onClick={() => onCita(c)} className="italic hover:text-accent">
+              {etiquetaCita(c)} «{recortar(c.texto, 70)}» (cita tuya)
+            </button>
+          </Fragment>
+        ))}
         {cita ? (
           <>
             {" · "}
@@ -501,7 +528,7 @@ function ConEvidencia({
               {etiquetaCita(cita)} «{recortar(cita.texto, 70)}»
             </button>
           </>
-        ) : (
+        ) : tuyas.length > 0 ? null : (
           " · sin frase de origen"
         )}
       </p>

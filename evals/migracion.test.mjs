@@ -57,7 +57,7 @@ execFileSync(
 const require = createRequire(import.meta.url);
 const { numerarNota } = require(join(RAIZ, ".tmp-evals/citas.js"));
 const { normalizarAnalisis } = require(join(RAIZ, ".tmp-evals/parseAnalisis.js"));
-const { migrarAV6, todosLosIds, situacionDeLaCadenaDBT } = require(
+const { migrarAV7, todosLosIds, situacionDeLaCadenaDBT } = require(
   join(RAIZ, ".tmp-evals/identidad.js")
 );
 const { construirRedFuncional } = require(join(RAIZ, ".tmp-evals/redFuncional.js"));
@@ -115,7 +115,7 @@ console.log("\nMigración v1 → v2\n");
 
 prueba("un informe v1 se abre sin lanzar y queda marcado con la versión actual", () => {
   const a = normalizarAnalisis(crudoV1(), lineas);
-  assert.equal(a.version, 6);
+  assert.equal(a.version, 7);
   assert.ok(a.siguiente_id > 1, "siguiente_id debe quedar por encima de los asignados");
 });
 
@@ -256,7 +256,7 @@ prueba("las consecuencias quedan envueltas, conservando su texto", () => {
 
 prueba("migrar dos veces da exactamente lo mismo", () => {
   const una = normalizarAnalisis(crudoV1(), lineas);
-  const dos = migrarAV6(JSON.parse(JSON.stringify(una)));
+  const dos = migrarAV7(JSON.parse(JSON.stringify(una)));
   assert.deepEqual(dos, una);
 });
 
@@ -268,7 +268,7 @@ prueba("un informe anterior al grafo materializa aristas una sola vez", () => {
   // Vaciar el grafo es una edición válida. El migrador no puede reconstruirlo
   // después y deshacer lo que trazó el profesional.
   a.aristas = [];
-  assert.deepEqual(migrarAV6(JSON.parse(JSON.stringify(a))).aristas, []);
+  assert.deepEqual(migrarAV7(JSON.parse(JSON.stringify(a))).aristas, []);
 });
 
 prueba("una franja completa exige una cita verificada", () => {
@@ -420,7 +420,7 @@ prueba("las reglas verbales suben al núcleo y conservan su id", () => {
   const v2 = guardadoEnV2();
   const antes = v2.capa_act.reglas_verbales.map((r) => [r.id, r.regla]);
   assert.ok(antes.length > 0 && antes.every(([id]) => id), "el v2 de prueba no trae reglas con id");
-  const a = migrarAV6(v2);
+  const a = migrarAV7(v2);
   assert.deepEqual(a.reglas_verbales.map((r) => [r.id, r.regla]), antes);
   assert.ok(!("reglas_verbales" in a.capa_act), "las reglas siguen también en capa_act");
   // Y el grafo las sigue pintando con el mismo id: una arista hacia rvb_N no se rompe.
@@ -437,7 +437,7 @@ prueba("un JSON con reglas arriba y dentro de capa_act no pierde ninguna", () =>
 
 prueba("ningún procedimiento MC se pierde: cada uno es una línea de intervención", () => {
   const procedimientos = crudoV1().capa_mc.procedimientos_sugeridos;
-  for (const a of [normalizarAnalisis(crudoV1(), lineas), migrarAV6(guardadoEnV2())]) {
+  for (const a of [normalizarAnalisis(crudoV1(), lineas), migrarAV7(guardadoEnV2())]) {
     assert.ok(!("capa_mc" in a), "la capa MC sigue en el informe");
     for (const p of procedimientos) {
       const linea = a.lineas_de_intervencion_tentativas.find(
@@ -451,7 +451,7 @@ prueba("ningún procedimiento MC se pierde: cada uno es una línea de intervenci
 });
 
 prueba("un procedimiento MC migrado no se asigna a un blanco por sus palabras", () => {
-  const a = migrarAV6(guardadoEnV2());
+  const a = migrarAV7(guardadoEnV2());
   const migradas = a.lineas_de_intervencion_tentativas.filter((l) => l.contingencia_objetivo);
   assert.equal(migradas.length, 2);
   assert.ok(migradas.every((l) => l.conducta === "" && l.conducta_id === null));
@@ -464,7 +464,7 @@ prueba("un procedimiento MC parecido a una línea existente no se descarta", () 
     conducta: "", conducta_id: null, intervencion: "Exposición graduada",
     porque: "", depende_de: null, contingencia_objetivo: null, precauciones: null,
   });
-  const migrado = migrarAV6(a);
+  const migrado = migrarAV7(a);
   assert.equal(migrado.lineas_de_intervencion_tentativas.length, antes + 1 + 2);
   assert.equal(
     migrado.lineas_de_intervencion_tentativas.filter((l) => l.intervencion === "Exposición graduada").length,
@@ -472,21 +472,21 @@ prueba("un procedimiento MC parecido a una línea existente no se descarta", () 
   );
 });
 
-prueba("migrar un informe v2 a v6 dos veces da lo mismo, y queda en v6", () => {
-  const una = migrarAV6(guardadoEnV2());
-  assert.equal(una.version, 6);
-  assert.deepEqual(migrarAV6(JSON.parse(JSON.stringify(una))), una);
+prueba("migrar un informe v2 a la versión actual dos veces da lo mismo", () => {
+  const una = migrarAV7(guardadoEnV2());
+  assert.equal(una.version, 7);
+  assert.deepEqual(migrarAV7(JSON.parse(JSON.stringify(una))), una);
 });
 
 prueba("los procedimientos migrados salen en el Plan exportado, no en una capa aparte", () => {
-  const texto = formatearInformeTexto(migrarAV6(guardadoEnV2()), "CASO-1", "fecha");
+  const texto = formatearInformeTexto(migrarAV7(guardadoEnV2()), "CASO-1", "fecha");
   assert.ok(!texto.includes("CAPA CONDUCTUAL"), "sigue la sección MC");
   assert.ok(texto.includes("Contingencia objetivo: R− que mantiene la evitación en reuniones."));
   assert.ok(texto.includes("Precauciones: Vigilar la aparición de conductas de seguridad"));
 });
 
 prueba("los procesos ACT pasan a anotaciones: enum, elemento y sin ancla por situación", () => {
-  for (const a of [normalizarAnalisis(crudoV1(), lineas), migrarAV6(guardadoEnV2())]) {
+  for (const a of [normalizarAnalisis(crudoV1(), lineas), migrarAV7(guardadoEnV2())]) {
     const [fusion, evitacion] = a.capa_act.procesos_act;
     assert.equal(fusion.proceso, "fusion");
     assert.equal(evitacion.proceso, "evitacion_experiencial");
@@ -501,7 +501,7 @@ prueba("los procesos ACT pasan a anotaciones: enum, elemento y sin ancla por sit
 prueba("un proceso que solo nombra una situación queda sin anclar, no en un nodo cualquiera", () => {
   // «Reuniones de equipo» comparte palabras con el Ed de esa situación; engancharlo
   // ahí sería la conjetura de la v2 en pequeño.
-  for (const a of [normalizarAnalisis(crudoV1(), lineas), migrarAV6(guardadoEnV2())]) {
+  for (const a of [normalizarAnalisis(crudoV1(), lineas), migrarAV7(guardadoEnV2())]) {
     assert.deepEqual(a.capa_act.procesos_act.map((p) => p.nodo_id), [null, null]);
   }
 });
@@ -531,13 +531,13 @@ prueba("un proceso v2 anclado a un eslabón conserva ese nodo", () => {
   const v2 = guardadoEnV2();
   const eslabon = v2.situaciones.flatMap((s) => s.cadena_dbt?.eslabones ?? [])[0];
   v2.capa_act.procesos_act[0].eslabon_id = eslabon.id;
-  assert.equal(migrarAV6(v2).capa_act.procesos_act[0].nodo_id, eslabon.id);
+  assert.equal(migrarAV7(v2).capa_act.procesos_act[0].nodo_id, eslabon.id);
 });
 
 prueba("un proceso con nombre desconocido se conserva, marcado para revisar", () => {
   const v2 = guardadoEnV2();
   v2.capa_act.procesos_act[0].proceso = "Rigidez psicológica general";
-  const p = migrarAV6(v2).capa_act.procesos_act[0];
+  const p = migrarAV7(v2).capa_act.procesos_act[0];
   assert.equal(p.revisar_proceso, true);
   assert.notEqual(p.proceso, "evitacion_experiencial", "el valor por defecto no puede afirmar evitación");
   assert.ok(p.justificacion_funcional.includes("Rigidez psicológica general"));
@@ -570,10 +570,10 @@ prueba("un informe v3 guardado sin campos_ausentes migra a v6 con la lista vací
   const v3 = JSON.parse(JSON.stringify(normalizarAnalisis(crudoV1(), lineas)));
   v3.version = 3;
   delete v3.campos_ausentes;
-  const una = migrarAV6(v3);
-  assert.equal(una.version, 6);
+  const una = migrarAV7(v3);
+  assert.equal(una.version, 7);
   assert.deepEqual(una.campos_ausentes, []);
-  assert.deepEqual(migrarAV6(JSON.parse(JSON.stringify(una))), una);
+  assert.deepEqual(migrarAV7(JSON.parse(JSON.stringify(una))), una);
 });
 
 prueba("vacíos: ausente es «no se generó»; presente y vacío es «la IA no encontró nada»", () => {
@@ -658,13 +658,13 @@ prueba("un informe v3 pasa a v6 sin perder nada y migrar dos veces da lo mismo",
   delete v3.campos_ausentes;
   for (const a of v3.aristas) { delete a.apoyo; delete a.evidencia; }
   const antes = copiar(v3);
-  const una = migrarAV6(v3);
-  assert.equal(una.version, 6);
+  const una = migrarAV7(v3);
+  assert.equal(una.version, 7);
   assert.deepEqual(todosLosIds(una).sort(), todosLosIds(antes).sort());
   assert.equal(una.aristas.length, antes.aristas.length);
   assert.equal(una.conductas_problema.length, antes.conductas_problema.length);
   assert.deepEqual(una.procedencia, {}, "todo nace como propuesta (ausente)");
-  assert.deepEqual(migrarAV6(copiar(una)), una);
+  assert.deepEqual(migrarAV7(copiar(una)), una);
 });
 
 prueba("la operación motivacional del caso 01 no es cita textual", () => {
@@ -741,7 +741,7 @@ prueba("una relación creada por el clínico es inferida, sin cita y suya; recal
   assert.equal(procedenciaDe(a, nueva.id).estado, "creado");
   calcularApoyoAristas(a);
   assert.equal(a.aristas.at(-1).apoyo, "inferido");
-  const guardada = migrarAV6(copiar(a));
+  const guardada = migrarAV7(copiar(a));
   assert.equal(procedenciaDe(guardada, nueva.id).estado, "creado", "la procedencia sobrevive a la migración");
   assert.equal(guardada.aristas.at(-1).apoyo, "inferido");
 });
@@ -751,7 +751,7 @@ prueba("los elementos de una sección ya editada pasan a editado al migrar, una 
   v4.version = 4;
   delete v4.procedencia;
   v4.secciones_editadas = ["hipotesis-mantenimiento"];
-  const una = migrarAV6(copiar(v4));
+  const una = migrarAV7(copiar(v4));
   for (const h of una.hipotesis_mantenimiento) {
     assert.equal(procedenciaDe(una, h.id).estado, "editado");
     assert.equal(procedenciaDe(una, h.id).original, undefined, "no se puede saber el original");
@@ -762,7 +762,7 @@ prueba("los elementos de una sección ya editada pasan a editado al migrar, una 
   const otra = copiar(una);
   const libre = otra.variables_moduladoras[0].id;
   confirmarElemento(otra, libre);
-  const deNuevo = migrarAV6(copiar(otra));
+  const deNuevo = migrarAV7(copiar(otra));
   assert.equal(procedenciaDe(deNuevo, libre).estado, "confirmado");
   assert.deepEqual(deNuevo.procedencia, otra.procedencia);
 });
@@ -896,7 +896,7 @@ prueba("v6: depende_de resuelve a pregunta_id por id, y lo que no casa se conser
 
 prueba("v6: migrar dos veces da exactamente lo mismo y los ids de pregunta no se repiten", () => {
   const una = normalizarAnalisis(crudoV1(), lineas);
-  assert.deepEqual(migrarAV6(JSON.parse(JSON.stringify(una))), una);
+  assert.deepEqual(migrarAV7(JSON.parse(JSON.stringify(una))), una);
   const ids = todosLosIds(una);
   assert.equal(new Set(ids).size, ids.length);
   assert.ok(una.preguntas.every((p) => /^prg_\d+$/.test(p.id)));
@@ -911,7 +911,7 @@ prueba("v6: el estado de la hipótesis nace «en_prueba» y el modelo no puede c
   // Pero el clínico sí: una hipótesis ya guardada conserva su estado al migrar de nuevo.
   a.hipotesis_mantenimiento[0].estado = "debilitada";
   a.hipotesis_mantenimiento[0].motivo_estado = "No aparece los fines de semana.";
-  const otra = migrarAV6(JSON.parse(JSON.stringify(a)));
+  const otra = migrarAV7(JSON.parse(JSON.stringify(a)));
   assert.equal(otra.hipotesis_mantenimiento[0].estado, "debilitada");
   assert.equal(otra.hipotesis_mantenimiento[0].motivo_estado, "No aparece los fines de semana.");
 });
@@ -929,7 +929,7 @@ prueba("v6: el estado y la respuesta de una pregunta los pone solo el clínico",
   assert.equal(p.respuesta, undefined);
   p.estado = "respondida";
   p.respuesta = { texto: "Se rio.", autor: "clinico" };
-  const otra = migrarAV6(JSON.parse(JSON.stringify(a)));
+  const otra = migrarAV7(JSON.parse(JSON.stringify(a)));
   const q = otra.preguntas.find((x) => x.id === p.id);
   assert.equal(q.estado, "respondida");
   assert.equal(q.respuesta.texto, "Se rio.");
@@ -1003,12 +1003,41 @@ prueba("3B: un informe guardado sin evidencia en las hipótesis se abre y la dej
   const a = normalizarAnalisis(crudoV1(), lineas);
   const guardado = JSON.parse(JSON.stringify(a));
   for (const h of guardado.hipotesis_mantenimiento) delete h.evidencia;
-  const reabierto = migrarAV6(guardado);
+  const reabierto = migrarAV7(guardado);
   assert.ok(reabierto.hipotesis_mantenimiento.every((h) => h.evidencia.verificada === false));
   assert.deepEqual(
     reabierto.aristas.map((r) => r.apoyo),
     a.aristas.map((r) => r.apoyo)
   );
+});
+
+console.log("\nCitas del clínico (esquema v7, fase 5C)\n");
+
+prueba("v7: un informe anterior llega sin citas del clínico, y migrar dos veces da lo mismo", () => {
+  const a = normalizarAnalisis(crudoV1(), lineas);
+  assert.equal(a.version, 7);
+  assert.deepEqual(a.citas_del_clinico, {});
+  const otra = migrarAV7(JSON.parse(JSON.stringify(a)));
+  assert.deepEqual(otra, a);
+});
+
+prueba("v7: el modelo no puede traer citas «del clínico»", () => {
+  // La salida se construye clave por clave: lo que manda el modelo se pierde.
+  const crudo = crudoV1();
+  crudo.citas_del_clinico = { cnd_1: [{ texto: "Inventado", linea_inicio: 1, linea_fin: 1, verificada: true }] };
+  assert.deepEqual(normalizarAnalisis(crudo, lineas).citas_del_clinico, {});
+});
+
+prueba("v7: se conservan las citas bien formadas y se descartan las demás", () => {
+  const a = normalizarAnalisis(crudoV1(), lineas);
+  const buena = { texto: "Pidió ir al baño", linea_inicio: 4, linea_fin: 4, frase_inicio: 1, frase_fin: 1, verificada: true };
+  a.citas_del_clinico = {
+    cnd_1: [buena, { texto: "", linea_inicio: 1, linea_fin: 1, verificada: true }, { texto: null, verificada: false }],
+    ari_1: [],
+    ari_2: "no es una lista",
+  };
+  const m = migrarAV7(a);
+  assert.deepEqual(m.citas_del_clinico, { cnd_1: [buena] });
 });
 
 console.log(

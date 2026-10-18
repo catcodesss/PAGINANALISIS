@@ -779,10 +779,11 @@ export interface ProcedenciaElemento {
  * traía la respuesta (`campos_ausentes`); la 5 da apoyo y cita a las aristas y
  * procedencia a cada elemento; la 6 unifica preguntas y datos faltantes en
  * `preguntas`, da identidad a las hipótesis alternativas y estado a las de
- * mantenimiento. Un informe guardado de una versión anterior se migra al
- * leerlo; nunca se descarta. Ver lib/identidad.ts#migrarAV6.
+ * mantenimiento; la 7 guarda aparte las citas que añade el clínico
+ * (`citas_del_clinico`). Un informe guardado de una versión anterior se migra
+ * al leerlo; nunca se descarta. Ver lib/identidad.ts#migrarAV7.
  */
-export const VERSION_ANALISIS = 6;
+export const VERSION_ANALISIS = 7;
 
 export interface AnalisisFuncional {
   version: number;
@@ -875,6 +876,16 @@ export interface AnalisisFuncional {
    * manda. `secciones_editadas` se conserva para los informes anteriores.
    */
   procedencia: Record<Id, ProcedenciaElemento>;
+  /**
+   * Frases de la nota que el clínico une a un nodo o a una relación (fase 5C:
+   * arrastrándolas desde la Fuente, o al convertir una frase sin usar). Son
+   * verificadas porque el texto sale de la nota, pero NO son del modelo, y por
+   * eso no van en el campo `evidencia` de ninguna entidad: así las citas de la
+   * IA y las del clínico no se confunden nunca (invariantes 2 y 6), y sirven
+   * también para lo que no tiene campo de cita (Ed, consecuencias, eslabones,
+   * OM, función, relaciones…). La escribe solo la interfaz, como `procedencia`.
+   */
+  citas_del_clinico: Record<Id, Extract<Cita, { verificada: true }>[]>;
 }
 
 /**
@@ -923,6 +934,7 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "secciones_editadas",
   "estados_plan",
   "procedencia",
+  "citas_del_clinico",
 ] as const satisfies readonly (keyof AnalisisFuncional)[];
 
 type _TodasLasClavesCubiertas =

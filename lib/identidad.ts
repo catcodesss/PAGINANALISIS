@@ -738,17 +738,56 @@ function llevarPreguntasAV6(analisis: AnalisisFuncional): void {
 }
 
 /**
- * Lleva un análisis de cualquier versión anterior a la actual (v6).
+ * Lleva un análisis de cualquier versión anterior a la actual (v7).
+ *
+ * La v7 añade `citas_del_clinico` (fase 5C): las frases de la nota que el
+ * clínico une a un nodo o a una relación. Un informe anterior no tiene
+ * ninguna, así que llega con `{}`. Se descartan las entradas mal formadas —una
+ * cita sin texto o sin línea no puede presentarse como de la nota— y las
+ * listas vacías. Idempotente y sin pérdida.
+ *
+ * Se aplica donde se aplicaba migrarAV6: al normalizar la respuesta del
+ * modelo, al leer del historial, al cargar el ejemplo y tras un reanálisis.
+ */
+export function migrarAV7(analisis: AnalisisFuncional): AnalisisFuncional {
+  migrarAV6(analisis);
+  const crudo = (analisis as unknown as Record<string, unknown>).citas_del_clinico;
+  const limpio: AnalisisFuncional["citas_del_clinico"] = {};
+  if (typeof crudo === "object" && crudo !== null && !Array.isArray(crudo)) {
+    for (const [id, citas] of Object.entries(crudo as Record<string, unknown>)) {
+      if (!Array.isArray(citas)) continue;
+      const validas = citas.filter(esCitaDeLaNota);
+      if (validas.length > 0) limpio[id] = validas;
+    }
+  }
+  analisis.citas_del_clinico = limpio;
+  analisis.version = VERSION_ANALISIS;
+  return analisis;
+}
+
+function esCitaDeLaNota(valor: unknown): valor is AnalisisFuncional["citas_del_clinico"][string][number] {
+  if (typeof valor !== "object" || valor === null) return false;
+  const c = valor as Record<string, unknown>;
+  return (
+    c.verificada === true &&
+    typeof c.texto === "string" &&
+    c.texto.trim().length > 0 &&
+    typeof c.linea_inicio === "number" &&
+    typeof c.linea_fin === "number"
+  );
+}
+
+/**
+ * Lleva un análisis de cualquier versión anterior a la v6.
  *
  * La v6 une las preguntas y los datos faltantes en `preguntas` (ver
  * llevarPreguntasAV6), da identidad a las hipótesis alternativas y estado a las
  * de mantenimiento. Idempotente y sin pérdida. El estado de los blancos del
  * plan sigue como estaba hasta que se decida su correspondencia.
  */
-export function migrarAV6(analisis: AnalisisFuncional): AnalisisFuncional {
+function migrarAV6(analisis: AnalisisFuncional): AnalisisFuncional {
   llevarPreguntasAV6(analisis);
   migrarAV5(analisis);
-  analisis.version = VERSION_ANALISIS;
   return analisis;
 }
 

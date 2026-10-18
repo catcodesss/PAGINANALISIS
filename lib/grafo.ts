@@ -45,6 +45,11 @@ export interface NodoGrafo {
   confianza: NivelConfianza;
   apoyo: 1 | 2 | 3;
   detalle?: string;
+  /**
+   * Las frases que le uniste tú (`citas_del_clinico`). Aparte de `evidencia`,
+   * que es solo del modelo: la interfaz y la exportación las marcan como tuyas.
+   */
+  citas_clinico?: Extract<Cita, { verificada: true }>[];
 }
 
 export interface HuecoGrafo {
@@ -193,6 +198,20 @@ function nodosSituacion(
 }
 
 export function construirNodosGrafo(analisis: AnalisisFuncional): NodoGrafo[] {
+  const salida = construirNodosSinCitasDelClinico(analisis);
+  // Una frase que uniste tú cuenta para el apoyo como cualquier frase de la
+  // nota, pero solo si el nodo no tiene ya una cita propia verificada: no se
+  // mezcla con la del modelo ni la sustituye.
+  const delClinico = analisis.citas_del_clinico ?? {};
+  return salida.map((n) => {
+    const citas = delClinico[n.id] ?? [];
+    if (citas.length === 0) return n;
+    const apoyo = n.evidencia?.verificada ? n.apoyo : derivarApoyo(citas[0], n.confianza);
+    return { ...n, citas_clinico: citas, apoyo };
+  });
+}
+
+function construirNodosSinCitasDelClinico(analisis: AnalisisFuncional): NodoGrafo[] {
   const salida = analisis.situaciones.flatMap((s) => nodosSituacion(analisis, s));
   for (const variable of analisis.variables_moduladoras) {
     salida.push(nodo({
@@ -385,6 +404,34 @@ export function borrarNodo(analisis: AnalisisFuncional, id: string): void {
   }
   retirarAristas(analisis, idsRetirados);
   olvidarProcedencia(analisis, idsRetirados);
+  // Después de olvidar el borrado: si no, se olvidaría el que acaba de subir
+  // a su puesto.
+  if (valor) correrIdsDeValores(analisis, Number(valor[1]));
+}
+
+/**
+ * El id de un valor es su posición (`valor_3`). Al borrar uno, los de detrás
+ * suben un puesto, y su procedencia y sus citas tienen que subir con ellos:
+ * si no, la cita de un valor acabaría colgada del siguiente.
+ */
+function correrIdsDeValores(analisis: AnalisisFuncional, borrado: number): void {
+  for (const mapa of [analisis.procedencia, analisis.citas_del_clinico ?? {}] as Record<string, unknown>[]) {
+    delete mapa[`valor_${borrado}`];
+    const siguientes = Object.keys(mapa)
+      .map((k) => /^valor_(\d+)$/.exec(k))
+      .filter((m): m is RegExpExecArray => m !== null && Number(m[1]) > borrado)
+      .map((m) => Number(m[1]))
+      .sort((a, b) => a - b);
+    for (const n of siguientes) {
+      mapa[`valor_${n - 1}`] = mapa[`valor_${n}`];
+      delete mapa[`valor_${n}`];
+    }
+  }
+}
+
+/** Un id nuevo para algo que crea el clínico. Nunca se reutiliza. */
+export function reservarId(analisis: AnalisisFuncional, prefijo: string): string {
+  return nuevoId(analisis, prefijo);
 }
 
 function nuevoId(analisis: AnalisisFuncional, prefijo: string): string {

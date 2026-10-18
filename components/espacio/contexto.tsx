@@ -29,6 +29,10 @@ import {
 } from "react";
 import type { AnalisisFuncional, Cita } from "@/lib/types";
 import type { IdVista } from "@/lib/secciones";
+import { citaDeFrase, citarEnElemento } from "@/lib/edicionMapa";
+
+/** El tipo del arrastre de una frase de la Fuente: solo lleva su posición. */
+export const TIPO_ARRASTRE_FRASE = "application/x-acia-frase";
 
 type CitaResuelta = Extract<Cita, { verificada: true }>;
 
@@ -63,6 +67,21 @@ export interface EspacioValor {
   menu: MenuAbierto | null;
   abrirMenu: (id: string, x: number, y: number) => void;
   cerrarMenu: () => void;
+  /** La nota partida en líneas: de aquí sale el texto de toda cita del clínico. */
+  lineasNota: readonly string[];
+  /**
+   * Une la frase (línea, frase) a un nodo o una relación, con deshacer. El
+   * texto se saca de la nota, nunca de lo que traiga el arrastre.
+   */
+  citarFrase: (id: string, linea: number, frase: number) => void;
+  /** Hay una frase en el aire: los destinos donde se puede soltar se marcan. */
+  arrastrandoFrase: boolean;
+  setArrastrandoFrase: (v: boolean) => void;
+  /** Lo que necesita un nodo o un arco para recibir una frase arrastrada. */
+  propsSoltarFrase: (id: string) => {
+    onDragOver: (e: React.DragEvent) => void;
+    onDrop: (e: React.DragEvent) => void;
+  };
 }
 
 const EspacioContext = createContext<EspacioValor | null>(null);
@@ -112,10 +131,12 @@ const VISTAS: readonly IdVista[] = ["mapa", "blancos"];
 
 export function ProveedorEspacio({
   analisis,
+  notaOriginal,
   onEditar,
   children,
 }: {
   analisis: AnalisisFuncional;
+  notaOriginal: string;
   /** Edición del Mapa: la página muta una copia y marca la sección. */
   onEditar: (mutacion: (copia: AnalisisFuncional) => void) => void;
   children: ReactNode;
@@ -140,6 +161,8 @@ export function ProveedorEspacio({
   const [menu, setMenu] = useState<MenuAbierto | null>(null);
   const abrirMenu = useCallback((id: string, x: number, y: number) => setMenu({ id, x, y }), []);
   const cerrarMenu = useCallback(() => setMenu(null), []);
+  const lineasNota = useMemo(() => notaOriginal.replace(/\r\n/g, "\n").split("\n"), [notaOriginal]);
+  const [arrastrandoFrase, setArrastrandoFrase] = useState(false);
   const [citaPulsada, setCitaPulsada] = useState<CitaResuelta | null>(null);
 
   const seleccionar = useCallback((id: string | null) => {
@@ -214,6 +237,44 @@ export function ProveedorEspacio({
     restaurar(siguiente);
   }, [analisis, restaurar]);
 
+  const citarFrase = useCallback(
+    (id: string, linea: number, frase: number) => {
+      const cita = citaDeFrase(lineasNota, linea, frase);
+      if (!cita) return;
+      aplicar((copia) => {
+        citarEnElemento(copia, id, cita);
+      });
+    },
+    [lineasNota, aplicar]
+  );
+
+  const propsSoltarFrase = useCallback(
+    (id: string) => ({
+      onDragOver: (e: React.DragEvent) => {
+        if (!e.dataTransfer.types.includes(TIPO_ARRASTRE_FRASE)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+      },
+      onDrop: (e: React.DragEvent) => {
+        const crudo = e.dataTransfer.getData(TIPO_ARRASTRE_FRASE);
+        if (!crudo) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setArrastrandoFrase(false);
+        try {
+          const { linea, frase } = JSON.parse(crudo) as { linea: unknown; frase: unknown };
+          if (typeof linea === "number" && typeof frase === "number") {
+            citarFrase(id, linea, frase);
+            escribirParametro("foco", id);
+          }
+        } catch {
+          // Algo que no es una frase de la Fuente: se ignora.
+        }
+      },
+    }),
+    [citarFrase]
+  );
+
   const valor = useMemo<EspacioValor>(
     () => ({
       seleccionado,
@@ -234,6 +295,11 @@ export function ProveedorEspacio({
       menu,
       abrirMenu,
       cerrarMenu,
+      lineasNota,
+      citarFrase,
+      arrastrandoFrase,
+      setArrastrandoFrase,
+      propsSoltarFrase,
     }),
     [
       seleccionado,
@@ -252,6 +318,10 @@ export function ProveedorEspacio({
       menu,
       abrirMenu,
       cerrarMenu,
+      lineasNota,
+      citarFrase,
+      arrastrandoFrase,
+      propsSoltarFrase,
     ]
   );
 

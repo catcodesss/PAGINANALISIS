@@ -266,6 +266,8 @@
 .nodoTexto { min-width: 0; flex: 1; }
 /* Propuesta de la IA sin revisar: el borde lo dice sin color (fase 5C). */
 .propuesta { border-style: dashed; }
+/* Mientras se arrastra una frase de la Fuente: aquí se puede soltar. */
+.destinoCita { outline: 1.5px dashed var(--afc-acento); outline-offset: 3px; }
 .marcaProcedencia {
   position: absolute;
   top: 6px;

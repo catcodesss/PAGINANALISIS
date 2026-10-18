@@ -163,6 +163,8 @@ function Nodo({
   alertas = [],
   procedencia,
   onMenu,
+  soltarFrase,
+  destinoCita = false,
 }: {
   nodo: NodoGrafo;
   seleccionado: boolean;
@@ -177,6 +179,10 @@ function Nodo({
   procedencia?: ProcedenciaElemento;
   /** Abre el menú del nodo en un punto de la pantalla. */
   onMenu?: (x: number, y: number) => void;
+  /** Recibe una frase arrastrada desde la Fuente (contexto.tsx#propsSoltarFrase). */
+  soltarFrase?: { onDragOver: (e: React.DragEvent) => void; onDrop: (e: React.DragEvent) => void };
+  /** Hay una frase en el aire: se marca como sitio donde soltarla. */
+  destinoCita?: boolean;
 }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(nodo.etiqueta);
@@ -254,6 +260,7 @@ function Nodo({
           onMenu(evento.clientX, evento.clientY);
         }
       : undefined,
+    ...soltarFrase,
   } as const;
 
   if (variante === "afc") {
@@ -264,6 +271,7 @@ function Nodo({
       seleccionado ? s.seleccionado : "",
       atenuado ? s.atenuado : "",
       procedencia?.estado === "propuesta" ? s.propuesta : "",
+      destinoCita ? s.destinoCita : "",
     ].join(" ");
     const rotulo = procedencia ? ROTULOS_PROCEDENCIA[procedencia.estado] : null;
     return (
@@ -420,7 +428,7 @@ function BotonAgregarNodo({
 
 export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto, onIrANivel }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
-  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu } = useEspacio();
+  const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu, propsSoltarFrase, arrastrandoFrase } = useEspacio();
   const [modoConectar, setModoConectar] = useState(false);
   const [origenConexion, setOrigenConexion] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<1 | 2 | 3 | null>(null);
@@ -513,6 +521,8 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
         alertas={avisos(n.id)}
         procedencia={procedenciaDe(analisis, n.id)}
         onMenu={(x, y) => abrirMenu(n.id, x, y)}
+        soltarFrase={propsSoltarFrase(n.id)}
+        destinoCita={arrastrandoFrase}
       />
     );
     const suyos = capas.act ? procesosACT.filter((p) => p.nodo_id === n.id) : [];
