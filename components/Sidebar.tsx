@@ -9,32 +9,34 @@ import {
   FolderOpen,
   Heart,
   Leaf,
-  Library,
   Menu,
   Settings,
   X,
 } from "lucide-react";
 
 /** Vistas que hoy existen de verdad. El resto de ítems son mapa del producto. */
-export type Vista = "analisis" | "guia" | "configuracion";
+export type Vista = "analisis" | "casos" | "guia" | "configuracion";
 
 interface ItemNav {
   icono: typeof FilePenLine;
   etiqueta: string;
   vista?: Vista;
+  /** Abre «Casos» con el formulario de caso nuevo desplegado. */
+  nuevo?: boolean;
 }
 
 const ITEMS_NAV: ItemNav[] = [
-  { icono: FilePenLine, etiqueta: "Nuevo análisis", vista: "analisis" },
-  { icono: FolderOpen, etiqueta: "Mis análisis" },
-  { icono: Library, etiqueta: "Biblioteca clínica" },
-  { icono: BookOpenCheck, etiqueta: "Guía de uso", vista: "guia" },
-  { icono: Settings, etiqueta: "Configuración", vista: "configuracion" },
+  { icono: FilePenLine, etiqueta: "Nuevo caso", vista: "casos", nuevo: true },
+  { icono: FolderOpen, etiqueta: "Casos", vista: "casos" },
+  // «Aprender» reúne la guía de uso y la biblioteca clínica.
+  { icono: BookOpenCheck, etiqueta: "Aprender", vista: "guia" },
+  // «Cuenta»: configuración, privacidad y respaldo.
+  { icono: Settings, etiqueta: "Cuenta", vista: "configuracion" },
 ];
 
 interface SidebarProps {
   vista: Vista;
-  onCambiarVista: (vista: Vista) => void;
+  onCambiarVista: (vista: Vista, nuevo?: boolean) => void;
 }
 
 /**
@@ -71,9 +73,9 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
     return () => document.removeEventListener("keydown", alPulsar);
   }, [abierto]);
 
-  function navegar(destino?: Vista) {
+  function navegar(destino?: Vista, nuevo?: boolean) {
     if (!destino) return;
-    onCambiarVista(destino);
+    onCambiarVista(destino, nuevo);
     setAbierto(false);
   }
 
@@ -159,13 +161,13 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
         </div>
 
         <nav aria-label="Navegación principal" className="mt-8 flex flex-1 flex-col gap-1">
-          {ITEMS_NAV.map(({ icono: Icono, etiqueta, vista: destino }) => {
-            const activo = destino !== undefined && destino === vista;
+          {ITEMS_NAV.map(({ icono: Icono, etiqueta, vista: destino, nuevo }) => {
+            const activo = destino !== undefined && destino === vista && !nuevo;
             return (
               <button
                 key={etiqueta}
                 type="button"
-                onClick={() => navegar(destino)}
+                onClick={() => navegar(destino, nuevo)}
                 aria-current={activo ? "page" : undefined}
                 title={destino ? undefined : "Próximamente"}
                 className={`flex items-center gap-3.5 rounded-xl px-4 py-3 text-left text-[15px] transition-colors ${

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   BookOpenText,
@@ -37,6 +37,21 @@ import { calcularApoyoAristas } from "@/lib/apoyoAristas";
 import { migrarAV8 } from "@/lib/identidad";
 import { fusionarPreguntas } from "@/lib/preguntas";
 import { cerrarEdicion } from "@/lib/procedenciaEdicion";
+import Historial from "@/components/Historial";
+import { ContextoCaso, type ValorCaso } from "@/components/contextoCaso";
+import { repositorio } from "@/lib/repositorio";
+import {
+  anadirSesion,
+  formulacionVigente,
+  guardarVersion,
+  obtenerVersion,
+  registrarRevisiones,
+  revisionesEntre,
+  textoDeSesion,
+  ultimaSesion,
+  type AutorRevision,
+  type Expediente,
+} from "@/lib/casos";
 import PreguntasDatosFaltantes, {
   type ResultadoPreguntas,
 } from "@/components/PreguntasDatosFaltantes";
@@ -83,6 +98,129 @@ export default function Home() {
   // confirmadas al terminar.
   const [textoPendiente, setTextoPendiente] = useState("");
   const { preferencias, cambiar: cambiarPreferencias } = usePreferencias();
+
+  /* ── Caso abierto (fase 7) ── */
+  const [expediente, setExpediente] = useState<Expediente | null>(null);
+  // Sesión anterior cuya formulación se está viendo, en solo lectura.
+  const [sesionVista, setSesionVista] = useState<string | null>(null);
+  const [nuevoCaso, setNuevoCaso] = useState(false);
+  const [claveCasos, setClaveCasos] = useState(0);
+  const [panelSesion, setPanelSesion] = useState(false);
+  const [notaSesion, setNotaSesion] = useState("");
+  const [registroSesion, setRegistroSesion] = useState("");
+  const [avisoGuardado, setAvisoGuardado] = useState("");
+  // Refs para los guardados asíncronos: leen el caso de ahora, no el del render
+  // en que empezaron.
+  const expedienteRef = useRef<Expediente | null>(null);
+  const autorRef = useRef<AutorRevision>("clinico");
+
+  async function persistir(siguiente: Expediente) {
+    try {
+      await repositorio.actualizarCaso(siguiente);
+      expedienteRef.current = siguiente;
+      setExpediente(siguiente);
+      setAvisoGuardado("");
+    } catch (e) {
+      setAvisoGuardado(e instanceof Error ? e.message : "No se pudo guardar el caso.");
+    }
+  }
+
+  /*
+    Cada cambio del análisis dentro de un caso se guarda (con una pausa, para
+    no cifrar en cada pulsación) como la formulación de la sesión actual, y
+    deja una revisión por elemento cambiado con su autor (invariante 6). Las
+    sesiones cerradas no se tocan: lo impide comprobarCambioExpediente.
+  */
+  useEffect(() => {
+    if (!analisis || sesionVista) return;
+    const temporizador = setTimeout(() => {
+      const exp = expedienteRef.current;
+      const ultima = exp ? ultimaSesion(exp) : null;
+      if (!exp || !ultima || !repositorio.desbloqueado()) return;
+      const guardado = obtenerVersion(exp, ultima.id);
+      if (!guardado) return;
+      const revisiones = revisionesEntre(guardado, analisis, {
+        caso_id: exp.caso.id,
+        sesion_id: ultima.id,
+        autor: autorRef.current,
+      });
+      if (revisiones.length === 0) return;
+      void persistir(guardarVersion(registrarRevisiones(exp, revisiones), ultima.id, analisis));
+    }, 800);
+    return () => clearTimeout(temporizador);
+  }, [analisis, sesionVista]);
+
+  function cambiarVista(v: Vista, nuevo?: boolean) {
+    setVista(v);
+    if (v === "casos") {
+      setNuevoCaso(Boolean(nuevo));
+      setClaveCasos((k) => k + 1);
+    }
+  }
+
+  function abrirExpediente(exp: Expediente) {
+    manejarNuevoAnalisis();
+    expedienteRef.current = exp;
+    setExpediente(exp);
+    setReferenciaCaso(exp.caso.alias);
+    setVista("analisis");
+  }
+
+  function manejarAbrirCaso(exp: Expediente) {
+    abrirExpediente(exp);
+    const vigente = formulacionVigente(exp);
+    if (!vigente) return;
+    // Las citas apuntan a la nota que se analizó: la de la primera sesión.
+    const primera = [...exp.sesiones].sort((a, b) => a.n - b.n)[0];
+    setUltimoTextoEnviado(textoDeSesion(exp, primera.id));
+    setAnalisis(vigente.analisis);
+    setFechaGeneracion(
+      new Date(vigente.sesion.fecha).toLocaleString("es-PE", { dateStyle: "long", timeStyle: "short" })
+    );
+    setEstado("resultado");
+  }
+
+  /** La sesión 1 de un caso: la nota que se acaba de analizar y su formulación. */
+  async function guardarSesionAnalizada(texto: string, resultado: AnalisisFuncional) {
+    const exp = expedienteRef.current;
+    if (!exp || exp.sesiones.length > 0 || !repositorio.desbloqueado()) return;
+    const { expediente: conSesion, sesion } = anadirSesion(exp, { nota: texto });
+    await persistir(guardarVersion(conSesion, sesion.id, resultado));
+  }
+
+  /**
+   * «Añadir sesión» sin IA: guarda la nota y el registro, y la formulación
+   * vigente pasa a ser la de la nueva sesión. No lanza un análisis
+   * independiente, que daría dos formulaciones divergentes del mismo caso.
+   */
+  async function guardarNuevaSesion() {
+    const exp = expedienteRef.current;
+    if (!exp || !analisis) return;
+    const { expediente: conSesion, sesion } = anadirSesion(exp, {
+      nota: notaSesion,
+      registro: registroSesion,
+    });
+    await persistir(guardarVersion(conSesion, sesion.id, analisis));
+    setPanelSesion(false);
+    setNotaSesion("");
+    setRegistroSesion("");
+  }
+
+  const ultima = expediente ? ultimaSesion(expediente) : null;
+  const sesionMostrada =
+    (sesionVista && expediente?.sesiones.find((s) => s.id === sesionVista)) || ultima;
+  const analisisMostrado =
+    sesionVista && expediente ? obtenerVersion(expediente, sesionVista) ?? analisis : analisis;
+  const valorCaso: ValorCaso | null =
+    expediente && sesionMostrada
+      ? {
+          expediente,
+          sesion: sesionMostrada,
+          soloLectura: sesionVista !== null,
+          verVersion: setSesionVista,
+          anadirSesion: () => setPanelSesion(true),
+        }
+      : null;
 
   // Con el tema en "sistema" no se sabe en el servidor cuál se ve; se lee lo
   // que el script de layout.tsx ya aplicó a <html>, que es lo que ve el usuario.
@@ -136,6 +274,7 @@ export default function Home() {
       }
 
       setAnalisis(datos.analisis as AnalisisFuncional);
+      void guardarSesionAnalizada(texto, datos.analisis as AnalisisFuncional);
       setFechaGeneracion(
         new Date().toLocaleString("es-PE", {
           dateStyle: "long",
@@ -254,6 +393,9 @@ export default function Home() {
   }
 
   function manejarNuevoAnalisis() {
+    expedienteRef.current = null;
+    setExpediente(null);
+    setSesionVista(null);
     setNota("");
     setReferenciaCaso("");
     setEstado("inicial");
@@ -307,6 +449,8 @@ export default function Home() {
     seccionId: string | null,
     mutar: (copia: AnalisisFuncional) => void
   ) {
+    if (sesionVista) return; // versión anterior: solo lectura
+    autorRef.current = "clinico";
     setAnalisis((previo) => {
       if (!previo) return previo;
       const copia = structuredClone(previo);
@@ -331,6 +475,8 @@ export default function Home() {
    * lib/validadores.ts) porque este contenido es tan nuevo como el original.
    */
   function manejarAnalisisActualizado(fragmento: Partial<AnalisisFuncional>) {
+    if (sesionVista) return;
+    autorRef.current = "ia";
     setAnalisis((previo) => {
       if (!previo) return previo;
       const actualizado = structuredClone(previo);
@@ -359,6 +505,10 @@ export default function Home() {
   // comparten contenedor y cabecera, solo cambia el cuerpo.
   const enAnalisis = vista === "analisis";
   const TITULOS: Record<typeof vista, { titulo: string; bajada: string }> = {
+    casos: {
+      titulo: "Casos",
+      bajada: "Cifrados en este dispositivo.",
+    },
     analisis: {
       titulo: "ACIA — análisis conductual asistido por IA",
       bajada:
@@ -382,7 +532,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-canvas lg:flex print:block">
-      <Sidebar vista={vista} onCambiarVista={setVista} />
+      <Sidebar vista={vista} onCambiarVista={cambiarVista} />
 
       <div className="min-w-0 flex-1">
         <main
@@ -623,7 +773,8 @@ export default function Home() {
             </section>
           )}
 
-          {enAnalisis && estado === "resultado" && analisis && (
+          {enAnalisis && estado === "resultado" && analisisMostrado && (
+            <ContextoCaso.Provider value={valorCaso}>
             <div className="mt-2">
               <div className="sticky top-0 z-10 -mx-4 mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-divider bg-surface/95 px-4 py-3 backdrop-blur print:hidden sm:-mx-6 sm:px-6">
                 <p className="min-w-0 truncate text-sm text-ink-muted">
@@ -643,8 +794,22 @@ export default function Home() {
                   </button>
                 </div>
               </div>
+              {sesionVista && sesionMostrada && (
+                <p role="status" className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-divider bg-canvas px-4 py-2 text-sm text-ink print:hidden">
+                  Viendo la formulación de la sesión {sesionMostrada.n}
+                  <button type="button" onClick={() => setSesionVista(null)} className="font-medium text-accent hover:underline">
+                    Volver a la vigente
+                  </button>
+                </p>
+              )}
+              {avisoGuardado && (
+                <p role="alert" className="mb-4 text-sm text-warn print:hidden">
+                  {avisoGuardado}
+                </p>
+              )}
               <ReportView
-                analisis={analisis}
+                key={sesionVista ?? "vigente"}
+                analisis={analisisMostrado}
                 referenciaCaso={referenciaCaso}
                 onReferenciaCasoChange={setReferenciaCaso}
                 fecha={fechaGeneracion}
@@ -658,8 +823,60 @@ export default function Home() {
                 }}
               />
             </div>
+            </ContextoCaso.Provider>
           )}
 
+          {panelSesion && expediente && (
+            <div role="dialog" aria-modal="true" aria-label="Añadir sesión" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 print:hidden">
+              <div className="w-full max-w-lg rounded-xl border border-divider bg-surface p-5">
+                <p className="font-serif text-lg font-semibold text-ink">
+                  Sesión {(ultima?.n ?? 0) + 1}
+                </p>
+                <textarea
+                  value={notaSesion}
+                  onChange={(e) => setNotaSesion(e.target.value)}
+                  rows={7}
+                  maxLength={LONGITUD_MAXIMA}
+                  placeholder="Nota de la sesión…"
+                  autoFocus
+                  className="mt-3 w-full resize-y rounded-lg border border-divider bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                />
+                <textarea
+                  value={registroSesion}
+                  onChange={(e) => setRegistroSesion(e.target.value)}
+                  rows={2}
+                  placeholder="Qué se hizo · tareas revisadas (opcional)"
+                  className="mt-2 w-full resize-y rounded-lg border border-divider bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                />
+                {contieneDatosIdentificables(notaSesion) && (
+                  <p role="alert" className="mt-2 text-xs text-warn">
+                    La nota parece tener datos identificables.{" "}
+                    <button type="button" onClick={() => setNotaSesion(enmascararDatosIdentificables(notaSesion))} className="font-medium underline">
+                      Enmascarar
+                    </button>
+                  </p>
+                )}
+                <p className="mt-2 text-xs text-ink-muted">Se guarda sin IA. La formulación no cambia.</p>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button type="button" onClick={() => setPanelSesion(false)} className="rounded border border-divider px-4 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-canvas">
+                    Cancelar
+                  </button>
+                  <button type="button" onClick={() => void guardarNuevaSesion()} disabled={!notaSesion.trim()} className="rounded bg-accent px-4 py-1.5 text-sm font-medium texto-sobre-acento transition-colors hover:bg-accent/90 disabled:opacity-50">
+                    Guardar sesión
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {vista === "casos" && (
+            <Historial
+              key={claveCasos}
+              nuevoAbierto={nuevoCaso}
+              onAbrir={manejarAbrirCaso}
+              onCreado={abrirExpediente}
+            />
+          )}
           {vista === "guia" && <GuiaCompleta />}
           {vista === "configuracion" && <Configuracion />}
 

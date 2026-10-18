@@ -1,6 +1,14 @@
 import type { AnalisisFuncional } from "./types";
 import { migrarAV8 } from "./identidad";
 import {
+  comprobarCambioExpediente,
+  expedienteDesdeAnalisis,
+  resumirExpediente,
+  type Expediente,
+  type ResumenCaso,
+} from "./casos";
+import { FORMATO_RESPALDO, leerRespaldo } from "./respaldo";
+import {
   cifrar,
   crearTestigo,
   derivarClave,
@@ -59,14 +67,27 @@ export interface Repositorio {
   /** Respaldo cifrado: el usuario se lo lleva a otro equipo. */
   exportarRespaldo(): Promise<Blob>;
   importarRespaldo(contenido: string): Promise<number>;
+
+  // --- casos (fase 7) ---
+  /**
+   * Convierte cada análisis suelto del historial anterior en un caso con una
+   * sesión. El que falla se queda donde estaba y se cuenta.
+   */
+  migrarHistorial(): Promise<{ migrados: number; fallidos: number }>;
+  crearCaso(expediente: Expediente): Promise<void>;
+  listarCasos(): Promise<ResumenCaso[]>;
+  obtenerCaso(id: string): Promise<Expediente | null>;
+  /** Rechaza el cambio si edita una nota, borra revisiones o toca una versión cerrada. */
+  actualizarCaso(expediente: Expediente): Promise<void>;
+  eliminarCaso(id: string): Promise<void>;
 }
 
 // --- IndexedDB ---------------------------------------------------------
 
 const BD = "acia-historial";
-const FORMATO_RESPALDO = "acia-respaldo-v1";
-const VERSION = 1;
+const VERSION = 2;
 const ALMACEN_REGISTROS = "registros";
+const ALMACEN_CASOS = "casos";
 const ALMACEN_CONFIG = "config";
 const CLAVE_CONFIG = "cifrado";
 
@@ -92,6 +113,10 @@ function abrirBd(): Promise<IDBDatabase> {
       }
       if (!bd.objectStoreNames.contains(ALMACEN_CONFIG)) {
         bd.createObjectStore(ALMACEN_CONFIG, { keyPath: "clave" });
+      }
+      // Un expediente por caso, en un solo sobre: el alias también va cifrado.
+      if (!bd.objectStoreNames.contains(ALMACEN_CASOS)) {
+        bd.createObjectStore(ALMACEN_CASOS, { keyPath: "id" });
       }
     };
     solicitud.onsuccess = () => resolver(solicitud.result);
@@ -299,15 +324,15 @@ class RepositorioLocal implements Repositorio {
       sal: config.sal,
       testigo: config.testigo,
       registros: await this.todosLosCrudos(),
+      casos: await this.todosLosCasosCrudos(),
     };
     return new Blob([JSON.stringify(respaldo)], { type: "application/json" });
   }
 
   async importarRespaldo(contenido: string): Promise<number> {
-    const respaldo = JSON.parse(contenido);
-    if (respaldo?.formato !== FORMATO_RESPALDO) {
-      throw new Error("El archivo no es un respaldo de ACIA.");
-    }
+    // Acepta v1 y v2 (lib/respaldo.ts): los registros de un v1 se convierten
+    // en casos con la próxima migración.
+    const respaldo = leerRespaldo(contenido);
 
     const config = await leerConfig();
     if (config && JSON.stringify(config.sal) !== JSON.stringify(respaldo.sal)) {
@@ -329,12 +354,121 @@ class RepositorioLocal implements Repositorio {
         );
       }
 
-      const tx = bd.transaction(ALMACEN_REGISTROS, "readwrite");
-      const almacen = tx.objectStore(ALMACEN_REGISTROS);
-      for (const registro of respaldo.registros as RegistroCrudo[]) {
-        await operacion(almacen.put(registro));
+      const { registros, casos } = respaldo;
+      const tx = bd.transaction([ALMACEN_REGISTROS, ALMACEN_CASOS], "readwrite");
+      for (const registro of registros) {
+        await operacion(tx.objectStore(ALMACEN_REGISTROS).put(registro));
       }
-      return respaldo.registros.length;
+      for (const caso of casos) {
+        await operacion(tx.objectStore(ALMACEN_CASOS).put(caso));
+      }
+      return registros.length + casos.length;
+    } finally {
+      bd.close();
+    }
+  }
+
+  // --- casos ---------------------------------------------------------------
+
+  private async todosLosCasosCrudos(): Promise<RegistroCrudo[]> {
+    const bd = await abrirBd();
+    try {
+      const tx = bd.transaction(ALMACEN_CASOS, "readonly");
+      return await operacion<RegistroCrudo[]>(tx.objectStore(ALMACEN_CASOS).getAll());
+    } finally {
+      bd.close();
+    }
+  }
+
+  private async escribirCaso(expediente: Expediente, borrarRegistro?: string): Promise<void> {
+    const clave = this.exigirClave();
+    const crudo: RegistroCrudo = {
+      id: expediente.caso.id,
+      fecha: expediente.caso.actualizado,
+      sobre: await cifrar(clave, JSON.stringify(expediente)),
+    };
+    const bd = await abrirBd();
+    try {
+      // Caso nuevo y registro viejo en la misma transacción: o los dos o ninguno.
+      const tx = bd.transaction([ALMACEN_CASOS, ALMACEN_REGISTROS], "readwrite");
+      await operacion(tx.objectStore(ALMACEN_CASOS).put(crudo));
+      if (borrarRegistro) await operacion(tx.objectStore(ALMACEN_REGISTROS).delete(borrarRegistro));
+    } finally {
+      bd.close();
+    }
+  }
+
+  async migrarHistorial(): Promise<{ migrados: number; fallidos: number }> {
+    const clave = this.exigirClave();
+    let migrados = 0;
+    let fallidos = 0;
+    for (const crudo of await this.todosLosCrudos()) {
+      try {
+        const plano = await descifrar(clave, crudo.sobre);
+        if (!plano) throw new Error("ilegible");
+        const entrada = JSON.parse(plano) as EntradaHistorial;
+        const expediente = expedienteDesdeAnalisis({
+          referencia: entrada.referencia,
+          nota: entrada.nota,
+          analisis: migrarAV8(entrada.analisis),
+          fecha: crudo.fecha,
+        });
+        await this.escribirCaso(expediente, crudo.id);
+        migrados += 1;
+      } catch {
+        fallidos += 1; // se queda en `registros`, intacto
+      }
+    }
+    return { migrados, fallidos };
+  }
+
+  async crearCaso(expediente: Expediente): Promise<void> {
+    await this.escribirCaso(expediente);
+  }
+
+  async listarCasos(): Promise<ResumenCaso[]> {
+    const clave = this.exigirClave();
+    const resumenes: ResumenCaso[] = [];
+    for (const crudo of await this.todosLosCasosCrudos()) {
+      const plano = await descifrar(clave, crudo.sobre);
+      if (!plano) continue;
+      resumenes.push(resumirExpediente(JSON.parse(plano) as Expediente));
+    }
+    return resumenes.sort((a, b) => b.actualizado.localeCompare(a.actualizado));
+  }
+
+  async obtenerCaso(id: string): Promise<Expediente | null> {
+    const clave = this.exigirClave();
+    const bd = await abrirBd();
+    let crudo: RegistroCrudo | undefined;
+    try {
+      const tx = bd.transaction(ALMACEN_CASOS, "readonly");
+      crudo = await operacion<RegistroCrudo | undefined>(tx.objectStore(ALMACEN_CASOS).get(id));
+    } finally {
+      bd.close();
+    }
+    if (!crudo) return null;
+    const plano = await descifrar(clave, crudo.sobre);
+    if (!plano) return null;
+    const expediente = JSON.parse(plano) as Expediente;
+    // Igual que `obtener`: se migra al leer. Las versiones no se reescriben en
+    // disco por esto; solo se abren en el esquema de hoy.
+    for (const v of expediente.versiones) v.analisis = migrarAV8(v.analisis);
+    return expediente;
+  }
+
+  async actualizarCaso(expediente: Expediente): Promise<void> {
+    const previo = await this.obtenerCaso(expediente.caso.id);
+    const motivo = comprobarCambioExpediente(previo, expediente);
+    if (motivo) throw new Error(motivo);
+    await this.escribirCaso(expediente);
+  }
+
+  async eliminarCaso(id: string): Promise<void> {
+    const bd = await abrirBd();
+    try {
+      const tx = bd.transaction(ALMACEN_CASOS, "readwrite");
+      await operacion(tx.objectStore(ALMACEN_CASOS).delete(id));
     } finally {
       bd.close();
     }

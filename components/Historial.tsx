@@ -2,89 +2,84 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import type { AnalisisFuncional } from "@/lib/types";
+import { repositorio } from "@/lib/repositorio";
 import {
-  repositorio,
-  type RegistroHistorial,
-  type ResumenHistorial,
-} from "@/lib/repositorio";
+  avisoAlias,
+  crearExpediente,
+  ETIQUETA_FASE_CASO,
+  type Expediente,
+  type FaseCaso,
+  type ResumenCaso,
+} from "@/lib/casos";
 
 /**
- * Historial de análisis guardados en el propio navegador, cifrado con una
- * contraseña del clínico (ver lib/cifrado.ts y lib/repositorio.ts).
+ * Casos guardados en el propio navegador, cifrados con una contraseña del
+ * clínico (ver lib/cifrado.ts y lib/repositorio.ts).
  *
  * Habla solo con la interfaz `Repositorio`, nunca con IndexedDB: el día que el
  * almacenamiento pase a un servidor con cuentas, este componente no cambia.
  */
 
 interface HistorialProps {
-  /** Análisis en pantalla ahora mismo, si hay uno, para poder guardarlo. */
-  analisisActual: AnalisisFuncional | null;
-  notaActual: string;
-  referenciaActual: string;
-  onAbrir: (registro: RegistroHistorial) => void;
+  /** Abre el formulario de caso nuevo al llegar (acción «Nuevo caso»). */
+  nuevoAbierto: boolean;
+  onAbrir: (expediente: Expediente) => void;
+  /** Caso recién creado: la página pasa a la nota de la sesión 1. */
+  onCreado: (expediente: Expediente) => void;
 }
 
 type Fase = "comprobando" | "sin_configurar" | "bloqueado" | "abierto" | "no_disponible";
+type Filtro = FaseCaso | "todos";
 
 function formatearFecha(iso: string): string {
-  return new Date(iso).toLocaleString("es", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return new Date(iso).toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export default function Historial({
-  analisisActual,
-  notaActual,
-  referenciaActual,
-  onAbrir,
-}: HistorialProps) {
+export default function Historial({ nuevoAbierto, onAbrir, onCreado }: HistorialProps) {
   const [fase, setFase] = useState<Fase>("comprobando");
   const [contrasena, setContrasena] = useState("");
   const [repetir, setRepetir] = useState("");
-  const [registros, setRegistros] = useState<ResumenHistorial[]>([]);
+  const [casos, setCasos] = useState<ResumenCaso[]>([]);
+  const [filtro, setFiltro] = useState<Filtro>("todos");
   const [mensaje, setMensaje] = useState("");
   const [ocupado, setOcupado] = useState(false);
-  const [guardado, setGuardado] = useState(false);
+  const [formNuevo, setFormNuevo] = useState(nuevoAbierto);
+  const [alias, setAlias] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [aBorrar, setABorrar] = useState<ResumenCaso | null>(null);
   const entradaFichero = useRef<HTMLInputElement>(null);
 
   /*
     Averiguar si hay historial es consultar un sistema externo (IndexedDB), que
-    es justo para lo que sirve un efecto. Lo que no vale es resolverlo a medias
-    de forma síncrona: el caso "no disponible" se decidía en el cuerpo del
-    efecto y provocaba un render en cascada. Ahora los dos caminos salen por el
-    mismo sitio, ya asíncrono, y la bandera `vivo` evita tocar el estado de un
-    componente que ya se desmontó — que es como aparecen los avisos de fuga.
+    es justo para lo que sirve un efecto. Todo sale por el mismo camino, ya
+    asíncrono, y la bandera `vivo` evita tocar el estado de un componente que ya
+    se desmontó. Si la clave sigue en memoria, entra directo a la lista.
   */
   useEffect(() => {
     let vivo = true;
-    const fijar = (f: Fase) => {
-      if (vivo) setFase(f);
-    };
-
     (async () => {
-      if (!repositorio.disponible()) {
-        fijar("no_disponible");
-        return;
+      let f: Fase;
+      if (!repositorio.disponible()) f = "no_disponible";
+      else if (repositorio.desbloqueado()) f = "abierto";
+      else {
+        try {
+          f = (await repositorio.yaConfigurado()) ? "bloqueado" : "sin_configurar";
+        } catch {
+          f = "no_disponible";
+        }
       }
-      try {
-        fijar((await repositorio.yaConfigurado()) ? "bloqueado" : "sin_configurar");
-      } catch {
-        fijar("no_disponible");
-      }
+      const lista = f === "abierto" ? await repositorio.listarCasos() : [];
+      if (!vivo) return;
+      setFase(f);
+      setCasos(lista);
     })();
-
     return () => {
       vivo = false;
     };
   }, []);
 
   const refrescar = useCallback(async () => {
-    setRegistros(await repositorio.listar());
+    setCasos(await repositorio.listarCasos());
   }, []);
 
   async function conManejo(accion: () => Promise<void>) {
@@ -96,6 +91,18 @@ export default function Historial({
       setMensaje(e instanceof Error ? e.message : "Algo no salió bien.");
     } finally {
       setOcupado(false);
+    }
+  }
+
+  /** Los análisis sueltos de antes pasan a ser casos al abrir. */
+  async function entrar() {
+    const { fallidos } = await repositorio.migrarHistorial();
+    setFase("abierto");
+    await refrescar();
+    if (fallidos > 0) {
+      setMensaje(
+        `${fallidos} análisis antiguo${fallidos === 1 ? "" : "s"} no se pudo convertir en caso. Sigue guardado tal cual.`
+      );
     }
   }
 
@@ -112,8 +119,7 @@ export default function Historial({
       await repositorio.configurar(contrasena);
       setContrasena("");
       setRepetir("");
-      setFase("abierto");
-      await refrescar();
+      await entrar();
     });
   }
 
@@ -124,35 +130,44 @@ export default function Historial({
         return;
       }
       setContrasena("");
-      setFase("abierto");
-      await refrescar();
+      await entrar();
     });
   }
 
-  function guardarActual() {
-    if (!analisisActual) return;
+  function crearCaso() {
     conManejo(async () => {
-      await repositorio.guardar({
-        referencia: referenciaActual.trim() || "Sin referencia",
-        nota: notaActual,
-        analisis: analisisActual,
+      const expediente = crearExpediente({ alias, motivo });
+      await repositorio.crearCaso(expediente);
+      setAlias("");
+      setMotivo("");
+      setFormNuevo(false);
+      onCreado(expediente);
+    });
+  }
+
+  function abrirCaso(id: string) {
+    conManejo(async () => {
+      const expediente = await repositorio.obtenerCaso(id);
+      if (expediente) onAbrir(expediente);
+    });
+  }
+
+  function cambiarFase(id: string, nueva: FaseCaso) {
+    conManejo(async () => {
+      const expediente = await repositorio.obtenerCaso(id);
+      if (!expediente) return;
+      await repositorio.actualizarCaso({
+        ...expediente,
+        caso: { ...expediente.caso, fase: nueva, actualizado: new Date().toISOString() },
       });
-      setGuardado(true);
-      setTimeout(() => setGuardado(false), 2500);
       await refrescar();
-    });
-  }
-
-  function abrirRegistro(id: string) {
-    conManejo(async () => {
-      const registro = await repositorio.obtener(id);
-      if (registro) onAbrir(registro);
     });
   }
 
   function eliminar(id: string) {
     conManejo(async () => {
-      await repositorio.eliminar(id);
+      await repositorio.eliminarCaso(id);
+      setABorrar(null);
       await refrescar();
     });
   }
@@ -171,9 +186,10 @@ export default function Historial({
 
   function importar(fichero: File) {
     conManejo(async () => {
-      const cuantos = await repositorio.importarRespaldo(await fichero.text());
-      setMensaje(`Se importaron ${cuantos} análisis.`);
+      await repositorio.importarRespaldo(await fichero.text());
+      await repositorio.migrarHistorial();
       await refrescar();
+      setMensaje("Respaldo importado.");
     });
   }
 
@@ -194,11 +210,11 @@ export default function Historial({
     return (
       <Marco>
         <p className="mb-3 text-sm leading-relaxed text-ink-muted">
-          Elige una contraseña para guardar tus análisis. Se cifran en este
+          Elige una contraseña para guardar tus casos. Se cifran en este
           dispositivo y no salen de él: ni nosotros ni nadie más puede leerlos.
         </p>
         <p className="mb-4 text-sm font-medium leading-relaxed text-ink">
-          Si pierdes esta contraseña, los análisis guardados no se pueden
+          Si pierdes esta contraseña, los casos guardados no se pueden
           recuperar. No hay forma de restablecerla.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -209,7 +225,7 @@ export default function Historial({
           />
           <Campo valor={repetir} onCambio={setRepetir} marcador="Repite la contraseña" />
           <Boton onClick={crear} principal disabled={ocupado}>
-            Activar historial
+            Activar
           </Boton>
         </div>
         <Mensaje texto={mensaje} />
@@ -221,7 +237,7 @@ export default function Historial({
     return (
       <Marco>
         <p className="mb-3 text-sm text-ink-muted">
-          Introduce tu contraseña para ver los análisis guardados.
+          Introduce tu contraseña para ver tus casos.
         </p>
         <div className="flex flex-wrap gap-2">
           <Campo
@@ -231,7 +247,7 @@ export default function Historial({
             onEnter={abrir}
           />
           <Boton onClick={abrir} principal disabled={ocupado}>
-            Abrir historial
+            Abrir
           </Boton>
         </div>
         <Mensaje texto={mensaje} />
@@ -239,14 +255,17 @@ export default function Historial({
     );
   }
 
+  const aviso = avisoAlias(alias);
+  const visibles = casos.filter((c) =>
+    filtro === "todos" ? c.fase !== "archivado" : c.fase === filtro
+  );
+
   return (
     <Marco>
       <div className="mb-4 flex flex-wrap gap-2">
-        {analisisActual && (
-          <Boton onClick={guardarActual} principal disabled={ocupado}>
-            {guardado ? "Guardado" : "Guardar este análisis"}
-          </Boton>
-        )}
+        <Boton onClick={() => setFormNuevo((v) => !v)} principal disabled={ocupado}>
+          + Nuevo caso
+        </Boton>
         <Boton onClick={exportar} disabled={ocupado}>
           Exportar respaldo
         </Boton>
@@ -256,7 +275,7 @@ export default function Historial({
         <Boton
           onClick={() => {
             repositorio.bloquear();
-            setRegistros([]);
+            setCasos([]);
             setFase("bloqueado");
           }}
           disabled={ocupado}
@@ -276,40 +295,127 @@ export default function Historial({
         />
       </div>
 
-      {registros.length === 0 ? (
-        <p className="text-sm text-ink-muted">
-          Todavía no has guardado ningún análisis.
-        </p>
+      {formNuevo && (
+        <div className="mb-5 flex flex-wrap gap-2 rounded border border-divider p-3">
+          <input
+            value={alias}
+            onChange={(e) => setAlias(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && alias.trim() && crearCaso()}
+            placeholder="Alias (p. ej. M.34)"
+            maxLength={40}
+            autoFocus
+            className="min-w-[10rem] flex-1 rounded border border-divider bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          />
+          <input
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Motivo (opcional)"
+            maxLength={120}
+            className="min-w-[12rem] flex-[2] rounded border border-divider bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          />
+          <Boton onClick={crearCaso} principal disabled={ocupado || !alias.trim()}>
+            Crear
+          </Boton>
+          {aviso && (
+            <p role="alert" className="w-full text-xs text-warn">
+              {aviso}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div role="group" aria-label="Filtrar por fase" className="mb-3 flex flex-wrap gap-1.5">
+        {(["todos", "activo", "en_pausa", "archivado"] as Filtro[]).map((f) => (
+          <button
+            key={f}
+            type="button"
+            aria-pressed={filtro === f}
+            onClick={() => setFiltro(f)}
+            className={`rounded-full border px-2.5 py-0.5 text-xs ${filtro === f ? "border-accent bg-accent/10 text-ink" : "border-divider text-ink-muted hover:text-ink"}`}
+          >
+            {f === "todos" ? "Todos" : ETIQUETA_FASE_CASO[f]}
+          </button>
+        ))}
+      </div>
+
+      {visibles.length === 0 ? (
+        <p className="text-sm text-ink-muted">Sin casos aquí.</p>
       ) : (
         <ul className="divide-y divide-divider">
-          {registros.map((r) => (
-            <li key={r.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2">
+          {visibles.map((c) => (
+            <li key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
               <button
                 type="button"
-                onClick={() => abrirRegistro(r.id)}
+                onClick={() => abrirCaso(c.id)}
                 className="text-left text-[15px] font-medium text-accent hover:underline"
               >
-                {r.referencia}
+                {c.alias}
               </button>
               <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
-                {formatearFecha(r.fecha)}
+                {c.fecha_ultima_sesion
+                  ? `S${c.ultima_sesion} · ${formatearFecha(c.fecha_ultima_sesion)}`
+                  : "Sin sesiones"}
               </span>
-              <span className="text-xs text-ink-muted">
-                {r.conductas} {r.conductas === 1 ? "conducta" : "conductas"}
-                {r.alertas > 0 && ` · ${r.alertas} revisiones`}
+              <span className="flex gap-2 font-mono text-[11px] text-ink-muted">
+                <span title="Blancos activos">◎ {c.blancos_activos}</span>
+                <span title="Preguntas abiertas">? {c.preguntas_abiertas}</span>
+                {c.alertas > 0 && (
+                  <span title="Avisos" className="text-warn">
+                    ▲ {c.alertas}
+                  </span>
+                )}
               </span>
-              <button
-                type="button"
-                onClick={() => eliminar(r.id)}
-                className="ml-auto text-xs text-ink-muted hover:text-ink hover:underline"
-              >
-                Eliminar
-              </button>
+              <span className="ml-auto flex items-center gap-2">
+                <select
+                  value={c.fase}
+                  onChange={(e) => cambiarFase(c.id, e.target.value as FaseCaso)}
+                  aria-label="Fase del caso"
+                  className="rounded border border-divider bg-surface px-1.5 py-0.5 text-xs text-ink-muted"
+                >
+                  {(Object.keys(ETIQUETA_FASE_CASO) as FaseCaso[]).map((f) => (
+                    <option key={f} value={f}>
+                      {ETIQUETA_FASE_CASO[f]}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setABorrar(c)}
+                  aria-label={`Borrar ${c.alias}`}
+                  title="Borrar"
+                  className="text-xs text-ink-muted hover:text-ink"
+                >
+                  ✕
+                </button>
+              </span>
             </li>
           ))}
         </ul>
       )}
       <Mensaje texto={mensaje} />
+
+      {aBorrar && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Borrar caso"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        >
+          <div className="w-full max-w-sm rounded-xl border border-divider bg-surface p-5">
+            <p className="text-sm text-ink">
+              ¿Borrar <span className="font-semibold">{aBorrar.alias}</span> con todas sus
+              sesiones? No se puede deshacer.
+            </p>
+            <p className="mt-1 text-xs text-ink-muted">Para sacarlo de la lista sin perderlo, archívalo.</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Boton onClick={() => setABorrar(null)}>Cancelar</Boton>
+              <Boton onClick={() => eliminar(aBorrar.id)} principal disabled={ocupado}>
+                Borrar
+              </Boton>
+            </div>
+          </div>
+        </div>
+      )}
     </Marco>
   );
 }
@@ -320,7 +426,7 @@ function Marco({ children }: { children: React.ReactNode }) {
   return (
     <section className="mt-6 rounded-xl border border-divider bg-surface p-5 print:hidden">
       <h2 className="mb-3 font-serif text-lg font-semibold text-ink">
-        Historial de casos
+        Casos
       </h2>
       {children}
     </section>

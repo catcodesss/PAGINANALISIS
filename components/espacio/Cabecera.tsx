@@ -15,6 +15,7 @@
  */
 
 import { useState } from "react";
+import { useCaso } from "../contextoCaso";
 import type { AnalisisFuncional, Alerta } from "@/lib/types";
 import { destinoDeAlerta } from "@/lib/destinoAlerta";
 import { traducirMensajeAlerta } from "@/lib/gradoApoyo";
@@ -49,8 +50,22 @@ export default function Cabecera({
   acciones: AccionesExportar;
   onEditarSeccion: EditarSeccion;
 }) {
+  const caso = useCaso();
   return (
     <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-divider px-4 py-2.5 print:hidden">
+      {caso ? (
+        <p className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-serif text-base text-ink">{caso.expediente.caso.alias}</span>
+          <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+            Sesión {caso.sesion.n} · {new Date(caso.sesion.fecha).toLocaleDateString("es", { day: "numeric", month: "short" })}
+          </span>
+          {!caso.soloLectura && (
+            <button type="button" onClick={caso.anadirSesion} className={CLASE_BOTON} title="Guarda la nota de una nueva sesión">
+              + Sesión
+            </button>
+          )}
+        </p>
+      ) : (
       <label className="flex min-w-0 items-center gap-2 text-sm text-ink-muted">
         <span className="sr-only">Referencia del caso</span>
         <input
@@ -62,6 +77,7 @@ export default function Cabecera({
           className="w-48 border-b border-divider bg-transparent px-1 py-0.5 font-serif text-base text-ink focus-visible:border-accent focus-visible:outline-none"
         />
       </label>
+      )}
       <p className="text-xs text-ink-muted">
         {fecha}
         {analisis.meta.modelo && ` · ${analisis.meta.modelo} · prompt v${analisis.meta.version_prompt}`}

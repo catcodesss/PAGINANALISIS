@@ -62,6 +62,15 @@ jobs:
       - name: Un informe guardado en v1 o v2 se abre en v3 sin perder nada
         run: node evals/migracion.test.mjs
 
+      # Casos y sesiones (fase 7): la nota analizada no se edita, las
+      # revisiones solo se añaden, la versión N se reabre idéntica y un
+      # respaldo antiguo se sigue importando.
+      - name: Casos, sesiones y respaldo
+        run: node evals/casos.test.mjs
+
+      - name: Cifrado del historial local
+        run: node --experimental-strip-types evals/cifrado.test.mjs
+
       # El plan por blanco no pierde ni repite contenido, y todo aviso del
       # validador sobre una propuesta llega a su tarjeta y al texto exportado.
       - name: Plan por blanco sin perder contenido ni avisos

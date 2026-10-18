@@ -6,8 +6,8 @@
  * del grafo y por eso no podía enseñar nada que no fuera un nodo.
  *
  * Tres pestañas. Detalle: qué es y qué se puede hacer con ello. Evidencia: qué
- * frase de la nota lo sostiene y cuánto. Historial: vacía hasta que existan
- * casos y sesiones (fase 7); se enseña igual para que su sitio no cambie.
+ * frase de la nota lo sostiene y cuánto. Historial: las sesiones del caso
+ * (cada una abre su formulación) y las revisiones del elemento elegido.
  *
  * Lo que se selecciona puede ser un nodo del grafo, una hipótesis de
  * mantenimiento o una pregunta. Cualquier otro id se trata como «nada
@@ -35,6 +35,8 @@ import { Apoyo, Chip, Termino } from "../informe/primitivas";
 import { TarjetaPregunta, type EditarSeccion } from "../informe/PreguntasClinicas";
 import { useEdicion } from "../edicionManual";
 import { useEspacio } from "./contexto";
+import { useCaso } from "../contextoCaso";
+import { listarRevisiones, type Revision } from "@/lib/casos";
 
 const esCitaVerificada = (c: Cita): c is CitaVerificadaResuelta => c.verificada;
 
@@ -96,9 +98,7 @@ export default function Inspector({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {pestana === "historial" ? (
-          <p className="text-sm text-ink-muted">
-            El historial de cada elemento llegará con los casos y las sesiones.
-          </p>
+          <HistorialElemento objetoId={seleccionado} />
         ) : nodo ? (
           <DetalleNodo analisis={analisis} nodo={nodo} nodos={nodos} pestana={pestana} onEditarSeccion={onEditarSeccion} />
         ) : hipotesis ? (
@@ -421,6 +421,83 @@ function DetalleHipotesis({
             ))}
           </ul>
         </section>
+      )}
+    </div>
+  );
+}
+
+/** Lo legible de un elemento guardado en JSON: su primera etiqueta con texto. */
+function textoDeRevision(json: string | null): string {
+  if (!json) return "";
+  try {
+    const e = JSON.parse(json) as Record<string, unknown>;
+    for (const k of ["etiqueta", "descripcion", "conducta_propuesta", "enunciado", "pregunta", "texto", "nombre", "intervencion", "mecanismo"]) {
+      if (typeof e[k] === "string" && (e[k] as string).trim()) return e[k] as string;
+    }
+  } catch {
+    /* JSON ajeno: no se enseña */
+  }
+  return "";
+}
+
+function marcaRevision(r: Revision): string {
+  if (r.antes === null) return "+";
+  if (r.despues === null) return "−";
+  return "~";
+}
+
+function HistorialElemento({ objetoId }: { objetoId: string | null }) {
+  const caso = useCaso();
+  if (!caso) {
+    return <p className="text-sm text-ink-muted">Abre o crea un caso para guardar sesiones y revisiones.</p>;
+  }
+  const { expediente, sesion: vista, verVersion } = caso;
+  const sesiones = [...expediente.sesiones].sort((a, b) => a.n - b.n);
+  const ultima = sesiones[sesiones.length - 1];
+  const revisiones = objetoId ? listarRevisiones(expediente, objetoId) : [];
+  const nDe = new Map(sesiones.map((s) => [s.id, s.n]));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-1.5" aria-label="Sesiones del caso">
+        {sesiones.map((s) => {
+          const actual = s.id === vista.id;
+          const conVersion = s.version_id !== null;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              disabled={!conVersion}
+              aria-pressed={actual}
+              title={conVersion ? `Ver la formulación de la sesión ${s.n}` : "Sin formulación guardada"}
+              onClick={() => verVersion(s.id === ultima?.id ? null : s.id)}
+              className={`rounded-full border px-2.5 py-0.5 font-mono text-[11px] ${actual ? "border-accent bg-accent/10 text-ink" : "border-divider text-ink-muted hover:text-ink"} disabled:opacity-40`}
+            >
+              S{s.n}
+            </button>
+          );
+        })}
+      </div>
+
+      {!objetoId ? (
+        <p className="text-sm text-ink-muted">Elige un elemento para ver sus cambios.</p>
+      ) : revisiones.length === 0 ? (
+        <p className="text-sm text-ink-muted">Sin cambios desde que se generó.</p>
+      ) : (
+        <ol className="space-y-2">
+          {revisiones.map((r) => (
+            <li key={r.id} className="rounded border border-divider px-2.5 py-1.5">
+              <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
+                <span aria-hidden="true" className="text-ink">{marcaRevision(r)}</span>
+                S{nDe.get(r.sesion_id) ?? "?"} · {r.autor === "ia" ? "IA" : "Clínico"} ·{" "}
+                {new Date(r.fecha).toLocaleDateString("es", { day: "numeric", month: "short" })}
+              </p>
+              {textoDeRevision(r.despues ?? r.antes) && (
+                <p className="mt-1 text-sm leading-snug text-ink">{textoDeRevision(r.despues ?? r.antes)}</p>
+              )}
+            </li>
+          ))}
+        </ol>
       )}
     </div>
   );
