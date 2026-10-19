@@ -47,3 +47,8 @@ evals/resultados/
 
 # estado local de las herramientas de IA, no del proyecto
 .claude/
+
+# emulador de Firebase
+firestore-debug.log
+firebase-debug.log
+.tmp-evals-nube/

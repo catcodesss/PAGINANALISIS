@@ -8,9 +8,10 @@ import {
   type ReactNode,
 } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
-import { autenticacion, cuentasActivadas } from "@/lib/firebaseCliente";
+import { autenticacion, cuentasActivadas, nubeActivada } from "@/lib/firebaseCliente";
 import { repositorio } from "@/lib/repositorio";
 import PuertaCuenta from "./PuertaCuenta";
+import PuertaBoveda from "./PuertaBoveda";
 
 interface ContextoCuenta {
   /** `null` si las cuentas están desactivadas (sin Firebase configurado). */
@@ -31,7 +32,14 @@ type Estado =
   | { fase: "cargando" }
   | { fase: "sin_sesion" }
   | { fase: "sin_verificar"; usuario: User }
+  | { fase: "boveda"; usuario: User }
   | { fase: "lista"; usuario: User | null };
+
+/** Con la nube activa, tras la cuenta hay que abrir la bóveda de claves antes de usar la app. */
+const faseTrasCuenta = (usuario: User): Estado =>
+  nubeActivada() && !repositorio.desbloqueado()
+    ? { fase: "boveda", usuario }
+    : { fase: "lista", usuario };
 
 /**
  * Deja pasar a la aplicación solo con una cuenta verificada, y ata la
@@ -53,7 +61,7 @@ export default function ProveedorCuenta({ children }: { children: ReactNode }) {
         setEstado({ fase: "sin_verificar", usuario });
       } else {
         await repositorio.asociarCuenta(usuario.uid);
-        setEstado({ fase: "lista", usuario });
+        setEstado(faseTrasCuenta(usuario));
       }
     });
   }, [activadas]);
@@ -77,8 +85,17 @@ export default function ProveedorCuenta({ children }: { children: ReactNode }) {
         onCerrarSesion={cerrarSesion}
         onVerificado={async (usuario) => {
           await repositorio.asociarCuenta(usuario.uid);
-          setEstado({ fase: "lista", usuario });
+          setEstado(faseTrasCuenta(usuario));
         }}
+      />
+    );
+  }
+  if (estado.fase === "boveda") {
+    const usuario = estado.usuario;
+    return (
+      <PuertaBoveda
+        onListo={() => setEstado({ fase: "lista", usuario })}
+        onCerrarSesion={cerrarSesion}
       />
     );
   }

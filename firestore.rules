@@ -1,0 +1,188 @@
+rules_version = '2';
+
+// Reglas de Firestore de ACIA (fase 13, etapa 2; diseño en propuesta-fase-13-nube-cifrada §5).
+//
+// Dos mundos en cada usuario:
+//  - ADMINISTRATIVO (plan, ranuras, Coins, pagos, consentimientos): el cliente
+//    solo lee; escribe únicamente el Admin SDK del servidor, que ignora estas reglas.
+//  - CLÍNICO CIFRADO (bóveda, índice, casos, partes): el dueño lee y escribe sobres
+//    cifrados. Estas reglas no pueden ver el contenido: validan forma, tamaño,
+//    revisión y que la ranura del caso esté activa para escribir.
+//
+// Todo lo que no aparece aquí queda denegado.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Utilidades ---------------------------------------------------------
+
+    // Dueño con correo verificado. La verificación de correo es obligatoria.
+    function dueno(uid) {
+      return request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email_verified == true;
+    }
+
+    function ranura(uid, caso) {
+      return get(/databases/$(database)/documents/usuarios/$(uid)/ranuras/$(caso));
+    }
+
+    // Solo con ranura ACTIVA se escribe contenido de un caso. Leer no la exige:
+    // los casos archivados siguen siendo legibles y exportables.
+    function ranuraActiva(uid, caso) {
+      return exists(/databases/$(database)/documents/usuarios/$(uid)/ranuras/$(caso))
+        && ranura(uid, caso).data.estado == 'activo';
+    }
+
+    function ranuraExiste(uid, caso) {
+      return exists(/databases/$(database)/documents/usuarios/$(uid)/ranuras/$(caso))
+        && ranura(uid, caso).data.estado in ['activo', 'archivado'];
+    }
+
+    // Sobre cifrado v2: {v, kid, iv, ct}. El tope deja margen al límite de 1 MiB por documento.
+    function sobreValido(s) {
+      return s is map
+        && s.keys().hasOnly(['v', 'kid', 'iv', 'ct'])
+        && s.keys().hasAll(['v', 'kid', 'iv', 'ct'])
+        && s.v == 2
+        && s.kid is int && s.kid >= 1
+        && s.iv is string && s.iv.size() == 16
+        && s.ct is string && s.ct.size() > 0 && s.ct.size() <= 800000;
+    }
+
+    function ahora(campo) {
+      return campo == request.time;
+    }
+
+    // --- Datos públicos -----------------------------------------------------
+
+    match /planes/{planId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /eventos_proveedor/{id} {
+      allow read, write: if false;
+    }
+
+    // --- Usuario ------------------------------------------------------------
+
+    match /usuarios/{uid} {
+      // Administrativo: lectura del dueño, escritura solo del servidor.
+      allow read: if dueno(uid);
+      allow write: if false;
+
+      match /{coleccion}/{id} {
+        // Cubre ranuras, lotes, operaciones, movimientos, pagos y consentimientos.
+        // Las colecciones clínicas tienen reglas propias, más específicas, abajo.
+        allow read: if dueno(uid)
+          && coleccion in ['ranuras', 'lotes', 'operaciones', 'movimientos', 'pagos', 'consentimientos'];
+        allow write: if false;
+      }
+
+      // --- Clínico cifrado --------------------------------------------------
+
+      // Bóveda de claves: CMD envuelta por frase y por clave de recuperación.
+      // Nunca contiene claves en claro. No se borra desde el cliente.
+      match /boveda/{id} {
+        allow read: if dueno(uid);
+        allow create: if dueno(uid)
+          && id == 'principal'
+          && boveda(request.resource.data)
+          && request.resource.data.version_clave == 1;
+        allow update: if dueno(uid)
+          && boveda(request.resource.data)
+          && request.resource.data.version_clave >= resource.data.version_clave
+          && request.resource.data.creado_en == resource.data.creado_en;
+        allow delete: if false;
+
+        function boveda(d) {
+          return d.keys().hasOnly(['formato', 'version_clave', 'ranuras', 'creado_en', 'clave_recuperacion_confirmada_en'])
+            && d.keys().hasAll(['formato', 'version_clave', 'ranuras', 'creado_en'])
+            && d.formato == 1
+            && d.version_clave is int
+            && d.ranuras is list && d.ranuras.size() >= 1 && d.ranuras.size() <= 8
+            && d.creado_en is string;
+        }
+      }
+
+      // Índice cifrado por caso: lo mínimo para listar sin descargar los casos.
+      match /indice/{caso} {
+        allow read: if dueno(uid);
+        allow create: if dueno(uid)
+          && ranuraExiste(uid, caso)
+          && indice(request.resource.data)
+          && request.resource.data.rev == 1;
+        allow update: if dueno(uid)
+          && ranuraExiste(uid, caso)
+          && indice(request.resource.data)
+          && request.resource.data.rev == resource.data.rev + 1;
+        allow delete: if false;
+
+        function indice(d) {
+          return d.keys().hasOnly(['sobre', 'rev', 'actualizado_en', 'dispositivo_id'])
+            && d.keys().hasAll(['sobre', 'rev', 'actualizado_en', 'dispositivo_id'])
+            && sobreValido(d.sobre)
+            && d.rev is int
+            && ahora(d.actualizado_en)
+            && d.dispositivo_id is string && d.dispositivo_id.size() <= 64;
+        }
+      }
+
+      // Cabecera del caso: clave de caso envuelta con la CMD.
+      match /casos/{caso} {
+        allow read: if dueno(uid);
+        allow create: if dueno(uid)
+          && ranuraActiva(uid, caso)
+          && cabecera(request.resource.data, caso)
+          && request.resource.data.rev == 1;
+        allow update: if dueno(uid)
+          && ranuraActiva(uid, caso)
+          && cabecera(request.resource.data, caso)
+          && request.resource.data.rev == resource.data.rev + 1;
+        allow delete: if false;
+
+        function cabecera(d, caso) {
+          return d.keys().hasOnly(['cc_envuelta', 'rev', 'actualizado_en', 'dispositivo_id'])
+            && d.keys().hasAll(['cc_envuelta', 'rev', 'actualizado_en', 'dispositivo_id'])
+            && d.cc_envuelta is map
+            && d.cc_envuelta.keys().hasOnly(['caso_uid', 'kid', 'iv', 'cc'])
+            && d.cc_envuelta.keys().hasAll(['caso_uid', 'kid', 'iv', 'cc'])
+            && d.cc_envuelta.caso_uid == caso
+            && d.cc_envuelta.kid is int
+            && d.cc_envuelta.iv is string && d.cc_envuelta.iv.size() == 16
+            && d.cc_envuelta.cc is string && d.cc_envuelta.cc.size() <= 200
+            && d.rev is int
+            && ahora(d.actualizado_en)
+            && d.dispositivo_id is string && d.dispositivo_id.size() <= 64;
+        }
+
+        // Partes cifradas del caso (sesión, nota, versión, revisiones).
+        match /partes/{parte} {
+          allow read: if dueno(uid);
+          allow create: if dueno(uid)
+            && ranuraActiva(uid, caso)
+            && parteValida(request.resource.data)
+            && request.resource.data.rev == 1;
+          allow update: if dueno(uid)
+            && ranuraActiva(uid, caso)
+            && parteValida(request.resource.data)
+            && request.resource.data.rev == resource.data.rev + 1
+            && request.resource.data.tipo == resource.data.tipo;
+          allow delete: if false;
+
+          function parteValida(d) {
+            return d.keys().hasOnly(['sobre', 'rev', 'tipo', 'actualizado_en', 'dispositivo_id', 'hash_ct'])
+              && d.keys().hasAll(['sobre', 'rev', 'tipo', 'actualizado_en', 'dispositivo_id', 'hash_ct'])
+              && sobreValido(d.sobre)
+              && d.rev is int
+              && d.tipo in ['cabecera', 'sesion', 'nota', 'version', 'revisiones']
+              && ahora(d.actualizado_en)
+              && d.dispositivo_id is string && d.dispositivo_id.size() <= 64
+              && d.hash_ct is string && d.hash_ct.size() == 64;
+          }
+        }
+      }
+    }
+  }
+}

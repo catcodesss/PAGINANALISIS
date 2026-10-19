@@ -18,6 +18,9 @@ import {
   verificarTestigo,
   type SobreCifrado,
 } from "./cifrado";
+import { RepositorioNube } from "./repositorioNube";
+import { almacenFirestore } from "./nube/almacenFirestore";
+import { firestore, nubeActivada } from "./firebaseCliente";
 
 /**
  * Historial de análisis.
@@ -518,4 +521,12 @@ class RepositorioLocal implements Repositorio {
   }
 }
 
-export const repositorio: Repositorio = new RepositorioLocal();
+/** Local cifrado (por defecto) o nube cifrada de extremo a extremo (NEXT_PUBLIC_ACIA_NUBE=1). */
+export const repositorio: Repositorio = nubeActivada()
+  ? new RepositorioNube(() => almacenFirestore(firestore()))
+  : new RepositorioLocal();
+
+/** Solo con la nube activa; la interfaz de la bóveda la usa para mostrar la clave de recuperación. */
+export function repositorioNube(): RepositorioNube | null {
+  return repositorio instanceof RepositorioNube ? repositorio : null;
+}
