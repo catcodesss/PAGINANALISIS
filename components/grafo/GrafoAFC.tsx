@@ -21,12 +21,9 @@ import {
   type NodoGrafo,
   type TipoNodoGrafo,
 } from "@/lib/grafo";
-import { EtiquetasProcesoACT, ProcesosSinAnclar } from "./AnotacionesACT";
-import VistaACT from "./estilos/act";
 import TableroColumnas, { type AgruparMapa, type CapasMapa } from "./TableroColumnas";
 import { rutaDeSeleccion, textoDeRuta } from "@/lib/rutaMapa";
 import { ETIQUETA_APOYO_ARISTA } from "@/lib/apoyoAristas";
-import { repartirProcesosACT } from "@/lib/procesosACT";
 import { destinosPosibles } from "@/lib/edicionMapa";
 import { TIPO_ARRASTRE_NODO } from "../espacio/contexto";
 import s from "./afc.module.css";
@@ -45,8 +42,6 @@ interface GrafoAFCProps {
   /** Situación, Clínico o Evidencia: la misma colección de nodos, leída a otra profundidad. */
   nivel: NivelMapa;
   capas: CapasMapa;
-  /** La Matrix ACT como vista alternativa de los mismos nodos. */
-  matrix: boolean;
   /** La ruta seleccionada como lista lineal, para lectores de pantalla. */
   leerComoTexto: boolean;
   onIrANivel: (nivel: NivelMapa) => void;
@@ -460,24 +455,24 @@ function BotonAgregarNodo({
   const afc = variante === "afc";
   return (
     <div className={afc ? `${s.agregar} print:hidden` : "mt-2 flex flex-wrap gap-1 print:hidden"}>
-      {disponibles.map((tipo) => (
+      {disponibles.slice(0, 1).map((tipo) => (
         <button
           key={tipo}
           type="button"
           onClick={() => {
-            const texto = window.prompt(`Texto para ${ETIQUETA_TIPO[tipo]}`)?.trim();
+            const texto = window.prompt(`Texto a agregar`)?.trim();
             if (texto) onAgregar(tipo, texto);
           }}
           className={afc ? s.agregarBoton : "rounded border border-dashed border-divider px-2 py-1 text-[10px] text-ink-muted transition hover:border-accent hover:text-accent"}
         >
-          + {ETIQUETA_TIPO[tipo]}
+          + Agregar
         </button>
       ))}
     </div>
   );
 }
 
-export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto }: GrafoAFCProps) {
+export default function GrafoAFC({ analisis, nivel, capas, leerComoTexto }: GrafoAFCProps) {
   const contenedorRef = useRef<HTMLDivElement>(null);
   const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu, abrirEvidencia, propsSoltarFrase, arrastrandoFrase, setNodoEnElAire } = useEspacio();
   const [modoConectar, setModoConectar] = useState(false);
@@ -510,10 +505,10 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
     if (nodo.evidencia?.verificada) irACita(nodo.evidencia);
   }
 
-  // Las líneas curvas existen en la vista Matrix y en el nivel Clínico, donde
-  // las flechas cuentan el orden de la cadena. En Situación y Evidencia no hay:
+  // Las líneas curvas existen en el nivel Clínico, donde las flechas cuentan el
+  // orden de la cadena. En Situación no hay:
   // el tablero se lee por columnas y las relaciones se eligen desde el Inspector.
-  const conFlechas = matrix || nivel === "clinico";
+  const conFlechas = nivel === "clinico";
   useLayoutEffect(() => {
     if (!conFlechas) return;
     const contenedor = contenedorRef.current;
@@ -536,7 +531,7 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
           if (!origen) return [];
           // En los tableros una flecha no cruza de una situación a otra: se
           // busca el destino dentro de la misma situación que el origen.
-          const destino = porId(matrix ? raiz : (origen.closest("[data-situacion-id]") ?? raiz), arista.hasta);
+          const destino = porId(origen.closest("[data-situacion-id]") ?? raiz, arista.hasta);
           if (!destino) return [];
           return [{ id: arista.id, tipo: arista.tipo, apoyo: arista.apoyo, desde: arista.desde, hasta: arista.hasta, d: trazadoAFC(aCaja(origen), aCaja(destino)) }];
         }));
@@ -555,14 +550,8 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
       window.removeEventListener("resize", dibujar);
       contenedor.removeEventListener("scroll", dibujar, true);
     };
-  }, [analisis.aristas, nodos, conFlechas, matrix, nivel, capas, agrupar]);
+  }, [analisis.aristas, nodos, conFlechas, nivel, capas, agrupar]);
 
-  // Los procesos ACT se leen sobre su nodo, por id y solo por id, cuando la capa
-  // ACT está encendida y tienen base funcional. Lo demás va a la lista aparte.
-  const { interpretables: procesosACT, aparte: procesosSinAnclar } = repartirProcesosACT(
-    analisis.capa_act.procesos_act,
-    new Set(nodos.map((n) => n.id))
-  );
   const atenuado = (n: NodoGrafo) =>
     (filtro !== null && n.apoyo !== filtro) ||
     (soloApoyado && n.apoyo < 3) ||
@@ -603,22 +592,8 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
         arrastre={arrastreDe(n)}
       />
     );
-    const suyos = capas.act ? procesosACT.filter((p) => p.nodo_id === n.id) : [];
-    if (suyos.length === 0) return nodo;
-    return <div><EtiquetasProcesoACT procesos={suyos} />{nodo}</div>;
+    return nodo;
   };
-  const renderNodoMatrix = (n: NodoGrafo) => (
-    <Nodo
-      nodo={n}
-      seleccionado={seleccionado === n.id}
-      atenuado={atenuado(n)}
-      conectando={false}
-      onSeleccionar={seleccionarNodo}
-      onEditar={(actual, texto) => aplicar((copia) => actualizarEtiquetaNodo(copia, actual.id, texto))}
-      onCita={citaDeNodo}
-      alertas={avisos(n.id)}
-    />
-  );
   const renderAgregar = (carril: CarrilGrafo, situacionId: string, alternativa: boolean) => (
     <BotonAgregarNodo
       variante="afc"
@@ -646,30 +621,27 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
         <button type="button" disabled={!puedeRehacer} onClick={rehacer} className="rounded border border-divider px-3 py-1.5 text-xs text-ink disabled:opacity-40">Rehacer</button>
         <button
           type="button"
-          disabled={matrix}
           aria-pressed={modoConectar}
           onClick={() => { setModoConectar((v) => !v); setOrigenConexion(null); }}
-          title={matrix ? "Las relaciones se editan en los tableros" : "Crear una relación entre dos nodos"}
-          className={`rounded border px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${modoConectar ? "border-accent bg-accent/10 text-accent" : "border-divider text-ink"}`}
+          title="Crear una relación entre dos nodos"
+          className={`rounded border px-3 py-1.5 text-xs ${modoConectar ? "border-accent bg-accent/10 text-accent" : "border-divider text-ink"}`}
         >
           {origenConexion ? "Elige el destino" : "Conectar"}
         </button>
-        {!matrix && (
-          <div role="group" aria-label="Separar el Mapa por" className="ml-2 flex items-center gap-1 text-xs">
-            <span className="text-ink-muted">Separar por</span>
-            {(["episodio", "conducta"] as const).map((opcion) => (
-              <button
-                key={opcion}
-                type="button"
-                aria-pressed={agrupar === opcion}
-                onClick={() => setAgrupar(opcion)}
-                className="rounded-full border border-divider px-2.5 py-1 text-ink-muted aria-pressed:border-accent aria-pressed:text-accent"
-              >
-                {opcion === "episodio" ? "Episodio" : "Conducta"}
-              </button>
-            ))}
-          </div>
-        )}
+        <div role="group" aria-label="Separar el Mapa por" className="ml-2 flex items-center gap-1 text-xs">
+          <span className="text-ink-muted">Separar por</span>
+          {(["episodio", "conducta"] as const).map((opcion) => (
+            <button
+              key={opcion}
+              type="button"
+              aria-pressed={agrupar === opcion}
+              onClick={() => setAgrupar(opcion)}
+              className="rounded-full border border-divider px-2.5 py-1 text-ink-muted aria-pressed:border-accent aria-pressed:text-accent"
+            >
+              {opcion === "episodio" ? "Episodio" : "Conducta"}
+            </button>
+          ))}
+        </div>
         <span className="ml-auto text-xs text-ink-muted">{nodos.length} nodos · {analisis.aristas.length} relaciones</span>
       </div>
 
@@ -699,54 +671,39 @@ export default function GrafoAFC({ analisis, nivel, capas, matrix, leerComoTexto
       )}
 
       <div ref={contenedorRef} className={`relative min-w-0 ${s.raiz} ${poppinsAfc.variable} ${interAfc.variable} print:hidden`}>
-        {matrix ? (
-          <>
-            <svg className="pointer-events-none absolute inset-0 z-0 hidden h-full w-full overflow-visible md:block" aria-hidden="true">
-              <defs><marker id="punta-afc" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="currentColor" /></marker></defs>
+        <div className="space-y-5">
+          {nivel === "clinico" && (
+            <svg className="pointer-events-none absolute inset-0 z-[5] hidden h-full w-full overflow-visible md:block" aria-hidden="true">
+              <defs><marker id="punta-clinico" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="currentColor" /></marker></defs>
               {trazos.map((trazo) => (
-                <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap={trazo.apoyo === "inferido" ? "round" : undefined} strokeDasharray={trazo.apoyo === "inferido" ? "0.1 5" : trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink-muted/60"} markerEnd="url(#punta-afc)" />
+                <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap={trazo.apoyo === "inferido" ? "round" : undefined} strokeDasharray={trazo.apoyo === "inferido" ? "0.1 5" : trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink/70"} markerEnd="url(#punta-clinico)" />
               ))}
             </svg>
-            <div className="relative z-10">
-              <VistaACT analisis={analisis} nodos={nodos} renderNodo={renderNodoMatrix} />
-            </div>
-          </>
-        ) : (
-          <div className="space-y-5">
-            {nivel === "clinico" && (
-              <svg className="pointer-events-none absolute inset-0 z-[5] hidden h-full w-full overflow-visible md:block" aria-hidden="true">
-                <defs><marker id="punta-clinico" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="currentColor" /></marker></defs>
-                {trazos.map((trazo) => (
-                  <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap={trazo.apoyo === "inferido" ? "round" : undefined} strokeDasharray={trazo.apoyo === "inferido" ? "0.1 5" : trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink/70"} markerEnd="url(#punta-clinico)" />
-                ))}
-              </svg>
-            )}
-            <TableroColumnas
-              analisis={analisis}
-              nodos={nodos}
-              capas={capas}
-              agrupar={agrupar}
-              nivel={nivel}
-              ruta={ruta.ids}
-              renderNodo={renderNodoMapa}
-              renderAgregar={renderAgregar}
-              onSeleccionarId={seleccionar}
-              onAgregarFuncion={(situacionId) => {
-                const texto = window.prompt("Función hipotetizada")?.trim();
-                if (texto) aplicar((copia) => agregarNodo(copia, situacionId, "funcion", texto));
-              }}
-            />
-            <FueraDeSituacion
-              analisis={analisis}
-              nodos={nodos}
-              nivel={nivel}
-              renderNodo={renderNodoMapa}
-              seleccionado={seleccionado}
-              onSeleccionarId={seleccionar}
-            />
-            {capas.act && procesosSinAnclar.length > 0 && <ProcesosSinAnclar procesos={procesosSinAnclar} />}
-          </div>
-        )}
+          )}
+          <TableroColumnas
+            analisis={analisis}
+            nodos={nodos}
+            capas={capas}
+            agrupar={agrupar}
+            nivel={nivel}
+            ruta={ruta.ids}
+            renderNodo={renderNodoMapa}
+            renderAgregar={renderAgregar}
+            onSeleccionarId={seleccionar}
+            onAgregarFuncion={(situacionId) => {
+              const texto = window.prompt("Función hipotetizada")?.trim();
+              if (texto) aplicar((copia) => agregarNodo(copia, situacionId, "funcion", texto));
+            }}
+          />
+          <FueraDeSituacion
+            analisis={analisis}
+            nodos={nodos}
+            nivel={nivel}
+            renderNodo={renderNodoMapa}
+            seleccionado={seleccionado}
+            onSeleccionarId={seleccionar}
+          />
+        </div>
       </div>
     </div>
   );

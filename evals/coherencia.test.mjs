@@ -78,9 +78,7 @@ const fuente = (ruta) => readFileSync(join(RAIZ, ruta), "utf8");
 const codigoInforme = [reportView, ...fuentesInforme].join("\n");
 const grafoAFC = readFileSync(join(RAIZ, "components/grafo/GrafoAFC.tsx"), "utf8");
 const tablero = readFileSync(join(RAIZ, "components/grafo/TableroSituacion.tsx"), "utf8");
-const estilosGrafo = ["act"].map((estilo) =>
-  readFileSync(join(RAIZ, `components/grafo/estilos/${estilo}.tsx`), "utf8")
-);
+const estilosGrafo = [];
 
 let pasadas = 0;
 function prueba(nombre, fn) {

@@ -663,48 +663,6 @@ export interface ReglaVerbal {
   analisis: string;
 }
 
-/** Los seis polos de inflexibilidad del hexaflex. Etiquetas en lib/procesosACT.ts. */
-export type TipoProcesoACT =
-  | "fusion"
-  | "evitacion_experiencial"
-  | "presente"
-  | "yo_conceptualizado"
-  | "valores"
-  | "accion";
-
-/**
- * Una anotación funcional sobre UN elemento del grafo, no una etiqueta sobre
- * una situación entera (esquema v3). Ver lib/procesosACT.ts.
- *
- * `nodo_id` lo resuelve el servidor desde `elemento_objetivo`, una vez, en
- * lib/identidad.ts. Si no resuelve queda en null y se enseña como «sin
- * anclar»: nunca se engancha al primer nodo que se parezca.
- */
-export interface ProcesoACT {
-  id: Id;
-  proceso: TipoProcesoACT;
-  /** El texto del nodo o de la relación, tal como lo escribe el modelo. */
-  elemento_objetivo: string;
-  nodo_id: Id | null;
-  /** Qué controla ese evento y qué dato de la nota lo sostiene. Vacío = sin base declarada. */
-  justificacion_funcional: string;
-  evidencia: Cita;
-  /**
-   * Solo en procesos migrados de la v2 cuyo texto libre no casaba con ningún
-   * proceso: se asignó el valor por defecto y el clínico tiene que revisarlo.
-   */
-  revisar_proceso?: true;
-}
-
-/**
- * Desde el esquema v3 la capa ACT solo anota: las reglas verbales subieron al
- * núcleo (AnalisisFuncional.reglas_verbales), porque la conducta gobernada por
- * reglas es análisis conductual general y no específico de ACT.
- */
-export interface CapaModalidadACT {
-  procesos_act: ProcesoACT[];
-}
-
 export type TipoEslabonDBT =
   | "pensamiento"
   | "emocion"
@@ -891,7 +849,8 @@ export interface AnalisisFuncional {
   variables_moduladoras: VariableModuladora[];
   /**
    * Conducta gobernada por reglas (pliance, tracking, augmenting). Estaba en
-   * `capa_act` hasta la v2; se mueve con sus ids. Ver migrarAV3.
+   * la capa de modalidad anterior (`capa_act`) hasta la v2; se mueve con sus
+   * ids. Ver migrarAV3.
    */
   reglas_verbales: ReglaVerbal[];
   situaciones: Situacion[];
@@ -899,7 +858,6 @@ export interface AnalisisFuncional {
   hipotesis_origen: string[];
   formulacion: Formulacion;
   conductas_alternativas: ConductaAlternativa[];
-  capa_act: CapaModalidadACT;
   capa_dbt: CapaModalidadDBT;
   hipotesis_alternativas: HipotesisAlternativa[];
   /** Preguntas y datos que faltan en una sola lista. Ver PreguntaClinica. */
@@ -1040,7 +998,6 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "formulacion",
   "fortalezas_y_recursos",
   "conductas_alternativas",
-  "capa_act",
   "capa_dbt",
   "hipotesis_alternativas",
   "preguntas",

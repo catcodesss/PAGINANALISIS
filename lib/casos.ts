@@ -248,7 +248,6 @@ export function elementosPorId(a: AnalisisFuncional): Map<Id, string> {
   poner(a.hipotesis_mantenimiento);
   poner(a.conductas_alternativas);
   poner(a.reglas_verbales);
-  poner(a.capa_act?.procesos_act);
   poner(a.capa_dbt?.analisis_de_soluciones);
   poner(a.hipotesis_alternativas);
   poner(a.preguntas);

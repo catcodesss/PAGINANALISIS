@@ -21,7 +21,6 @@ import { alertasPorNodo } from "@/lib/alertasNodo";
 import { etiquetaCita, type CitaVerificadaResuelta } from "@/lib/citas";
 import type { Cita } from "@/lib/types";
 import { confirmarElemento } from "@/lib/procedencia";
-import { ETIQUETA_PROCESO_ACT, tieneBaseFuncional } from "@/lib/procesosACT";
 import { aristaDeHipotesis, ETIQUETA_APOYO_ARISTA } from "@/lib/apoyoAristas";
 import { gradoDeHipotesis, relacionInferida, verboRelacion } from "@/lib/gradoApoyo";
 import {
@@ -184,9 +183,6 @@ function DetalleNodo({
         etiqueta: otro ? `${etiquetaTipoNodo(otro)}: ${otro.etiqueta}` : "[elemento sin etiqueta]",
       };
     });
-  // Solo lo que tiene base funcional: una etiqueta ACT sin justificación se
-  // revisa en la lista aparte del Mapa, no se presenta como interpretación.
-  const procesos = analisis.capa_act.procesos_act.filter((p) => p.nodo_id === nodo.id && tieneBaseFuncional(p));
 
   if (pestana === "evidencia") {
     return (
@@ -267,16 +263,6 @@ function DetalleNodo({
         </button>
       ) : (
         <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Inferido — sin cita literal en la nota</p>
-      )}
-      {procesos.length > 0 && (
-        <section className="rounded border border-divider p-2">
-          <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Interpretación · ACT</p>
-          {procesos.map((p) => (
-            <p key={p.id} className="mt-1 text-sm leading-relaxed text-ink">
-              <span className="font-medium">{ETIQUETA_PROCESO_ACT[p.proceso]}:</span> {p.justificacion_funcional}
-            </p>
-          ))}
-        </section>
       )}
       <div className="border-t border-divider pt-3">
         <p className="mb-2 text-xs font-medium text-ink">Relaciones del nodo</p>

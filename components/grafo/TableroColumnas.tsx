@@ -33,7 +33,6 @@ export interface CapasMapa {
   plan: boolean;
   huecos: boolean;
   dbt: boolean;
-  act: boolean;
 }
 
 export type AgruparMapa = "episodio" | "conducta";

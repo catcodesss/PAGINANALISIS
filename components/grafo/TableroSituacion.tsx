@@ -47,7 +47,6 @@ export interface CapasMapa {
   plan: boolean;
   huecos: boolean;
   dbt: boolean;
-  act: boolean;
 }
 
 const esVerificada = (c: Cita): c is CitaVerificadaResuelta => c.verificada;

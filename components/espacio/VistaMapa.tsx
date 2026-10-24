@@ -2,9 +2,8 @@
 
 /**
  * Vista Mapa: el grafo del análisis funcional leído en tres niveles —Situación,
- * Clínico y Evidencia— con capas que se encienden encima (Plan, Huecos, DBT y
- * ACT). La Matrix ACT queda como vista alternativa de los mismos nodos, y la
- * red funcional, plegada debajo, hace de vista general del caso hasta que
+ * Clínico y Evidencia— con capas que se encienden encima (Plan, Huecos y
+ * DBT). La red funcional, plegada debajo, hace de vista general del caso hasta que
  * exista el nivel Caso (fase 10).
  *
  * El nivel se recuerda por caso (components/useLente.ts). Las capas no: son
@@ -26,7 +25,6 @@ import { construirNodosGrafo, huecosDeSituacion } from "@/lib/grafo";
 import { destinoDeAlerta } from "@/lib/destinoAlerta";
 import { siguientePorTeclado } from "@/lib/rutaMapa";
 import { estaAbierta } from "@/lib/preguntas";
-import { repartirProcesosACT } from "@/lib/procesosACT";
 import { INTRO_GRADO_APOYO, NIVELES_APOYO, NOTA_PIE_GRADO_APOYO, traducirMensajeAlerta } from "@/lib/gradoApoyo";
 import { estadoVacio } from "@/lib/vacios";
 import GrafoAFC from "../grafo/GrafoAFC";
@@ -54,8 +52,7 @@ export default function VistaMapa({
 }) {
   const { nivel, elegirNivel } = useNivelMapa(referenciaCaso);
   const { seleccionado, seleccionar, fuenteAbierta, abrirFuente } = useEspacio();
-  const [capas, setCapas] = useState<CapasMapa>({ plan: true, huecos: true, dbt: false, act: false });
-  const [matrix, setMatrix] = useState(false);
+  const [capas, setCapas] = useState<CapasMapa>({ plan: true, huecos: true, dbt: false });
   const [leerComoTexto, setLeerComoTexto] = useState(false);
   const acciones = useAccionesSeccion("situaciones", "Situaciones y grafo", [
     "conductas_problema",
@@ -65,21 +62,16 @@ export default function VistaMapa({
     "situaciones",
     "conductas_alternativas",
     "acomodacion_entorno",
-    "capa_act",
     "capa_dbt",
   ]);
 
   const contadores = useMemo(() => {
     const nodos = construirNodosGrafo(analisis);
-    const ids = new Set(nodos.map((n) => n.id));
     const huecos = analisis.situaciones.reduce((t, s) => t + huecosDeSituacion(analisis, s, nodos).length, 0);
-    const act = repartirProcesosACT(analisis.capa_act.procesos_act, ids);
     return {
       plan: analisis.conductas_alternativas.length,
       huecos: huecos + analisis.preguntas.filter((p) => estaAbierta(p) && p.pone_a_prueba).length,
       dbt: analisis.situaciones.reduce((t, s) => t + (s.cadena_dbt?.eslabones.length ?? 0), 0),
-      act: act.interpretables.length,
-      actAparte: act.aparte.length,
     };
   }, [analisis]);
 
@@ -120,26 +112,15 @@ export default function VistaMapa({
             <button
               key={n}
               type="button"
-              aria-pressed={nivel === n && !matrix}
-              onClick={() => {
-                setMatrix(false);
-                elegirNivel(n);
-              }}
+              aria-pressed={nivel === n}
+              onClick={() => elegirNivel(n)}
               title={`Nivel ${ETIQUETA_NIVEL[n]} (tecla ${i + 1})`}
-              className={`px-3 py-1 text-xs font-medium transition-colors ${nivel === n && !matrix ? "bg-accent texto-sobre-acento" : "bg-surface text-ink-muted hover:bg-canvas"}`}
+              className={`px-3 py-1 text-xs font-medium transition-colors ${nivel === n ? "bg-accent texto-sobre-acento" : "bg-surface text-ink-muted hover:bg-canvas"}`}
             >
               {ETIQUETA_NIVEL[n]}
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          aria-pressed={matrix}
-          onClick={() => setMatrix((v) => !v)}
-          className={`rounded border px-2.5 py-1 text-xs ${matrix ? "border-accent text-accent" : "border-divider text-ink-muted hover:text-ink"}`}
-        >
-          Ver como Matrix
-        </button>
         <LeyendaApoyo />
         <button
           type="button"
@@ -152,24 +133,12 @@ export default function VistaMapa({
         <span className="ml-auto">{acciones.menu}</span>
       </div>
 
-      {!matrix && (
+      {(
         <div role="group" aria-label="Capas" className="mb-4 flex flex-wrap items-center gap-2 text-xs">
           <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Capas</span>
           <BotonCapa activa={capas.plan} contador={contadores.plan} onClick={() => alternar("plan")}>Plan</BotonCapa>
           <BotonCapa activa={capas.huecos} contador={contadores.huecos} onClick={() => alternar("huecos")}>Huecos</BotonCapa>
           <BotonCapa activa={capas.dbt} contador={contadores.dbt} onClick={() => alternar("dbt")} titulo="Numeración y puntos de solución sobre la cadena interna (nivel Clínico)">DBT</BotonCapa>
-          {/* Cuenta los anclados con base funcional; el resto va aparte y
-              también enciende la capa, que es donde se listan para revisarlos. */}
-          <BotonCapa
-            activa={capas.act}
-            contador={contadores.act}
-            habilitada={contadores.act + contadores.actAparte > 0}
-            onClick={() => alternar("act")}
-            titulo="Procesos ACT anclados a un nodo, con su justificación funcional"
-            extra={contadores.actAparte > 0 ? `${contadores.actAparte} sin anclar o sin justificar` : undefined}
-          >
-            ACT
-          </BotonCapa>
         </div>
       )}
       {acciones.panel}
@@ -183,7 +152,6 @@ export default function VistaMapa({
           analisis={analisis}
           nivel={nivel}
           capas={capas}
-          matrix={matrix}
           leerComoTexto={leerComoTexto}
           onIrANivel={elegirNivel}
         />

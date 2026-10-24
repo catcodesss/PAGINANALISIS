@@ -157,15 +157,6 @@ export const BLOQUES: Bloque[] = [
     peso: 1,
   },
   {
-    id: "act",
-    etiqueta: "Capa ACT",
-    descripcion: "Procesos de inflexibilidad psicológica, anotados sobre el análisis funcional.",
-    categoria: "Capas de modalidad",
-    // Las reglas verbales son del núcleo, pero la vista Matrix las enseña.
-    campos: ["conductas_problema", "situaciones", "reglas_verbales", "capa_act"],
-    peso: 4,
-  },
-  {
     id: "dbt",
     etiqueta: "Capa DBT",
     descripcion: "Análisis en cadena con habilidades sugeridas en cada eslabón.",

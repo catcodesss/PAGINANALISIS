@@ -13,7 +13,6 @@ import { materializarAristas } from "./aristas";
 import { aristaDeHipotesis, calcularApoyoAristas } from "./apoyoAristas";
 import { construirNodosGrafo } from "./grafo";
 import { ANCLAS_DE_BLOQUE } from "./secciones";
-import { esProcesoV3, procesoAV3 } from "./procesosACT";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 import { blancosDeLegado, estadoBlancoGuardado } from "./plan";
 
@@ -248,7 +247,6 @@ function asignarIds(a: AnalisisFuncional): number {
   a.hipotesis_mantenimiento.forEach((h, i) => ponerId(h, idDe("hip", i)));
   a.conductas_alternativas.forEach((x, i) => ponerId(x, idDe("alt", i)));
   a.reglas_verbales.forEach((r, i) => ponerId(r, idDe("rvb", i)));
-  a.capa_act.procesos_act.forEach((p, i) => ponerId(p, idDe("pac", i)));
   a.capa_dbt.analisis_de_soluciones.forEach((s, i) => ponerId(s, idDe("sol", i)));
   a.hipotesis_alternativas.forEach((h, i) => ponerId(h, idDe("hal", i)));
   // Las preguntas toman el número libre y no la posición: una pregunta borrada
@@ -318,7 +316,6 @@ export function todosLosIds(a: AnalisisFuncional): Id[] {
     ...a.hipotesis_mantenimiento.map((h) => h.id),
     ...a.conductas_alternativas.map((x) => x.id),
     ...a.reglas_verbales.map((r) => r.id),
-    ...a.capa_act.procesos_act.map((p) => p.id),
     ...a.capa_dbt.analisis_de_soluciones.map((s) => s.id),
     ...a.hipotesis_alternativas.map((h) => h.id),
     ...a.preguntas.map((p) => p.id),
@@ -473,62 +470,6 @@ function resolverReferencias(a: AnalisisFuncional): void {
       s.eslabon_id = mejorCoincidencia(s.eslabon_objetivo, eslabones);
     }
   }
-
-  resolverNodosDeProcesos(a);
-}
-
-/**
- * Cada proceso ACT se ancla al nodo del grafo que nombra su
- * `elemento_objetivo`, o a ninguno.
- *
- * Un proceso que nombra una situación entera («Reuniones de equipo») se queda
- * SIN ANCLAR aunque algún nodo de esa situación comparta palabras con el
- * nombre: era exactamente la forma de la v2 —pintar el proceso en todos los
- * nodos de la situación— y engancharlo al primero que se parezca sería la
- * misma conjetura en pequeño. Se enseña aparte y el clínico lo coloca.
- *
- * Los valores quedan fuera como candidatos: su id sale de la posición en la
- * lista, y borrar uno movería el ancla a otro sin que nada lo avisara.
- */
-function resolverNodosDeProcesos(a: AnalisisFuncional): void {
-  const pendientes = a.capa_act.procesos_act.filter((p) => p.nodo_id === null);
-  if (pendientes.length === 0) return;
-
-  const vistos = new Set<Id>();
-  const candidatos: { id: Id; texto: string }[] = [];
-  for (const n of construirNodosGrafo(a)) {
-    if (n.tipo === "valor" || vistos.has(n.id)) continue;
-    vistos.add(n.id);
-    candidatos.push({ id: n.id, texto: n.etiqueta });
-  }
-  const nombresDeSituacion = a.situaciones.map((s) => raicesSignificativas(s.nombre));
-
-  for (const p of pendientes) {
-    const raices = raicesSignificativas(p.elemento_objetivo);
-    const nombraSituacion =
-      raices.size > 0 &&
-      nombresDeSituacion.some((nombre) => [...raices].every((r) => nombre.has(r)));
-    if (nombraSituacion) continue;
-    p.nodo_id = mejorCoincidencia(p.elemento_objetivo, candidatos);
-  }
-}
-
-/**
- * Los procesos ACT guardados en v2 (texto libre, `vinculo_con_cadena`, ancla
- * por situación) pasan a la forma v3. La cita ya está resuelta y se conserva.
- */
-function llevarProcesosAV3(analisis: AnalisisFuncional): void {
-  const capa = analisis.capa_act as unknown as Record<string, unknown> | undefined;
-  if (!capa || !Array.isArray(capa.procesos_act)) return;
-  capa.procesos_act = (capa.procesos_act as Record<string, unknown>[]).map((p) => {
-    if (!p || typeof p !== "object") return p;
-    if (esProcesoV3(p)) return p;
-    const evidencia =
-      p.evidencia && typeof p.evidencia === "object"
-        ? p.evidencia
-        : SIN_CITA("sin_referencia");
-    return { ...procesoAV3(p), evidencia };
-  });
 }
 
 /**
@@ -607,18 +548,21 @@ function fundirCapaMc(analisis: AnalisisFuncional): void {
 }
 
 /**
- * Las reglas verbales salen de `capa_act` y suben al núcleo, con su id: una
+ * Las reglas verbales salen de la antigua `capa_act` (un JSON guardado
+ * anteriormente; la capa ya no existe en el modelo) y suben al núcleo, con su id: una
  * arista o una alerta que apuntaba a `rvb_2` sigue apuntando a la misma regla.
  * Se añaden detrás de las que ya estuvieran arriba, sin fusionar parecidas.
  */
 function subirReglasVerbales(analisis: AnalisisFuncional): void {
-  const capa = analisis.capa_act as unknown as Record<string, unknown> | undefined;
+  const crudo = analisis as unknown as Record<string, unknown>;
+  const capa = crudo.capa_act as Record<string, unknown> | undefined;
   const abajo = capa && Array.isArray(capa.reglas_verbales)
     ? (capa.reglas_verbales as AnalisisFuncional["reglas_verbales"])
     : [];
   const arriba = Array.isArray(analisis.reglas_verbales) ? analisis.reglas_verbales : [];
   analisis.reglas_verbales = [...arriba, ...abajo];
-  if (capa) delete capa.reglas_verbales;
+  // La capa ACT ya no existe: se retira entera, con sus anotaciones, tras rescatar las reglas.
+  delete crudo.capa_act;
 }
 
 /**
@@ -653,7 +597,6 @@ function elementosDeSeccion(a: AnalisisFuncional, seccion: string): Id[] {
     } else if (ancla === "modalidad") {
       ids.push(
         ...a.reglas_verbales.map((r) => r.id),
-        ...a.capa_act.procesos_act.map((p) => p.id),
         ...a.capa_dbt.analisis_de_soluciones.map((s) => s.id)
       );
     } else if (ancla === "hipotesis-mantenimiento") {
@@ -1037,7 +980,6 @@ function migrarAV4(analisis: AnalisisFuncional): AnalisisFuncional {
 function migrarAV3(analisis: AnalisisFuncional): AnalisisFuncional {
   fundirCapaMc(analisis);
   subirReglasVerbales(analisis);
-  llevarProcesosAV3(analisis);
   return migrarAV2(analisis);
 }
 

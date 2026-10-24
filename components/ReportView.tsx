@@ -72,7 +72,7 @@ function PrintOnlyHeader({
         </div>
         <div className="print-meta-item">
           <span className="print-meta-label">Modalidades incluidas</span>
-          <span className="print-meta-value">AFC · ACT · DBT</span>
+          <span className="print-meta-value">AFC · DBT</span>
         </div>
         <div className="print-meta-item">
           <span className="print-meta-label">Páginas</span>

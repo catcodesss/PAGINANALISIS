@@ -25,7 +25,6 @@ execFileSync(
     "lib/grafo.ts",
     "lib/preferencias.ts",
     "lib/parseAnalisis.ts",
-    "lib/procesosACT.ts",
     "--outDir", ".tmp-evals",
     "--rootDir", "lib",
     "--module", "commonjs",
@@ -42,7 +41,6 @@ const { normalizarAnalisis } = require(join(RAIZ, ".tmp-evals/parseAnalisis.js")
 const { construirNodosGrafo, eslabonRepiteConducta } = require(join(RAIZ, ".tmp-evals/grafo.js"));
 const { nivelDeGuardado, NIVEL_MAPA_POR_DEFECTO } = require(join(RAIZ, ".tmp-evals/preferencias.js"));
 const { rutaDeSeleccion, textoDeRuta, siguientePorTeclado } = require(join(RAIZ, ".tmp-evals/rutaMapa.js"));
-const { repartirProcesosACT } = require(join(RAIZ, ".tmp-evals/procesosACT.js"));
 
 const NOTA = readFileSync(join(RAIZ, "evals/casos/01-ansiedad-social.md"), "utf8")
   .split(/^##\s+NOTA\s*$/m)[1]
@@ -145,28 +143,6 @@ prueba("elegir la conducta resalta también el antecedente que le llega por la c
     (x) => x.hasta === conducta && nodos.find((n) => n.id === x.desde)?.tipo === "encubierta"
   );
   assert.ok(desdeEd >= 0 && aConducta > desdeEd, `orden: Ed en ${desdeEd}, cadena→conducta en ${aConducta}`);
-});
-
-/* ── Capa ACT ────────────────────────────────────────────────────────────── */
-
-prueba("capa ACT: solo se interpreta lo anclado y con base funcional", () => {
-  const ids = new Set(["c1", "e1"]);
-  const p = (id, nodo_id, justificacion_funcional, revisar_proceso = false) => ({
-    id, nodo_id, justificacion_funcional, revisar_proceso,
-  });
-  const { interpretables, aparte } = repartirProcesosACT(
-    [
-      p("bueno", "c1", "Se mantiene por alivio del malestar"),
-      p("sinJustificar", "c1", "  "),
-      p("sinAnclar", null, "Se mantiene por alivio"),
-      p("nodoQueNoEsta", "x9", "Se mantiene por alivio"),
-      p("migrado", "e1", "Proceso indicado originalmente: «fusión».", true),
-    ],
-    ids
-  );
-  assert.deepEqual(interpretables.map((x) => x.id), ["bueno"]);
-  // Nada se pierde: lo demás va aparte, con su recuento.
-  assert.deepEqual(aparte.map((x) => x.id), ["sinJustificar", "sinAnclar", "nodoQueNoEsta", "migrado"]);
 });
 
 /* ── Nivel guardado ──────────────────────────────────────────────────────── */

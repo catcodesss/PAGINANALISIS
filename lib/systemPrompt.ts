@@ -128,15 +128,6 @@ PRINCIPIOS OBLIGATORIOS DEL NÚCLEO (aplican siempre, en cualquier modalidad):
 
 30. CONDUCTA GOBERNADA POR REGLAS ("reglas_verbales"): identifica reglas verbales textuales o inferibles (indicando cuál es cada caso) y clasifícalas: pliance (seguimiento mantenido por reforzamiento social de la correspondencia regla-conducta), tracking (seguimiento mantenido por correspondencia con las contingencias naturales), augmenting (reglas que alteran la función reforzante o aversiva de estímulos). Evalúa la rigidez de cada regla (alta/media/baja) y cómo altera las cadenas del núcleo.`;
 
-const BLOQUE_ACT = `CAPA ACT / CONTEXTUAL.
-Los procesos ACT NO son otro análisis funcional: son ANOTACIONES sobre elementos del análisis que ya hiciste (una conducta, un eslabón, un antecedente, una consecuencia). Cada entrada de "procesos_act" dice qué proceso de inflexibilidad parece operar sobre UN elemento concreto y por qué.
-- FUNCIÓN, NO TOPOGRAFÍA. Señala un proceso SOLO si la nota muestra su función, no solo su forma. Fusión es que la regla o el pensamiento domina la conducta frente a otras contingencias presentes. Evitación experiencial es que la conducta funciona para reducir experiencias internas (pensamientos, emociones, sensaciones) y se mantiene pese a su coste. La topografía sola no basta: un pensamiento negativo no es fusión, e ir al baño no es evitación experiencial.
-- EJEMPLO. Dos personas piensan "voy a quedarme en blanco" antes de exponer. Una abandona la sala y deja de exponer; la otra sigue exponiendo con el pensamiento presente. En la primera el pensamiento parece controlar la conducta por encima de la contingencia de la tarea: posible patrón de fusión. En la segunda el mismo pensamiento no controla lo que hace: no hay fusión que señalar. Si la nota no dice qué hizo la persona con el pensamiento, no lo señales o dilo como dato que falta.
-- "proceso": uno de fusion | evitacion_experiencial | presente | yo_conceptualizado | valores | accion (fusión cognitiva, evitación experiencial, pérdida de contacto con el presente, apego al yo conceptualizado, falta de claridad de valores, inacción o impulsividad).
-- "elemento_objetivo": el elemento del análisis sobre el que opera, copiado con las MISMAS palabras con que lo escribiste en conductas_problema, en la cadena de su situación o en sus eslabones. Nunca el nombre de una situación entera: un proceso se engancha a un elemento, no a una situación.
-- "justificacion_funcional": qué controla ese evento y qué dato de la nota lo sostiene. Si falta el contraste que distinguiría la función de la mera topografía (qué hace la persona cuando el pensamiento aparece y no evita, qué pasa si no reduce el malestar), dilo explícitamente aquí.
-- Redacción siempre de hipótesis: "posible patrón de…", "parece", "es compatible con". No fuerces el modelo completo: una lista vacía es válida si la nota no muestra función de ningún proceso.`;
-
 const BLOQUE_DBT = `CAPA DBT.
 Además del núcleo, analiza:
 - LA CADENA YA ESTÁ EN LAS SITUACIONES. No repitas aquí el análisis en cadena: la "cadena_dbt" de cada situación ya lo contiene, y el informe muestra la de la conducta prioritaria. Las habilidades y las soluciones de abajo se refieren a los eslabones de esas cadenas.
@@ -149,7 +140,7 @@ Además del núcleo, analiza:
 - PLAN DE REPARACIÓN ("plan_de_reparacion"): SOLO si la conducta problema causó daño real a un tercero (a una persona concreta, no "a sí mismo" ni "a la relación" en abstracto). Si no lo hubo, devuelve null — null es la respuesta normal. Cuando lo haya, distingue la reparación GENUINA (reparar el daño concreto que se causó, en proporción a él, dirigida a la persona afectada) del GESTO SUPERFICIAL (disculparse en exceso, prometer que no volverá a pasar, castigarse, hacer regalos): el gesto superficial alivia la culpa de quien lo hace y no repara nada, y funciona como refuerzo negativo de la propia culpa. Di explícitamente cuál es cuál en el plan.
 - ESLABÓN AUSENTE ("eslabon_ausente"): análisis de eslabón faltante. A veces lo relevante no es lo que la persona hizo sino lo que NO hizo: no pidió ayuda, no usó la habilidad que ya conoce, no avisó, no se retiró. Cuando la cadena se explique mejor por una conducta que no se emitió, descríbela aquí junto con qué la bloqueó. Si la cadena se explica por lo que sí se emitió, devuelve null.`;
 
-const NOTA_CADENA_DBT_POR_SITUACION = `DIFERENCIA CONCEPTUAL ENTRE ACT/MC Y DBT DENTRO DE "situaciones": en ACT y MC, lo que hace más probable la conducta se conceptualiza como una operación motivacional (OE/OA) sobre un antecedente puntual ("cadena_operante"). En DBT, ese mismo fenómeno se conceptualiza de otro modo: como FACTORES DE VULNERABILIDAD dentro de una cadena de eslabones, no como una operación motivacional. Por eso, para CADA situación de "situaciones", además de "cadena_operante" (para las pestañas ACT/MC) genera también "cadena_dbt" (para la pestaña DBT) describiendo esa MISMA situación con vocabulario DBT: factores de vulnerabilidad (derivados de las variables moduladoras: sueño, sustancias, historia de aprendizaje, contexto), evento precipitante (equivalente DBT del antecedente inmediato), eslabones intermedios (pensamientos, emociones, sensaciones, impulsos, acciones), la conducta problema de esa situación, y sus consecuencias (a corto y largo plazo, en una sola descripción). NO uses OE/OA/Ed dentro de los campos de "cadena_dbt": describe todo en vocabulario DBT (vulnerabilidad, eslabón, precipitante). Genera "cadena_dbt" en null solo si la situación es puramente respondiente y no tiene ninguna conducta operante que analizar en cadena (en ese caso "cadena_operante" también debe ir en null).`;
+const NOTA_CADENA_DBT_POR_SITUACION = `DIFERENCIA CONCEPTUAL ENTRE EL ANÁLISIS OPERANTE (MC) Y DBT DENTRO DE "situaciones": en el análisis operante (MC), lo que hace más probable la conducta se conceptualiza como una operación motivacional (OE/OA) sobre un antecedente puntual ("cadena_operante"). En DBT, ese mismo fenómeno se conceptualiza de otro modo: como FACTORES DE VULNERABILIDAD dentro de una cadena de eslabones, no como una operación motivacional. Por eso, para CADA situación de "situaciones", además de "cadena_operante" (para las pestañas del análisis operante) genera también "cadena_dbt" (para la pestaña DBT) describiendo esa MISMA situación con vocabulario DBT: factores de vulnerabilidad (derivados de las variables moduladoras: sueño, sustancias, historia de aprendizaje, contexto), evento precipitante (equivalente DBT del antecedente inmediato), eslabones intermedios (pensamientos, emociones, sensaciones, impulsos, acciones), la conducta problema de esa situación, y sus consecuencias (a corto y largo plazo, en una sola descripción). NO uses OE/OA/Ed dentro de los campos de "cadena_dbt": describe todo en vocabulario DBT (vulnerabilidad, eslabón, precipitante). Genera "cadena_dbt" en null solo si la situación es puramente respondiente y no tiene ninguna conducta operante que analizar en cadena (en ese caso "cadena_operante" también debe ir en null).`;
 
 /**
  * Reglas del plan por blanco (prompt 1.7.0). Van fuera del núcleo porque solo
@@ -220,7 +211,6 @@ const ESQUEMA_POR_CAMPO: Record<string, string> = {
   "formulacion": "  \"formulacion\": {\n    \"relaciones_entre_problemas\": [\"string (qué conducta alimenta o mantiene a cuál)\"],\n    \"priorizacion\": [{ \"blanco\": \"string\", \"justificacion\": \"string (importancia + modificabilidad)\", \"mecanismo\": \"string (qué relación del mantenimiento se quiere modificar en ese blanco, con las palabras de la cadena)\" }]\n  },",
   "fortalezas_y_recursos": "  \"fortalezas_y_recursos\": [\"string (una fortaleza o recurso concreto que la nota sostenga, ver principio 20; arreglo vacío si la nota no da base para ninguno)\"],",
   "conductas_alternativas": "  \"conductas_alternativas\": [{ \"situacion\": \"string\", \"conducta_propuesta\": \"string (verbo observable + contexto + criterio mínimo; nunca manejar o controlar un estado interno)\", \"consecuencia_necesaria\": \"string\", \"sustituye_a\": \"string (la conducta de conductas_problema a la que sustituye, con sus mismas palabras)\", \"antecedente\": \"string\", \"funcion_que_cumple\": \"string\", \"la_mantendra\": [\"string\"], \"habilidades_necesarias\": \"string\" }],",
-  "capa_act": "  \"capa_act\": { \"procesos_act\": [{ \"proceso\": \"fusion | evitacion_experiencial | presente | yo_conceptualizado | valores | accion\", \"elemento_objetivo\": \"string (el elemento del análisis con las mismas palabras con que lo escribiste; nunca el nombre de una situación)\", \"justificacion_funcional\": \"string (qué controla ese evento y qué dato de la nota lo sostiene; si falta el contraste, dilo)\", \"evidencia\": { \"linea_inicio\": number, \"frase_inicio\": number, \"linea_fin\": number, \"frase_fin\": number } o null }] },",
   "capa_dbt": "  \"capa_dbt\": { \"habilidades_sugeridas\": [{ \"modulo\": \"mindfulness | tolerancia_al_malestar | regulacion_emocional | efectividad_interpersonal\", \"habilidad\": \"string\", \"eslabon_objetivo\": \"string\" }], \"analisis_de_soluciones\": [{ \"eslabon_objetivo\": \"string (qué eslabón de la cadena)\", \"alternativa_habil\": \"string (qué habría podido hacerse ahí en concreto)\", \"tipo_estrategia\": \"antecedente | respuesta\" }], \"plan_de_prevencion\": [\"string (cómo reducir una vulnerabilidad que abre la cadena, antes de que haya cadena)\"], \"plan_de_reparacion\": \"string o null (SOLO si hubo daño real a un tercero concreto; distingue la reparación genuina del gesto superficial. null es la respuesta normal)\", \"eslabon_ausente\": \"string o null (la conducta que NO se emitió y que explica la cadena, con qué la bloqueó; null si la cadena se explica por lo emitido)\" },",
   "hipotesis_alternativas": "  \"hipotesis_alternativas\": [{ \"enunciado\": \"string (una explicación funcional distinta que también encajaría con la nota; incluye siempre la función que descartaste para la conducta principal y, si algún dato de la nota no cuadra con tu hipótesis central, la lectura alternativa que sí lo explicaría — ver principio 24)\", \"compite_con\": \"string (la hipótesis de mantenimiento principal con la que compite, con las palabras de hipotesis_mantenimiento)\", \"la_favoreceria\": \"string (qué observación en la nota o en la próxima sesión apoyaría ESTA alternativa)\", \"favorece_principal\": \"string (qué observación apoyaría la hipótesis principal frente a esta)\", \"pregunta\": \"string (la pregunta concreta que separaría las dos)\" }],",
   "preguntas": "  \"preguntas\": [{ \"pregunta\": \"string (la pregunta para la próxima sesión; cadena vacía si es solo un dato que falta y no admite una pregunta propia — ver principio 21)\", \"hipotesis\": \"string o null (la hipótesis de mantenimiento que pone a prueba, con las palabras de hipotesis_mantenimiento)\", \"dato\": \"string (qué información concreta falta en la nota)\", \"decision\": \"string (qué cambia en el análisis o el plan según la respuesta — ver principio 23. No vale 'ayudaría a entender mejor el caso')\" }],",
@@ -274,13 +264,12 @@ ${COLA_FORMATO}`;
 }
 
 /**
- * Capas de modalidad: solo se describen las que se han pedido. Los bloques ACT
- * y DBT son largos, así que omitir el que no se usa es el mayor ahorro de
- * tokens de entrada del análisis por partes.
+ * Capas de modalidad: solo se describen las que se han pedido. El bloque DBT
+ * es largo, así que omitirlo cuando no se usa es el mayor ahorro de tokens de
+ * entrada del análisis por partes.
  */
 function bloquesDeModalidad(campos: string[]): string {
   const partes: string[] = [];
-  if (campos.includes("capa_act")) partes.push(BLOQUE_ACT);
   if (campos.includes("capa_dbt")) {
     partes.push(BLOQUE_DBT);
     if (campos.includes("situaciones")) partes.push(NOTA_CADENA_DBT_POR_SITUACION);
@@ -294,18 +283,16 @@ function bloquesDeModalidad(campos: string[]): string {
  */
 export function construirSystemPrompt(campos?: string[]): string {
   const pedidos = campos?.length ? campos : Object.keys(ESQUEMA_POR_CAMPO);
-  const capas = ["capa_act", "capa_dbt"].filter((c) => pedidos.includes(c));
+  const capas = ["capa_dbt"].filter((c) => pedidos.includes(c));
 
   const instruccionCapas =
-    capas.length === 2
-      ? 'Genera SIEMPRE las dos capas de modalidad en la misma respuesta (el usuario podrá alternar entre ellas después sin generar un nuevo análisis): ACT y DBT. No omitas ninguna aunque el caso parezca encajar mejor en una.'
-      : capas.length > 0
-        ? `Genera ÚNICAMENTE la(s) capa(s) de modalidad solicitada(s): ${capas.join(", ")}. No incluyas las demás.`
-        : "No se ha solicitado ninguna capa de modalidad: no generes capa_act ni capa_dbt.";
+    capas.length > 0
+      ? `Genera ÚNICAMENTE la(s) capa(s) de modalidad solicitada(s): ${capas.join(", ")}. No incluyas las demás.`
+      : "No se ha solicitado ninguna capa de modalidad: no generes capa_dbt.";
 
   const notaPlan = notaPlanPorBlanco(pedidos);
   const notaIntervencion = pedidos.includes("lineas_de_intervencion_tentativas")
-    ? '\n"lineas_de_intervencion_tentativas" es el lugar de los procedimientos conductuales: reforzamiento diferencial (de conductas alternativas, incompatibles u otras), extinción, control de estímulos, moldeamiento, encadenamiento, entrenamiento en comunicación funcional y, para cadenas respondientes, exposición. No hay otra lista de procedimientos: cada uno va aquí, atado a su blanco, con la contingencia que modifica y sus precauciones. No uses vocabulario de ACT ni de DBT en este campo; las orientaciones de esas dos modalidades van en su propia capa (capa_act, capa_dbt), no aquí.\n'
+    ? '\n"lineas_de_intervencion_tentativas" es el lugar de los procedimientos conductuales: reforzamiento diferencial (de conductas alternativas, incompatibles u otras), extinción, control de estímulos, moldeamiento, encadenamiento, entrenamiento en comunicación funcional y, para cadenas respondientes, exposición. No hay otra lista de procedimientos: cada uno va aquí, atado a su blanco, con la contingencia que modifica y sus precauciones. No uses vocabulario de DBT en este campo; las orientaciones de esa modalidad van en su propia capa (capa_dbt), no aquí.\n'
     : "";
 
   const parcial =

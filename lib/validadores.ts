@@ -627,7 +627,6 @@ export function seccionDeRuta(ruta: string): IdAncla | null {
       return "monitorizacion";
     case "blancos":
       return "conductas-alternativas";
-    case "capa_act":
     case "capa_dbt":
       return "modalidad";
     case "hipotesis_alternativas":

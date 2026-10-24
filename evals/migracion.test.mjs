@@ -402,18 +402,14 @@ function guardadoEnV2() {
     (l) => l.contingencia_objetivo === null
   );
   a.capa_mc = JSON.parse(JSON.stringify(crudoV1().capa_mc));
-  a.capa_act.reglas_verbales = a.reglas_verbales;
+  // La capa ACT ya no existe en el modelo, pero un informe guardado la trae:
+  // las reglas viven dentro de ella y los procesos, como los guardaba la v2,
+  // se descartan al abrirlo.
+  a.capa_act = {
+    reglas_verbales: a.reglas_verbales,
+    procesos_act: crudoV1().capa_act.procesos_act,
+  };
   delete a.reglas_verbales;
-  // Los procesos, como los guardaba la v2: texto libre y ancla por situación.
-  const originales = crudoV1().capa_act.procesos_act;
-  a.capa_act.procesos_act = a.capa_act.procesos_act.map((p, i) => ({
-    id: p.id,
-    proceso: originales[i].proceso,
-    vinculo_con_cadena: originales[i].vinculo_con_cadena,
-    situacion_id: a.situaciones[i]?.id ?? null,
-    eslabon_id: null,
-    evidencia: p.evidencia,
-  }));
   return a;
 }
 
@@ -423,7 +419,7 @@ prueba("las reglas verbales suben al núcleo y conservan su id", () => {
   assert.ok(antes.length > 0 && antes.every(([id]) => id), "el v2 de prueba no trae reglas con id");
   const a = migrarAV8(v2);
   assert.deepEqual(a.reglas_verbales.map((r) => [r.id, r.regla]), antes);
-  assert.ok(!("reglas_verbales" in a.capa_act), "las reglas siguen también en capa_act");
+  assert.ok(!("capa_act" in a), "la capa ACT, ya retirada, sigue en el informe migrado");
   // Y el grafo las sigue pintando con el mismo id: una arista hacia rvb_N no se rompe.
   const ids = new Set(construirNodosGrafo(a).map((n) => n.id));
   for (const [id] of antes) assert.ok(ids.has(id), `el nodo ${id} desapareció del grafo`);
@@ -486,83 +482,14 @@ prueba("los procedimientos migrados salen en el Plan exportado, no en una capa a
   assert.ok(texto.includes("Precauciones: Vigilar la aparición de conductas de seguridad"));
 });
 
-prueba("los procesos ACT pasan a anotaciones: enum, elemento y sin ancla por situación", () => {
-  for (const a of [normalizarAnalisis(crudoV1(), lineas), migrarAV8(guardadoEnV2())]) {
-    const [fusion, evitacion] = a.capa_act.procesos_act;
-    assert.equal(fusion.proceso, "fusion");
-    assert.equal(evitacion.proceso, "evitacion_experiencial");
-    assert.equal(fusion.elemento_objetivo, "Reuniones de equipo");
-    for (const p of a.capa_act.procesos_act) {
-      assert.ok(!("situacion_id" in p) && !("eslabon_id" in p) && !("vinculo_con_cadena" in p));
-      assert.ok(!p.revisar_proceso, "un proceso con nombre conocido no debe quedar para revisar");
-    }
-  }
-});
-
-prueba("un proceso que solo nombra una situación queda sin anclar, no en un nodo cualquiera", () => {
-  // «Reuniones de equipo» comparte palabras con el Ed de esa situación; engancharlo
-  // ahí sería la conjetura de la v2 en pequeño.
-  for (const a of [normalizarAnalisis(crudoV1(), lineas), migrarAV8(guardadoEnV2())]) {
-    assert.deepEqual(a.capa_act.procesos_act.map((p) => p.nodo_id), [null, null]);
-  }
-});
-
-prueba("un proceso cuyo elemento no casa con nada queda en null", () => {
-  const crudo = crudoV1();
-  crudo.capa_act.procesos_act = [{
-    proceso: "fusion", elemento_objetivo: "Contemplación del paisaje marítimo invernal",
-    justificacion_funcional: "x", evidencia: null,
-  }];
-  assert.equal(normalizarAnalisis(crudo, lineas).capa_act.procesos_act[0].nodo_id, null);
-});
-
-prueba("un proceso cuyo elemento es una conducta se ancla a esa conducta", () => {
-  const crudo = crudoV1();
-  const conducta = crudo.conductas_problema[0].descripcion;
-  crudo.capa_act.procesos_act = [{
-    proceso: "evitacion_experiencial", elemento_objetivo: conducta,
-    justificacion_funcional: "Se mantiene por el alivio del malestar pese al coste laboral.",
-    evidencia: null,
-  }];
-  const a = normalizarAnalisis(crudo, lineas);
-  assert.equal(a.capa_act.procesos_act[0].nodo_id, a.conductas_problema[0].id);
-});
-
-prueba("un proceso v2 anclado a un eslabón conserva ese nodo", () => {
+prueba("un informe guardado con procesos ACT se abre sin ellos y no pierde nada más", () => {
   const v2 = guardadoEnV2();
-  const eslabon = v2.situaciones.flatMap((s) => s.cadena_dbt?.eslabones ?? [])[0];
-  v2.capa_act.procesos_act[0].eslabon_id = eslabon.id;
-  assert.equal(migrarAV8(v2).capa_act.procesos_act[0].nodo_id, eslabon.id);
-});
-
-prueba("un proceso con nombre desconocido se conserva, marcado para revisar", () => {
-  const v2 = guardadoEnV2();
-  v2.capa_act.procesos_act[0].proceso = "Rigidez psicológica general";
-  const p = migrarAV8(v2).capa_act.procesos_act[0];
-  assert.equal(p.revisar_proceso, true);
-  assert.notEqual(p.proceso, "evitacion_experiencial", "el valor por defecto no puede afirmar evitación");
-  assert.ok(p.justificacion_funcional.includes("Rigidez psicológica general"));
-});
-
-prueba("borrar el nodo de un proceso lo deja sin anclar, no lo borra", () => {
-  const crudo = crudoV1();
-  crudo.capa_act.procesos_act = [{
-    proceso: "evitacion_experiencial", elemento_objetivo: crudo.conductas_problema[0].descripcion,
-    justificacion_funcional: "x", evidencia: null,
-  }];
-  const a = normalizarAnalisis(crudo, lineas);
-  borrarNodo(a, a.capa_act.procesos_act[0].nodo_id);
-  assert.equal(a.capa_act.procesos_act.length, 1);
-  assert.equal(a.capa_act.procesos_act[0].nodo_id, null);
-});
-
-prueba("el exportado da de cada proceso su elemento, su justificación y su cita", () => {
-  const texto = formatearInformeTexto(normalizarAnalisis(crudoV1(), lineas), "CASO-1", "fecha");
-  const lineasTexto = texto.split("\n");
-  const i = lineasTexto.findIndex((l) => l.startsWith("- Posible patrón de fusión — sobre: Reuniones de equipo (sin anclar"));
-  assert.ok(i >= 0, "falta el proceso con su elemento");
-  assert.ok(lineasTexto[i + 1].startsWith("  Justificación funcional: no declarada"));
-  assert.ok(lineasTexto[i + 2].startsWith("  De la nota: "));
+  assert.ok(v2.capa_act.procesos_act.length > 0, "el v2 de prueba no trae procesos ACT");
+  const a = migrarAV8(v2);
+  assert.ok(!("capa_act" in a));
+  assert.ok(a.reglas_verbales.length > 0);
+  // Y lo que se normaliza hoy ya no produce la capa.
+  assert.ok(!("capa_act" in normalizarAnalisis(crudoV1(), lineas)));
 });
 
 console.log("\nSeguridad clínica (fase 1 del rediseño)\n");

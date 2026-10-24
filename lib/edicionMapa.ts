@@ -255,7 +255,6 @@ function trasladarId(analisis: AnalisisFuncional, viejo: Id, nuevo: Id, antes: s
     if (a.desde === viejo) a.desde = nuevo;
     if (a.hasta === viejo) a.hasta = nuevo;
   }
-  for (const p of analisis.capa_act.procesos_act) if (p.nodo_id === viejo) p.nodo_id = nuevo;
   for (const h of analisis.hipotesis_mantenimiento) {
     if (h.destino_id === viejo) h.destino_id = nuevo;
     if (h.origen_id === viejo) h.origen_id = nuevo;

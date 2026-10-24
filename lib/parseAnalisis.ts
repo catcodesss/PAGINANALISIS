@@ -1,7 +1,6 @@
 import { resolverCita } from "./citas";
 import { ESTADOS_HIPOTESIS, normalizarPreguntas } from "./preguntas";
 import { migrarAV8 } from "./identidad";
-import { procesoAV3 } from "./procesosACT";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 import {
   CAMPOS_ANALISIS_FUNCIONAL,
@@ -12,7 +11,6 @@ import {
   type CadenaDBT,
   type CadenaOperante,
   type CadenaRespondiente,
-  type CapaModalidadACT,
   type CapaModalidadDBT,
   type Cita,
   type ConductaAlternativa,
@@ -475,22 +473,6 @@ function normalizarReglasVerbales(d: Record<string, unknown>): ReglaVerbal[] {
   });
 }
 
-function normalizarCapaAct(valor: unknown, lineas: string[]): CapaModalidadACT {
-  const d = comoObjeto(valor);
-  return {
-    // Acepta la forma v3 y la v2 (una respuesta o un JSON anterior): procesoAV3
-    // convierte la vieja y marca para revisar lo que no casa con el enum.
-    procesos_act: comoArreglo<unknown>(d.procesos_act).map((p) => {
-      const po = comoObjeto(p);
-      return {
-        ...procesoAV3(po),
-        id: typeof po.id === "string" ? po.id : SIN_ID,
-        evidencia: resolverCita(lineas, po.evidencia),
-      };
-    }),
-  };
-}
-
 const TIPOS_ESLABON_DBT = ["pensamiento", "emocion", "sensacion", "impulso", "accion"];
 const MODULOS_DBT = [
   "mindfulness",
@@ -661,7 +643,6 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     conductas_alternativas: comoArreglo<unknown>(d.conductas_alternativas).map(
       normalizarConductaAlternativa
     ),
-    capa_act: normalizarCapaAct(d.capa_act, lineas),
     capa_dbt: normalizarCapaDbt(d.capa_dbt),
     hipotesis_alternativas: comoArreglo<unknown>(d.hipotesis_alternativas).map(
       normalizarHipotesisAlternativa
@@ -791,7 +772,6 @@ const NORMALIZADORES_POR_CAMPO: {
     comoArreglo<unknown>(d.conductas_alternativas).map(
       normalizarConductaAlternativa
     ),
-  capa_act: (d, lineas) => normalizarCapaAct(d.capa_act, lineas),
   capa_dbt: (d) => normalizarCapaDbt(d.capa_dbt),
   hipotesis_alternativas: (d) =>
     comoArreglo<unknown>(d.hipotesis_alternativas).map(

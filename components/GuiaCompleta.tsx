@@ -66,11 +66,11 @@ const PREGUNTAS = [
   ],
   [
     "¿Por qué el análisis tarda tanto?",
-    "Por defecto genera el informe completo, incluidas las dos capas de modalidad (ACT y DBT), para que puedas alternar entre ellas después sin volver a consultar a la IA. Si solo necesitas una parte, usa la flecha del botón de generar y elige las secciones: es bastante más rápido y más barato.",
+    "Por defecto genera el informe completo, incluida la capa de modalidad (DBT), para que puedas consultarla después sin volver a consultar a la IA. Si solo necesitas una parte, usa la flecha del botón de generar y elige las secciones: es bastante más rápido y más barato.",
   ],
   [
     "¿Puedo pedir solo una parte del informe?",
-    "Sí. La flecha a la derecha del botón de generar abre el selector de secciones. Las dependencias se resuelven solas: si pides la capa ACT, se genera también el análisis por situaciones en el que se apoya, porque sin él la capa saldría hueca. El resumen clínico y los datos faltantes se incluyen siempre.",
+    "Sí. La flecha a la derecha del botón de generar abre el selector de secciones. Las dependencias se resuelven solas: si pides la capa DBT, se genera también el análisis por situaciones en el que se apoya, porque sin él la capa saldría hueca. El resumen clínico y los datos faltantes se incluyen siempre.",
   ],
   [
     "¿Qué pasa si la nota es muy corta?",
