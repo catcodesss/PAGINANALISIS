@@ -217,7 +217,7 @@ export function BotonAgregar({
 }: {
   onAgregar: (texto: string) => void;
   etiqueta: string;
-  /** Sustituye el estilo del botón cerrado (el raíl usa uno de ancho completo). */
+  /** Sustituye el estilo del botón cerrado. */
   claseBoton?: string;
 }) {
   const edicion = useEdicion();

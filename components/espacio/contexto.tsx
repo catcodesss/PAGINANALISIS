@@ -6,7 +6,7 @@
  * las ediciones del Mapa.
  *
  * Por qué sube aquí: la selección vivía dentro de components/grafo/GrafoAFC.tsx,
- * y con ella la Ficha y la nota. Desde la fase 5 el Inspector, el raíl, la
+ * y con ella la Ficha y la nota. Desde la fase 5 el Inspector, la
  * Fuente y la bandeja de avisos son hermanos del Mapa y tienen que leer y
  * cambiar la misma selección.
  *

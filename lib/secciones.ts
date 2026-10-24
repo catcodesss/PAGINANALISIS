@@ -109,7 +109,7 @@ export const ANCLAS_DE_BLOQUE = Object.fromEntries(
 
 /*
   ESPACIO DE TRABAJO (fase 5). Las pestañas desaparecen: en pantalla hay dos
-  vistas —Mapa y Blancos— más una cabecera, un raíl, un Inspector y la Fuente.
+  vistas —Mapa y Blancos— más una cabecera, un Inspector y la Fuente.
   Los cinco bloques de arriba siguen siendo la estructura del DOCUMENTO
   exportado (texto, Word e impresión), y sus anclas siguen siendo los ids que
   guardan `secciones_editadas` y los avisos. Lo que cambia es dónde se ve cada
@@ -124,8 +124,8 @@ export const VISTAS_ESPACIO = [
 
 export type IdVista = (typeof VISTAS_ESPACIO)[number]["id"];
 
-/** Los sitios del espacio donde puede verse algo. */
-export type LugarEspacio = IdVista | "raíl" | "inspector" | "cabecera" | "bandeja";
+/** Los sitios donde puede verse algo. «documento»: solo en el texto exportado, sin lugar en pantalla. */
+export type LugarEspacio = IdVista | "documento" | "inspector" | "cabecera" | "bandeja";
 
 /**
  * Dónde se ve en pantalla cada ancla del documento. Toda ancla tiene sitio:
@@ -138,13 +138,13 @@ export const DONDE_SE_VE = {
   situaciones: "mapa",
   modalidad: "mapa",
   riesgo: "cabecera",
-  resumen: "raíl",
+  resumen: "documento",
   "hipotesis-principal": "inspector",
   prioridades: "blancos",
-  preguntas: "raíl",
-  "hipotesis-mantenimiento": "raíl",
-  "hipotesis-origen": "raíl",
-  formulacion: "raíl",
+  preguntas: "documento",
+  "hipotesis-mantenimiento": "documento",
+  "hipotesis-origen": "documento",
+  formulacion: "documento",
   "conductas-alternativas": "blancos",
   intervencion: "blancos",
   monitorizacion: "blancos",

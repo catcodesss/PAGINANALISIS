@@ -6,7 +6,7 @@
  * Dos garantías, sin gastar API, sobre el informe guardado del caso 01:
  *
  * 1. Cada aviso tiene un elemento visible donde se pinta su insignia: un nodo
- *    del Mapa, una hipótesis o una pregunta (Inspector y raíl), o una tarjeta
+ *    del Mapa, una hipótesis o una pregunta (Inspector), o una tarjeta
  *    de Blancos. Moverlos de pestaña no puede esconderlos (regla 4).
  * 2. La exportación no pierde secciones respecto a la de antes de la fase: se
  *    comparan las cabeceras del texto copiado, que es también lo que se
@@ -98,7 +98,7 @@ prueba("cada aviso del caso 01 tiene un elemento visible donde pintar su insigni
         ? destino.id === null || conductas.has(destino.id)
         : destino.id === null || // franja «Avisos sin nodo» del Mapa
           nodos.has(destino.id) ||
-          conductas.has(destino.id) || // raíl e Inspector, aunque no tenga nodo
+          conductas.has(destino.id) || // Inspector, aunque no tenga nodo
           hipotesis.has(destino.id) ||
           preguntas.has(destino.id) ||
           situaciones.has(destino.id);
@@ -108,13 +108,12 @@ prueba("cada aviso del caso 01 tiene un elemento visible donde pintar su insigni
 });
 
 prueba("los componentes pintan la insignia donde lleva cada destino", () => {
-  // El nodo (Mapa), la tarjeta de Blancos, la hipótesis del raíl y el
+  // El nodo (Mapa), la tarjeta de Blancos, y el
   // Inspector tienen que pintar el aviso; si alguno deja de hacerlo, el
   // destino existe pero el aviso no se ve.
   const leer = (r) => readFileSync(join(RAIZ, r), "utf8");
   assert.match(leer("components/grafo/GrafoAFC.tsx"), /<InsigniaAlerta\b/);
   assert.match(leer("components/informe/BloquePlan.tsx"), /<AvisoEnLinea\b/);
-  assert.match(leer("components/espacio/Rail.tsx"), /<InsigniaAlerta\b/);
   assert.match(leer("components/espacio/Inspector.tsx"), /<AvisosDelNodo\b|<InsigniaAlerta\b/);
   assert.match(leer("components/espacio/Cabecera.tsx"), /destinoDeAlerta\(/);
   assert.match(leer("components/espacio/VistaMapa.tsx"), /<AvisosSinNodo\b/);

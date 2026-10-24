@@ -6,7 +6,7 @@ import { describirGrado, gradoDeNumero } from "@/lib/gradoApoyo";
 /**
  * Cómo se nombra cada cosa del grafo de cara al clínico. Vive fuera de
  * GrafoAFC.tsx porque desde la fase 5 lo leen también el Inspector, la Fuente
- * y el raíl, que ya no están dentro del grafo.
+ * que ya no están dentro del grafo.
  *
  * La etiqueta clara de cada tipo de nodo. Los que tienen sigla técnica la
  * llevan al lado en pequeño (lib/terminos.ts). Ed y EC no comparten palabra:

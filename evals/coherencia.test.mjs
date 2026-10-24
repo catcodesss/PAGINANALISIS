@@ -170,7 +170,7 @@ const IDS_VISTA = VISTAS_ESPACIO.map((v) => v.id);
 
   - Los cinco BLOQUES y sus ANCLAS son el documento exportado (texto, Word,
     impresión) y los ids que guardan `secciones_editadas` y los avisos.
-  - Las VISTAS (Mapa, Blancos) y los LUGARES (raíl, Inspector, cabecera,
+  - Las VISTAS (Mapa, Blancos) y los LUGARES (Inspector, cabecera,
     bandeja) son dónde se ve cada cosa en pantalla.
 
   `DONDE_SE_VE` (lib/secciones.ts) une las dos. Estas pruebas cazan lo que el
@@ -182,7 +182,6 @@ const espacio = fuente("components/espacio/EspacioTrabajo.tsx");
 const FUENTE_DE_LUGAR = {
   mapa: fuente("components/espacio/VistaMapa.tsx"),
   blancos: espacio + fuente("components/informe/BloquePlan.tsx"),
-  "raíl": fuente("components/espacio/Rail.tsx"),
   cabecera: fuente("components/espacio/Cabecera.tsx"),
   bandeja: fuente("components/espacio/Cabecera.tsx"),
   inspector: fuente("components/espacio/Inspector.tsx"),
@@ -199,7 +198,7 @@ const ROTULO_EN_INSPECTOR = {
 };
 
 function idsPintados(codigo) {
-  // `id="x"` o, en el raíl, `id={ancla("x")}` (que lo omite en su copia del móvil).
+  // `id="x"`.
   return new Set(
     [...codigo.matchAll(/\bid="([^"]+)"/g), ...codigo.matchAll(/\bid=\{ancla\("([^"]+)"\)\}/g)].map((m) => m[1])
   );
@@ -242,6 +241,7 @@ prueba("toda ancla del documento tiene un sitio donde verse en pantalla", () => 
 prueba("cada ancla se pinta en el lugar que DONDE_SE_VE declara", () => {
   const mal = [];
   for (const [ancla, lugar] of Object.entries(DONDE_SE_VE)) {
+    if (lugar === "documento") continue;
     const codigo = FUENTE_DE_LUGAR[lugar];
     if (!codigo) {
       mal.push(`${ancla}: el lugar «${lugar}» no tiene componente`);

@@ -2,7 +2,7 @@
 
 /**
  * Inspector derecho: el detalle de lo que esté seleccionado, venga del Mapa,
- * del raíl o de la bandeja de avisos. Sustituye a la Ficha, que vivía dentro
+ * de la bandeja de avisos. Sustituye a la Ficha, que vivía dentro
  * del grafo y por eso no podía enseñar nada que no fuera un nodo.
  *
  * Tres pestañas. Detalle: qué es y qué se puede hacer con ello. Evidencia: qué
@@ -69,7 +69,7 @@ export default function Inspector({
     analisisConProsa.hipotesis_mantenimiento.find((h) => h.id === seleccionado) ?? null;
   const pregunta = analisis.preguntas.find((p) => p.id === seleccionado) ?? null;
   // Una conducta que ninguna situación analiza no es nodo del grafo, pero se
-  // elige desde el raíl y sus avisos tienen que verse.
+  // elige y sus avisos tienen que verse.
   const conducta = analisis.conductas_problema.find((c) => c.id === seleccionado) ?? null;
   const arista = analisis.aristas.find((a) => a.id === seleccionado) ?? null;
 
@@ -145,7 +145,7 @@ export default function Inspector({
           </ul>
         ) : (
           <p className="text-sm text-ink-muted">
-            Selecciona un elemento en el Mapa o en el raíl. Doble clic sobre la
+            Selecciona un elemento en el Mapa. Doble clic sobre la
             etiqueta de un nodo para editarla en el grafo.
           </p>
         )}

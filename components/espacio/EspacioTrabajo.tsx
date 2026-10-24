@@ -1,11 +1,10 @@
 "use client";
 
 /**
- * El espacio de trabajo: cabecera, raíl, la vista (Mapa o Blancos), el
+ * El espacio de trabajo: cabecera, la vista (Mapa o Blancos), el
  * Inspector y la Fuente. Sustituye a las cinco pestañas del informe.
  *
- * Disposición: el raíl a la izquierda (240 px, a iconos por debajo de 1440), la
- * vista en el centro, el Inspector a la derecha (380 px, con scroll propio) y
+ * Disposición: la vista en el centro, el Inspector a la derecha (380 px, con scroll propio) y
  * la Fuente como cajón abajo. Por debajo de 1024 px el Inspector pasa a cajón
  * inferior y aparece al seleccionar algo; en el móvil todo se apila.
  *
@@ -21,7 +20,6 @@ import { PriorizacionEstimada } from "../informe/mantenimiento";
 import type { EditarSeccion } from "../informe/PreguntasClinicas";
 import { ProveedorEspacio, useEspacio } from "./contexto";
 import Cabecera, { type AccionesExportar } from "./Cabecera";
-import Rail from "./Rail";
 import Inspector from "./Inspector";
 import Fuente from "./Fuente";
 import VistaMapa from "./VistaMapa";
@@ -75,18 +73,6 @@ function Contenido({
       />
 
       <div className="flex min-h-[calc(100vh-8rem)] flex-col md:flex-row">
-        <div className="hidden md:block">
-          <div className="sticky top-0 h-[calc(100vh-2.5rem)]">
-            <Rail analisis={analisis} analisisConProsa={analisisConProsa} onEditarSeccion={onEditarSeccion} />
-          </div>
-        </div>
-
-        {/* En el móvil el raíl va apilado y plegado encima de la vista. */}
-        <details className="border-b border-divider md:hidden">
-          <summary className="cursor-pointer px-4 py-2 text-sm font-medium text-ink">Índice del caso</summary>
-          <Rail analisis={analisis} analisisConProsa={analisisConProsa} onEditarSeccion={onEditarSeccion} apilado />
-        </details>
-
         <div className="min-w-0 flex-1 px-4 pb-16 pt-3">
           <div role="tablist" aria-label="Vistas" className="mb-4 flex gap-1 border-b border-divider">
             {VISTAS_ESPACIO.map((v) => (

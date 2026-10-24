@@ -11,7 +11,7 @@ import type { AccionesExportar } from "./espacio/Cabecera";
 
 /**
  * El informe. Desde la fase 5 no es un documento con pestañas sino un espacio
- * de trabajo (components/espacio/): Mapa y Blancos, con cabecera, raíl,
+ * de trabajo (components/espacio/): Mapa y Blancos, con cabecera,
  * Inspector y la nota en un cajón. Aquí quedan los proveedores que comparte
  * todo (reanálisis por sección y edición manual) y lo que solo existe en
  * papel: el encabezado, el pie, el descargo y el documento impreso, que sale

@@ -249,7 +249,7 @@ export default function Fuente({
 
 /**
  * Una frase que nada usa, convertida en un elemento nuevo en el carril que
- * elijas. La conducta necesita su situación (o ninguna: queda en el raíl, como
+ * elijas. La conducta necesita su situación (o ninguna: queda sin situar, como
  * las conductas que el análisis no llegó a situar).
  */
 function ConvertirFrase({
@@ -283,7 +283,7 @@ function ConvertirFrase({
           aria-label="Situación de la conducta"
           className="w-full rounded border border-divider bg-surface px-1.5 py-1 text-ink"
         >
-          <option value="">Sin situación (al raíl)</option>
+          <option value="">Sin situación</option>
           {situaciones.map((s) => (
             <option key={s.id} value={s.id}>
               {s.nombre}

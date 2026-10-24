@@ -3,7 +3,7 @@ import type { IdVista } from "@/lib/secciones";
 
 /**
  * Llevar la vista a un elemento: cambiar de vista si hace falta, seleccionarlo
- * y hacer scroll hasta él. Lo usan el raíl y la bandeja de avisos.
+ * y hacer scroll hasta él. Lo usan la bandeja de avisos.
  *
  * El scroll espera dos fotogramas: el primero pinta la vista nueva, el segundo
  * ya tiene el elemento en el DOM.
