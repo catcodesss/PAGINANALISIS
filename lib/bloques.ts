@@ -4,15 +4,15 @@ import type { AnalisisFuncional } from "./types";
  * Bloques que el clínico puede pedir por separado.
  *
  * Por qué existe: generar el informe completo cuesta tokens y tiempo. Si alguien
- * solo quiere las conductas problema o solo la lectura ACT, no tiene sentido
- * producir las dos capas de modalidad y toda la formulación.
+ * solo quiere las conductas problema o solo la lectura DBT, no tiene sentido
+ * producir la capa de modalidad y toda la formulación.
  *
  * El ahorro real está en dos sitios: el prompt no incluye los bloques de las
  * modalidades que no se piden (son largos), y la salida es mucho más corta.
  *
  * DEPENDENCIAS: las secciones no son independientes. Las hipótesis de
- * mantenimiento se apoyan en las situaciones, y las dos capas también. Pedir
- * "capa ACT" sin situaciones daría una capa hueca, así que cada bloque declara
+ * mantenimiento se apoyan en las situaciones, y la capa también. Pedir
+ * "capa DBT" sin situaciones daría una capa hueca, así que cada bloque declara
  * todo lo que necesita y la unión se calcula aquí, no en la interfaz.
  */
 

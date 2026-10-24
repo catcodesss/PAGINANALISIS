@@ -649,8 +649,7 @@ export interface HipotesisAlternativa {
   como_descartarla?: string;
 }
 
-// --- Capas de modalidad: ACT y DBT se generan en la misma llamada, para poder
-// alternar entre ellas en pantalla sin volver a consultar la IA. La antigua
+// --- Reglas verbales y lectura DBT. La antigua capa ACT se retiró, y la
 // capa MC no era una lente propia —era el AFC en tres columnas— y sus
 // procedimientos viven ahora en LineaIntervencion (esquema v3). ---
 
