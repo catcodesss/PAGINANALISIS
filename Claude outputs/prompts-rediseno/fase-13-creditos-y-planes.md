@@ -109,3 +109,37 @@ Solo tras aprobar 13A.
   - sin saldo, exportar y abrir versiones siguen funcionando.
 - **Prueba nueva**: el registro de consumo no contiene texto de la nota ni del
   análisis.
+
+## Decisiones del 18/10/2026 (sustituyen a lo anterior donde choquen)
+
+Detalle, mediciones y precios: `Claude outputs/propuesta-fase-13-creditos-y-planes.md`.
+
+- **Cuentas individuales por correo**: id interno inmutable, correo normalizado
+  único, verificación obligatoria, recuperación. El servidor no guarda nada clínico.
+- **Unidad: Coins.** Enteros, internos, no transferibles. Analizar o actualizar
+  una sesión: 4. Reanalizar un elemento, preguntas extra, propuesta puntual o de
+  redacción, rehacer una propuesta: 1. Resumen para supervisión: 4. Revisión
+  profunda: 12. Seguridad, edición, consulta, archivo y exportación: 0.
+- **Se cobra cada nueva llamada a GPT pedida voluntariamente**, aunque sea para
+  rehacer una sección ya analizada. **No se cobran** los reintentos técnicos, las
+  validaciones internas, la pasada crítica ni las regeneraciones correctivas por
+  error del modelo (▲ de origen IA). El precio visible es el de la operación
+  completa.
+- **Planes:** Gratuito, con 2 casos activos y 20 Coins al mes; Profesional, con 15
+  y 160; Intensivo, con 50 y 480. Los Coins mensuales no se acumulan.
+  **Paquetes:** 40, 120 y 400 Coins, que caducan a los 12 meses; se consume
+  primero lo que vence antes.
+- **Casos:** solo los activos ocupan ranura. Archivar pide confirmación explícita
+  y libera la ranura. Los archivados no tienen límite comercial y se consultan y
+  exportan gratis. Reactivar exige una ranura libre. **Nunca** se archiva ni se
+  elimina un caso de forma automática, ni por inactividad, ni por falta de Coins,
+  ni por cancelación. Bajar de plan no borra ni bloquea la lectura.
+- **Ranuras entre dispositivos:** `caso_uid` opaco reclamado en el servidor en una
+  transacción. Toda llamada de IA comprueba que su ranura esté activa.
+- **Antes de cobrar:** la pasada crítica tiene que estar activada en todos los
+  análisis (hoy está desactivada por defecto).
+- **Pruebas añadidas:** cobro de 1 Coin por un reanálisis voluntario; coste 0 de
+  la regeneración con vale correctivo; los reintentos técnicos cobran una vez; el
+  mismo `operacion_id` no cobra dos veces; nada se archiva solo; tope de 2 casos
+  activos con dos dispositivos a la vez. La lista completa está en la sección 8
+  de la propuesta.

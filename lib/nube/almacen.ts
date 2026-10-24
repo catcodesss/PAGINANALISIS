@@ -62,8 +62,12 @@ export interface AlmacenRemoto {
   ): Promise<number>;
 }
 
-/** Reclama una ranura de caso en el servidor (fase 13A, §1). */
-export type ReclamarRanura = (casoUid: string) => Promise<void>;
+/** Ranuras de casos en el servidor (fase 13A §1): topes por plan, comprobados en una transacción. */
+export interface ServicioRanuras {
+  reclamar(casoUid: string): Promise<void>;
+  archivar(casoUid: string): Promise<void>;
+  reactivar(casoUid: string): Promise<void>;
+}
 
 // --- Memoria (pruebas) ---------------------------------------------------
 

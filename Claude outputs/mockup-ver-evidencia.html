@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockup · Ver evidencia</title>
+<style>
+:root{--bg:#fbf7ee;--ink:#1c2a24;--mut:#6b6f66;--green:#0f5a45;--amber:#a67c2a;--gray:#aaa;--line:#e3dccb}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,sans-serif}
+h1{font-size:15px;margin:0 0 4px} p.hint{margin:0 0 20px;color:var(--mut);font-size:13px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;max-width:900px}
+.col{background:#f1ead3;border-radius:12px;padding:14px}
+.col h2{font-size:15px;margin:0 0 10px}
+.node{position:relative;background:#fff;border-left:4px solid var(--green);border-radius:8px;padding:10px 12px;margin-bottom:10px;box-shadow:0 1px 2px #0001;cursor:context-menu;user-select:none}
+.node.parcial{border-left-color:var(--amber)} .node.inf{border-left-color:var(--gray)}
+.node small{color:var(--mut);display:block;font-size:11px}
+.node b{font-size:15px;display:block;margin:2px 0}
+.node.sel{outline:2px solid var(--green)}
+.dot{position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--green)}
+.parcial .dot{background:var(--amber)} .inf .dot{background:var(--gray)}
+.node:hover .dot{box-shadow:0 0 0 3px #0f5a4533}
+/* menú contextual */
+.menu{position:fixed;display:none;min-width:190px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px #0002;padding:5px;z-index:20}
+.menu button{display:flex;gap:8px;align-items:center;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:6px;font:inherit;cursor:pointer}
+.menu button:hover{background:#eef4f0}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.menu .off{color:#aaa;cursor:default} .menu .off:hover{background:none}
+/* tarjeta de evidencia */
+.ev{position:fixed;display:none;width:340px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px #0003;z-index:30}
+.ev header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);font-weight:600}
+.ev header button{border:0;background:none;font-size:18px;cursor:pointer;color:var(--mut)}
+.ev .body{padding:14px}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--green);color:var(--green);margin-bottom:8px}
+.tag.parcial{border-color:var(--amber);color:var(--amber)} .tag.inf{border-color:var(--gray);color:#777}
+blockquote{margin:0;padding:8px 12px;border-left:3px solid var(--green);background:#f4f8f5;border-radius:0 6px 6px 0;font-style:italic}
+.ev .src{margin-top:10px;font-size:12px;color:var(--mut)}
+.ev .foot{padding:10px 14px;border-top:1px solid var(--line);display:flex;gap:8px}
+.ev .foot button{border:1px solid var(--line);background:#fff;border-radius:6px;padding:5px 10px;font:inherit;font-size:12px;cursor:pointer}
+.note{max-width:900px;margin-top:24px;padding:14px 16px;background:#fff;border:1px dashed var(--line);border-radius:10px;font-size:13px}
+</style></head><body>
+<h1>Mapa · Evidencia (propuesta)</h1>
+<p class="hint">Las tarjetas ya no muestran el extracto. Haz <b>clic derecho</b> sobre una tarjeta → «Ver evidencia». En tablet/celular: <b>mantén pulsada</b> la tarjeta (~0,5 s). También funciona con Enter o el punto de color.</p>
+
+<div class="cols">
+  <div class="col"><h2>Antecedente</h2>
+    <div class="node" data-t="cita" data-f="Fuente · L3.5" data-q="Mi supervisora me pidió exponer los resultados del trimestre frente a todo el equipo." tabindex="0"><span class="dot"></span><small>Señal</small><b>Supervisora pide exponer resultados.</b></div>
+    <div class="node parcial" data-t="parcial" data-f="Sin frase de origen" data-q="" tabindex="0"><span class="dot"></span><small>Desencadenante</small><b>Contexto de exposición social evaluativa.</b></div>
+  </div>
+  <div class="col"><h2>Conducta</h2>
+    <div class="node" data-t="cita" data-f="Fuente · L3.5" data-q="Empecé con taquicardia y sudoración, y pensé: voy a quedarme en blanco." tabindex="0"><span class="dot"></span><small>Conducta</small><b>Taquicardia y sudoración.</b></div>
+    <div class="node inf" data-t="inf" data-f="Sin frase de origen" data-q="" tabindex="0"><span class="dot"></span><small>Operador motivador</small><b>OE de malestar condicionado por evaluación social.</b></div>
+  </div>
+</div>
+
+<div class="note"><b>Qué opino:</b> la lista de arriba queda limpia y el extracto aparece solo cuando se pide. Ojo: el clic derecho no se descubre solo ni existe en tablet/móvil, por eso conservaría el puntito de color (apoyo) como señal visible, que también abre la evidencia al hacer clic.</div>
+
+<div class="menu" id="menu">
+  <button id="mEv">📄 Ver evidencia</button>
+  <button class="off">✏️ Editar nodo</button>
+  <button class="off">🔗 Conectar desde aquí</button>
+  <hr><button class="off">🗑 Quitar</button>
+</div>
+
+<div class="ev" id="ev">
+  <header><span id="evT">Evidencia</span><button id="evX" aria-label="Cerrar">×</button></header>
+  <div class="body"><span class="tag" id="evTag"></span><div id="evQ"></div><div class="src" id="evS"></div></div>
+  <div class="foot"><button>Ir a la nota</button><button>Copiar cita</button></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id),menu=$('menu'),ev=$('ev');let cur=null;
+const label={cita:'Cita textual',parcial:'Dato parcial',inf:'Inferencia'};
+function place(el,x,y){el.style.display='block';const w=el.offsetWidth,h=el.offsetHeight;
+  el.style.left=Math.min(x,innerWidth-w-8)+'px';el.style.top=Math.min(y,innerHeight-h-8)+'px'}
+function hide(){menu.style.display='none';ev.style.display='none';document.querySelectorAll('.sel').forEach(n=>n.classList.remove('sel'))}
+function openEv(n,x,y){menu.style.display='none';cur=n;n.classList.add('sel');
+  $('evT').textContent=n.querySelector('b').textContent;
+  const t=$('evTag');t.textContent=label[n.dataset.t];t.className='tag '+(n.dataset.t==='cita'?'':n.dataset.t);
+  $('evQ').innerHTML=n.dataset.q?'<blockquote>“'+n.dataset.q+'”</blockquote>':'<span style="color:#777">Este nodo no tiene frase de origen en la nota.</span>';
+  $('evS').textContent=n.dataset.f;place(ev,x,y)}
+document.querySelectorAll('.node').forEach(n=>{
+  n.addEventListener('contextmenu',e=>{e.preventDefault();hide();cur=n;n.classList.add('sel');place(menu,e.clientX,e.clientY)});
+  n.querySelector('.dot').addEventListener('click',e=>{e.stopPropagation();hide();const r=n.getBoundingClientRect();openEv(n,r.right+8,r.top)});
+  n.addEventListener('keydown',e=>{if(e.key==='Enter'){const r=n.getBoundingClientRect();openEv(n,r.right+8,r.top)}});
+});
+/* pulsación larga en táctil: abre la evidencia directo */
+document.querySelectorAll('.node').forEach(n=>{
+  let t,x0,y0;
+  n.style.webkitTouchCallout='none';
+  n.addEventListener('touchstart',e=>{const p=e.touches[0];x0=p.clientX;y0=p.clientY;
+    t=setTimeout(()=>{hide();if(navigator.vibrate)navigator.vibrate(15);const r=n.getBoundingClientRect();openEv(n,Math.max(8,r.left),r.bottom+6)},500)},{passive:true});
+  n.addEventListener('touchmove',e=>{const p=e.touches[0];if(Math.hypot(p.clientX-x0,p.clientY-y0)>10)clearTimeout(t)},{passive:true});
+  ['touchend','touchcancel'].forEach(k=>n.addEventListener(k,()=>clearTimeout(t)));
+  n.addEventListener('contextmenu',e=>{if(e.pointerType==='touch'||'ontouchstart' in window){e.stopImmediatePropagation();e.preventDefault()}},true);
+});
+$('mEv').onclick=()=>{const r=menu.getBoundingClientRect();openEv(cur,r.left,r.top)};
+$('evX').onclick=hide;
+document.addEventListener('click',e=>{if(!e.target.closest('.menu,.ev,.dot'))hide()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hide()});
+</script></body></html>

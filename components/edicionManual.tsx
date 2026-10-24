@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode } from "react";
+import { Plus } from "lucide-react";
 
 /**
  * Edición manual del informe.
@@ -212,9 +213,12 @@ export function TextoEditable({
 export function BotonAgregar({
   onAgregar,
   etiqueta,
+  claseBoton,
 }: {
   onAgregar: (texto: string) => void;
   etiqueta: string;
+  /** Sustituye el estilo del botón cerrado (el raíl usa uno de ancho completo). */
+  claseBoton?: string;
 }) {
   const edicion = useEdicion();
   const [abierto, setAbierto] = useState(false);
@@ -235,9 +239,9 @@ export function BotonAgregar({
       <button
         type="button"
         onClick={() => setAbierto(true)}
-        className={`${CLASE_BOTON_SUTIL} mt-3 print:hidden`}
+        className={claseBoton ?? `${CLASE_BOTON_SUTIL} mt-3 print:hidden`}
       >
-        + Agregar {etiqueta}
+        {claseBoton ? <Plus className="h-4 w-4" aria-hidden="true" /> : "+ "}Agregar {etiqueta}
       </button>
     );
   }

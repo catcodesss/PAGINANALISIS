@@ -11,7 +11,6 @@ import {
   Leaf,
   Menu,
   Settings,
-  X,
 } from "lucide-react";
 
 /** Vistas que hoy existen de verdad. El resto de ítems son mapa del producto. */
@@ -40,97 +39,69 @@ interface SidebarProps {
 }
 
 /**
- * Navegación principal, en dos formas según el ancho.
- *
- * En escritorio es una columna fija. En móvil era, sencillamente, invisible:
- * estaba `hidden` por debajo de `lg`, así que desde el teléfono no había manera
- * de llegar a la guía ni a los ajustes. Ahora es un cajón que se abre con el
- * botón de hamburguesa.
+ * Navegación principal: siempre a la izquierda. Desplegada muestra el menú
+ * completo; plegada deja solo el logo y el botón de hamburguesa para volver
+ * a desplegarla.
  *
  * Los ítems sin `vista` son de próxima disponibilidad: se muestran para
  * comunicar el mapa del producto, pero no navegan a ninguna parte.
  */
 export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
-  const [abierto, setAbierto] = useState(false);
+  // Expandida por defecto; en pantallas estrechas arranca plegada para no
+  // tapar el contenido. La preferencia del usuario se recuerda.
+  const [abierto, setAbierto] = useState(true);
 
-  // Con el cajón abierto, el fondo no debe desplazarse detrás.
   useEffect(() => {
-    if (!abierto) return;
-    const previo = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previo;
-    };
-  }, [abierto]);
+    try {
+      const guardado = localStorage.getItem("acia-menu-abierto");
+      if (guardado !== null) setAbierto(guardado === "1");
+      else if (window.innerWidth < 1024) setAbierto(false);
+    } catch {
+      if (window.innerWidth < 1024) setAbierto(false);
+    }
+  }, []);
 
-  // Escape cierra: es lo que espera cualquiera que abra una capa encima.
-  useEffect(() => {
-    if (!abierto) return;
-    const alPulsar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setAbierto(false);
-    };
-    document.addEventListener("keydown", alPulsar);
-    return () => document.removeEventListener("keydown", alPulsar);
-  }, [abierto]);
+  function alternar() {
+    setAbierto((v) => {
+      try {
+        localStorage.setItem("acia-menu-abierto", v ? "0" : "1");
+      } catch {}
+      return !v;
+    });
+  }
 
   function navegar(destino?: Vista, nuevo?: boolean) {
     if (!destino) return;
     onCambiarVista(destino, nuevo);
-    setAbierto(false);
   }
 
+  const botonMenu = (
+    <button
+      type="button"
+      onClick={alternar}
+      aria-label={abierto ? "Plegar el menú" : "Desplegar el menú"}
+      aria-expanded={abierto}
+      aria-controls="menu-lateral"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+    >
+      <Menu className="h-5 w-5" aria-hidden="true" />
+    </button>
+  );
+
   return (
-    <>
-      {/* Barra superior del móvil: el único punto de entrada al menú por debajo
-          de lg, así que va fija para no perderse al desplazar el informe. */}
-      <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-divider bg-sidebar px-4 py-3 text-white lg:hidden print:hidden">
-        <button
-          type="button"
-          onClick={() => setAbierto(true)}
-          aria-label="Abrir el menú"
-          aria-expanded={abierto}
-          aria-controls="menu-lateral"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-        >
-          <Menu className="h-5 w-5" aria-hidden="true" />
-        </button>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/logo-acia-blanco.svg"
-          alt=""
-          aria-hidden="true"
-          className="h-8 w-auto shrink-0"
-        />
-        <p className="font-serif text-base font-semibold leading-none">ACIA</p>
-      </div>
-
-      {abierto && (
-        <div
-          onClick={() => setAbierto(false)}
-          aria-hidden="true"
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-        />
-      )}
-
-      <aside
-        id="menu-lateral"
-        className={`z-50 w-72 shrink-0 flex-col bg-sidebar px-5 py-7 text-white print:hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start lg:overflow-y-auto ${
-          abierto
-            ? "fixed inset-y-0 left-0 flex overflow-y-auto"
-            : "hidden"
-        }`}
-      >
+    <aside
+      id="menu-lateral"
+      className={`sticky top-0 z-30 flex h-screen shrink-0 flex-col self-start overflow-x-hidden overflow-y-auto bg-sidebar py-7 text-white transition-[width] duration-200 print:hidden ${
+        abierto ? "w-72 px-5" : "w-[4.5rem] items-center px-3"
+      }`}
+    >
+      {abierto ? (
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={() => navegar("analisis")}
             className="flex min-w-0 items-center gap-3 rounded-lg px-2 text-left transition-opacity hover:opacity-90"
           >
-            {/* Sin recuadro: la marca en blanco va directa sobre el verde de la
-                barra, que es lo que le da presencia. Variante blanca aparte porque
-                el brillo de la lente va recortado, no pintado — ver MARCA.md.
-                <img> en vez de next/image: es un SVG estático, no hay que
-                optimizar nada y así no arrastra el runtime del componente. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/images/logo-acia-blanco.svg"
@@ -149,77 +120,91 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
               </p>
             </div>
           </button>
-
+          {botonMenu}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-4">
           <button
             type="button"
-            onClick={() => setAbierto(false)}
-            aria-label="Cerrar el menú"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/10 lg:hidden"
+            onClick={() => navegar("analisis")}
+            aria-label="ACIA, ir al inicio"
+            className="rounded-lg transition-opacity hover:opacity-90"
           >
-            <X className="h-5 w-5" aria-hidden="true" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/logo-acia-blanco.svg"
+              alt=""
+              aria-hidden="true"
+              className="h-10 w-auto shrink-0"
+            />
           </button>
+          {botonMenu}
         </div>
+      )}
 
-        <nav aria-label="Navegación principal" className="mt-8 flex flex-1 flex-col gap-1">
-          {ITEMS_NAV.map(({ icono: Icono, etiqueta, vista: destino, nuevo }) => {
-            const activo = destino !== undefined && destino === vista && !nuevo;
-            return (
-              <button
-                key={etiqueta}
-                type="button"
-                onClick={() => navegar(destino, nuevo)}
-                aria-current={activo ? "page" : undefined}
-                title={destino ? undefined : "Próximamente"}
-                className={`flex items-center gap-3.5 rounded-xl px-4 py-3 text-left text-[15px] transition-colors ${
-                  activo
-                    ? "bg-white/12 font-medium text-white shadow-sm"
-                    : "text-white/70 hover:bg-white/5 hover:text-white/90"
-                }`}
-              >
-                <Icono className="h-5 w-5 shrink-0" aria-hidden="true" />
-                {etiqueta}
-              </button>
-            );
-          })}
+      {abierto && (
+        <>
+          <nav aria-label="Navegación principal" className="mt-8 flex flex-1 flex-col gap-1">
+            {ITEMS_NAV.map(({ icono: Icono, etiqueta, vista: destino, nuevo }) => {
+              const activo = destino !== undefined && destino === vista && !nuevo;
+              return (
+                <button
+                  key={etiqueta}
+                  type="button"
+                  onClick={() => navegar(destino, nuevo)}
+                  aria-current={activo ? "page" : undefined}
+                  title={destino ? undefined : "Próximamente"}
+                  className={`flex items-center gap-3.5 rounded-xl px-4 py-3 text-left text-[15px] transition-colors ${
+                    activo
+                      ? "bg-white/12 font-medium text-white shadow-sm"
+                      : "text-white/70 hover:bg-white/5 hover:text-white/90"
+                  }`}
+                >
+                  <Icono className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  {etiqueta}
+                </button>
+              );
+            })}
 
-          {/*
-            PROVISIONAL — enlace a la página de ejemplo. Existe para poder
-            revisar el formato del informe desde el móvil sin gastar una llamada
-            al modelo. Va aparte de ITEMS_NAV y no en la lista porque no es una
-            función del producto: cuando deje de hacer falta, se borra este
-            bloque y la carpeta app/maqueta y no queda rastro.
-          */}
-          <Link
-            href="/maqueta"
-            className="mt-2 flex items-center gap-3 rounded-lg border border-dashed border-white/25 px-3 py-2.5 text-left text-sm text-white/65 transition-colors hover:bg-white/5 hover:text-white/90"
-          >
-            <Eye className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
-            <span className="min-w-0">
-              Ver informe de ejemplo
-              <span className="block text-xs text-white/45">
-                Sin gastar análisis
+            {/*
+              PROVISIONAL — enlace a la página de ejemplo. Existe para poder
+              revisar el formato del informe desde el móvil sin gastar una llamada
+              al modelo. Va aparte de ITEMS_NAV y no en la lista porque no es una
+              función del producto: cuando deje de hacer falta, se borra este
+              bloque y la carpeta app/maqueta y no queda rastro.
+            */}
+            <Link
+              href="/maqueta"
+              className="mt-2 flex items-center gap-3 rounded-lg border border-dashed border-white/25 px-3 py-2.5 text-left text-sm text-white/65 transition-colors hover:bg-white/5 hover:text-white/90"
+            >
+              <Eye className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+              <span className="min-w-0">
+                Ver informe de ejemplo
+                <span className="block text-xs text-white/45">
+                  Sin gastar análisis
+                </span>
               </span>
-            </span>
-          </Link>
-        </nav>
+            </Link>
+          </nav>
 
-        <div className="relative mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] p-5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-dorado">
-            <Heart className="h-[18px] w-[18px] text-white" aria-hidden="true" />
-          </span>
-          <p className="relative mt-4 max-w-[11rem] font-serif text-base font-semibold leading-snug">
-            Tu trabajo tiene impacto cada día
-          </p>
-          <p className="relative mt-2 max-w-[10rem] text-xs leading-relaxed text-white/65">
-            Gracias por acompañar procesos de cambio.
-          </p>
-          <Leaf
-            className="pointer-events-none absolute -bottom-3 -right-3 h-24 w-24 -rotate-12 text-white/[0.08]"
-            strokeWidth={1.25}
-            aria-hidden="true"
-          />
-        </div>
-      </aside>
-    </>
+          <div className="relative mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] p-5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-dorado">
+              <Heart className="h-[18px] w-[18px] text-white" aria-hidden="true" />
+            </span>
+            <p className="relative mt-4 max-w-[11rem] font-serif text-base font-semibold leading-snug">
+              Tu trabajo tiene impacto cada día
+            </p>
+            <p className="relative mt-2 max-w-[10rem] text-xs leading-relaxed text-white/65">
+              Gracias por acompañar procesos de cambio.
+            </p>
+            <Leaf
+              className="pointer-events-none absolute -bottom-3 -right-3 h-24 w-24 -rotate-12 text-white/[0.08]"
+              strokeWidth={1.25}
+              aria-hidden="true"
+            />
+          </div>
+        </>
+      )}
+    </aside>
   );
 }

@@ -25,7 +25,7 @@ import {
   ConflictoDeRevision,
   type AlmacenRemoto,
   type ParteRemota,
-  type ReclamarRanura,
+  type ServicioRanuras,
 } from "./nube/almacen";
 
 /**
@@ -56,8 +56,16 @@ async function sha256Hex(texto: string): Promise<string> {
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-const sinRanuras: ReclamarRanura = async () => {
-  throw new Error("Las ranuras de casos todavía no están disponibles en el servidor.");
+const sinRanuras: ServicioRanuras = {
+  reclamar: async () => {
+    throw new Error("Las ranuras de casos no están disponibles.");
+  },
+  archivar: async () => {
+    throw new Error("Las ranuras de casos no están disponibles.");
+  },
+  reactivar: async () => {
+    throw new Error("Las ranuras de casos no están disponibles.");
+  },
 };
 
 export class RepositorioNube implements Repositorio {
@@ -70,7 +78,7 @@ export class RepositorioNube implements Repositorio {
 
   constructor(
     private readonly almacen: () => AlmacenRemoto,
-    private readonly reclamarRanura: ReclamarRanura = sinRanuras
+    private readonly ranuras: ServicioRanuras = sinRanuras
   ) {}
 
   // --- cuenta y bóveda -------------------------------------------------
@@ -187,7 +195,7 @@ export class RepositorioNube implements Repositorio {
     const uid = this.exigirUid();
     const casoUid = expediente.caso.id;
     if (!this.claves.has(casoUid) && !(await this.almacen().leerCabecera(uid, casoUid))) {
-      await this.reclamarRanura(casoUid);
+      await this.ranuras.reclamar(casoUid);
       const { envuelta, cc } = await crearClaveCaso(this.exigirCmd(), uid, casoUid);
       this.vista(casoUid).revCabecera = await this.almacen().guardarCabecera(uid, casoUid, 0, envuelta);
       this.claves.set(casoUid, { cc, envuelta });
@@ -198,9 +206,28 @@ export class RepositorioNube implements Repositorio {
   async actualizarCaso(expediente: Expediente): Promise<void> {
     const casoUid = expediente.caso.id;
     if (!this.vistas.has(casoUid)) await this.obtenerCaso(casoUid);
-    const motivo = comprobarCambioExpediente(this.expedienteVisto(casoUid), expediente);
+    const previo = this.expedienteVisto(casoUid);
+    const motivo = comprobarCambioExpediente(previo, expediente);
     if (motivo) throw new Error(motivo);
-    await this.escribirCaso(expediente);
+
+    /*
+      Archivar y reactivar tocan la ranura del servidor. El orden importa porque
+      las reglas solo dejan escribir en casos con ranura ACTIVA:
+       - archivar: primero se guarda el cambio, después se libera la ranura;
+       - reactivar: primero se ocupa la ranura (falla si no hay hueco), después se guarda.
+      «En pausa» sigue ocupando ranura, así que no pasa por el servidor.
+    */
+    const antes = previo?.caso.fase;
+    const despues = expediente.caso.fase;
+    if (antes === "archivado" && despues !== "archivado") {
+      await this.ranuras.reactivar(casoUid);
+      await this.escribirCaso(expediente);
+    } else if (antes !== "archivado" && despues === "archivado") {
+      await this.escribirCaso(expediente);
+      await this.ranuras.archivar(casoUid);
+    } else {
+      await this.escribirCaso(expediente);
+    }
   }
 
   private expedienteVisto(casoUid: string): Expediente | null {

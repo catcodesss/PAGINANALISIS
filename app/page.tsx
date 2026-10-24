@@ -603,7 +603,7 @@ export default function Home() {
     estado === "cargando" || estado === "detectando" || estado === "preguntando";
 
   return (
-    <div className="min-h-screen bg-canvas lg:flex print:block">
+    <div className="flex min-h-screen bg-canvas print:block">
       <Sidebar vista={vista} onCambiarVista={cambiarVista} />
 
       <div className="min-w-0 flex-1">

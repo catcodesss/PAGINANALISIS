@@ -51,12 +51,11 @@ let k = 0;
 const id = () => `id_${++k}`;
 
 function dispositivo(almacen, uid, ranuras) {
-  const r = new RepositorioNube(
-    () => almacen,
-    async (casoUid) => {
-      if (ranuras) ranuras.add(casoUid);
-    }
-  );
+  const r = new RepositorioNube(() => almacen, {
+    reclamar: async (c) => void ranuras?.add(c),
+    archivar: async (c) => void ranuras?.delete(c),
+    reactivar: async (c) => void ranuras?.add(c),
+  });
   return r.asociarCuenta(uid).then(() => r);
 }
 async function cuentaNueva(ranuras = new Set()) {
@@ -154,6 +153,39 @@ await prueba("parte manipulada en el servidor: no se abre y el resto sigue", asy
   await r.desbloquear(FRASE);
   const abierto = await r.obtenerCaso(exp.caso.id);
   assert.equal(abierto.sesiones.length, 1, "la parte rota no se inventa");
+});
+await prueba("archivar guarda antes de liberar la ranura; reactivar ocupa antes de guardar", async () => {
+  const { almacen, r, ranuras } = await cuentaNueva();
+  const exp = casoConSesion();
+  await r.crearCaso(exp);
+  const archivado = { ...exp, caso: { ...exp.caso, fase: "archivado", actualizado: "2026-10-02T00:00:00.000Z" } };
+  await r.actualizarCaso(archivado);
+  assert.equal(ranuras.has(exp.caso.id), false);
+  // archivado: se puede leer y exportar, pero no escribir
+  assert.equal((await r.obtenerCaso(exp.caso.id)).caso.fase, "archivado");
+  assert.ok((await (await r.exportarRespaldo()).text()).includes(exp.caso.id));
+  await assert.rejects(() => almacen.guardarParte("uid-A", exp.caso.id, 99, { parte_id: "x", tipo: "sesion", sobre: {}, hash_ct: "" }), /PERMISSION_DENIED|Conflicto|cambió/);
+  const activo = { ...archivado, caso: { ...archivado.caso, fase: "activo", actualizado: "2026-10-03T00:00:00.000Z" } };
+  await r.actualizarCaso(activo);
+  assert.equal(ranuras.has(exp.caso.id), true);
+});
+await prueba("reactivar sin hueco falla y no guarda nada", async () => {
+  const { almacen, r } = await cuentaNueva();
+  const exp = casoConSesion();
+  await r.crearCaso(exp);
+  await r.actualizarCaso({ ...exp, caso: { ...exp.caso, fase: "archivado", actualizado: "2026-10-02T00:00:00.000Z" } });
+  const sinHueco = new RepositorioNube(() => almacen, {
+    reclamar: async () => {}, archivar: async () => {},
+    reactivar: async () => { throw new Error("Tu plan permite 2 casos activos."); },
+  });
+  await sinHueco.asociarCuenta("uid-A");
+  await sinHueco.desbloquear(FRASE);
+  const vista = await sinHueco.obtenerCaso(exp.caso.id);
+  await assert.rejects(
+    () => sinHueco.actualizarCaso({ ...vista, caso: { ...vista.caso, fase: "activo", actualizado: "2026-10-04T00:00:00.000Z" } }),
+    /plan permite/
+  );
+  assert.equal((await r.obtenerCaso(exp.caso.id)).caso.fase, "archivado");
 });
 await prueba("eliminar no está permitido desde el cliente", async () => {
   const { r } = await cuentaNueva();

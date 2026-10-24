@@ -20,6 +20,7 @@ import {
 } from "./cifrado";
 import { RepositorioNube } from "./repositorioNube";
 import { almacenFirestore } from "./nube/almacenFirestore";
+import { ranurasDelServidor } from "./nube/ranurasCliente";
 import { firestore, nubeActivada } from "./firebaseCliente";
 
 /**
@@ -523,7 +524,7 @@ class RepositorioLocal implements Repositorio {
 
 /** Local cifrado (por defecto) o nube cifrada de extremo a extremo (NEXT_PUBLIC_ACIA_NUBE=1). */
 export const repositorio: Repositorio = nubeActivada()
-  ? new RepositorioNube(() => almacenFirestore(firestore()))
+  ? new RepositorioNube(() => almacenFirestore(firestore()), ranurasDelServidor)
   : new RepositorioLocal();
 
 /** Solo con la nube activa; la interfaz de la bóveda la usa para mostrar la clave de recuperación. */

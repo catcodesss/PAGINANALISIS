@@ -21,7 +21,10 @@ import {
   Activity,
   BookOpen,
   GitBranch,
+  ChevronDown,
+  ChevronRight,
   Hourglass,
+  Leaf,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -39,7 +42,7 @@ import { etiquetaApoyo } from "../grafo/etiquetasNodo";
 import { ListaEditable } from "../informe/primitivas";
 import { SelloNoModificable } from "../informe/mantenimiento";
 import { useAccionesSeccion } from "../informe/seccion";
-import { BotonAgregar, TextoEditable } from "../edicionManual";
+import { BotonAgregar, TextoEditable, useEdicion } from "../edicionManual";
 import type { EditarSeccion } from "../informe/PreguntasClinicas";
 import s from "../grafo/afc.module.css";
 import { useEspacio } from "./contexto";
@@ -66,7 +69,7 @@ export default function Rail({
 
   const ancho = apilado
     ? "w-full"
-    : abierto === null ? "w-14 min-[1440px]:w-60" : abierto ? "w-60" : "w-14";
+    : abierto === null ? "w-14 min-[1440px]:w-[19rem]" : abierto ? "w-[19rem]" : "w-14";
   // Las etiquetas se esconden cuando el raíl está plegado a iconos.
   const texto = apilado
     ? "block"
@@ -88,18 +91,19 @@ export default function Rail({
       aria-label="Raíl del caso"
       className={`${ancho} flex shrink-0 flex-col bg-canvas transition-[width] duration-150 print:hidden ${apilado ? "" : "h-full border-r border-divider"}`}
     >
-      <div className={`${apilado ? "hidden" : "flex"} justify-end p-1.5`}>
+      <div className={`${apilado ? "hidden" : "flex"} h-[52px] shrink-0 items-center justify-between gap-2 border-b border-divider px-3`}>
+        <span className={`${texto} truncate font-mono text-[11px] uppercase tracking-[2px] text-ink-muted`}>Índice del caso</span>
         <button
           type="button"
           onClick={() => setAbierto((v) => !(v ?? false))}
           aria-label={abierto ? "Plegar el raíl" : "Desplegar el raíl"}
-          className="rounded p-1 text-ink-muted hover:bg-surface hover:text-ink"
+          className="rounded p-1 text-ink-muted hover:bg-surface hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         >
-          {abierto ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+          {abierto ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
         </button>
       </div>
 
-      <div className={`min-h-0 flex-1 space-y-1 overflow-y-auto ${apilado ? "pb-2" : "pb-12"}`}>
+      <div className={`min-h-0 flex-1 overflow-y-auto ${apilado ? "pb-2" : "pb-12"}`}>
         <Grupo id={ancla("conductas-rail")} icono={Activity} titulo="Conductas" contador={analisis.conductas_problema.length} texto={texto}>
           {analisis.conductas_problema.map((c) => {
             const nodo = nodos.find((n) => n.id === c.id);
@@ -146,6 +150,7 @@ export default function Rail({
           ))}
           <div className="px-3">
             <BotonAgregar
+              claseBoton={CLASE_BOTON_AGREGAR}
               etiqueta="pregunta"
               onAgregar={(t) =>
                 onEditarSeccion("verificacion", (c) => {
@@ -160,12 +165,26 @@ export default function Rail({
         </Grupo>
 
         <Grupo id={ancla("formulacion")} icono={Sprout} titulo="Recursos y valores" contador={analisis.fortalezas_y_recursos.length + analisis.valores_y_metas.length} texto={texto} menu={accionesFormulacion.menu} panel={accionesFormulacion.panel} plegadoDeInicio>
-          <Lista titulo="Fortalezas y recursos">
-            <ListaEditable items={analisis.fortalezas_y_recursos} seccionId="formulacion" etiqueta="fortaleza o recurso" claseItem="text-xs leading-relaxed text-ink" onCambiar={(n) => onEditarSeccion("formulacion", (c) => { c.fortalezas_y_recursos = n; })} />
-          </Lista>
-          <Lista titulo="Valores y metas">
-            <ListaEditable items={analisis.valores_y_metas} seccionId="formulacion" etiqueta="valor o meta" claseItem="text-xs leading-relaxed text-ink" onCambiar={(n) => onEditarSeccion("formulacion", (c) => { c.valores_y_metas = n; })} />
-          </Lista>
+          <ListaTarjetas
+            titulo="Fortalezas y recursos"
+            items={analisis.fortalezas_y_recursos}
+            etiqueta="recurso"
+            etiquetaEdicion="fortaleza o recurso"
+            vacio="Aún no se han identificado recursos en este caso."
+            icono={Sprout}
+            onCambiar={(n) => onEditarSeccion("formulacion", (c) => { c.fortalezas_y_recursos = n; })}
+          />
+          <div className="mx-4 border-t border-divider" />
+          <ListaTarjetas
+            titulo="Valores y metas"
+            items={analisis.valores_y_metas}
+            etiqueta="valor o meta"
+            etiquetaEdicion="valor o meta"
+            vacio="Aún no se han identificado valores en este caso."
+            icono={Leaf}
+            anchoCompleto
+            onCambiar={(n) => onEditarSeccion("formulacion", (c) => { c.valores_y_metas = n; })}
+          />
         </Grupo>
 
         <Grupo id={ancla("hipotesis-origen")} icono={ScrollText} titulo="Historia" contador={analisis.hipotesis_origen.length} texto={texto} menu={accionesOrigen.menu} panel={accionesOrigen.panel} plegadoDeInicio>
@@ -220,25 +239,106 @@ function Grupo({
   children: ReactNode;
 }) {
   const [abierto, setAbierto] = useState(!plegadoDeInicio);
+  const Chevron = abierto ? ChevronDown : ChevronRight;
   return (
-    <section id={id} className="scroll-mt-4">
-      <div className="flex items-center gap-1 px-1.5">
+    <section id={id} className="scroll-mt-4 border-b border-divider">
+      <div className={`flex items-center gap-1 pr-2 transition-colors ${abierto ? "bg-accent-soft" : ""}`}>
         <button
           type="button"
           aria-expanded={abierto}
           onClick={() => setAbierto((v) => !v)}
           title={titulo}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1.5 text-left text-xs font-medium text-ink hover:bg-surface"
+          className={`flex min-h-[50px] min-w-0 flex-1 items-center gap-3 px-4 text-left text-sm font-semibold hover:bg-accent-soft focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${abierto ? "text-accent" : "text-ink"}`}
         >
-          <Icono className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
+          <Icono className={`h-5 w-5 shrink-0 ${abierto ? "text-accent" : "text-ink-muted"}`} aria-hidden="true" />
           <span className={`${texto} min-w-0 flex-1 truncate`}>{titulo}</span>
-          {contador !== undefined && <span className={`${texto} font-mono text-[10px] text-ink-muted`}>{contador}</span>}
+          {contador !== undefined && (
+            <span className={`${texto} min-w-[1.75rem] rounded-full px-2 py-0.5 text-center font-mono text-xs font-medium ${abierto ? "bg-accent/15 text-accent" : "bg-divider text-ink-muted"}`}>{contador}</span>
+          )}
+          <Chevron className={`${texto} h-4 w-4 shrink-0 ${abierto ? "text-accent" : "text-ink-muted"}`} aria-hidden="true" />
         </button>
         {menu && <span className={texto}>{menu}</span>}
       </div>
-      {abierto && <div className={`${texto} space-y-0.5 pb-2`}>{children}</div>}
-      {panel && <div className={`${texto} px-3`}>{panel}</div>}
+      {abierto && <div className={`${texto} space-y-4 pb-4 pt-3`}>{children}</div>}
+      {panel && <div className={`${texto} px-4 pb-2`}>{panel}</div>}
     </section>
+  );
+}
+
+const CLASE_BOTON_AGREGAR =
+  "inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-accent bg-transparent px-3 text-[13px] font-medium text-accent transition-colors hover:bg-accent-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent print:hidden";
+
+/** Título breve derivado del texto (sin tocarlo): hasta el primer corte natural, o las primeras palabras. */
+function tituloBreve(texto: string): { titulo: string; resto: string } {
+  const limpio = texto.trim();
+  const corte = limpio.search(/[.:;—–]\s|\s[—–-]\s/);
+  if (corte > 3 && corte <= 48) {
+    const resto = limpio.slice(corte).replace(/^[\s.:;—–-]+/, "");
+    return { titulo: limpio.slice(0, corte), resto };
+  }
+  const palabras = limpio.split(/\s+/);
+  if (palabras.length <= 4) return { titulo: limpio, resto: "" };
+  return { titulo: `${palabras.slice(0, 4).join(" ")}…`, resto: limpio };
+}
+
+function ListaTarjetas({
+  titulo,
+  items,
+  etiqueta,
+  etiquetaEdicion,
+  vacio,
+  icono: Icono,
+  anchoCompleto = false,
+  onCambiar,
+}: {
+  titulo: string;
+  items: string[];
+  etiqueta: string;
+  etiquetaEdicion: string;
+  vacio: string;
+  icono: LucideIcon;
+  anchoCompleto?: boolean;
+  onCambiar: (nuevos: string[]) => void;
+}) {
+  const edicion = useEdicion();
+  return (
+    <div className="px-4">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="font-mono text-[11px] uppercase tracking-[1.5px] text-accent/80">{titulo}</p>
+        <span className="rounded-full bg-divider px-2 py-0.5 font-mono text-[11px] text-ink-muted">{items.length}</span>
+      </div>
+      {items.length === 0 ? (
+        <div className="flex items-center gap-3 rounded-[10px] border border-dashed border-ink-muted/40 bg-surface p-3.5 text-[13px] leading-snug text-ink-muted">
+          <Icono className="h-6 w-6 shrink-0" aria-hidden="true" />
+          <span>{vacio}</span>
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((item, i) => {
+            const { titulo: t, resto } = tituloBreve(item);
+            return (
+              <li key={i} className="flex items-start gap-2 rounded-xl border border-divider border-l-4 border-l-accent bg-surface p-3 shadow-sm">
+                <div className="min-w-0 flex-1">
+                  {edicion ? (
+                    <TextoEditable valor={item} seccionId="formulacion" etiqueta={`${etiquetaEdicion} ${i + 1}`} className="text-xs leading-relaxed text-ink" onCambio={(v) => onCambiar(items.map((a, j) => (j === i ? v : a)))} onBorrar={() => onCambiar(items.filter((_, j) => j !== i))} />
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold leading-snug text-ink" title={item}>{t}</p>
+                      {resto && <p className="mt-0.5 line-clamp-3 text-xs leading-relaxed text-ink-muted" title={item}>{resto}</p>}
+                    </>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <BotonAgregar
+        etiqueta={etiqueta}
+        claseBoton={`${CLASE_BOTON_AGREGAR} mt-3 ${anchoCompleto ? "w-full justify-center" : ""}`}
+        onAgregar={(texto) => onCambiar([...items, texto])}
+      />
+    </div>
   );
 }
 
@@ -256,7 +356,7 @@ function Elemento({
       type="button"
       onClick={onElegir}
       aria-current={activo ? "true" : undefined}
-      className={`block w-full px-3 py-1.5 text-left text-xs leading-snug text-ink transition-colors hover:bg-surface ${activo ? "border-l-2 border-accent bg-surface" : "border-l-2 border-transparent"}`}
+      className={`block w-full px-4 py-2 text-left text-[13px] leading-snug text-ink transition-colors hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${activo ? "border-l-4 border-accent bg-surface font-medium" : "border-l-4 border-transparent"}`}
     >
       {children}
     </button>
@@ -265,8 +365,8 @@ function Elemento({
 
 function Lista({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <div className="px-3">
-      <p className="mb-1 font-mono text-[10px] uppercase tracking-wide text-ink-muted">{titulo}</p>
+    <div className="px-4">
+      <p className="mb-2 font-mono text-[11px] uppercase tracking-[1.5px] text-accent/80">{titulo}</p>
       {children}
     </div>
   );

@@ -9,12 +9,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:ranuras": "firebase emulators:exec --only firestore --project demo-acia \"node evals/ranuras.test.mjs\"",
     "test:nube": "node evals/nube.test.mjs",
     "test:boveda": "node --experimental-strip-types evals/boveda.test.mjs",
     "test:reglas": "firebase emulators:exec --only firestore --project demo-acia \"node evals/reglas.test.mjs\""
   },
   "dependencies": {
     "firebase": "^13.0.0",
+    "firebase-admin": "^14.5.0",
     "hash-wasm": "^4.12.0",
     "lucide-react": "^1.28.0",
     "next": "16.2.10",
