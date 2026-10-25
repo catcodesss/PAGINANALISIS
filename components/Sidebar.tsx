@@ -20,12 +20,12 @@ interface ItemNav {
   icono: typeof FilePenLine;
   etiqueta: string;
   vista?: Vista;
-  /** Abre «Casos» con el formulario de caso nuevo desplegado. */
+  /** Abre «Análisis» con el formulario en blanco para un caso nuevo. */
   nuevo?: boolean;
 }
 
 const ITEMS_NAV: ItemNav[] = [
-  { icono: FilePenLine, etiqueta: "Nuevo caso", vista: "casos", nuevo: true },
+  { icono: FilePenLine, etiqueta: "Nuevo caso", vista: "analisis", nuevo: true },
   { icono: FolderOpen, etiqueta: "Casos", vista: "casos" },
   // «Aprender» reúne la guía de uso y la biblioteca clínica.
   { icono: BookOpenCheck, etiqueta: "Aprender", vista: "guia" },
@@ -34,7 +34,8 @@ const ITEMS_NAV: ItemNav[] = [
 ];
 
 interface SidebarProps {
-  vista: Vista;
+  /** Sin vista activa (p. ej. en la página de ejemplo) ningún ítem se marca. */
+  vista?: Vista;
   onCambiarVista: (vista: Vista, nuevo?: boolean) => void;
 }
 
@@ -146,7 +147,7 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
         <>
           <nav aria-label="Navegación principal" className="mt-8 flex flex-1 flex-col gap-1">
             {ITEMS_NAV.map(({ icono: Icono, etiqueta, vista: destino, nuevo }) => {
-              const activo = destino !== undefined && destino === vista && !nuevo;
+              const activo = destino !== undefined && destino === vista;
               return (
                 <button
                   key={etiqueta}

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import Sidebar from "./Sidebar";
 import ReportView from "./ReportView";
 import FranjaDocumento from "./FranjaDocumento";
 import { AVISO_EJEMPLO } from "@/lib/maqueta";
@@ -46,6 +48,7 @@ export default function VistaEjemplo({
   const [analisis, setAnalisis] = useState(analisisInicial);
   const [referenciaCaso, setReferenciaCaso] = useState("");
   const [copiado, setCopiado] = useState(false);
+  const router = useRouter();
 
   const orden = () => leerOrdenGuardado(ORDEN_BLOQUES_POR_DEFECTO);
 
@@ -87,7 +90,11 @@ export default function VistaEjemplo({
   }
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="flex min-h-screen bg-canvas print:block">
+      <Sidebar
+        onCambiarVista={(v, nuevo) => router.push(nuevo ? "/?vista=nuevo" : `/?vista=${v}`)}
+      />
+      <div className="min-w-0 flex-1">
       <FranjaEjemplo />
 
       {/*
@@ -128,6 +135,7 @@ export default function VistaEjemplo({
           }}
           esEjemplo
         />
+      </div>
       </div>
     </div>
   );

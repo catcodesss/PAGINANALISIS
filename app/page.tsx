@@ -161,12 +161,25 @@ export default function Home() {
   }, [analisis, sesionVista]);
 
   function cambiarVista(v: Vista, nuevo?: boolean) {
+    if (v === "analisis" && nuevo) manejarNuevoAnalisis();
     setVista(v);
     if (v === "casos") {
       setNuevoCaso(Boolean(nuevo));
       setClaveCasos((k) => k + 1);
     }
   }
+
+  // Desde fuera (la página de ejemplo) se llega con `/?vista=casos`.
+  useEffect(() => {
+    const pedida = new URLSearchParams(window.location.search).get("vista");
+    if (pedida === "casos" || pedida === "guia" || pedida === "configuracion") {
+      setVista(pedida);
+    } else if (pedida === "nuevo") {
+      cambiarVista("analisis", true);
+    }
+    if (pedida) window.history.replaceState(null, "", "/");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function abrirExpediente(exp: Expediente) {
     manejarNuevoAnalisis();
