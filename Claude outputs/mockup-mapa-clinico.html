@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACIA — Mapa, nivel Clínico (mockup)</title>
+<!--
+  MOCKUP del Mapa en nivel Clínico, con los cambios propuestos:
+    1. Más ancho para el tablero: el Inspector se pliega (botón «Inspector»).
+    2. Flechas más ligeras: la cadena va con conectores cortos entre eslabones;
+       las relaciones largas solo se dibujan al pasar el ratón o seleccionar.
+    3. Etiquetas más grandes y con más contraste.
+  Cada bloque está marcado con «CAMBIO n» para localizarlo al pasarlo al código.
+  Los tokens de color son los de app/globals.css.
+-->
+<style>
+  :root {
+    --canvas:#f5f0e8; --surface:#fbf8f2; --ink:#1f2a28; --ink-muted:#5f5549;
+    --accent:#0f5a43; --accent-soft:#e3ece4; --sidebar:#123a31; --divider:#e8dfd2;
+    --warn:#8a6d3b; --warn-soft:#f1e8d4; --inferido:#c2683f;
+    /* columnas del ABC */
+    --om:#e6efe9;   --om-ink:#0f5a43;
+    --ant:#f3ead6;  --ant-ink:#7a5c25;
+    --con:#e3efe9;  --con-ink:#0f5a43;
+    --cons:#efe6da; --cons-ink:#6b4f31;
+    --linea:#8a8176;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--canvas); color:var(--ink); font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif; }
+  .app { display:grid; grid-template-columns:200px 1fr; min-height:100vh; }
+  aside.nav { background:var(--sidebar); color:#e8f0ec; padding:20px 14px; }
+  aside.nav h1 { font:600 18px/1 Georgia,serif; letter-spacing:.2em; margin:0 0 4px; }
+  aside.nav small { opacity:.7; font-size:11px; }
+  aside.nav ul { list-style:none; padding:0; margin:28px 0 0; }
+  aside.nav li { padding:9px 10px; border-radius:8px; font-size:14px; opacity:.85; }
+  aside.nav li:hover { background:rgba(255,255,255,.08); }
+  main { padding:20px 28px 60px; min-width:0; }
+  .banner { background:#f3ead6; border:1px solid var(--divider); border-radius:8px; padding:8px 14px; font-size:13px; text-align:center; margin-bottom:16px; }
+  .card { background:var(--surface); border:1px solid var(--divider); border-radius:14px; }
+  .cabecera { display:flex; align-items:center; gap:12px; padding:12px 18px; border-bottom:1px solid var(--divider); flex-wrap:wrap; }
+  .cabecera .ref { flex:1; color:var(--ink-muted); font-size:14px; }
+  .pill { border:1px solid var(--divider); border-radius:999px; padding:3px 12px; font-size:13px; background:#fff; }
+  .tabs { display:flex; gap:22px; padding:0 18px; border-bottom:1px solid var(--divider); }
+  .tabs button { all:unset; cursor:pointer; padding:12px 0; font-size:15px; color:var(--ink-muted); border-bottom:2px solid transparent; }
+  .tabs button.on { color:var(--ink); border-color:var(--accent); font-weight:600; }
+
+  /* CAMBIO 1 — el Inspector se pliega y el tablero ocupa todo el ancho */
+  .cuerpo { display:grid; grid-template-columns:minmax(0,1fr) 320px; transition:grid-template-columns .2s; }
+  .cuerpo.plegado { grid-template-columns:minmax(0,1fr) 0; }
+  .cuerpo.plegado .inspector { display:none; }
+  .lienzo { padding:16px 20px 28px; min-width:0; }
+  .inspector { border-left:1px solid var(--divider); padding:16px 18px; background:var(--surface); font-size:14px; color:var(--ink-muted); }
+  .inspector h3 { margin:0 0 8px; color:var(--ink); font-size:15px; }
+
+  .barra { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; }
+  .seg { display:inline-flex; border:1px solid var(--divider); border-radius:8px; overflow:hidden; background:#fff; }
+  .seg button { all:unset; cursor:pointer; padding:6px 14px; font-size:14px; color:var(--ink-muted); }
+  .seg button.on { background:var(--accent); color:#fff; }
+  .btn { all:unset; cursor:pointer; border:1px solid var(--divider); background:#fff; border-radius:8px; padding:6px 12px; font-size:14px; }
+  .btn.on { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .espacio { flex:1; }
+  .aviso { background:#fff; border:1px solid var(--divider); border-radius:10px; padding:10px 14px; font-size:14px; margin-bottom:14px; }
+  .aviso b { background:var(--warn-soft); color:var(--warn); border-radius:999px; padding:1px 9px; font-size:12px; margin-right:6px; }
+
+  h2.sit { font:600 20px/1.2 Georgia,serif; margin:6px 0 12px; }
+  .tablero { position:relative; display:grid; grid-template-columns:1fr 1.15fr 1.3fr 1.15fr; gap:14px; background:#fff; border:1px solid var(--divider); border-radius:14px; padding:14px; }
+  .col { border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:12px; position:relative; }
+  .col h4 { margin:0 0 2px; font-size:15px; font-weight:600; display:flex; gap:8px; align-items:center; }
+  .col.om { background:var(--om); } .col.om h4 { color:var(--om-ink); }
+  .col.ant { background:var(--ant); } .col.ant h4 { color:var(--ant-ink); }
+  .col.con { background:var(--con); } .col.con h4 { color:var(--con-ink); }
+  .col.cons { background:var(--cons); } .col.cons h4 { color:var(--cons-ink); }
+  .sub { font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-muted); margin:4px 2px -4px; }
+
+  /* CAMBIO 3 — etiquetas más grandes y con más contraste */
+  .nodo { position:relative; background:#fff; border:1px solid #d9cfbf; border-left:4px solid var(--c,#9aa); border-radius:10px; padding:9px 12px 10px; cursor:pointer; transition:box-shadow .15s, opacity .15s; }
+  .nodo:hover { box-shadow:0 2px 10px rgba(31,42,40,.15); }
+  .nodo.sel { outline:2px solid var(--accent); box-shadow:0 2px 12px rgba(15,90,67,.25); }
+  .nodo.tenue { opacity:.45; }
+  .nodo .tipo { font-size:12px; font-weight:600; color:#4a4137; letter-spacing:.02em; display:flex; justify-content:space-between; }
+  .nodo .tipo i { font-style:normal; font-size:11px; background:#eee7da; color:#4a4137; border-radius:4px; padding:0 5px; }
+  .nodo .txt { font-size:15px; font-weight:600; line-height:1.3; margin:3px 0 2px; color:var(--ink); }
+  .nodo .det { font-size:13px; color:#4f463b; }
+  .nodo.encub { --c:#3f7f6b; } .nodo.ec { --c:#b0832f; } .nodo.ed { --c:#b0832f; }
+  .nodo.cond { --c:var(--accent); } .nodo.om { --c:#6aa38c; } .nodo.cs { --c:#8a6b47; }
+  .rev { display:inline-block; margin-top:4px; background:var(--warn-soft); color:var(--warn); border-radius:999px; font-size:12px; padding:1px 9px; font-weight:600; }
+
+  /* CAMBIO 2 — la cadena interna: conectores cortos y finos entre eslabones,
+     sin curvas que crucen tarjetas */
+  .cadena { display:flex; flex-direction:column; }
+  .cadena .nodo + .nodo { margin-top:22px; }
+  .cadena .nodo + .nodo::before { content:""; position:absolute; left:50%; top:-22px; height:22px; border-left:1.5px solid var(--linea); }
+  .cadena .nodo + .nodo::after { content:""; position:absolute; left:calc(50% - 4px); top:-7px; border:4px solid transparent; border-top:6px solid var(--linea); border-bottom:0; }
+
+  /* Relaciones largas: SVG finas y tenues; solo salen al enfocar un nodo */
+  svg.rel { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
+  svg.rel path { fill:none; stroke:var(--accent); stroke-width:1.6; opacity:0; transition:opacity .15s; }
+  svg.rel path.base { opacity:.18; stroke:var(--linea); stroke-width:1.2; stroke-dasharray:4 4; }
+  svg.rel path.on { opacity:.9; stroke-dasharray:none; }
+  .verflechas { font-size:13px; color:var(--ink-muted); display:flex; align-items:center; gap:6px; }
+
+  /* CAMBIO 4 — relaciones lejanas: en vez de una línea que cruza la pantalla,
+     un chip en cada extremo que nombra al otro nodo y lleva hasta él al hacer clic */
+  .alt { grid-column:1/-1; border:1px solid var(--divider); border-radius:12px; padding:10px 12px; background:var(--surface); margin-top:6px; }
+  .alt h4 { margin:0 0 8px; font-size:15px; color:var(--con-ink); }
+  .alt-fila { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .nodo.alt1 { --c:#6aa38c; border-style:dashed; }
+  .enlace { all:unset; cursor:pointer; display:inline-flex; align-items:center; gap:6px; margin-top:8px; max-width:100%; font-size:12.5px; font-weight:600; color:var(--accent); background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 35%,transparent); border-radius:999px; padding:2px 10px; }
+  .enlace:hover { background:var(--accent); color:#fff; }
+  .enlace span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nodo.destino { animation:pulso 1.2s ease-out 2; }
+  @keyframes pulso { 0%{box-shadow:0 0 0 0 rgba(15,90,67,.5);} 100%{box-shadow:0 0 0 14px rgba(15,90,67,0);} }
+  .pie { margin-top:10px; font-size:13px; color:var(--ink-muted); display:flex; gap:16px; flex-wrap:wrap; }
+  .pie span::before { content:""; display:inline-block; width:18px; border-top:2px solid var(--c); margin-right:6px; vertical-align:middle; }
+  @media (max-width:1100px){ .tablero{grid-template-columns:repeat(2,1fr);} .cuerpo{grid-template-columns:1fr;} .inspector{border-left:0;border-top:1px solid var(--divider);} svg.rel{display:none;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="nav">
+    <h1>ACIA</h1><small>Análisis de Conducta asistido por IA</small>
+    <ul><li>Nuevo caso</li><li>Casos</li><li>Aprender</li><li>Cuenta</li></ul>
+  </aside>
+  <main>
+    <div class="banner"><b>INFORME DE EJEMPLO</b> · generado a partir de un caso ficticio. No es el análisis de ninguna nota real.</div>
+    <div class="card">
+      <div class="cabecera">
+        <span class="ref">Caso de ejemplo — sin fecha de sesión · maqueta</span>
+        <span class="pill">Riesgo no evaluado</span><span class="pill">▲ 4 ◆ 16</span><span class="pill">Exportar ▾</span>
+      </div>
+      <div class="tabs"><button class="on">Mapa</button><button>Blancos</button></div>
+
+      <div class="cuerpo" id="cuerpo">
+        <div class="lienzo">
+          <div class="barra">
+            <div class="seg" id="nivel"><button data-n="situacion">Situación</button><button data-n="clinico" class="on">Clínico</button></div>
+            <button class="btn">Grado de apoyo ⓘ</button>
+            <button class="btn">Leer como texto</button>
+            <span class="espacio"></span>
+            <!-- CAMBIO 1: botón que pliega el Inspector -->
+            <button class="btn on" id="btnInsp">Inspector</button>
+          </div>
+          <div class="barra">
+            <span class="sub" style="margin:0">Capas</span>
+            <button class="btn on">Plan 2</button><button class="btn">Huecos 9</button><button class="btn" id="btnDbt">DBT 4</button>
+            <span class="espacio"></span>
+            <label class="verflechas"><input type="checkbox" id="chkFlechas"> Mostrar todas las relaciones</label>
+          </div>
+          <div class="aviso"><b>Conviene revisar</b> Depende de información que el informe declara faltante: «Reacciones de la supervisora ante los errores cometidos».</div>
+
+          <h2 class="sit">Reuniones de equipo</h2>
+          <div class="tablero" id="tablero">
+            <svg class="rel" id="rel"></svg>
+
+            <div class="col om">
+              <h4>◎ Operador motivador</h4>
+              <div class="nodo om" id="n-om" data-rel="n-ed"><div class="tipo">Operador motivador <i>IA</i></div><div class="txt">OE de malestar condicionado por evaluación social.</div></div>
+            </div>
+
+            <div class="col ant">
+              <h4>▥ Antecedente</h4>
+              <div class="nodo ed" id="n-ed" data-rel="n-c1"><div class="tipo">Señal ED <i>IA</i></div><div class="txt">Supervisora pide exponer resultados.</div></div>
+              <!-- Respondiente: el EC con su RC -->
+              <div class="sub">Respondiente · EC → RC</div>
+              <div class="nodo ec" id="n-ec" data-rel="n-c1"><div class="tipo">Estímulo condicionado <i>IA</i></div><div class="txt">Contexto de exposición social evaluativa.</div><div class="det">RC: taquicardia y sudoración.</div></div>
+            </div>
+
+            <div class="col con">
+              <h4>▷ Conducta</h4>
+              <div class="sub">Cadena interna (DBT)</div>
+              <div class="cadena">
+                <div class="nodo encub" id="n-c1" data-rel="n-k1"><div class="tipo">Sensación <i>IA</i></div><div class="txt">Taquicardia y sudoración.</div><span class="rev">Revisar antes de usar</span></div>
+                <div class="nodo encub" id="n-c2"><div class="tipo">Pensamiento <i>IA</i></div><div class="txt">Voy a quedarme en blanco.</div></div>
+                <div class="nodo encub" id="n-c3"><div class="tipo">Impulso <i>IA</i></div><div class="txt">Ir al baño.</div></div>
+                <div class="nodo cond" id="n-c4"><div class="tipo">Acción <i>IA</i></div><div class="txt">Pide ir al baño y evita exponer.</div></div>
+                <div class="nodo cond" id="n-c5" data-rel="n-k1,n-k2"><div class="tipo">Conducta problema <i>IA</i></div><div class="txt">Evita exponer resultados.</div><div class="det">Esquema intermitente · inmediata</div></div>
+              </div>
+            </div>
+
+            <div class="col cons">
+              <h4>▮ Consecuencias</h4>
+              <div class="sub">Inmediata</div>
+              <div class="nodo cs" id="n-k1"><div class="tipo">Consecuencia <i>IA</i></div><div class="txt">Alivio inmediato por evitar exposición.</div></div>
+              <div class="sub">Demorada</div>
+              <div class="nodo cs" id="n-k2"><div class="tipo">Consecuencia <i>IA</i></div><div class="txt">Erosión de la confianza en sus habilidades.</div></div>
+            </div>
+            <!-- CAMBIO 4 — panel lejano: su relación con «Consecuencia inmediata» no se dibuja,
+                 se resuelve con enlaces (chips) en ambos extremos -->
+            <div class="alt">
+              <h4>⇄ Conducta alternativa</h4>
+              <div class="alt-fila">
+                <div class="nodo alt1" id="n-alt" data-rel="n-nec"><div class="tipo">Conducta alternativa <i>IA</i></div><div class="txt">Exponer resultados usando técnicas de respiración.</div></div>
+                <div class="nodo cs" id="n-nec" data-rel="n-k1"><div class="tipo">Consecuencia necesaria <i>IA</i></div><div class="txt">Refuerzo positivo de la supervisora y compañeros.</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="pie">
+            <span style="--c:#0f5a43">Cita textual</span><span style="--c:#b0832f">Dato parcial</span><span style="--c:#9a9186">Inferencia</span>
+          </div>
+        </div>
+
+        <aside class="inspector">
+          <h3 id="inspTitulo">Detalle</h3>
+          <div id="inspTexto">Selecciona un elemento del Mapa. Al hacerlo, sus relaciones se dibujan sobre el tablero.</div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  const tablero = $('#tablero'), svg = $('#rel'), cuerpo = $('#cuerpo');
+  const nodos = [...document.querySelectorAll('.nodo')];
+  const relaciones = []; // [desde, hasta]
+  nodos.forEach(n => (n.dataset.rel || '').split(',').filter(Boolean).forEach(h => relaciones.push([n.id, h])));
+  let seleccionado = null, verTodas = false;
+
+  function centro(el, lado) {
+    const t = tablero.getBoundingClientRect(), r = el.getBoundingClientRect();
+    return { x: (lado === 'der' ? r.right : r.left) - t.left, y: r.top + r.height / 2 - t.top };
+  }
+  // CAMBIO 2: curvas finas; base muy tenue, resaltada solo la del nodo enfocado
+  function dibujar() {
+    svg.innerHTML = '';
+    relaciones.forEach(([a, b]) => {
+      // CAMBIO 4: si los nodos están lejos (otro panel o mucha distancia vertical),
+      // no se dibuja la línea; ya hay un chip en cada extremo.
+      if (esLejana(a, b)) return;
+      const A = centro($('#' + a), 'der'), B = centro($('#' + b), 'izq');
+      const inv = B.x < A.x; // relación que va hacia atrás (p. ej. ED → conducta cruza columnas)
+      const A2 = inv ? centro($('#' + a), 'izq') : A, B2 = inv ? centro($('#' + b), 'der') : B;
+      const dx = Math.max(40, Math.abs(B2.x - A2.x) / 2) * (inv ? -1 : 1);
+      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', `M${A2.x},${A2.y} C${A2.x + dx},${A2.y} ${B2.x - dx},${B2.y} ${B2.x},${B2.y}`);
+      const activa = seleccionado && (a === seleccionado || b === seleccionado);
+      p.setAttribute('class', activa ? 'on' : (verTodas ? 'base on' : ''));
+      if (!activa && !verTodas) p.style.opacity = 0;
+      svg.appendChild(p);
+    });
+  }
+  const UMBRAL_PX = 320; // distancia vertical a partir de la cual una relación es «lejana»
+  function esLejana(a, b) {
+    const A = $('#' + a).getBoundingClientRect(), B = $('#' + b).getBoundingClientRect();
+    const mismoPanel = $('#' + a).closest('.alt') === $('#' + b).closest('.alt');
+    return !mismoPanel && Math.abs((A.top + A.bottom) / 2 - (B.top + B.bottom) / 2) > UMBRAL_PX;
+  }
+  function nombre(id) { return $('#' + id).querySelector('.txt').textContent; }
+  function ir(id) {
+    const n = $('#' + id);
+    n.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    n.classList.remove('destino'); void n.offsetWidth; n.classList.add('destino');
+    elegir(id, true);
+  }
+  // Chips en los dos extremos de cada relación lejana (se crean una vez, tras el diseño)
+  function chips() {
+    document.querySelectorAll('.enlace').forEach(c => c.remove());
+    relaciones.forEach(([a, b]) => {
+      if (!esLejana(a, b)) return;
+      [[a, b, '↗'], [b, a, '↙']].forEach(([desde, hacia, flecha]) => {
+        const c = document.createElement('button');
+        c.className = 'enlace'; c.title = 'Ir a: ' + nombre(hacia);
+        c.innerHTML = `${flecha} <span>${nombre(hacia)}</span>`;
+        c.addEventListener('click', e => { e.stopPropagation(); ir(hacia); });
+        $('#' + desde).appendChild(c);
+      });
+    });
+  }
+  function elegir(id, fuerza) {
+    if (fuerza) seleccionado = null;
+    seleccionado = seleccionado === id ? null : id;
+    nodos.forEach(n => {
+      const rel = seleccionado && (n.id === seleccionado || relaciones.some(([a, b]) => (a === seleccionado && b === n.id) || (b === seleccionado && a === n.id)));
+      n.classList.toggle('sel', n.id === seleccionado);
+      n.classList.toggle('tenue', !!seleccionado && !rel);
+    });
+    const n = seleccionado && $('#' + seleccionado);
+    $('#inspTitulo').textContent = n ? n.querySelector('.tipo').firstChild.textContent.trim() : 'Detalle';
+    $('#inspTexto').textContent = n ? n.querySelector('.txt').textContent : 'Selecciona un elemento del Mapa. Al hacerlo, sus relaciones se dibujan sobre el tablero.';
+    dibujar();
+  }
+  nodos.forEach(n => n.addEventListener('click', () => elegir(n.id)));
+  $('#chkFlechas').addEventListener('change', e => { verTodas = e.target.checked; dibujar(); });
+  $('#btnInsp').addEventListener('click', e => {
+    cuerpo.classList.toggle('plegado'); e.target.classList.toggle('on'); setTimeout(dibujar, 220);
+  });
+  $('#nivel').addEventListener('click', e => {
+    if (!e.target.dataset.n) return;
+    document.querySelectorAll('#nivel button').forEach(b => b.classList.toggle('on', b === e.target));
+    const clinico = e.target.dataset.n === 'clinico';
+    // Situación: sin esquema ni EC ni cadena interna; Clínico: todo
+    ['#n-ec', '.cadena .encub', '.sub'].forEach(sel => document.querySelectorAll(sel).forEach(x => x.style.display = clinico ? '' : (sel === '.sub' ? '' : 'none')));
+    document.querySelectorAll('.det').forEach(d => d.style.display = clinico ? '' : 'none');
+    setTimeout(dibujar, 20);
+  });
+  addEventListener('resize', () => { chips(); dibujar(); });
+  addEventListener('load', () => { chips(); dibujar(); });
+</script>
+</body>
+</html>

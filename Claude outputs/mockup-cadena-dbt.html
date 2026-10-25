@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACIA — Nivel Clínico como cadena DBT (mockup)</title>
+<!--
+  MOCKUP: el nivel «Clínico» del Mapa deja de ser el tablero ABC con flechas
+  y pasa a ser el análisis en cadena de DBT de cada situación.
+
+  Situación = el ABC en columnas (las relaciones se sobreentienden por columna).
+  Clínico   = la misma situación contada en orden temporal, eslabón a eslabón:
+      Vulnerabilidades → Evento desencadenante → Eslabones → Conducta problema → Consecuencias
+  con un punto de solución al lado de cada eslabón.
+
+  Al ser una secuencia, cada flecha une solo dos pasos contiguos: no hay
+  relaciones lejanas ni curvas que crucen el tablero.
+
+  Correspondencia con el modelo de datos (lib/types.ts, lib/grafo.ts):
+    Vulnerabilidades      ← cadena_operante.operacion_motivacional + variables moduladoras
+    Evento desencadenante ← cadena_operante.antecedente (ED) + cadena_respondiente (EC → RC)
+    Eslabones             ← cadena_dbt.eslabones (tipo: sensación, emoción, pensamiento, impulso, acción)
+    Conducta problema     ← conducta de la situación + función, esquema e inmediatez
+    Consecuencias         ← consecuencia inmediata y consecuencias_largo_plazo
+    Puntos de solución    ← conductas alternativas / consecuencia necesaria (o hueco si faltan)
+  Si una situación no tiene cadena_dbt, los eslabones salen vacíos con
+  «Faltan eslabones»: la cadena sigue leyéndose con el ABC.
+-->
+<style>
+  :root {
+    --canvas:#f5f0e8; --surface:#fbf8f2; --ink:#1f2a28; --ink-muted:#5f5549;
+    --accent:#0f5a43; --accent-soft:#e3ece4; --sidebar:#123a31; --divider:#e8dfd2;
+    --warn:#8a6d3b; --warn-soft:#f1e8d4;
+    --vuln:#6aa38c; --desen:#b0832f; --cond:#0f5a43; --cons:#8a6b47; --sol:#43508a; --sol-soft:#e8eaf3;
+    --t-sensacion:#c2683f; --t-emocion:#a2557a; --t-pensamiento:#43508a; --t-impulso:#b0832f; --t-accion:#0f5a43;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--canvas); color:var(--ink); font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif; }
+  .app { display:grid; grid-template-columns:200px 1fr; min-height:100vh; }
+  aside.nav { background:var(--sidebar); color:#e8f0ec; padding:20px 14px; }
+  aside.nav h1 { font:600 18px/1 Georgia,serif; letter-spacing:.2em; margin:0 0 4px; }
+  aside.nav small { opacity:.7; font-size:11px; }
+  aside.nav ul { list-style:none; padding:0; margin:28px 0 0; }
+  aside.nav li { padding:9px 10px; border-radius:8px; font-size:14px; opacity:.85; }
+  main { padding:20px 28px 60px; min-width:0; }
+  .card { background:var(--surface); border:1px solid var(--divider); border-radius:14px; }
+  .tabs { display:flex; gap:22px; padding:0 18px; border-bottom:1px solid var(--divider); }
+  .tabs button { all:unset; cursor:pointer; padding:12px 0; color:var(--ink-muted); border-bottom:2px solid transparent; }
+  .tabs button.on { color:var(--ink); border-color:var(--accent); font-weight:600; }
+  .lienzo { padding:16px 22px 30px; }
+  .barra { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px; }
+  .seg { display:inline-flex; border:1px solid var(--divider); border-radius:8px; overflow:hidden; background:#fff; }
+  .seg button { all:unset; cursor:pointer; padding:6px 14px; font-size:14px; color:var(--ink-muted); }
+  .seg button.on { background:var(--accent); color:#fff; }
+  .btn { all:unset; cursor:pointer; border:1px solid var(--divider); background:#fff; border-radius:8px; padding:6px 12px; font-size:14px; }
+  .btn.on { background:var(--accent-soft); border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .espacio { flex:1; }
+
+  /* Selector de situación: una cadena por situación */
+  .situaciones { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+  .situaciones button { all:unset; cursor:pointer; padding:8px 14px; border-radius:10px; border:1px solid var(--divider); background:#fff; font-weight:600; }
+  .situaciones button small { display:block; font-weight:400; font-size:12px; color:var(--ink-muted); }
+  .situaciones button.on { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+
+  /* La cadena: dos columnas — el eslabón y su punto de solución */
+  .cabeza { display:grid; grid-template-columns:44px minmax(0,1.4fr) minmax(0,1fr); gap:0 18px; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); margin-bottom:6px; }
+  .cadena.sin-sol .cabeza, .cadena.sin-sol .paso { grid-template-columns:44px minmax(0,1fr); }
+  .cadena.sin-sol .sol { display:none; }
+  .paso { display:grid; grid-template-columns:44px minmax(0,1.4fr) minmax(0,1fr); gap:0 18px; position:relative; }
+  /* Riel: la línea y el número de cada paso */
+  .riel { position:relative; display:flex; justify-content:center; }
+  .riel::before { content:""; position:absolute; top:0; bottom:0; width:2px; background:#cfc5b6; }
+  .paso:first-of-type .riel::before { top:22px; }
+  .paso:last-child .riel::before { bottom:calc(100% - 22px); }
+  .marca { position:relative; z-index:1; margin-top:10px; width:26px; height:26px; border-radius:50%; background:#fff; border:2px solid var(--c); color:var(--c); font-size:12px; font-weight:700; display:grid; place-items:center; }
+  .paso.problema .marca { background:var(--c); color:#fff; width:30px; height:30px; margin-top:8px; }
+  .tarjeta { margin:6px 0 14px; background:#fff; border:1px solid #d9cfbf; border-left:4px solid var(--c); border-radius:10px; padding:9px 13px 10px; cursor:pointer; position:relative; }
+  .tarjeta:hover { box-shadow:0 2px 10px rgba(31,42,40,.12); }
+  .tarjeta.sel { outline:2px solid var(--accent); }
+  .etapa { font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--c); }
+  .tipo { display:inline-block; font-size:12px; font-weight:600; border-radius:999px; padding:0 9px; margin-left:6px; color:#fff; background:var(--c); text-transform:none; letter-spacing:0; }
+  .privado { font-size:11.5px; color:var(--ink-muted); margin-left:6px; font-weight:500; text-transform:none; letter-spacing:0; }
+  .txt { font-size:15.5px; font-weight:600; margin:3px 0 1px; }
+  .det { font-size:13.5px; color:#4f463b; }
+  .meta { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .meta span { font-size:12px; background:#f1ebe0; border-radius:6px; padding:1px 8px; color:#4a4137; }
+  .rev { font-size:12px; background:var(--warn-soft); color:var(--warn); border-radius:999px; padding:1px 9px; font-weight:600; }
+  .apoyo { position:absolute; top:9px; right:11px; width:9px; height:9px; border-radius:50%; background:var(--a,#0f5a43); }
+  .paso.problema .tarjeta { border-width:2px 2px 2px 6px; border-color:var(--c); background:#f4f9f6; }
+  .paso.problema .txt { font-size:17px; }
+  .grupo { grid-column:2 / -1; font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted); margin:10px 0 0; }
+
+  /* Punto de solución (DBT: qué habilidad corta este eslabón) */
+  .sol { margin:6px 0 14px; border:1px dashed color-mix(in srgb,var(--sol) 45%,transparent); background:var(--sol-soft); border-radius:10px; padding:8px 12px; font-size:14px; position:relative; }
+  .sol::before { content:""; position:absolute; left:-18px; top:22px; width:18px; border-top:1.5px dashed color-mix(in srgb,var(--sol) 45%,transparent); }
+  .sol b { display:block; font-size:12px; letter-spacing:.04em; text-transform:uppercase; color:var(--sol); }
+  .sol.vacio { background:transparent; color:var(--ink-muted); display:flex; align-items:center; }
+  .sol.vacio::after { content:"+ Proponer solución"; margin-left:auto; font-size:13px; color:var(--sol); font-weight:600; }
+  .sol.nada { visibility:hidden; }
+
+  .leyenda { display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; font-size:13px; color:var(--ink-muted); }
+  .leyenda span::before { content:""; display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--c); margin-right:6px; vertical-align:-1px; }
+
+  .panel { margin-top:22px; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .nota { background:#fff; border:1px solid var(--divider); border-radius:12px; padding:12px 14px; font-size:14px; }
+  .nota h3 { margin:0 0 6px; font-size:15px; }
+  .nota ul { margin:0; padding-left:18px; }
+
+  @media (max-width:900px){ .app{grid-template-columns:1fr;} aside.nav{display:none;} .paso,.cabeza{grid-template-columns:34px minmax(0,1fr);} .sol{grid-column:2;margin-top:-8px;} .sol::before{display:none;} .sol.nada{display:none;} .cabeza span:last-child{display:none;} .panel{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="nav">
+    <h1>ACIA</h1><small>Análisis de Conducta asistido por IA</small>
+    <ul><li>Nuevo caso</li><li>Casos</li><li>Aprender</li><li>Cuenta</li></ul>
+  </aside>
+  <main>
+    <div class="card">
+      <div class="tabs"><button class="on">Mapa</button><button>Blancos</button></div>
+      <div class="lienzo">
+        <div class="barra">
+          <div class="seg"><button title="El ABC en columnas">Situación</button><button class="on" title="Análisis en cadena (DBT)">Clínico · cadena</button></div>
+          <button class="btn">Leer como texto</button>
+          <span class="espacio"></span>
+          <button class="btn on" id="btnSol">Puntos de solución</button>
+        </div>
+
+        <div class="situaciones" id="situaciones"></div>
+
+        <div class="cadena" id="cadena"></div>
+
+        <div class="leyenda">
+          <span style="--c:var(--t-sensacion)">Sensación</span>
+          <span style="--c:var(--t-emocion)">Emoción</span>
+          <span style="--c:var(--t-pensamiento)">Pensamiento</span>
+          <span style="--c:var(--t-impulso)">Impulso</span>
+          <span style="--c:var(--t-accion)">Acción (observable)</span>
+        </div>
+
+        <div class="panel">
+          <div class="nota">
+            <h3>Qué cambia respecto al tablero</h3>
+            <ul>
+              <li>Se lee de arriba abajo, en el orden en que ocurrió.</li>
+              <li>Las flechas solo unen pasos contiguos: no hay relaciones lejanas.</li>
+              <li>El EC, el esquema y la función ya no son añadidos sueltos: tienen su sitio en la cadena.</li>
+              <li>La capa DBT desaparece como botón: el nivel Clínico <em>es</em> la cadena.</li>
+            </ul>
+          </div>
+          <div class="nota">
+            <h3>Fuera de la cadena (marco del caso)</h3>
+            <ul>
+              <li>Moduladoras, repertorio, reglas verbales y acomodación del entorno se muestran plegados aquí, no dentro de una situación.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // Datos del caso de ejemplo, ordenados como cadena DBT.
+  const SITUACIONES = [
+    {
+      nombre: 'Reuniones de equipo', funcion: 'Escape/evitación de evaluación social aversiva',
+      pasos: [
+        { etapa: 'Vulnerabilidad', c: 'var(--vuln)', txt: 'OE de malestar condicionado por evaluación social.', det: 'Operador motivador · hace más aversiva la exposición', sol: null },
+        { etapa: 'Evento desencadenante', c: 'var(--desen)', txt: 'La supervisora pide exponer resultados.', det: 'Señal (ED) de la situación', sol: null },
+        { grupo: 'Eslabones' },
+        { tipo: 'sensacion', txt: 'Taquicardia y sudoración.', det: 'Respuesta condicionada al contexto de exposición social (EC → RC)', rev: true,
+          sol: { h: 'Regulación emocional', t: 'Respiración pausada / TIP antes de la reunión.' } },
+        { tipo: 'pensamiento', txt: '«Voy a quedarme en blanco».', sol: { h: 'Hoja de verificación de hechos', t: '¿Qué pasó las otras veces que expuso?' } },
+        { tipo: 'emocion', txt: 'Miedo intenso.', sol: null, vacio: true },
+        { tipo: 'impulso', txt: 'Ganas de salir de la sala.', sol: { h: 'Acción opuesta', t: 'Quedarse y empezar por la primera diapositiva.' } },
+        { tipo: 'accion', txt: 'Pide ir al baño.', sol: null, vacio: true },
+        { grupo: 'Conducta problema' },
+        { etapa: 'Conducta problema', problema: true, c: 'var(--cond)', txt: 'Evita exponer resultados en reuniones.', meta: ['manifiesta', 'esquema intermitente', 'inmediata'], a: 'var(--warn)',
+          sol: { h: 'Conducta alternativa', t: 'Exponer usando técnicas de respiración para manejar la ansiedad.', rev: 'Revisar antes de usar · 3 avisos' } },
+        { grupo: 'Consecuencias' },
+        { etapa: 'A corto plazo', c: 'var(--cons)', txt: 'Alivio inmediato por evitar la exposición.', meta: ['R− (deja de pasar algo)'],
+          sol: { h: 'Consecuencia necesaria', t: 'Refuerzo positivo de la supervisora y compañeros al exponer.' } },
+        { etapa: 'A largo plazo', c: 'var(--cons)', txt: 'Erosión de la confianza en sus habilidades.', sol: null },
+      ],
+    },
+    {
+      nombre: 'Interacciones con clientes', funcion: 'Escape/evitación de confrontación aversiva',
+      pasos: [
+        { etapa: 'Vulnerabilidad', c: 'var(--vuln)', txt: 'OE de malestar condicionado por confrontación.', sol: null },
+        { etapa: 'Evento desencadenante', c: 'var(--desen)', txt: 'El cliente levanta la voz.', sol: null },
+        { grupo: 'Eslabones' },
+        { faltan: true },
+        { grupo: 'Conducta problema' },
+        { etapa: 'Conducta problema', problema: true, c: 'var(--cond)', txt: 'Responde disculpándose repetidamente y acepta compensaciones indebidas.', meta: ['manifiesta'], a: 'var(--accent)',
+          sol: { h: 'Conducta alternativa', t: 'Negociar sin ceder a demandas indebidas (DEAR MAN).', rev: 'Conviene revisar · 2 avisos' } },
+        { grupo: 'Consecuencias' },
+        { etapa: 'A corto plazo', c: 'var(--cons)', txt: 'El cliente queda satisfecho y cesa la confrontación.', meta: ['R−'],
+          sol: { h: 'Consecuencia necesaria', t: 'Reconocimiento de la supervisora por manejar bien la situación.' } },
+        { etapa: 'A largo plazo', c: 'var(--cons)', txt: 'Posible reprimenda por decisiones indebidas.', sol: null },
+      ],
+    },
+  ];
+  const TIPO = { sensacion: 'Sensación', emocion: 'Emoción', pensamiento: 'Pensamiento', impulso: 'Impulso', accion: 'Acción' };
+  let actual = 0;
+
+  function render() {
+    document.getElementById('situaciones').innerHTML = SITUACIONES.map((s, i) =>
+      `<button class="${i === actual ? 'on' : ''}" data-i="${i}">${s.nombre}<small>Función: ${s.funcion}</small></button>`).join('');
+    const pasos = SITUACIONES[actual].pasos;
+    let n = 0, html = `<div class="cabeza"><span></span><span>Cadena</span><span>Punto de solución</span></div>`;
+    for (const p of pasos) {
+      if (p.grupo) { html += `<div class="paso"><div class="riel"></div><div class="grupo">${p.grupo}</div></div>`; continue; }
+      if (p.faltan) {
+        html += `<div class="paso"><div class="riel"><div class="marca" style="--c:#b8ad9e">?</div></div>
+          <div class="tarjeta" style="--c:#b8ad9e;border-style:dashed"><div class="txt" style="color:var(--ink-muted)">Faltan eslabones</div>
+          <div class="det">La nota no cuenta qué pensó o sintió entre el desencadenante y la conducta. Pregúntalo en la próxima sesión.</div></div>
+          <div class="sol nada"></div></div>`;
+        continue;
+      }
+      n++;
+      const c = p.tipo ? `var(--t-${p.tipo})` : p.c;
+      const cab = p.tipo
+        ? `<span class="etapa">Eslabón</span><span class="tipo">${TIPO[p.tipo]}</span>${p.tipo !== 'accion' ? '<span class="privado">privado</span>' : ''}`
+        : `<span class="etapa">${p.etapa}</span>`;
+      const sol = p.sol
+        ? `<div class="sol"><b>${p.sol.h}</b>${p.sol.t}${p.sol.rev ? `<div style="margin-top:4px"><span class="rev">${p.sol.rev}</span></div>` : ''}</div>`
+        : `<div class="sol ${p.vacio ? 'vacio' : 'nada'}">${p.vacio ? 'Sin solución' : ''}</div>`;
+      html += `<div class="paso ${p.problema ? 'problema' : ''}" style="--c:${c}">
+        <div class="riel"><div class="marca">${n}</div></div>
+        <div class="tarjeta" style="--a:${p.a || 'var(--accent)'}"><span class="apoyo" title="Apoyo en la nota"></span>
+          ${cab}<div class="txt">${p.txt}</div>${p.det ? `<div class="det">${p.det}</div>` : ''}
+          ${p.meta || p.rev ? `<div class="meta">${(p.meta || []).map(m => `<span>${m}</span>`).join('')}${p.rev ? '<span class="rev">Revisar antes de usar</span>' : ''}</div>` : ''}
+        </div>${sol}</div>`;
+    }
+    document.getElementById('cadena').innerHTML = html;
+  }
+  document.getElementById('situaciones').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return; actual = +b.dataset.i; render();
+  });
+  document.getElementById('cadena').addEventListener('click', e => {
+    const t = e.target.closest('.tarjeta'); if (!t) return;
+    document.querySelectorAll('.tarjeta.sel').forEach(x => x.classList.remove('sel')); t.classList.add('sel');
+  });
+  document.getElementById('btnSol').addEventListener('click', e => {
+    e.target.classList.toggle('on'); document.getElementById('cadena').classList.toggle('sin-sol');
+  });
+  render();
+</script>
+</body>
+</html>

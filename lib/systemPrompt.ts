@@ -331,6 +331,33 @@ FORMATO DE RESPUESTA PARA ESTA ACTUALIZACIÓN PARCIAL: responde ÚNICAMENTE con 
 }
 
 /**
+ * Prompt para añadir la cadena DBT a un análisis ya generado sin ella (la
+ * cadena es opcional, ver IDS_POR_DEFECTO en lib/bloques.ts). No toca nada
+ * más del análisis: recibe las situaciones ya analizadas y devuelve una
+ * cadena por situación, en el mismo orden, más la capa DBT que se apoya en
+ * esos eslabones.
+ */
+export function construirPromptCadenaDbt(): string {
+  const cadena = LINEA_CADENA_DBT.trim().replace(/^"cadena_dbt": /, "").replace(/,$/, "");
+  return `${NUCLEO}
+
+${BLOQUE_DBT}
+
+${NOTA_CADENA_DBT_POR_SITUACION}
+
+MODO CADENA DBT (no generación desde cero): se te dan la nota clínica numerada y las situaciones del análisis ya generado, numeradas desde 0. Para CADA situación genera su "cadena_dbt", describiendo ESA MISMA situación con vocabulario DBT, y después la "capa_dbt" que se apoya en esos eslabones. No reescribas ni corrijas nada más del análisis: la cadena se añade a lo que ya hay.
+
+${CABECERA_FORMATO}
+{
+${CAMPO_RAZONAMIENTO}
+  "cadenas": [{ "situacion": number (el número de la situación que se te dio), "cadena_dbt": ${cadena} }],
+${ESQUEMA_POR_CAMPO.capa_dbt.replace(/,$/, "")}
+}
+
+${COLA_FORMATO}`;
+}
+
+/**
  * Prompt de la detección previa de datos faltantes (ver
  * lib/datosFaltantesPrevios.ts): una llamada barata y rápida, ANTES del
  * análisis completo, que solo busca vacíos importantes en la nota y los

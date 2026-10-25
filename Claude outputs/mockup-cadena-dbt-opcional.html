@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACIA — Cadena DBT opcional (mockup)</title>
+<!--
+  MOCKUP: la cadena DBT es opcional. El prompt inicial NO la pide.
+  Dos puntos de entrada:
+    A. Pantalla inicial: interruptor «Análisis en cadena (DBT)» dentro del
+       desplegable ▾ del botón Generar (hoy components/SelectorBloques.tsx).
+       Si está activo, /api/analizar recibe el bloque extra «cadena_dbt».
+    B. Informe ya generado sin cadena: el nivel «Clínico · cadena» del Mapa
+       muestra un estado vacío con «Generar cadena DBT», que lanza un
+       reanálisis parcial (parámetro `bloques` de /api/analizar, ya existe)
+       solo para ese bloque, sobre la nota original.
+  La cadena ya generada se ve como en mockup-cadena-dbt.html.
+-->
+<style>
+  :root { --canvas:#f5f0e8; --surface:#fbf8f2; --ink:#1f2a28; --muted:#5f5549; --accent:#0f5a43; --soft:#e3ece4; --sidebar:#123a31; --divider:#e8dfd2; --warn:#8a6d3b; --warn-soft:#f1e8d4; --dorado:#c8a15a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--canvas); color:var(--ink); font:15px/1.45 "IBM Plex Sans",system-ui,sans-serif; }
+  .demo { position:sticky; top:0; z-index:50; display:flex; gap:8px; justify-content:center; padding:8px; background:#1f2a28; }
+  .demo button { all:unset; cursor:pointer; color:#cfd8d4; padding:5px 14px; border-radius:999px; font-size:13px; }
+  .demo button.on { background:#fff; color:#1f2a28; font-weight:600; }
+  .app { display:grid; grid-template-columns:200px 1fr; min-height:calc(100vh - 42px); }
+  aside.nav { background:var(--sidebar); color:#e8f0ec; padding:20px 14px; }
+  aside.nav h1 { font:600 18px/1 Georgia,serif; letter-spacing:.2em; margin:0 0 4px; }
+  aside.nav small { opacity:.7; font-size:11px; }
+  aside.nav ul { list-style:none; padding:0; margin:28px 0 0; }
+  aside.nav li { padding:9px 10px; border-radius:8px; font-size:14px; opacity:.85; }
+  main { padding:28px 32px 60px; min-width:0; }
+  .pantalla { display:none; max-width:880px; margin:0 auto; }
+  .pantalla.on { display:block; }
+  h2.titulo { font:600 34px/1.15 Georgia,serif; margin:0 0 6px; }
+  .card { background:var(--surface); border:1px solid var(--divider); border-radius:18px; padding:22px; }
+  textarea { width:100%; height:150px; border:1px solid var(--divider); border-radius:12px; padding:12px; font:inherit; background:#fff; resize:vertical; }
+  .muted { color:var(--muted); font-size:14px; }
+
+  /* A. Botón generar + desplegable */
+  .generar { position:relative; display:flex; margin-top:18px; border-radius:16px; background:var(--accent); color:#fff; }
+  .generar .principal { flex:1; padding:14px 18px; }
+  .generar .principal b { display:block; }
+  .generar .principal small { opacity:.85; }
+  .generar .flecha { all:unset; cursor:pointer; width:56px; display:grid; place-items:center; border-left:1px solid rgba(255,255,255,.25); font-size:18px; }
+  .extra { display:none; margin-top:8px; font-size:13px; color:var(--accent); background:var(--soft); border-radius:999px; padding:3px 12px; width:fit-content; font-weight:600; }
+  .extra.on { display:inline-block; }
+  .menu { display:none; position:absolute; bottom:calc(100% + 8px); right:0; width:min(27rem,90vw); background:var(--surface); color:var(--ink); border:1px solid var(--divider); border-radius:16px; padding:18px; box-shadow:0 12px 30px rgba(0,0,0,.15); }
+  .menu.on { display:block; }
+  .menu h3 { margin:0; font:600 17px Georgia,serif; }
+  .menu h4 { margin:16px 0 6px; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .fila { display:flex; align-items:center; gap:12px; padding:9px 10px; border-radius:10px; cursor:pointer; }
+  .fila:hover { background:var(--canvas); }
+  .fila .t { flex:1; font-size:14px; font-weight:600; }
+  .fila .t small { display:block; font-weight:400; color:var(--muted); font-size:12.5px; }
+  .sw { width:36px; height:20px; border-radius:999px; background:var(--divider); position:relative; flex-shrink:0; transition:.15s; }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.2); transition:.15s; }
+  .sw.on { background:var(--accent); } .sw.on::after { left:18px; }
+  .nuevo { font-size:11px; background:var(--warn-soft); color:var(--warn); border-radius:999px; padding:0 7px; margin-left:6px; font-weight:600; }
+
+  /* B. Informe sin cadena */
+  .barra { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  .seg { display:inline-flex; border:1px solid var(--divider); border-radius:8px; overflow:hidden; background:#fff; }
+  .seg button { all:unset; cursor:pointer; padding:6px 14px; font-size:14px; color:var(--muted); }
+  .seg button.on { background:var(--accent); color:#fff; }
+  .vacio { text-align:center; border:1.5px dashed #cfc5b6; border-radius:16px; padding:34px 24px; background:#fff; }
+  .vacio h3 { font:600 22px Georgia,serif; margin:10px 0 6px; }
+  .vacio p { max-width:520px; margin:0 auto 6px; color:var(--muted); }
+  .riel { display:flex; justify-content:center; gap:6px; margin:16px 0 18px; flex-wrap:wrap; }
+  .riel span { font-size:12.5px; border:1px solid var(--divider); border-radius:999px; padding:3px 10px; color:var(--muted); background:var(--canvas); }
+  .riel i { color:#b8ad9e; font-style:normal; }
+  .cta { all:unset; cursor:pointer; background:var(--accent); color:#fff; padding:10px 20px; border-radius:12px; font-weight:600; }
+  .cta:hover { filter:brightness(1.1); }
+  .alcance { margin-top:12px; font-size:13px; color:var(--muted); }
+  .alcance label { margin:0 8px; cursor:pointer; }
+  .cargando { display:none; margin-top:16px; color:var(--accent); font-weight:600; }
+  .listo { display:none; text-align:left; margin-top:18px; border:1px solid var(--divider); border-radius:12px; padding:14px; background:var(--surface); }
+  .listo ol { margin:6px 0 0; padding-left:20px; }
+</style>
+</head>
+<body>
+<div class="demo">
+  <button class="on" data-p="a">A · Pantalla inicial</button>
+  <button data-p="b">B · Informe ya generado, sin cadena</button>
+</div>
+<div class="app">
+  <aside class="nav"><h1>ACIA</h1><small>Análisis de Conducta asistido por IA</small>
+    <ul><li>Nuevo caso</li><li>Casos</li><li>Aprender</li><li>Cuenta</li></ul></aside>
+  <main>
+    <!-- A. Pantalla inicial -->
+    <section class="pantalla on" id="a">
+      <h2 class="titulo">ACIA — análisis conductual asistido por IA</h2>
+      <p class="muted" style="margin:0 0 20px">Herramienta clínica para formular casos con claridad, precisión y enfoque funcional.</p>
+      <div class="card">
+        <h3 style="font:600 20px Georgia,serif;margin:0 0 8px">Describe la situación</h3>
+        <p class="muted">Pega aquí tus notas de sesión, registros u observaciones.</p>
+        <textarea placeholder="Pega aquí tu caso…"></textarea>
+        <div class="generar">
+          <div class="principal"><b>Generar análisis funcional</b><small>La IA analizará tu información y te entregará un análisis estructurado.</small></div>
+          <button class="flecha" id="abrirMenu" title="Opciones del análisis">▾</button>
+          <div class="menu" id="menu">
+            <h3>Opciones del análisis</h3>
+            <h4>Qué generar</h4>
+            <div class="fila" data-sw="dbt">
+              <div class="t">Análisis en cadena (DBT) <span class="nuevo">opcional</span>
+                <small>Añade, para cada situación, los eslabones entre el desencadenante y la conducta, y los puntos de solución. Tarda un poco más.</small></div>
+              <div class="sw" id="sw-dbt"></div>
+            </div>
+            <h4>Qué mostrar</h4>
+            <div class="fila"><div class="t">Mapa</div><div class="sw on"></div></div>
+            <div class="fila"><div class="t">Blancos</div><div class="sw on"></div></div>
+            <div class="fila"><div class="t">Resumen clínico</div><div class="sw on"></div></div>
+          </div>
+        </div>
+        <span class="extra" id="extra">＋ Incluye análisis en cadena (DBT)</span>
+      </div>
+    </section>
+
+    <!-- B. Informe sin cadena -->
+    <section class="pantalla" id="b">
+      <div class="card">
+        <div class="barra">
+          <div class="seg"><button>Situación</button><button class="on">Clínico · cadena</button></div>
+          <span class="muted">Reuniones de equipo ▾</span>
+        </div>
+        <div class="vacio" id="vacio">
+          <div style="font-size:28px">⛓</div>
+          <h3>Este análisis no incluye la cadena DBT</h3>
+          <p>Puedes generarla ahora a partir de la misma nota. El resto del informe no cambia.</p>
+          <div class="riel"><span>Vulnerabilidad</span><i>→</i><span>Desencadenante</span><i>→</i><span>Eslabones</span><i>→</i><span>Conducta</span><i>→</i><span>Consecuencias</span></div>
+          <button class="cta" id="generarCadena">Generar cadena DBT · 1 crédito</button>
+          <p style="font-size:13px;margin-top:8px">Usa la nota guardada en el caso; no hace falta volver a pegarla.</p>
+          <div class="alcance">
+            <label><input type="radio" name="al" checked> Solo «Reuniones de equipo»</label>
+            <label><input type="radio" name="al"> Todas las situaciones (2)</label>
+          </div>
+          <div class="cargando" id="cargando">Generando la cadena…</div>
+          <div class="listo" id="listo">
+            <b>Cadena lista.</b> <span class="muted">Se muestra como en el mockup de la cadena:</span>
+            <ol><li>OE de malestar por evaluación social</li><li>La supervisora pide exponer</li><li>Taquicardia y sudoración · «Voy a quedarme en blanco» · Pide ir al baño</li><li><b>Evita exponer resultados</b></li><li>Alivio inmediato · erosión de la confianza</li></ol>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+  const $ = s => document.querySelector(s);
+  document.querySelector('.demo').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('.demo button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.pantalla').forEach(p => p.classList.toggle('on', p.id === b.dataset.p));
+  });
+  $('#abrirMenu').addEventListener('click', e => { e.stopPropagation(); $('#menu').classList.toggle('on'); });
+  document.addEventListener('click', e => { if (!e.target.closest('#menu')) $('#menu').classList.remove('on'); });
+  document.querySelectorAll('.fila').forEach(f => f.addEventListener('click', () => {
+    const sw = f.querySelector('.sw'); sw.classList.toggle('on');
+    if (f.dataset.sw === 'dbt') $('#extra').classList.toggle('on', sw.classList.contains('on'));
+  }));
+  $('#generarCadena').addEventListener('click', () => {
+    $('#generarCadena').style.display = 'none'; $('#cargando').style.display = 'block';
+    setTimeout(() => { $('#cargando').style.display = 'none'; $('#listo').style.display = 'block'; }, 1200);
+  });
+</script>
+</body>
+</html>

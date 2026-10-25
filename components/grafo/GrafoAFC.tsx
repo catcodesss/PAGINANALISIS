@@ -3,14 +3,13 @@
 import {
   Fragment,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import type { Alerta, AnalisisFuncional, TipoArista } from "@/lib/types";
+import type { Alerta, AnalisisFuncional } from "@/lib/types";
 import type { NivelMapa } from "@/lib/preferencias";
 import {
   agregarArista,
@@ -22,6 +21,7 @@ import {
   type TipoNodoGrafo,
 } from "@/lib/grafo";
 import TableroColumnas, { type AgruparMapa, type CapasMapa } from "./TableroColumnas";
+import CadenaClinica from "./CadenaClinica";
 import { rutaDeSeleccion, textoDeRuta } from "@/lib/rutaMapa";
 import { ETIQUETA_APOYO_ARISTA } from "@/lib/apoyoAristas";
 import { destinosPosibles } from "@/lib/edicionMapa";
@@ -35,7 +35,6 @@ import { alertasPorNodo } from "@/lib/alertasNodo";
 import { InsigniaAlerta } from "./InsigniaAlerta";
 import { procedenciaDe, ROTULOS_PROCEDENCIA } from "@/lib/procedencia";
 import type { ProcedenciaElemento } from "@/lib/types";
-import type { ApoyoArista } from "@/lib/types";
 
 interface GrafoAFCProps {
   analisis: AnalisisFuncional;
@@ -45,45 +44,6 @@ interface GrafoAFCProps {
   /** La ruta seleccionada como lista lineal, para lectores de pantalla. */
   leerComoTexto: boolean;
   onIrANivel: (nivel: NivelMapa) => void;
-}
-
-interface Trazo {
-  id: string;
-  d: string;
-  tipo: TipoArista;
-  apoyo: ApoyoArista;
-  desde: string;
-  hasta: string;
-  /** Une nodos de tableros distintos (o uno global): cruzaría otras situaciones. */
-  lejana?: boolean;
-}
-
-interface Caja { x: number; y: number; w: number; h: number }
-
-/**
- * En AFC hay nodos apilados en la misma columna (encubiertas y conducta), así
- * que la curva lateral de siempre los cruzaría por encima: si los nodos se
- * solapan en horizontal, la relación sale por abajo y entra por arriba.
- */
-function trazadoAFC(desde: Caja, hasta: Caja): string {
-  if (hasta.x >= desde.x + desde.w - 4) {
-    const x1 = desde.x + desde.w, y1 = desde.y + desde.h / 2;
-    const x2 = hasta.x, y2 = hasta.y + hasta.h / 2;
-    const curva = Math.max(18, (x2 - x1) / 2);
-    return `M ${x1} ${y1} C ${x1 + curva} ${y1}, ${x2 - curva} ${y2}, ${x2} ${y2}`;
-  }
-  if (hasta.x + hasta.w <= desde.x + 4) {
-    const x1 = desde.x, y1 = desde.y + desde.h / 2;
-    const x2 = hasta.x + hasta.w, y2 = hasta.y + hasta.h / 2;
-    const curva = Math.max(18, (x1 - x2) / 2);
-    return `M ${x1} ${y1} C ${x1 - curva} ${y1}, ${x2 + curva} ${y2}, ${x2} ${y2}`;
-  }
-  const x1 = desde.x + desde.w / 2, x2 = hasta.x + hasta.w / 2;
-  const abajo = hasta.y >= desde.y;
-  const y1 = abajo ? desde.y + desde.h : desde.y;
-  const y2 = abajo ? hasta.y : hasta.y + hasta.h;
-  const curva = Math.max(10, Math.abs(y2 - y1) / 2) * (abajo ? 1 : -1);
-  return `M ${x1} ${y1} C ${x1} ${y1 + curva}, ${x2} ${y2 - curva}, ${x2} ${y2}`;
 }
 
 const TERMINO_DE_TIPO: Partial<Record<TipoNodoGrafo, IdTermino>> = {
@@ -473,14 +433,12 @@ function BotonAgregarNodo({
 }
 
 export default function GrafoAFC({ analisis, nivel, capas, leerComoTexto }: GrafoAFCProps) {
-  const contenedorRef = useRef<HTMLDivElement>(null);
   const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu, abrirEvidencia, propsSoltarFrase, arrastrandoFrase, setNodoEnElAire } = useEspacio();
   const [modoConectar, setModoConectar] = useState(false);
   const [origenConexion, setOrigenConexion] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<1 | 2 | 3 | null>(null);
   const [soloApoyado, setSoloApoyado] = useState(false);
   const [agrupar, setAgrupar] = useState<AgruparMapa>("episodio");
-  const [trazos, setTrazos] = useState<Trazo[]>([]);
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
   const alertasDeNodo = useMemo(() => alertasPorNodo(analisis), [analisis]);
   const avisos = (id: string) => alertasDeNodo.get(id) ?? [];
@@ -505,53 +463,9 @@ export default function GrafoAFC({ analisis, nivel, capas, leerComoTexto }: Graf
     if (nodo.evidencia?.verificada) irACita(nodo.evidencia);
   }
 
-  // Las líneas curvas existen en el nivel Clínico, donde las flechas cuentan el
-  // orden de la cadena. En Situación no hay:
-  // el tablero se lee por columnas y las relaciones se eligen desde el Inspector.
-  const conFlechas = nivel === "clinico";
-  useLayoutEffect(() => {
-    if (!conFlechas) return;
-    const contenedor = contenedorRef.current;
-    if (!contenedor) return;
-    let fotograma = 0;
-    const dibujar = () => {
-      cancelAnimationFrame(fotograma);
-      fotograma = requestAnimationFrame(() => {
-        const raiz = contenedorRef.current;
-        if (!raiz) return;
-        const cajaRaiz = raiz.getBoundingClientRect();
-        const porId = (ambito: ParentNode, id: string) =>
-          ambito.querySelector<HTMLElement>(`[data-nodo-id="${CSS.escape(id)}"]`);
-        const aCaja = (elemento: HTMLElement) => {
-          const rect = elemento.getBoundingClientRect();
-          return { x: rect.left - cajaRaiz.left, y: rect.top - cajaRaiz.top, w: rect.width, h: rect.height };
-        };
-        setTrazos(analisis.aristas.flatMap((arista) => {
-          const origen = porId(raiz, arista.desde);
-          if (!origen) return [];
-          // En los tableros una flecha no cruza de una situación a otra: se
-          // busca el destino dentro de la misma situación que el origen.
-          const destino = porId(origen.closest("[data-situacion-id]") ?? raiz, arista.hasta);
-          if (!destino) return [];
-          return [{ id: arista.id, tipo: arista.tipo, apoyo: arista.apoyo, desde: arista.desde, hasta: arista.hasta, d: trazadoAFC(aCaja(origen), aCaja(destino)) }];
-        }));
-      });
-    };
-    dibujar();
-    const observador = new ResizeObserver(dibujar);
-    observador.observe(contenedor);
-    window.addEventListener("resize", dibujar);
-    // El tablero se desplaza en horizontal dentro de su caja: las flechas
-    // siguen a las tarjetas.
-    contenedor.addEventListener("scroll", dibujar, true);
-    return () => {
-      cancelAnimationFrame(fotograma);
-      observador.disconnect();
-      window.removeEventListener("resize", dibujar);
-      contenedor.removeEventListener("scroll", dibujar, true);
-    };
-  }, [analisis.aristas, nodos, conFlechas, nivel, capas, agrupar]);
-
+  // Ningún nivel dibuja flechas: Situación se lee por columnas y Clínico es la
+  // cadena DBT, donde cada paso solo se une al siguiente (CadenaClinica). Las
+  // relaciones se eligen desde el Inspector.
   const atenuado = (n: NodoGrafo) =>
     (filtro !== null && n.apoyo !== filtro) ||
     (soloApoyado && n.apoyo < 3) ||
@@ -670,16 +584,11 @@ export default function GrafoAFC({ analisis, nivel, capas, leerComoTexto }: Graf
         </section>
       )}
 
-      <div ref={contenedorRef} className={`relative min-w-0 ${s.raiz} ${poppinsAfc.variable} ${interAfc.variable} print:hidden`}>
+      <div className={`relative min-w-0 ${s.raiz} ${poppinsAfc.variable} ${interAfc.variable} print:hidden`}>
         <div className="space-y-5">
-          {nivel === "clinico" && (
-            <svg className="pointer-events-none absolute inset-0 z-[5] hidden h-full w-full overflow-visible md:block" aria-hidden="true">
-              <defs><marker id="punta-clinico" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="currentColor" /></marker></defs>
-              {trazos.map((trazo) => (
-                <path key={trazo.id} d={trazo.d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap={trazo.apoyo === "inferido" ? "round" : undefined} strokeDasharray={trazo.apoyo === "inferido" ? "0.1 5" : trazo.tipo === "moderadora" ? "5 4" : undefined} className={trazo.tipo === "bucle" ? "text-warn" : "text-ink/70"} markerEnd="url(#punta-clinico)" />
-              ))}
-            </svg>
-          )}
+          {nivel === "clinico" ? (
+            <CadenaClinica analisis={analisis} nodos={nodos} renderNodo={renderNodoMapa} />
+          ) : (
           <TableroColumnas
             analisis={analisis}
             nodos={nodos}
@@ -695,6 +604,7 @@ export default function GrafoAFC({ analisis, nivel, capas, leerComoTexto }: Graf
               if (texto) aplicar((copia) => agregarNodo(copia, situacionId, "funcion", texto));
             }}
           />
+          )}
           <FueraDeSituacion
             analisis={analisis}
             nodos={nodos}

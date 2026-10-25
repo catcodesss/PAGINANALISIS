@@ -166,8 +166,20 @@ export const BLOQUES: Bloque[] = [
   },
 ];
 
-/** Todos los bloques: equivale al informe completo de siempre. */
+/** Todos los bloques, la cadena DBT incluida. */
 export const IDS_TODOS = BLOQUES.map((b) => b.id);
+
+/**
+ * Lo que se genera si el clínico no pide nada más: todo menos la cadena DBT.
+ * La cadena es opcional (se pide en el desplegable de Generar o después, desde
+ * el nivel Clínico del Mapa) porque su bloque es de los más largos del prompt.
+ */
+export const IDS_POR_DEFECTO = IDS_TODOS.filter((id) => id !== "dbt");
+
+/** Un informe es completo si trae todo lo de por defecto, con o sin cadena. */
+export function esInformeCompleto(idsBloques: readonly string[]): boolean {
+  return IDS_POR_DEFECTO.every((id) => idsBloques.includes(id));
+}
 
 export function bloquePorId(id: string): Bloque | undefined {
   return BLOQUES.find((b) => b.id === id);

@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Vista Mapa: el grafo del análisis funcional leído en tres niveles —Situación,
- * Clínico y Evidencia— con capas que se encienden encima (Plan, Huecos y
- * DBT). La red funcional, plegada debajo, hace de vista general del caso hasta que
+ * Vista Mapa: el grafo del análisis funcional leído en dos niveles —Situación
+ * (el ABC por columnas) y Clínico (la cadena DBT, ver grafo/CadenaClinica)—
+ * con capas que se encienden encima (Plan y Huecos). La red funcional, plegada debajo, hace de vista general del caso hasta que
  * exista el nivel Caso (fase 10).
  *
  * El nivel se recuerda por caso (components/useLente.ts). Las capas no: son
@@ -38,7 +38,7 @@ import { useEspacio } from "./contexto";
 
 const ETIQUETA_NIVEL: Record<NivelMapa, string> = {
   situacion: "Situación",
-  clinico: "Clínico",
+  clinico: "Clínico · cadena",
 };
 
 export default function VistaMapa({
@@ -71,7 +71,6 @@ export default function VistaMapa({
     return {
       plan: analisis.conductas_alternativas.length,
       huecos: huecos + analisis.preguntas.filter((p) => estaAbierta(p) && p.pone_a_prueba).length,
-      dbt: analisis.situaciones.reduce((t, s) => t + (s.cadena_dbt?.eslabones.length ?? 0), 0),
     };
   }, [analisis]);
 
@@ -138,7 +137,6 @@ export default function VistaMapa({
           <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Capas</span>
           <BotonCapa activa={capas.plan} contador={contadores.plan} onClick={() => alternar("plan")}>Plan</BotonCapa>
           <BotonCapa activa={capas.huecos} contador={contadores.huecos} onClick={() => alternar("huecos")}>Huecos</BotonCapa>
-          <BotonCapa activa={capas.dbt} contador={contadores.dbt} onClick={() => alternar("dbt")} titulo="Numeración y puntos de solución sobre la cadena interna (nivel Clínico)">DBT</BotonCapa>
         </div>
       )}
       {acciones.panel}

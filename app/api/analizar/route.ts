@@ -15,7 +15,7 @@ import { migrarAV8 } from "@/lib/identidad";
 import { validarAnalisis } from "@/lib/validadores";
 import { ejecutarPasadaCritica } from "@/lib/pasadaCritica";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
-import { camposParaBloques, IDS_TODOS } from "@/lib/bloques";
+import { camposParaBloques, esInformeCompleto, IDS_POR_DEFECTO, IDS_TODOS } from "@/lib/bloques";
 import { CAMPOS_ANALISIS_FUNCIONAL } from "@/lib/types";
 import { maquetaActivada } from "@/lib/maqueta";
 import { informeDeMaqueta } from "@/lib/maquetaInforme";
@@ -185,11 +185,13 @@ export async function POST(request: Request) {
     );
   }
 
-  // Sin selección explícita se genera el informe completo, como siempre.
+  // Sin selección explícita se genera el informe completo sin la cadena DBT,
+  // que es opcional (ver IDS_POR_DEFECTO).
   const bloquesPedidos =
     Array.isArray(bloques) && bloques.length > 0
       ? bloques.filter((b): b is string => typeof b === "string")
-      : IDS_TODOS;
+      : IDS_POR_DEFECTO;
+  const completo = esInformeCompleto(bloquesPedidos);
   const campos = camposParaBloques(bloquesPedidos, CAMPOS_ANALISIS_FUNCIONAL);
 
   try {
@@ -287,8 +289,11 @@ export async function POST(request: Request) {
     const analisis = validarAnalisis(analisisSinValidar, nota);
 
     // Qué se pidió, para que la interfaz sepa qué secciones tiene sentido mostrar.
-    analisis.campos_generados =
-      bloquesPedidos.length === IDS_TODOS.length ? [] : bloquesPedidos;
+    // Vacío = todo; un informe completo sin cadena DBT lista sus bloques para
+    // que la interfaz sepa que la cadena falta y ofrezca generarla.
+    analisis.campos_generados = IDS_TODOS.every((id) => bloquesPedidos.includes(id))
+      ? []
+      : bloquesPedidos;
     // Trazabilidad: qué modelo y qué versión del prompt generaron este informe.
     analisis.meta = { modelo: MODELO, version_prompt: VERSION_PROMPT };
 
@@ -296,7 +301,7 @@ export async function POST(request: Request) {
     // aparte) y solo para el informe completo: sobre un análisis parcial, la
     // pasada crítica generaría falsas alarmas de "contenido no recogido" por
     // secciones que ni se pidieron.
-    if (bloquesPedidos.length === IDS_TODOS.length) {
+    if (completo) {
       try {
         const hallazgos = await ejecutarPasadaCritica(analisis, notaNumerada, apiKey);
         const vistos = new Set(analisis.alertas.map((a) => `${a.ruta}|${a.mensaje}`));

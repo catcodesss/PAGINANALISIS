@@ -5,7 +5,8 @@ import { SECCIONES_INFORME, type IdSeccion } from "@/lib/secciones";
 import { usePestanasOcultas } from "./usePestanasOcultas";
 
 /**
- * Panel para elegir qué pestañas del informe se ven.
+ * Panel de opciones del botón Generar: si se incluye la cadena DBT (lo único
+ * opcional que se genera) y qué pestañas del informe se ven.
  *
  * Antes también dejaba elegir qué bloques generar. Esa lista se quitó: no
  * correspondía a lo que el informe enseña desde la reorganización en pestañas,
@@ -19,9 +20,31 @@ import { usePestanasOcultas } from "./usePestanasOcultas";
 
 interface SelectorBloquesProps {
   onCerrar: () => void;
+  /** La cadena DBT es lo único opcional que se genera: ver IDS_POR_DEFECTO. */
+  incluirCadenaDbt: boolean;
+  onIncluirCadenaDbt: (incluir: boolean) => void;
 }
 
-export default function SelectorBloques({ onCerrar }: SelectorBloquesProps) {
+function Interruptor({ activo }: { activo: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+        activo ? "bg-accent" : "bg-divider"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
+          activo ? "left-[1.125rem]" : "left-0.5"
+        }`}
+      />
+    </span>
+  );
+}
+
+const rotuloGrupo = "mb-1 mt-4 font-mono text-[11px] uppercase tracking-wide text-ink-muted";
+
+export default function SelectorBloques({ onCerrar, incluirCadenaDbt, onIncluirCadenaDbt }: SelectorBloquesProps) {
   const panel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,13 +73,34 @@ export default function SelectorBloques({ onCerrar }: SelectorBloquesProps) {
     <div
       ref={panel}
       role="dialog"
-      aria-label="Elegir qué pestañas mostrar"
+      aria-label="Opciones del análisis"
       className="absolute bottom-full right-0 z-30 mb-2 w-[min(26rem,calc(100vw-2rem))] rounded-2xl border border-divider bg-surface p-5 shadow-xl"
     >
-      <h3 className="font-serif text-lg font-semibold text-ink">Elige qué mostrar</h3>
-      <p className="mb-4 mt-1 text-sm leading-relaxed text-ink-muted">
-        Activa o desactiva las pestañas del informe. Solo cambia lo que ves: el
-        informe impreso o copiado las incluye todas.
+      <h3 className="font-serif text-lg font-semibold text-ink">Opciones del análisis</h3>
+
+      <p className={rotuloGrupo}>Qué generar</p>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={incluirCadenaDbt}
+        onClick={() => onIncluirCadenaDbt(!incluirCadenaDbt)}
+        className="flex w-full items-start justify-between gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      >
+        <span>
+          <span className="text-sm font-medium text-ink">Análisis en cadena (DBT)</span>
+          <span className="mt-0.5 block text-xs leading-relaxed text-ink-muted">
+            Añade, para cada situación, los eslabones entre el desencadenante y
+            la conducta, con puntos de solución. Opcional: también puedes
+            generarla después desde el Mapa.
+          </span>
+        </span>
+        <Interruptor activo={incluirCadenaDbt} />
+      </button>
+
+      <p className={rotuloGrupo}>Qué mostrar</p>
+      <p className="mb-2 px-3 text-xs leading-relaxed text-ink-muted">
+        Solo cambia lo que ves: el informe impreso o copiado incluye todas las
+        pestañas.
       </p>
 
       <ul className="space-y-1">
@@ -72,18 +116,7 @@ export default function SelectorBloques({ onCerrar }: SelectorBloquesProps) {
                 className="flex w-full items-center justify-between gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
               >
                 <span className="text-sm font-medium text-ink">{s.titulo}</span>
-                <span
-                  aria-hidden="true"
-                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                    activa ? "bg-accent" : "bg-divider"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
-                      activa ? "left-[1.125rem]" : "left-0.5"
-                    }`}
-                  />
-                </span>
+                <Interruptor activo={activa} />
               </button>
             </li>
           );

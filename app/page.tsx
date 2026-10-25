@@ -27,7 +27,7 @@ import ReportView from "@/components/ReportView";
 import GuiaCompleta from "@/components/GuiaCompleta";
 import Configuracion from "@/components/Configuracion";
 import SelectorBloques from "@/components/SelectorBloques";
-import { IDS_TODOS } from "@/lib/bloques";
+import { IDS_POR_DEFECTO, IDS_TODOS } from "@/lib/bloques";
 import EsqueletoInforme from "@/components/EsqueletoInforme";
 import Sidebar, { type Vista } from "@/components/Sidebar";
 import PanelRecomendaciones from "@/components/PanelRecomendaciones";
@@ -97,6 +97,9 @@ export default function Home() {
   const [copiado, setCopiado] = useState(false);
   const [vista, setVista] = useState<Vista>("analisis");
   const [selectorAbierto, setSelectorAbierto] = useState(false);
+  // La cadena DBT es opcional: solo entra en el análisis si se pide aquí.
+  const [incluirCadenaDbt, setIncluirCadenaDbt] = useState(false);
+  const bloquesDelFormulario = incluirCadenaDbt ? IDS_TODOS : IDS_POR_DEFECTO;
   // Preguntas del paso previo (ver lib/datosFaltantesPrevios.ts). null = no se
   // está preguntando nada; array = mostrando PreguntasDatosFaltantes.
   const [preguntas, setPreguntas] = useState<PreguntaPrevia[] | null>(null);
@@ -314,7 +317,7 @@ export default function Home() {
 
   async function ejecutarAnalisis(
     texto: string,
-    bloquesPedidos: string[] = IDS_TODOS,
+    bloquesPedidos: string[] = bloquesDelFormulario,
     datosFaltantesDeclarados: DatoFaltante[] = []
   ) {
     setUltimoTextoEnviado(texto);
@@ -436,7 +439,7 @@ export default function Home() {
       textoFinal = `${textoFinal}\n\n--- Información adicional confirmada por el terapeuta ---\n${apendice}`;
     }
     setPreguntas(null);
-    void ejecutarAnalisis(textoFinal, IDS_TODOS, omitidas);
+    void ejecutarAnalisis(textoFinal, bloquesDelFormulario, omitidas);
   }
 
   /** Cerrar la ventana de preguntas: no se analiza nada y la nota queda intacta. */
@@ -821,9 +824,18 @@ export default function Home() {
                       </button>
 
                       {selectorAbierto && (
-                        <SelectorBloques onCerrar={() => setSelectorAbierto(false)} />
+                        <SelectorBloques
+                          onCerrar={() => setSelectorAbierto(false)}
+                          incluirCadenaDbt={incluirCadenaDbt}
+                          onIncluirCadenaDbt={setIncluirCadenaDbt}
+                        />
                       )}
                     </div>
+                  )}
+                  {!avisoPII && incluirCadenaDbt && (
+                    <p className="mt-2 inline-block rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
+                      + Incluye análisis en cadena (DBT)
+                    </p>
                   )}
                 </div>
 

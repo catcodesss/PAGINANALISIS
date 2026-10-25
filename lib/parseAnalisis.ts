@@ -826,6 +826,27 @@ function asignarCampoNormalizado<K extends keyof AnalisisFuncional>(
  * un campo válido de AnalisisFuncional se ignoran silenciosamente (ya se
  * validaron antes en la API route; esto es una segunda barrera).
  */
+/**
+ * Respuesta de /api/cadena-dbt: una cadena por situación, alineada por
+ * índice con `totalSituaciones` (null donde el modelo no dio ninguna), y la
+ * capa DBT. Los ids los pone después migrarAV8, como en cualquier fragmento.
+ */
+export function normalizarCadenasDbt(
+  json: unknown,
+  totalSituaciones: number,
+  lineas: string[]
+): { cadenas: (CadenaDBT | null)[]; capa_dbt: CapaModalidadDBT } {
+  const d = comoObjeto(json);
+  const cadenas: (CadenaDBT | null)[] = Array.from({ length: totalSituaciones }, () => null);
+  for (const item of comoArreglo<unknown>(d.cadenas)) {
+    const o = comoObjeto(item);
+    const indice = typeof o.situacion === "number" ? o.situacion : Number(o.situacion);
+    if (!Number.isInteger(indice) || indice < 0 || indice >= totalSituaciones) continue;
+    cadenas[indice] = normalizarCadenaDBT(o.cadena_dbt, lineas);
+  }
+  return { cadenas, capa_dbt: normalizarCapaDbt(d.capa_dbt) };
+}
+
 export function normalizarFragmento(
   campos: string[],
   json: unknown,
