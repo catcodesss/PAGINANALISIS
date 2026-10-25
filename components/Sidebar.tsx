@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   BookOpenCheck,
@@ -9,12 +8,12 @@ import {
   FolderOpen,
   Heart,
   Leaf,
-  Menu,
   Settings,
+  TrendingUp,
 } from "lucide-react";
 
 /** Vistas que hoy existen de verdad. El resto de ítems son mapa del producto. */
-export type Vista = "analisis" | "casos" | "guia" | "configuracion";
+export type Vista = "analisis" | "casos" | "evolucion" | "guia" | "configuracion";
 
 interface ItemNav {
   icono: typeof FilePenLine;
@@ -27,6 +26,7 @@ interface ItemNav {
 const ITEMS_NAV: ItemNav[] = [
   { icono: FilePenLine, etiqueta: "Nuevo caso", vista: "analisis", nuevo: true },
   { icono: FolderOpen, etiqueta: "Casos", vista: "casos" },
+  { icono: TrendingUp, etiqueta: "Evolución", vista: "evolucion" },
   // «Aprender» reúne la guía de uso y la biblioteca clínica.
   { icono: BookOpenCheck, etiqueta: "Aprender", vista: "guia" },
   // «Cuenta»: configuración, privacidad y respaldo.
@@ -40,111 +40,49 @@ interface SidebarProps {
 }
 
 /**
- * Navegación principal: siempre a la izquierda. Desplegada muestra el menú
- * completo; plegada deja solo el logo y el botón de hamburguesa para volver
- * a desplegarla.
+ * Navegación principal: siempre a la izquierda y siempre desplegada.
  *
  * Los ítems sin `vista` son de próxima disponibilidad: se muestran para
  * comunicar el mapa del producto, pero no navegan a ninguna parte.
  */
 export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
-  // Expandida por defecto; en pantallas estrechas arranca plegada para no
-  // tapar el contenido. La preferencia del usuario se recuerda.
-  const [abierto, setAbierto] = useState(true);
-
-  useEffect(() => {
-    try {
-      const guardado = localStorage.getItem("acia-menu-abierto");
-      if (guardado !== null) setAbierto(guardado === "1");
-      else if (window.innerWidth < 1024) setAbierto(false);
-    } catch {
-      if (window.innerWidth < 1024) setAbierto(false);
-    }
-  }, []);
-
-  function alternar() {
-    setAbierto((v) => {
-      try {
-        localStorage.setItem("acia-menu-abierto", v ? "0" : "1");
-      } catch {}
-      return !v;
-    });
-  }
-
   function navegar(destino?: Vista, nuevo?: boolean) {
     if (!destino) return;
     onCambiarVista(destino, nuevo);
   }
 
-  const botonMenu = (
-    <button
-      type="button"
-      onClick={alternar}
-      aria-label={abierto ? "Plegar el menú" : "Desplegar el menú"}
-      aria-expanded={abierto}
-      aria-controls="menu-lateral"
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-    >
-      <Menu className="h-5 w-5" aria-hidden="true" />
-    </button>
-  );
-
   return (
     <aside
       id="menu-lateral"
-      className={`sticky top-0 z-30 flex h-screen shrink-0 flex-col self-start overflow-x-hidden overflow-y-auto bg-sidebar py-7 text-white transition-[width] duration-200 print:hidden ${
-        abierto ? "w-72 px-5" : "w-[4.5rem] items-center px-3"
-      }`}
+      className={`sticky top-0 z-30 flex h-screen shrink-0 flex-col self-start overflow-x-hidden overflow-y-auto bg-sidebar py-7 text-white transition-[width] duration-200 print:hidden w-72 px-5`}
     >
-      {abierto ? (
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => navegar("analisis")}
-            className="flex min-w-0 items-center gap-3 rounded-lg px-2 text-left transition-opacity hover:opacity-90"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/logo-acia-blanco.svg"
-              alt=""
-              aria-hidden="true"
-              className="h-10 w-auto shrink-0"
-            />
-            <div className="min-w-0">
-              <p className="font-serif text-xl font-semibold leading-tight tracking-[0.2em]">
-                ACIA
-              </p>
-              <p className="text-xs leading-snug text-white/65">
-                Análisis de Conducta
-                <br />
-                asistido por IA
-              </p>
-            </div>
-          </button>
-          {botonMenu}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-4">
-          <button
-            type="button"
-            onClick={() => navegar("analisis")}
-            aria-label="ACIA, ir al inicio"
-            className="rounded-lg transition-opacity hover:opacity-90"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/logo-acia-blanco.svg"
-              alt=""
-              aria-hidden="true"
-              className="h-10 w-auto shrink-0"
-            />
-          </button>
-          {botonMenu}
-        </div>
-      )}
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => navegar("analisis")}
+          className="flex min-w-0 items-center gap-3 rounded-lg px-2 text-left transition-opacity hover:opacity-90"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/logo-acia-blanco.svg"
+            alt=""
+            aria-hidden="true"
+            className="h-10 w-auto shrink-0"
+          />
+          <div className="min-w-0">
+            <p className="font-serif text-xl font-semibold leading-tight tracking-[0.2em]">
+              ACIA
+            </p>
+            <p className="text-xs leading-snug text-white/65">
+              Análisis de Conducta
+              <br />
+              asistido por IA
+            </p>
+          </div>
+        </button>
+      </div>
 
-      {abierto && (
-        <>
+      <>
           <nav aria-label="Navegación principal" className="mt-8 flex flex-1 flex-col gap-1">
             {ITEMS_NAV.map(({ icono: Icono, etiqueta, vista: destino, nuevo }) => {
               const activo = destino !== undefined && destino === vista;
@@ -204,8 +142,7 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
               aria-hidden="true"
             />
           </div>
-        </>
-      )}
+      </>
     </aside>
   );
 }

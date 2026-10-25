@@ -30,6 +30,7 @@ import SelectorBloques from "@/components/SelectorBloques";
 import { IDS_POR_DEFECTO, IDS_TODOS } from "@/lib/bloques";
 import EsqueletoInforme from "@/components/EsqueletoInforme";
 import Sidebar, { type Vista } from "@/components/Sidebar";
+import Evolucion from "@/components/Evolucion";
 import PanelRecomendaciones from "@/components/PanelRecomendaciones";
 import { usePreferencias } from "@/components/usePreferencias";
 import { ausentesTrasReanalisis } from "@/lib/vacios";
@@ -175,7 +176,7 @@ export default function Home() {
   // Desde fuera (la página de ejemplo) se llega con `/?vista=casos`.
   useEffect(() => {
     const pedida = new URLSearchParams(window.location.search).get("vista");
-    if (pedida === "casos" || pedida === "guia" || pedida === "configuracion") {
+    if (pedida === "casos" || pedida === "evolucion" || pedida === "guia" || pedida === "configuracion") {
       setVista(pedida);
     } else if (pedida === "nuevo") {
       cambiarVista("analisis", true);
@@ -597,6 +598,10 @@ export default function Home() {
       titulo: "Casos",
       bajada: "Cifrados en este dispositivo.",
     },
+    evolucion: {
+      titulo: "Evolución",
+      bajada: "Una carpeta por paciente.",
+    },
     analisis: {
       titulo: "ACIA — análisis conductual asistido por IA",
       bajada:
@@ -985,6 +990,7 @@ export default function Home() {
               onCreado={abrirExpediente}
             />
           )}
+          {vista === "evolucion" && <Evolucion onAbrir={manejarAbrirCaso} />}
           {vista === "guia" && <GuiaCompleta />}
           {vista === "configuracion" && <Configuracion />}
 
