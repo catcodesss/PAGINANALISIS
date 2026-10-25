@@ -38,7 +38,7 @@ import { useEspacio } from "./contexto";
 
 const ETIQUETA_NIVEL: Record<NivelMapa, string> = {
   situacion: "Situación",
-  clinico: "Clínico · cadena",
+  clinico: "Cadena DBT",
 };
 
 export default function VistaMapa({
@@ -53,7 +53,6 @@ export default function VistaMapa({
   const { nivel, elegirNivel } = useNivelMapa(referenciaCaso);
   const { seleccionado, seleccionar, fuenteAbierta, abrirFuente } = useEspacio();
   const [capas, setCapas] = useState<CapasMapa>({ plan: true, huecos: true, dbt: false });
-  const [leerComoTexto, setLeerComoTexto] = useState(false);
   const acciones = useAccionesSeccion("situaciones", "Situaciones y grafo", [
     "conductas_problema",
     "repertorio_disponible",
@@ -121,14 +120,6 @@ export default function VistaMapa({
           ))}
         </div>
         <LeyendaApoyo />
-        <button
-          type="button"
-          aria-pressed={leerComoTexto}
-          onClick={() => setLeerComoTexto((v) => !v)}
-          className={`rounded border px-2.5 py-1 text-xs ${leerComoTexto ? "border-accent text-accent" : "border-divider text-ink-muted hover:text-ink"}`}
-        >
-          Leer como texto
-        </button>
         <span className="ml-auto">{acciones.menu}</span>
       </div>
 
@@ -150,7 +141,6 @@ export default function VistaMapa({
           analisis={analisis}
           nivel={nivel}
           capas={capas}
-          leerComoTexto={leerComoTexto}
           onIrANivel={elegirNivel}
         />
       )}

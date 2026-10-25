@@ -22,8 +22,7 @@ import {
 } from "@/lib/grafo";
 import TableroColumnas, { type AgruparMapa, type CapasMapa } from "./TableroColumnas";
 import CadenaClinica from "./CadenaClinica";
-import { rutaDeSeleccion, textoDeRuta } from "@/lib/rutaMapa";
-import { ETIQUETA_APOYO_ARISTA } from "@/lib/apoyoAristas";
+import { rutaDeSeleccion } from "@/lib/rutaMapa";
 import { destinosPosibles } from "@/lib/edicionMapa";
 import { TIPO_ARRASTRE_NODO } from "../espacio/contexto";
 import s from "./afc.module.css";
@@ -41,8 +40,6 @@ interface GrafoAFCProps {
   /** Situación, Clínico o Evidencia: la misma colección de nodos, leída a otra profundidad. */
   nivel: NivelMapa;
   capas: CapasMapa;
-  /** La ruta seleccionada como lista lineal, para lectores de pantalla. */
-  leerComoTexto: boolean;
   onIrANivel: (nivel: NivelMapa) => void;
 }
 
@@ -432,7 +429,7 @@ function BotonAgregarNodo({
   );
 }
 
-export default function GrafoAFC({ analisis, nivel, capas, leerComoTexto }: GrafoAFCProps) {
+export default function GrafoAFC({ analisis, nivel, capas }: GrafoAFCProps) {
   const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu, abrirEvidencia, propsSoltarFrase, arrastrandoFrase, setNodoEnElAire } = useEspacio();
   const [modoConectar, setModoConectar] = useState(false);
   const [origenConexion, setOrigenConexion] = useState<string | null>(null);
@@ -524,10 +521,6 @@ export default function GrafoAFC({ analisis, nivel, capas, leerComoTexto }: Graf
     />
   );
 
-  const lectura = leerComoTexto
-    ? textoDeRuta(analisis, nodos, seleccionado, (n) => `${etiquetaTipoNodo(n)}: ${n.etiqueta}`, (a) => ETIQUETA_APOYO_ARISTA[a.apoyo])
-    : [];
-
   return (
     <div className="print:contents">
       <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
@@ -572,17 +565,6 @@ export default function GrafoAFC({ analisis, nivel, capas, leerComoTexto }: Graf
           Ver solo lo apoyado por la nota
         </label>
       </div>
-
-      {leerComoTexto && (
-        <section aria-label="La ruta como texto" aria-live="polite" className="mb-5 rounded border border-divider bg-canvas p-3">
-          <p className="mb-1 font-mono text-[10px] uppercase tracking-wide text-ink-muted">
-            {seleccionado ? "Ruta del elemento elegido" : "Cadena de cada situación"}
-          </p>
-          <ol className="list-decimal space-y-1 pl-5 text-sm leading-relaxed text-ink">
-            {lectura.map((linea, i) => <li key={i}>{linea}</li>)}
-          </ol>
-        </section>
-      )}
 
       <div className={`relative min-w-0 ${s.raiz} ${poppinsAfc.variable} ${interAfc.variable} print:hidden`}>
         <div className="space-y-5">
