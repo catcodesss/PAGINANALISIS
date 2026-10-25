@@ -23,8 +23,13 @@ nada.
 
 ## Sub-fase 11A · Vista Evolución
 
-- **Tercera vista del caso**, junto a Mapa y Blancos. Preparar no es pestaña del
-  análisis: vive en otro apartado (fase 9).
+- **Vive dentro de la sección «Evolución» de la barra lateral** (fase 9), en la
+  carpeta del paciente, junto a Preparar y las sesiones. Al abrir una carpeta se
+  ve la Evolución de ese paciente. Además, el caso conserva un acceso como
+  tercera vista junto a Mapa y Blancos, que abre esa misma vista. Ni Preparar ni
+  Evolución son pestañas del análisis.
+- **Carpetas por paciente**: usa el alias que puso el terapeuta; no se pide ni
+  se muestra el nombre real.
 - **Matriz de hipótesis por sesiones**:
   - una fila por hipótesis, incluidas las rivales y las descartadas (atenuadas);
   - en cada celda, el estado en esa sesión y el cambio de evidencia (+1, −1);

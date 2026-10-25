@@ -33,10 +33,18 @@ varias sesiones.
 
 ## Sub-fase 9A · Preparar
 
-- **Apartado propio, fuera de las pestañas del análisis.** Preparar no aparece
-  en cada análisis que hace la IA ni como pestaña junto a Mapa y Blancos; vive en
-  otro apartado del producto (ubicación por decidir con el usuario antes de
-  construirlo). Sigue siendo gratis y derivado del estado del caso.
+- **Vive en la sección «Evolución» de la barra lateral** (decidido con el
+  usuario), fuera de las pestañas del análisis. Preparar no aparece en cada
+  análisis que hace la IA ni como pestaña junto a Mapa y Blancos. Sigue siendo
+  gratis y derivado del estado del caso.
+- **«Evolución» es una entrada propia de la barra lateral**, entre «Casos» y
+  «Aprender». Dentro hay **una carpeta por paciente**, con el nombre que ponga el
+  terapeuta (alias libre, no tiene por qué ser el real; avisarlo en el campo:
+  «no uses el nombre real»). Cada carpeta guarda los registros de ese paciente:
+  Preparar, las sesiones y, en la fase 11, la vista Evolución. Crear, renombrar y
+  eliminar carpeta (con confirmación). Un caso pertenece a una sola carpeta; el
+  alias de la cabecera de Preparar es el de la carpeta. La construcción de la
+  sección y de las carpetas es de esta fase; la fase 11 solo añade contenido.
 - **Diseño primero para móvil**: una columna; en escritorio, centrada a unos 640 px.
 - **Secciones, en este orden:**
   1. **Cabecera**: alias, número de sesión, fecha, días desde la última y riesgo.
