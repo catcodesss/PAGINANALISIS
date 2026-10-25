@@ -23,7 +23,8 @@ nada.
 
 ## Sub-fase 11A · Vista Evolución
 
-- **Cuarta vista del caso**, junto a Preparar, Mapa y Blancos.
+- **Tercera vista del caso**, junto a Mapa y Blancos. Preparar no es pestaña del
+  análisis: vive en otro apartado (fase 9).
 - **Matriz de hipótesis por sesiones**:
   - una fila por hipótesis, incluidas las rivales y las descartadas (atenuadas);
   - en cada celda, el estado en esa sesión y el cambio de evidencia (+1, −1);

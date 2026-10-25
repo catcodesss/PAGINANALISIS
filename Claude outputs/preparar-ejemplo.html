@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preparar · caso de ejemplo</title>
+<style>
+:root {
+  --lienzo:#F5F0E8; --superficie:#FBF8F2; --hundido:#EEE7DA; --tinta:#1F2A28; --tinta-suave:#6E6357;
+  --linea:#E2D8C8; --verde:#0F5A43; --verde-suave:#DCE9E2; --ambar:#8A6D3B; --ambar-suave:#F1E6CF;
+  --rojo:#9A3B2E; --sobre-verde:#fff;
+  --serif:Georgia,"Times New Roman",serif; --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-tema="claro"]){
+    --lienzo:#12171A; --superficie:#1A2124; --hundido:#151B1E; --tinta:#E8EDEB; --tinta-suave:#9AA8A4;
+    --linea:#2B3438; --verde:#5A9C84; --verde-suave:#1F3029; --ambar:#D0A94A; --ambar-suave:#2D2A1C;
+    --rojo:#D9806F; --sobre-verde:#0B0F10;
+  }
+}
+:root[data-tema="oscuro"]{
+  --lienzo:#12171A; --superficie:#1A2124; --hundido:#151B1E; --tinta:#E8EDEB; --tinta-suave:#9AA8A4;
+  --linea:#2B3438; --verde:#5A9C84; --verde-suave:#1F3029; --ambar:#D0A94A; --ambar-suave:#2D2A1C;
+  --rojo:#D9806F; --sobre-verde:#0B0F10;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--lienzo);color:var(--tinta);font-family:var(--serif);font-size:16px;line-height:1.5}
+.aviso{background:var(--ambar-suave);color:var(--ambar);font-family:var(--sans);font-size:13px;text-align:center;padding:8px 16px;border-bottom:1px solid var(--linea)}
+main{max-width:640px;margin:0 auto;padding:16px}
+header.cab{padding:8px 0 16px;border-bottom:1px solid var(--linea);margin-bottom:16px}
+.eyebrow{font-family:var(--sans);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--verde);font-weight:600}
+h1{font-size:26px;margin:4px 0 8px;font-weight:500}
+.meta{display:flex;flex-wrap:wrap;gap:8px;font-family:var(--sans);font-size:13px;color:var(--tinta-suave)}
+.chip{border:1px solid var(--linea);background:var(--superficie);border-radius:999px;padding:2px 10px}
+.chip.riesgo{color:var(--ambar);border-color:var(--ambar)}
+section{background:var(--superficie);border:1px solid var(--linea);border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font-family:var(--sans);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-suave);margin:0 0 10px;font-weight:600}
+a.ir{color:var(--verde);text-decoration:none;border-bottom:1px solid var(--linea);font-family:var(--sans);font-size:13px;cursor:pointer}
+a.ir:hover{border-color:var(--verde)}
+.fila{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.estado{font-family:var(--sans);font-size:12px;background:var(--verde-suave);color:var(--verde);border-radius:6px;padding:1px 8px;white-space:nowrap}
+.sub{font-size:14px;color:var(--tinta-suave)}
+.blanco{padding:10px 0;border-top:1px solid var(--linea)}
+.blanco:first-of-type{border-top:0}
+.blanco b{font-weight:600}
+.dato{font-family:var(--mono);font-size:13px;color:var(--tinta-suave)}
+svg.mini{display:block;margin-top:4px}
+.item{padding:10px 0;border-top:1px solid var(--linea)}
+.item:first-of-type{border-top:0}
+.item.hecho .txt{text-decoration:line-through;color:var(--tinta-suave)}
+button{font-family:var(--sans);font-size:13px;border:1px solid var(--linea);background:var(--hundido);color:var(--tinta);border-radius:8px;padding:5px 10px;cursor:pointer}
+button:hover{border-color:var(--verde)}
+button.pri{background:var(--verde);color:var(--sobre-verde);border-color:var(--verde)}
+button.fijada{border-color:var(--verde);color:var(--verde)}
+.acc{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.inline{display:none;margin-top:8px;gap:6px;flex-wrap:wrap;align-items:center}
+.inline.abierto{display:flex}
+input,textarea{font:inherit;font-size:14px;background:var(--lienzo);color:var(--tinta);border:1px solid var(--linea);border-radius:8px;padding:6px 8px}
+input[type=number]{width:90px}
+textarea{width:100%;min-height:60px}
+.prueba{font-size:13px;color:var(--tinta-suave);font-family:var(--sans)}
+.nota-clin{margin-top:6px;font-size:14px;border-left:3px solid var(--verde);padding-left:10px;font-style:italic}
+.nota-clin small{display:block;font-family:var(--sans);font-style:normal;font-size:11px;color:var(--verde);letter-spacing:.06em;text-transform:uppercase}
+.alerta{padding:8px 0;border-top:1px solid var(--linea);font-size:15px}
+.alerta:first-of-type{border-top:0}
+.sim{font-family:var(--mono);color:var(--ambar);margin-right:6px}
+.delta li{list-style:none;margin:0 0 6px;font-size:15px}
+.delta ul{padding:0;margin:0}
+.delta .s{font-family:var(--mono);display:inline-block;width:18px;font-weight:700}
+.s.mas{color:var(--verde)}.s.menos{color:var(--rojo)}.s.til{color:var(--ambar)}.s.int{color:var(--tinta-suave)}
+.barra{display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px}
+.destino{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:var(--tinta);color:var(--lienzo);font-family:var(--sans);font-size:13px;padding:8px 14px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s}
+.destino.v{opacity:1}
+@media print{
+  :root,:root[data-tema]{--lienzo:#fff;--superficie:#fff;--hundido:#fff;--tinta:#000;--tinta-suave:#333;--linea:#999;--verde:#000;--verde-suave:#fff;--ambar:#000;--ambar-suave:#fff;--rojo:#000;--sobre-verde:#fff}
+  .barra,button,.inline,a.ir,.destino{display:none!important}
+  section{break-inside:avoid;border-radius:0}
+}
+</style>
+</head>
+<body>
+<div class="aviso">Caso de ejemplo ficticio — no es el análisis de nadie. Los datos que anotes aquí no se guardan.</div>
+<main>
+  <div class="barra">
+    <button id="tema">Claro / oscuro</button>
+    <button id="imprimir">Imprimir hoja</button>
+  </div>
+
+  <header class="cab">
+    <div class="eyebrow">Preparar · sesión 4</div>
+    <h1>M.</h1>
+    <div class="meta">
+      <span class="chip">Sesión 4 de ejemplo</span>
+      <span class="chip">Jueves 12 de marzo</span>
+      <span class="chip">7 días desde la última</span>
+      <span class="chip riesgo">Riesgo: sin ideación, vigilar</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>En 30 segundos</h2>
+    <div class="fila">
+      <div>
+        <b>Función principal:</b> la evitación de exponer en reuniones se mantiene por
+        <b>escape de la ansiedad anticipatoria</b>.
+      </div>
+      <span class="estado">En prueba</span>
+    </div>
+    <div style="margin:6px 0 10px"><a class="ir" data-ir="Mapa · hipótesis 1">Ver en Mapa</a></div>
+
+    <div class="blanco">
+      <div class="fila">
+        <div><b>Evitar exponer en reuniones</b><div class="dato">Última exposición (sesión 3): malestar 7 → 5</div></div>
+        <span class="estado">En curso</span>
+      </div>
+      <svg class="mini" width="140" height="32" viewBox="0 0 140 32" role="img" aria-label="Malestar anticipado: 8, 7, 7, 5">
+        <polyline fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          points="6,6 50,12 94,12 134,24" style="color:var(--verde)"/>
+        <g fill="currentColor" style="color:var(--verde)"><circle cx="6" cy="6" r="3"/><circle cx="50" cy="12" r="3"/><circle cx="94" cy="12" r="3"/><circle cx="134" cy="24" r="3"/></g>
+      </svg>
+      <div class="dato">Malestar anticipado por sesión: 8 · 7 · 7 · 5</div>
+      <a class="ir" data-ir="Blancos · evitar exponer en reuniones">Ver en Blancos</a>
+    </div>
+    <div class="blanco">
+      <div class="fila">
+        <div><b>Revisión del correo fuera de horario</b><div class="dato">Sin dato nuevo desde la sesión 2</div></div>
+        <span class="estado">Aprobado</span>
+      </div>
+      <a class="ir" data-ir="Blancos · correo fuera de horario">Ver en Blancos</a>
+    </div>
+    <div class="blanco">
+      <b>Tarea pendiente:</b> registrar el malestar antes y después de cada reunión de equipo (revisar hoy).
+    </div>
+  </section>
+
+  <section>
+    <h2>Al empezar</h2>
+    <div id="tareas"></div>
+  </section>
+
+  <section>
+    <h2>Preguntar</h2>
+    <div id="preguntas"></div>
+  </section>
+
+  <section>
+    <h2>Atención</h2>
+    <div class="alerta"><span class="sim">▲</span>La conducta de seguridad «llevar las diapositivas impresas» no tiene aún evidencia citada. <a class="ir" data-ir="Mapa · nodo conducta de seguridad">Ver</a></div>
+    <div class="alerta"><span class="sim">◆</span>Dos hipótesis rivales sobre la función siguen abiertas para el blanco activo. <a class="ir" data-ir="Blancos · alternativas">Ver</a></div>
+  </section>
+
+  <section class="delta">
+    <h2>Desde la última sesión</h2>
+    <ul>
+      <li><span class="s mas">+</span>Nueva conducta de seguridad: llevar las diapositivas impresas. <a class="ir" data-ir="Mapa · nodo nuevo">Ver</a></li>
+      <li><span class="s menos">−</span>Se descarta «miedo a ser evaluado por el jefe» como función única. <a class="ir" data-ir="Mapa · hipótesis descartada">Ver</a></li>
+      <li><span class="s til">~</span>La exposición pasó de «planificada» a «realizada», malestar 7 → 5. <a class="ir" data-ir="Blancos · exposición">Ver</a></li>
+      <li><span class="s int">?</span>Nueva pregunta abierta sobre qué ocurre si no lleva las diapositivas.</li>
+    </ul>
+  </section>
+</main>
+<div class="destino" id="destino"></div>
+
+<script>
+const tareas = [
+  {id:1, txt:"Registro de malestar antes y después de cada reunión", bl:"Evitar exponer en reuniones", hecho:false, valor:""},
+  {id:2, txt:"Exposición: presentar 5 minutos en la reunión del martes sin diapositivas impresas", bl:"Evitar exponer en reuniones", hecho:false, valor:""}
+];
+const preguntas = [
+  {id:1, q:"¿Qué teme que ocurra si no lleva las diapositivas impresas?", prueba:"pone a prueba: la función de seguridad de la conducta",
+   si:"si responde «quedarme en blanco»: apoya escape de la ansiedad; si responde «que me juzguen»: refuerza la hipótesis social", fijada:false, quitada:false, resp:""},
+  {id:2, q:"¿Cuántas reuniones han pasado desde la última exposición sin que evitara hablar?", prueba:"pone a prueba: generalización fuera de la exposición planificada",
+   si:"si responde 0: el cambio aún depende de la exposición guiada", fijada:false, quitada:false, resp:""},
+  {id:3, q:"¿Con quién le resulta más difícil hablar: jefe, pares o clientes?", prueba:"pone a prueba: la hipótesis rival de evaluación por la autoridad",
+   si:"si responde «el jefe»: reabre la hipótesis descartada en la sesión 3", fijada:false, quitada:false, resp:""}
+];
+const $ = s => document.querySelector(s);
+const esc = t => t.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function toast(m){const d=$('#destino');d.textContent=m;d.classList.add('v');clearTimeout(toast.t);toast.t=setTimeout(()=>d.classList.remove('v'),1800)}
+
+function pintarTareas(){
+  $('#tareas').innerHTML = tareas.map(t => `
+    <div class="item ${t.hecho?'hecho':''}" data-t="${t.id}">
+      <div class="txt">${esc(t.txt)}</div>
+      <div class="prueba">Blanco: ${esc(t.bl)}${t.valor?` · dato anotado: <b>${esc(t.valor)}</b>`:''}</div>
+      <div class="acc"><button data-a="abrirT">${t.valor?'Cambiar dato':'Anotar datos'}</button>
+        <button data-a="hechoT">${t.hecho?'Reabrir':'Marcar hecha'}</button></div>
+      <div class="inline" id="inT${t.id}"><label>Malestar (0–10)
+        <input type="number" min="0" max="10" value="${esc(t.valor)}"></label>
+        <button class="pri" data-a="guardarT">Guardar</button></div>
+    </div>`).join('');
+}
+
+function pintarPreguntas(){
+  const vis = preguntas.filter(p=>!p.quitada).sort((a,b)=>b.fijada-a.fijada).slice(0,3);
+  $('#preguntas').innerHTML = vis.length ? vis.map(p => `
+    <div class="item" data-p="${p.id}">
+      <div><b>${esc(p.q)}</b></div>
+      <div class="prueba">${esc(p.prueba)}</div>
+      <div class="prueba">${esc(p.si)}</div>
+      ${p.resp?`<div class="nota-clin"><small>Nota del clínico</small>${esc(p.resp)}</div>`:''}
+      <div class="acc">
+        <button data-a="abrirP">${p.resp?'Editar respuesta':'Anotar respuesta'}</button>
+        <button data-a="fijar" class="${p.fijada?'fijada':''}">${p.fijada?'Fijada':'Fijar'}</button>
+        <button data-a="quitar">Quitar</button>
+      </div>
+      <div class="inline" id="inP${p.id}"><textarea placeholder="Respuesta del paciente, con tus palabras">${esc(p.resp)}</textarea>
+        <button class="pri" data-a="guardarP">Guardar</button></div>
+    </div>`).join('') : '<div class="sub">No quedan preguntas por hacer.</div>';
+}
+
+document.addEventListener('click', e => {
+  const ir = e.target.closest('[data-ir]');
+  if (ir) { toast('En el producto lleva a: ' + ir.dataset.ir); return; }
+  const b = e.target.closest('button'); if (!b) return;
+  const a = b.dataset.a;
+  const t = b.closest('[data-t]'), p = b.closest('[data-p]');
+  if (a==='abrirT') t.querySelector('.inline').classList.toggle('abierto');
+  if (a==='guardarT'){const x=tareas.find(z=>z.id==t.dataset.t);x.valor=t.querySelector('input').value;pintarTareas();toast('Dato anotado como tuyo')}
+  if (a==='hechoT'){const x=tareas.find(z=>z.id==t.dataset.t);x.hecho=!x.hecho;pintarTareas()}
+  if (a==='abrirP') p.querySelector('.inline').classList.toggle('abierto');
+  if (a==='guardarP'){const x=preguntas.find(z=>z.id==p.dataset.p);x.resp=p.querySelector('textarea').value.trim();pintarPreguntas();toast('Entra como evidencia del clínico en el próximo análisis')}
+  if (a==='fijar'){const x=preguntas.find(z=>z.id==p.dataset.p);x.fijada=!x.fijada;pintarPreguntas()}
+  if (a==='quitar'){preguntas.find(z=>z.id==p.dataset.p).quitada=true;pintarPreguntas()}
+});
+$('#imprimir').onclick = () => window.print();
+$('#tema').onclick = () => {
+  const r=document.documentElement, oscuro=getComputedStyle(r).colorScheme==='dark'||r.dataset.tema==='oscuro'||(!r.dataset.tema&&matchMedia('(prefers-color-scheme:dark)').matches);
+  r.dataset.tema = oscuro ? 'claro' : 'oscuro';
+};
+pintarTareas(); pintarPreguntas();
+</script>
+</body>
+</html>

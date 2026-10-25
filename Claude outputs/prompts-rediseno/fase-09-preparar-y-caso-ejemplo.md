@@ -33,7 +33,10 @@ varias sesiones.
 
 ## Sub-fase 9A · Preparar
 
-- **Vista por defecto** al abrir un caso con al menos una sesión.
+- **Apartado propio, fuera de las pestañas del análisis.** Preparar no aparece
+  en cada análisis que hace la IA ni como pestaña junto a Mapa y Blancos; vive en
+  otro apartado del producto (ubicación por decidir con el usuario antes de
+  construirlo). Sigue siendo gratis y derivado del estado del caso.
 - **Diseño primero para móvil**: una columna; en escritorio, centrada a unos 640 px.
 - **Secciones, en este orden:**
   1. **Cabecera**: alias, número de sesión, fecha, días desde la última y riesgo.

@@ -17,7 +17,8 @@ aparece en catorce sitios. Sumando las pestañas son unos 12.800 px de alto a
 
 Esta fase sustituye las pestañas por dos vistas, **Mapa** y **Blancos**, con una
 cabecera, un raíl izquierdo, un Inspector derecho y un cajón «Fuente» con la
-nota. Preparar y Evolución llegan en las fases 9 y 11. Mientras no exista el
+nota. Evolución llega en la fase 11; Preparar (fase 9) irá en otro apartado, no
+como pestaña del análisis. Mientras no exista el
 caso (fase 7), la cabecera muestra la referencia actual.
 
 ## Reglas
