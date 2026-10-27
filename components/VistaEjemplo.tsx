@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import ReportView from "./ReportView";
@@ -104,16 +103,7 @@ export default function VistaEjemplo({
         igual que en app/page.tsx.
       */}
       <div className="mx-auto w-full px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-wrap gap-2 print:hidden">
-          {/* Copiar, Word e imprimir viven en «Exportar ▾» de la cabecera. */}
-          <Link
-            href="/"
-            className="rounded bg-accent px-3 py-2 text-sm font-medium texto-sobre-acento transition-colors hover:bg-accent/90"
-          >
-            Ir a la herramienta
-          </Link>
-        </div>
-
+        {/* Copiar, Word e imprimir viven en «Exportar ▾» de la cabecera. */}
         <ReportView
           analisis={analisis}
           referenciaCaso={referenciaCaso}

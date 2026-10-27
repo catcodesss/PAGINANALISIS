@@ -17,7 +17,7 @@ export function irADestino(
 ) {
   espacio.elegirVista(destino.vista);
   // En el Mapa, un aviso sin nodo no deja seleccionado el elemento anterior:
-  // se lee en la franja «Avisos sin nodo».
+  // se lee en el popover de Grado de apoyo.
   if (destino.vista === "mapa") espacio.seleccionar(destino.id);
   requestAnimationFrame(() =>
     requestAnimationFrame(() => {
@@ -31,8 +31,8 @@ export function irADestino(
             : 'section[aria-label="Avisos sin nodo"]';
       if (!selector) return;
       const elemento = document.querySelector(selector);
-      // La franja va plegada en una línea; quien llega desde un aviso viene a leerlo.
-      if (destino.vista === "mapa" && !destino.id) elemento?.querySelector("details")?.setAttribute("open", "");
+      // Los avisos sin nodo van dentro del popover de Grado de apoyo, cerrado.
+      if (destino.vista === "mapa" && !destino.id) document.querySelector("details#niveles-confianza")?.setAttribute("open", "");
       elemento?.scrollIntoView({ behavior: "smooth", block: "center" });
     })
   );

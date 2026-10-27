@@ -18,8 +18,8 @@
  * aviso que los nombre tiene que seguir llevando a donde se ve esa información.
  */
 
-import { useEffect, useMemo, useState } from "react";
-import type { AnalisisFuncional } from "@/lib/types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Alerta, AnalisisFuncional } from "@/lib/types";
 import { NIVELES_MAPA, type NivelMapa } from "@/lib/preferencias";
 import { construirNodosGrafo, huecosDeSituacion } from "@/lib/grafo";
 import { destinoDeAlerta } from "@/lib/destinoAlerta";
@@ -95,6 +95,7 @@ export default function VistaMapa({
     return () => window.removeEventListener("keydown", alPulsar);
   }, [analisis, seleccionado, seleccionar, elegirNivel, fuenteAbierta, abrirFuente]);
 
+  const sueltos = useMemo(() => avisosSinNodo(analisis), [analisis]);
   const alternar = (capa: keyof CapasMapa) => setCapas((c) => ({ ...c, [capa]: !c[capa] }));
 
   return (
@@ -119,7 +120,7 @@ export default function VistaMapa({
             </button>
           ))}
         </div>
-        <LeyendaApoyo />
+        <LeyendaApoyo sueltos={sueltos} />
         <span className="ml-auto">{acciones.menu}</span>
       </div>
 
@@ -131,8 +132,6 @@ export default function VistaMapa({
         </div>
       )}
       {acciones.panel}
-
-      <AvisosSinNodo analisis={analisis} />
 
       {analisis.situaciones.length === 0 ? (
         <SinHallazgos estado={estadoVacio(analisis, "situaciones")} />
@@ -191,40 +190,46 @@ function BotonCapa({
 
 /**
  * Avisos sobre algo del Mapa que no tiene nodo propio: una habilidad DBT cuyo
- * eslabón no se resolvió, o una situación entera. Sin esta franja solo se
- * verían en la bandeja, y moverlos de pestaña no puede esconderlos.
+ * eslabón no se resolvió, o una situación entera. Viven en el popover de Grado
+ * de apoyo (lo que falta y lo que sostiene el análisis se leen juntos); la
+ * insignia del botón impide que queden escondidos con el popover cerrado.
  */
-function AvisosSinNodo({ analisis }: { analisis: AnalisisFuncional }) {
+function avisosSinNodo(analisis: AnalisisFuncional) {
   const ids = new Set(construirNodosGrafo(analisis).map((n) => n.id));
-  const sueltos = analisis.alertas.filter((a) => {
+  return analisis.alertas.filter((a) => {
     const destino = destinoDeAlerta(analisis, a);
     return destino?.vista === "mapa" && (destino.id === null || (!ids.has(destino.id) && analisis.situaciones.some((s) => s.id === destino.id)));
   });
-  if (sueltos.length === 0) return null;
-  return (
-    <section aria-label="Avisos sin nodo" className="mb-4 rounded border border-divider p-3">
-      <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted">Avisos sin nodo en el grafo</p>
-      <ul className="space-y-2">
-        {sueltos.map((a, i) => (
-          <li key={i} className="text-sm leading-relaxed text-ink">
-            <InsigniaAlerta alertas={[a]} className="mr-2" />
-            {traducirMensajeAlerta(a.mensaje)}
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
 }
 
 /**
  * La leyenda del grado de apoyo, como popover en la barra del Mapa. Antes era
  * una tarjeta en la pestaña Revisión y un botón flotante que llevaba a ella.
  */
-function LeyendaApoyo() {
+function LeyendaApoyo({ sueltos }: { sueltos: readonly Alerta[] }) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const cerrar = (e: Event) => {
+      const el = ref.current;
+      if (!el?.open) return;
+      if (e.type === "keydown" ? (e as KeyboardEvent).key === "Escape" : !el.contains(e.target as Node)) el.open = false;
+    };
+    document.addEventListener("pointerdown", cerrar);
+    document.addEventListener("keydown", cerrar);
+    return () => {
+      document.removeEventListener("pointerdown", cerrar);
+      document.removeEventListener("keydown", cerrar);
+    };
+  }, []);
   return (
-    <details id="niveles-confianza" className="sm:relative print:hidden">
+    <details ref={ref} id="niveles-confianza" className="sm:relative print:hidden">
       <summary className="cursor-pointer list-none rounded border border-divider px-2.5 py-1 text-xs text-ink-muted hover:text-ink">
         Grado de apoyo ⓘ
+        {sueltos.length > 0 && (
+          <span className="ml-2 rounded-full border border-warn px-1.5 py-0.5 text-[10px] font-semibold text-warn">
+            {sueltos.length} {sueltos.length === 1 ? "aviso" : "avisos"}
+          </span>
+        )}
       </summary>
       <div className="absolute inset-x-0 z-40 mt-1 rounded-md sm:inset-x-auto sm:left-0 sm:w-96 border border-divider bg-surface p-4 shadow-lg">
         <p className="text-sm leading-relaxed text-ink-muted">{INTRO_GRADO_APOYO}</p>
@@ -239,6 +244,19 @@ function LeyendaApoyo() {
           ))}
         </ul>
         <p className="mt-3 border-t border-divider pt-2 text-xs leading-relaxed text-ink-muted">{NOTA_PIE_GRADO_APOYO}</p>
+        {sueltos.length > 0 && (
+          <section aria-label="Avisos sin nodo" className="mt-3 border-t border-divider pt-3">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-ink-muted">Información faltante que condiciona el análisis</p>
+            <ul className="space-y-2">
+              {sueltos.map((a, i) => (
+                <li key={i} className="text-sm leading-relaxed text-ink">
+                  <InsigniaAlerta alertas={[a]} className="mr-2" />
+                  {traducirMensajeAlerta(a.mensaje)}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </details>
   );
