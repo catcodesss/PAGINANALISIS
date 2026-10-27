@@ -433,7 +433,6 @@ export default function GrafoAFC({ analisis, nivel, capas }: GrafoAFCProps) {
   const { seleccionado, seleccionar, aplicar, deshacer, rehacer, puedeDeshacer, puedeRehacer, irACita, abrirMenu, abrirEvidencia, propsSoltarFrase, arrastrandoFrase, setNodoEnElAire } = useEspacio();
   const [modoConectar, setModoConectar] = useState(false);
   const [origenConexion, setOrigenConexion] = useState<string | null>(null);
-  const [filtro, setFiltro] = useState<1 | 2 | 3 | null>(null);
   const [soloApoyado, setSoloApoyado] = useState(false);
   const [agrupar, setAgrupar] = useState<AgruparMapa>("episodio");
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
@@ -464,7 +463,6 @@ export default function GrafoAFC({ analisis, nivel, capas }: GrafoAFCProps) {
   // cadena DBT, donde cada paso solo se une al siguiente (CadenaClinica). Las
   // relaciones se eligen desde el Inspector.
   const atenuado = (n: NodoGrafo) =>
-    (filtro !== null && n.apoyo !== filtro) ||
     (soloApoyado && n.apoyo < 3) ||
     (ruta.ids.size > 0 && !ruta.ids.has(n.id));
 
@@ -552,15 +550,8 @@ export default function GrafoAFC({ analisis, nivel, capas }: GrafoAFCProps) {
         <span className="ml-auto text-xs text-ink-muted">{nodos.length} nodos · {analisis.aristas.length} relaciones</span>
       </div>
 
-      <div className="mb-5 flex flex-wrap items-center gap-2 text-xs print:hidden" aria-label="Filtro de apoyo en la nota">
-        <span className="font-medium text-ink">Apoyo en la nota</span>
-        {([3, 2, 1] as const).map((n) => (
-          <button key={n} type="button" aria-pressed={filtro === n} onClick={() => setFiltro(filtro === n ? null : n)} className="rounded-full border border-divider px-2.5 py-1 text-ink-muted aria-pressed:border-accent aria-pressed:text-accent">
-            <span className={`${s.marcaApoyo} mr-1 align-middle`} data-apoyo={n} aria-hidden="true" />
-            {etiquetaApoyo(n)}
-          </button>
-        ))}
-        <label className="ml-2 flex items-center gap-1.5 text-ink-muted">
+      <div className="mb-5 flex flex-wrap items-center gap-2 text-xs print:hidden">
+        <label className="flex items-center gap-1.5 text-ink-muted">
           <input type="checkbox" checked={soloApoyado} onChange={(e) => setSoloApoyado(e.target.checked)} />
           Ver solo lo apoyado por la nota
         </label>
