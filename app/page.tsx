@@ -3,13 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
-  BookOpenText,
   ChevronDown,
   Lock,
-  Moon,
   PenLine,
   Sparkles,
-  SunMedium,
 } from "lucide-react";
 import type { AnalisisFuncional, DatoFaltante, PreguntaPrevia } from "@/lib/types";
 import {
@@ -32,7 +29,6 @@ import EsqueletoInforme from "@/components/EsqueletoInforme";
 import Sidebar, { type Vista } from "@/components/Sidebar";
 import Evolucion from "@/components/Evolucion";
 import PanelRecomendaciones from "@/components/PanelRecomendaciones";
-import { usePreferencias } from "@/components/usePreferencias";
 import { ausentesTrasReanalisis } from "@/lib/vacios";
 import { calcularApoyoAristas } from "@/lib/apoyoAristas";
 import { migrarAV9 } from "@/lib/identidad";
@@ -108,7 +104,6 @@ export default function Home() {
   // mientras dura el paso de preguntas para poder anexarle las respuestas
   // confirmadas al terminar.
   const [textoPendiente, setTextoPendiente] = useState("");
-  const { preferencias, cambiar: cambiarPreferencias } = usePreferencias();
 
   /* ── Caso abierto (fase 7) ── */
   const [expediente, setExpediente] = useState<Expediente | null>(null);
@@ -308,13 +303,6 @@ export default function Home() {
           anadirSesion: () => setPanelSesion(true),
         }
       : null;
-
-  // Con el tema en "sistema" no se sabe en el servidor cuál se ve; se lee lo
-  // que el script de layout.tsx ya aplicó a <html>, que es lo que ve el usuario.
-  function alternarTema() {
-    const oscuroAhora = document.documentElement.dataset.tema === "oscuro";
-    cambiarPreferencias({ tema: oscuroAhora ? "claro" : "oscuro" });
-  }
 
   async function ejecutarAnalisis(
     texto: string,
@@ -651,33 +639,6 @@ export default function Home() {
               <p className="mt-3 text-base text-ink-muted sm:text-lg">
                 {cabecera.bajada}
               </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {/* La guía se abre desde la barra lateral ("Guía de uso"). Aquí
-                  solo queda la vuelta, cuando ya estás dentro de ella. */}
-              {!enAnalisis && (
-                <button
-                  type="button"
-                  onClick={() => setVista("analisis")}
-                  className="flex items-center gap-2 rounded-lg border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas"
-                >
-                  <BookOpenText className="h-4 w-4 text-accent" aria-hidden="true" />
-                  Volver al análisis
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={alternarTema}
-                title="Cambiar entre modo claro y oscuro"
-                aria-label="Cambiar entre modo claro y oscuro"
-                className="hidden h-12 w-12 items-center justify-center rounded-full border border-divider bg-surface text-tierra sm:flex shadow-sm transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
-              >
-                {preferencias.tema === "oscuro" ? (
-                  <Moon className="h-5 w-5" aria-hidden="true" />
-                ) : (
-                  <SunMedium className="h-5 w-5" aria-hidden="true" />
-                )}
-              </button>
             </div>
           </header>
 
