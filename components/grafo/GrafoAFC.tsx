@@ -31,7 +31,7 @@ import { interAfc, poppinsAfc } from "./fuentesAfc";
 import { ETIQUETA_TIPO, etiquetaApoyo, etiquetaTipoNodo } from "./etiquetasNodo";
 import { useEspacio } from "../espacio/contexto";
 import { alertasPorNodo } from "@/lib/alertasNodo";
-import { InsigniaAlerta } from "./InsigniaAlerta";
+import { AvisoEnTarjeta, InsigniaAlerta } from "./InsigniaAlerta";
 import { procedenciaDe, ROTULOS_PROCEDENCIA } from "@/lib/procedencia";
 import type { ProcedenciaElemento } from "@/lib/types";
 
@@ -293,9 +293,9 @@ function Nodo({
         <div className={s.nodoCuerpo}>
           <div className={s.nodoTexto}>
             <span className={s.chip}>{nodo.tipo === "encubierta" ? ETIQUETA_TIPO.conducta : ETIQUETA_TIPO[nodo.tipo]}<SiglaTipo tipo={nodo.tipo} /></span>
-            {alertas.length > 0 && <InsigniaAlerta alertas={alertas} className="mt-1 self-start" />}
             {editando ? editor(s.editor) : <p className={s.etiqueta}>{nodo.etiqueta}</p>}
             {detalle && <p className={s.detalle} title={detalle.definicion}>{detalle.texto}</p>}
+            {alertas.length > 0 && <AvisoEnTarjeta alertas={alertas} sugeridoPorIA={procedencia?.estado === "propuesta"} className={s.aviso} />}
           </div>
         </div>
       </article>

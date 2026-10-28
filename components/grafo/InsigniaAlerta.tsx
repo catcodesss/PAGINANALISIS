@@ -1,3 +1,4 @@
+import { TriangleAlert } from "lucide-react";
 import type { Alerta } from "@/lib/types";
 import { gravedadMayor } from "@/lib/alertasNodo";
 import { traducirMensajeAlerta } from "@/lib/gradoApoyo";
@@ -33,6 +34,35 @@ export function InsigniaAlerta({ alertas, className = "" }: { alertas: readonly 
       <span aria-hidden="true">{marca}</span>
       {texto}{resto}
     </span>
+  );
+}
+
+/**
+  El mismo aviso como bloque dentro de la tarjeta, bajo el contenido, en vez de
+  una insignia que flota junto al encabezado. Los estilos los pone quien lo
+  usa (`className`); aquí solo van la estructura y el texto.
+*/
+export function AvisoEnTarjeta({
+  alertas,
+  sugeridoPorIA = false,
+  className = "",
+}: {
+  alertas: readonly Alerta[];
+  sugeridoPorIA?: boolean;
+  className?: string;
+}) {
+  const gravedad = gravedadMayor(alertas);
+  if (!gravedad) return null;
+  const { texto } = ROTULO[gravedad];
+  const resto = alertas.length > 1 ? ` · ${alertas.length} avisos` : "";
+  return (
+    <div title={alertas.map((a) => traducirMensajeAlerta(a.mensaje)).join("\n\n")} className={className}>
+      <TriangleAlert aria-hidden="true" size={14} strokeWidth={2.25} style={{ flexShrink: 0 }} />
+      <span style={{ minWidth: 0 }}>
+        <strong style={{ display: "block", fontWeight: 600 }}>{texto}{resto}</strong>
+        {sugeridoPorIA && <span style={{ display: "block", fontSize: "0.6875rem", fontWeight: 400 }}>Contenido sugerido por IA</span>}
+      </span>
+    </div>
   );
 }
 
