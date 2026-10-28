@@ -14,7 +14,9 @@
  * seleccionado»: mejor un Inspector vacío que uno que adivina.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { ArrowDownLeft, ArrowRight, ArrowUpRight, ChevronRight, Info, Repeat, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import type { TipoArista } from "@/lib/types";
 import type { AnalisisFuncional, EstadoHipotesis } from "@/lib/types";
 import { actualizarEtiquetaNodo, construirNodosGrafo, type NodoGrafo } from "@/lib/grafo";
 import { alertasPorNodo } from "@/lib/alertasNodo";
@@ -75,8 +77,8 @@ export default function Inspector({
 
   return (
     <aside aria-label="Inspector" className="flex h-full min-h-0 flex-col">
-      <header className="flex items-center gap-1 border-b border-divider px-3 pt-2">
-        <div role="tablist" aria-label="Pestañas del Inspector" className="flex gap-1">
+      <header className="flex items-center gap-1 border-b border-divider px-3 pt-1.5">
+        <div role="tablist" aria-label="Pestañas del Inspector" className="flex min-w-0 gap-0.5">
           {PESTANAS.map((p) => (
             <button
               key={p.id}
@@ -84,7 +86,7 @@ export default function Inspector({
               role="tab"
               aria-selected={pestana === p.id}
               onClick={() => setPestana(p.id)}
-              className={`-mb-px border-b-2 px-2.5 py-1.5 text-xs ${pestana === p.id ? "border-accent font-medium text-ink" : "border-transparent text-ink-muted hover:text-ink"}`}
+              className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-[13px] leading-none transition-colors ${pestana === p.id ? "border-accent font-semibold text-ink" : "border-transparent text-ink-muted hover:text-ink"}`}
             >
               {p.titulo}
             </button>
@@ -101,13 +103,13 @@ export default function Inspector({
               const r = e.currentTarget.getBoundingClientRect();
               abrirMenu(seleccionado, r.right - 192, r.bottom + 4);
             }}
-            className="ml-auto rounded px-2 py-0.5 text-sm text-ink-muted hover:bg-canvas hover:text-ink"
+            className="ml-auto shrink-0 rounded px-2 py-0.5 text-sm text-ink-muted hover:bg-canvas hover:text-ink"
           >
             ⋯
           </button>
         )}
         {onCerrar && (
-          <button type="button" onClick={onCerrar} aria-label="Cerrar el Inspector" className={`${nodo || arista ? "" : "ml-auto "}rounded px-2 py-0.5 text-sm text-ink-muted hover:text-ink`}>
+          <button type="button" onClick={onCerrar} aria-label="Cerrar el Inspector" className={`${nodo || arista ? "" : "ml-auto "}shrink-0 rounded px-2 py-0.5 text-sm text-ink-muted hover:text-ink`}>
             ✕
           </button>
         )}
@@ -177,6 +179,7 @@ function DetalleNodo({
       const otro = nodos.find((n) => n.id === (sale ? a.hasta : a.desde));
       return {
         arista: a,
+        sale,
         sentido: sale ? "Lleva a" : "Recibe de",
         tipo: TIPO_RELACION[a.tipo],
         otro,
@@ -227,76 +230,176 @@ function DetalleNodo({
     );
   }
 
+  const sinCitaLiteral = !cita && (nodo.citas_clinico ?? []).length === 0;
   return (
-    <div className="space-y-3">
-      <AvisosDelNodo alertas={avisos} />
+    <div className="space-y-4">
       <div>
-        <p className="text-xs text-ink-muted">Etiqueta</p>
+        {/* El tipo es metadato; la etiqueta es lo que se lee primero. */}
+        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">{etiquetaTipoNodo(nodo)}</p>
         {/* Parece texto y se edita al hacer clic, como el resto del informe. */}
         <TextoEditable
           key={nodo.id + nodo.etiqueta}
           valor={nodo.etiqueta}
           seccionId="situaciones"
           etiqueta={`Etiqueta de ${etiquetaTipoNodo(nodo)}`}
-          className="text-sm leading-relaxed text-ink"
+          className="mt-1 break-words font-serif text-[17px] font-semibold leading-snug text-ink [overflow-wrap:anywhere]"
           onCambio={(valor) => aplicar((copia) => actualizarEtiquetaNodo(copia, nodo.id, valor))}
         />
       </div>
-      <InsigniaProcedencia
-        analisis={analisis}
-        id={nodo.id}
-        // Confirmar es una decisión sobre la propuesta, no texto del clínico:
-        // no marca la sección como editada (invariante 6).
-        onConfirmar={() => onEditarSeccion(null, (copia) => confirmarElemento(copia, nodo.id))}
-      />
-      <dl className="space-y-1 text-xs">
-        <div><dt className="inline text-ink-muted">Tipo: </dt><dd className="inline text-ink">{etiquetaTipoNodo(nodo)}</dd></div>
-        <div><dt className="inline text-ink-muted">Apoyo en la nota: </dt><dd className="inline text-ink">{etiquetaApoyo(nodo.apoyo)}</dd></div>
-      </dl>
-      {cita ? (
-        <button type="button" onClick={() => irACita(cita)} className="text-xs text-accent underline underline-offset-2">
-          Ver en la nota · {etiquetaCita(cita)}
-        </button>
-      ) : (nodo.citas_clinico ?? []).length > 0 ? (
-        <button type="button" onClick={() => irACita(nodo.citas_clinico![0])} className="text-xs text-accent underline underline-offset-2">
-          Ver en la nota · {etiquetaCita(nodo.citas_clinico![0])} · cita tuya
-        </button>
-      ) : (
-        <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Inferido — sin cita literal en la nota</p>
-      )}
-      <div className="border-t border-divider pt-3">
-        <p className="mb-2 text-xs font-medium text-ink">Relaciones del nodo</p>
-        {relaciones.length === 0 && <p className="text-[11px] text-ink-muted">Sin relaciones trazadas.</p>}
-        {relaciones.map((r) => (
-          <div key={r.arista.id} className="mb-2 flex items-start gap-2 text-[11px] text-ink-muted">
-            <span className="min-w-0 flex-1">
-              {r.sentido} · {r.tipo}:{" "}
-              {r.otro ? (
-                <button type="button" onClick={() => seleccionar(r.otro!.id)} className="text-left text-ink hover:text-accent">
-                  {r.etiqueta}
+
+      <AvisosDelNodo alertas={avisos} />
+
+      {/* Procedencia y validación: una propuesta de la IA no es una conclusión validada. */}
+      <section aria-label="Procedencia y validación" className="space-y-2 rounded-md border border-divider bg-canvas p-2.5">
+        <InsigniaProcedencia
+          analisis={analisis}
+          id={nodo.id}
+          className="w-full justify-between gap-y-1.5"
+          // Confirmar es una decisión sobre la propuesta, no texto del clínico:
+          // no marca la sección como editada (invariante 6).
+          onConfirmar={() => onEditarSeccion(null, (copia) => confirmarElemento(copia, nodo.id))}
+        />
+        <dl className="flex items-baseline justify-between gap-2 border-t border-divider pt-2 text-xs">
+          <dt className="text-ink-muted">Apoyo en la nota</dt>
+          <dd className="text-right font-medium text-ink">{etiquetaApoyo(nodo.apoyo)}</dd>
+        </dl>
+        {cita ? (
+          <button type="button" onClick={() => irACita(cita)} className="text-xs text-accent underline underline-offset-2">
+            Ver en la nota · {etiquetaCita(cita)}
+          </button>
+        ) : !sinCitaLiteral ? (
+          <button type="button" onClick={() => irACita(nodo.citas_clinico![0])} className="text-xs text-accent underline underline-offset-2">
+            Ver en la nota · {etiquetaCita(nodo.citas_clinico![0])} · cita tuya
+          </button>
+        ) : (
+          <p className="flex items-start gap-1.5 rounded bg-warn/10 px-2 py-1.5 text-xs leading-snug text-ink">
+            <Info aria-hidden="true" size={14} strokeWidth={2} className="mt-px shrink-0 text-warn" />
+            Inferido — sin cita literal en la nota
+          </p>
+        )}
+      </section>
+
+      <RelacionesDelNodo analisis={analisis} relaciones={relaciones} seleccionar={seleccionar} />
+    </div>
+  );
+}
+
+const ICONO_RELACION: Record<TipoArista, LucideIcon> = {
+  secuencial: ArrowRight,
+  moderadora: SlidersHorizontal,
+  bucle: Repeat,
+};
+
+/** Cuántas relaciones se ven de cada grupo antes de pedir «Ver más». */
+const RELACIONES_VISIBLES = 4;
+
+type RelacionDelNodo = {
+  arista: AnalisisFuncional["aristas"][number];
+  sale: boolean;
+  tipo: string;
+  otro: NodoGrafo | undefined;
+  etiqueta: string;
+};
+
+/**
+ * Las relaciones del nodo en dos grupos, entrantes y salientes, con el recuento
+ * sacado de las aristas reales. Cada una es una fila de dos líneas: el nodo
+ * relacionado y «Abrir» arriba; tipo, apoyo y procedencia abajo.
+ */
+function RelacionesDelNodo({
+  analisis,
+  relaciones,
+  seleccionar,
+}: {
+  analisis: AnalisisFuncional;
+  relaciones: RelacionDelNodo[];
+  seleccionar: (id: string) => void;
+}) {
+  const entrantes = relaciones.filter((r) => !r.sale);
+  const salientes = relaciones.filter((r) => r.sale);
+  return (
+    <section aria-label="Relaciones del nodo">
+      <h3 className="mb-1 flex items-baseline justify-between text-xs font-semibold text-ink">
+        Relaciones del nodo
+        <span className="font-normal text-ink-muted">{relaciones.length}</span>
+      </h3>
+      {relaciones.length === 0 && <p className="text-[11px] text-ink-muted">Sin relaciones trazadas.</p>}
+      <GrupoRelaciones titulo="Recibe de" icono={ArrowDownLeft} relaciones={entrantes} analisis={analisis} seleccionar={seleccionar} />
+      <GrupoRelaciones titulo="Lleva a" icono={ArrowUpRight} relaciones={salientes} analisis={analisis} seleccionar={seleccionar} />
+    </section>
+  );
+}
+
+function GrupoRelaciones({
+  titulo,
+  icono: Icono,
+  relaciones,
+  analisis,
+  seleccionar,
+}: {
+  titulo: string;
+  icono: LucideIcon;
+  relaciones: RelacionDelNodo[];
+  analisis: AnalisisFuncional;
+  seleccionar: (id: string) => void;
+}) {
+  const [todas, setTodas] = useState(false);
+  if (relaciones.length === 0) return null;
+  const visibles = todas ? relaciones : relaciones.slice(0, RELACIONES_VISIBLES);
+  const ocultas = relaciones.length - visibles.length;
+  return (
+    <div className="mt-2">
+      <p className="flex items-center gap-1.5 text-[11px] font-medium text-ink-muted">
+        <Icono aria-hidden="true" size={13} strokeWidth={2} />
+        {titulo} · {relaciones.length}
+      </p>
+      <ul className="mt-1 divide-y divide-divider/70">
+        {visibles.map((r) => {
+          const IconoTipo = ICONO_RELACION[r.arista.tipo];
+          return (
+            <li key={r.arista.id} className="py-1.5">
+              <div className="flex items-start gap-2">
+                <span className="min-w-0 flex-1">
+                  {r.otro ? (
+                    <button type="button" onClick={() => seleccionar(r.otro!.id)} className="block w-full break-words text-left text-[13px] leading-snug text-ink hover:text-accent [overflow-wrap:anywhere]">
+                      {r.otro.etiqueta}
+                    </button>
+                  ) : (
+                    <span className="block text-[13px] leading-snug text-ink">{r.etiqueta}</span>
+                  )}
+                  {r.otro && <span className="block text-[10px] uppercase tracking-wide text-ink-muted">{etiquetaTipoNodo(r.otro)}</span>}
+                </span>
+                {/* La relación se abre como un elemento más; sus acciones (también
+                    borrar) están en su menú, no en un botón por línea. */}
+                <button
+                  type="button"
+                  aria-label={`Abrir la relación con ${r.etiqueta}`}
+                  title="Abrir la relación"
+                  onClick={() => seleccionar(r.arista.id)}
+                  className="-mr-1 flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-[11px] text-ink-muted hover:bg-canvas hover:text-accent"
+                >
+                  Abrir
+                  <ChevronRight aria-hidden="true" size={13} strokeWidth={2} />
                 </button>
-              ) : (
-                <span className="text-ink">{r.etiqueta}</span>
-              )}
-              <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+              </div>
+              <span className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-ink-muted">
+                <span className="inline-flex items-center gap-1">
+                  <IconoTipo aria-hidden="true" size={12} strokeWidth={2} />
+                  {r.tipo}
+                </span>
                 <MuestraTrazo apoyo={r.arista.apoyo} />
                 <ApoyoRelacion apoyo={r.arista.apoyo} />
                 <InsigniaProcedencia analisis={analisis} id={r.arista.id} />
               </span>
-            </span>
-            {/* La relación se abre como un elemento más; sus acciones (también
-                borrar) están en su menú, no en un botón por línea. */}
-            <button
-              type="button"
-              aria-label={`Abrir la relación con ${r.etiqueta}`}
-              onClick={() => seleccionar(r.arista.id)}
-              className="shrink-0 text-ink-muted hover:text-accent"
-            >
-              Abrir →
-            </button>
-          </div>
-        ))}
-      </div>
+            </li>
+          );
+        })}
+      </ul>
+      {relaciones.length > RELACIONES_VISIBLES && (
+        <button type="button" aria-expanded={todas} onClick={() => setTodas((v) => !v)} className="mt-1 text-[11px] text-accent underline underline-offset-2">
+          {todas ? "Ver menos" : `Ver ${ocultas} más`}
+        </button>
+      )}
     </div>
   );
 }
