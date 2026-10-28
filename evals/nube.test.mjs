@@ -289,4 +289,73 @@ await prueba("olvidó la frase: la recuperación abre y fija una nueva", async (
   assert.equal(await c.desbloquear("frase nueva muy larga"), true);
 });
 
+// --- Etapa 5: historial de partes y respaldo (propuesta §12, pruebas 20 y 22) ---
+
+await prueba("20. restaurar una parte desde el historial; lo sustituido también queda en el historial", async () => {
+  const { almacen, r } = await cuentaNueva();
+  const exp = casoConSesion();
+  await r.crearCaso(exp);
+  const idParte = `s-${exp.sesiones[0].id}`;
+  // Un cambio legítimo de la sesión (el registro) sobrescribe su parte.
+  const editado = { ...exp, sesiones: exp.sesiones.map((x) => ({ ...x, registro: "Registro nuevo." })) };
+  await r.actualizarCaso(editado);
+  assert.equal((await r.obtenerCaso(exp.caso.id)).sesiones[0].registro, "Registro nuevo.");
+
+  const historial = await r.historialDeParte(exp.caso.id, idParte);
+  assert.equal(historial.length, 1);
+  const vuelta = await r.restaurarParte(exp.caso.id, idParte, historial[0].historial_id);
+  assert.equal(vuelta.sesiones[0].registro, "", "vuelve a la versión anterior");
+  assert.equal((await r.historialDeParte(exp.caso.id, idParte)).length, 2, "la sustituida no se pierde");
+  // El almacén no tiene texto legible ni siquiera en el historial.
+  assert.ok(!JSON.stringify(await almacen.listarHistorial("uid-A", exp.caso.id, idParte)).includes("Registro nuevo"));
+});
+await prueba("20b. una parte dañada se recupera desde su versión anterior", async () => {
+  const { almacen, r } = await cuentaNueva();
+  const exp = casoConSesion();
+  await r.crearCaso(exp);
+  const idParte = `s-${exp.sesiones[0].id}`;
+  await r.actualizarCaso({ ...exp, sesiones: exp.sesiones.map((x) => ({ ...x, registro: "Cambio." })) });
+  const clave = [...almacen._partes.keys()].find((c) => c.endsWith(`/${idParte}`));
+  const p = almacen._partes.get(clave);
+  p.sobre.ct = p.sobre.ct.slice(0, -4) + "AAAA";
+  const [h] = await r.historialDeParte(exp.caso.id, idParte);
+  const arreglado = await r.restaurarParte(exp.caso.id, idParte, h.historial_id);
+  assert.equal(arreglado.sesiones.length, 1);
+  assert.equal((await r.obtenerCaso(exp.caso.id)).notas[0].texto, NOTA);
+});
+await prueba("restaurar una versión que no existe falla sin tocar nada", async () => {
+  const { r } = await cuentaNueva();
+  const exp = casoConSesion();
+  await r.crearCaso(exp);
+  await assert.rejects(
+    () => r.restaurarParte(exp.caso.id, `s-${exp.sesiones[0].id}`, "inventada__1"),
+    /ya no está disponible/
+  );
+});
+await prueba("22. importar un respaldo de la nube en una cuenta nueva", async () => {
+  const { r } = await cuentaNueva();
+  const exp = casoConSesion();
+  await r.crearCaso(exp);
+  const archivado = C.crearExpediente({ alias: "A.", motivo: "otro" }, "2026-10-02T10:00:00.000Z", id);
+  await r.crearCaso(archivado);
+  await r.actualizarCaso({
+    ...archivado,
+    caso: { ...archivado.caso, fase: "archivado", actualizado: "2026-10-03T00:00:00.000Z" },
+  });
+  const respaldo = await (await r.exportarRespaldo()).text();
+
+  const ranuras = new Set();
+  const almacenNuevo = almacenMemoria({ ranurasActivas: ranuras });
+  const nueva = await dispositivo(almacenNuevo, "uid-NUEVA", ranuras);
+  await nueva.configurar("otra frase distinta y larga");
+  await assert.rejects(() => nueva.importarRespaldoNube(respaldo, "frase equivocada!!"), /no abre este respaldo/);
+  assert.deepEqual(await nueva.importarRespaldoNube(respaldo, FRASE), { importados: 2, omitidos: 0, fallidos: 0 });
+  assert.deepEqual(await nueva.obtenerCaso(exp.caso.id), exp);
+  assert.equal((await nueva.obtenerCaso(archivado.caso.id)).caso.fase, "archivado");
+  assert.equal(ranuras.has(archivado.caso.id), false, "el archivado no ocupa ranura");
+  // Repetir no duplica.
+  assert.deepEqual(await nueva.importarRespaldoNube(respaldo, FRASE), { importados: 0, omitidos: 2, fallidos: 0 });
+  assert.equal((await nueva.listarCasos()).length, 2);
+});
+
 console.log(`\n${n} pruebas pasadas\n`);

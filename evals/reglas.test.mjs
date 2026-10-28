@@ -206,5 +206,49 @@ await prueba("índice: con ranura existente (activa o archivada) y rev + 1", asy
   await assertFails(setDoc(doc(a(), "usuarios/A/indice/inexistente"), ind()));
 });
 
+// Historial de partes (etapa 5)
+const rutaHist = (id) => `usuarios/A/casos/activo1/partes_historial/${id}`;
+const historial = (o = {}) => ({
+  parte_id: "p1",
+  sobre: sobre(),
+  rev: 1,
+  tipo: "sesion",
+  hash_ct: hash,
+  dispositivo_id: "d1",
+  archivado_en: serverTimestamp(),
+  expira_en: Timestamp.fromMillis(Date.now() + 30 * 86_400_000),
+  ...o,
+});
+const conParteVigente = (rev = 1) =>
+  entorno.withSecurityRulesDisabled((c) =>
+    setDoc(doc(c.firestore(), rutaParte), parte({ rev, actualizado_en: Timestamp.now() }))
+  );
+
+await prueba("historial: se archiva solo la versión vigente, con su id y caducidad", async () => {
+  await conParteVigente(1);
+  await assertSucceeds(setDoc(doc(a(), rutaHist("p1__1")), historial()));
+  await assertFails(setDoc(doc(a(), rutaHist("p1__2")), historial()), "id que no corresponde a la revisión");
+  await assertFails(setDoc(doc(a(), rutaHist("p1__9")), historial({ rev: 9 })), "no es la vigente");
+  await assertFails(setDoc(doc(a(), rutaHist("x__1")), historial({ parte_id: "inexistente" })));
+});
+await prueba("historial: no se falsea la caducidad ni se añaden campos", async () => {
+  await conParteVigente(1);
+  await assertFails(setDoc(doc(a(), rutaHist("p1__1")), historial({ expira_en: Timestamp.fromMillis(Date.now() + 400 * 86_400_000) })));
+  await assertFails(setDoc(doc(a(), rutaHist("p1__1")), historial({ expira_en: Timestamp.fromMillis(Date.now() - 1000) })));
+  await assertFails(setDoc(doc(a(), rutaHist("p1__1")), historial({ texto: "en claro" })));
+});
+await prueba("historial: ni editar ni borrar; solo lo lee su dueño; sin ranura activa no se crea", async () => {
+  await conParteVigente(1);
+  await assertSucceeds(setDoc(doc(a(), rutaHist("p1__1")), historial()));
+  await assertFails(updateDoc(doc(a(), rutaHist("p1__1")), { rev: 5 }));
+  await assertFails(deleteDoc(doc(a(), rutaHist("p1__1"))));
+  await assertSucceeds(getDoc(doc(a(), rutaHist("p1__1"))));
+  await assertFails(getDoc(doc(b(), rutaHist("p1__1"))));
+  await entorno.withSecurityRulesDisabled((c) =>
+    setDoc(doc(c.firestore(), "usuarios/A/casos/archivado1/partes/p1"), parte({ actualizado_en: Timestamp.now() }))
+  );
+  await assertFails(setDoc(doc(a(), "usuarios/A/casos/archivado1/partes_historial/p1__1"), historial()));
+});
+
 await entorno.cleanup();
 console.log(`\n${pasadas} pruebas pasadas\n`);

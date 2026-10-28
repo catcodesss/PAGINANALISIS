@@ -16,6 +16,20 @@ export interface ParteRemota {
   hash_ct: string;
 }
 
+/** Versión anterior de una parte, guardada al sobrescribirla (propuesta §7.3.3). */
+export interface HistorialParteRemoto {
+  historial_id: string;
+  parte_id: string;
+  /** Revisión que tenía la parte cuando se archivó: con ella se descifra. */
+  rev: number;
+  tipo: TipoParte;
+  sobre: SobreV2;
+  hash_ct: string;
+}
+
+/** Días que se conserva una versión anterior; después la borra la política TTL de Firestore. */
+export const DIAS_DE_HISTORIAL = 30;
+
 export interface IndiceRemoto {
   caso_uid: string;
   rev: number;
@@ -60,6 +74,8 @@ export interface AlmacenRemoto {
     revPrevia: number,
     parte: Omit<ParteRemota, "rev">
   ): Promise<number>;
+  /** Versiones anteriores de una parte, de la más reciente a la más antigua. */
+  listarHistorial(uid: string, casoUid: string, parteId: string): Promise<HistorialParteRemoto[]>;
 }
 
 /** Ranuras de casos en el servidor (fase 13A §1): topes por plan, comprobados en una transacción. */
@@ -76,6 +92,7 @@ export function almacenMemoria(opciones: { ranurasActivas?: Set<string> } = {}) 
   const indices = new Map<string, IndiceRemoto>();
   const cabeceras = new Map<string, CabeceraRemota>();
   const partes = new Map<string, ParteRemota>();
+  const historial = new Map<string, HistorialParteRemoto>();
   const k = (...p: string[]) => p.join("/");
   const exigirRanura = (casoUid: string) => {
     if (opciones.ranurasActivas && !opciones.ranurasActivas.has(casoUid)) {
@@ -119,9 +136,28 @@ export function almacenMemoria(opciones: { ranurasActivas?: Set<string> } = {}) 
     },
     async guardarParte(uid, casoUid, previa, parte) {
       exigirRanura(casoUid);
-      const rev = comprobar(partes.get(k(uid, casoUid, parte.parte_id))?.rev, previa, parte.parte_id);
+      const actual = partes.get(k(uid, casoUid, parte.parte_id));
+      const rev = comprobar(actual?.rev, previa, parte.parte_id);
+      if (actual) {
+        const historial_id = `${actual.parte_id}__${actual.rev}`;
+        historial.set(k(uid, casoUid, historial_id), {
+          historial_id,
+          parte_id: actual.parte_id,
+          rev: actual.rev,
+          tipo: actual.tipo,
+          sobre: structuredClone(actual.sobre),
+          hash_ct: actual.hash_ct,
+        });
+      }
       partes.set(k(uid, casoUid, parte.parte_id), { ...structuredClone(parte), rev });
       return rev;
+    },
+    async listarHistorial(uid, casoUid, parteId) {
+      return [...historial.entries()]
+        .filter(([c]) => c.startsWith(`${uid}/${casoUid}/`))
+        .map(([, v]) => structuredClone(v))
+        .filter((h) => h.parte_id === parteId)
+        .sort((a, b) => b.rev - a.rev);
     },
   };
   return almacen;

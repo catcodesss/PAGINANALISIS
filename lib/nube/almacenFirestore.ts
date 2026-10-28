@@ -6,10 +6,11 @@ import {
   runTransaction,
   serverTimestamp,
   setDoc,
+  Timestamp,
   type DocumentReference,
   type Firestore,
 } from "firebase/firestore";
-import { ConflictoDeRevision, type AlmacenRemoto } from "./almacen";
+import { ConflictoDeRevision, DIAS_DE_HISTORIAL, type AlmacenRemoto } from "./almacen";
 import type { Boveda } from "../boveda";
 
 /**
@@ -104,20 +105,54 @@ export function almacenFirestore(bd: Firestore): AlmacenRemoto {
         hash_ct: d.data().hash_ct,
       }));
     },
+    /**
+     * Sobrescribe la parte y, en la MISMA transacción, archiva la versión que había
+     * en `partes_historial` (30 días; la política TTL sobre `expira_en` la borra).
+     * Así un error del cliente no destruye nada: la anterior sigue recuperable.
+     */
     guardarParte(uid, casoUid, previa, parte) {
-      return escribirConRev(
-        ref(uid, "casos", casoUid, "partes", parte.parte_id),
-        previa,
-        parte.parte_id,
-        (rev) => ({
+      const r = ref(uid, "casos", casoUid, "partes", parte.parte_id);
+      return runTransaction(bd, async (tx) => {
+        const actual = await tx.get(r);
+        const anterior = actual.exists() ? actual.data() : null;
+        if ((anterior?.rev ?? 0) !== previa) throw new ConflictoDeRevision(parte.parte_id);
+        if (anterior) {
+          tx.set(ref(uid, "casos", casoUid, "partes_historial", `${parte.parte_id}__${anterior.rev}`), {
+            parte_id: parte.parte_id,
+            sobre: anterior.sobre,
+            rev: anterior.rev,
+            tipo: anterior.tipo,
+            hash_ct: anterior.hash_ct,
+            dispositivo_id: dispositivoId(),
+            archivado_en: serverTimestamp(),
+            expira_en: Timestamp.fromMillis(Date.now() + DIAS_DE_HISTORIAL * 86_400_000),
+          });
+        }
+        const rev = previa + 1;
+        tx.set(r, {
           sobre: parte.sobre,
           rev,
           tipo: parte.tipo,
           actualizado_en: serverTimestamp(),
           dispositivo_id: dispositivoId(),
           hash_ct: parte.hash_ct,
-        })
-      );
+        });
+        return rev;
+      });
+    },
+    async listarHistorial(uid, casoUid, parteId) {
+      const s = await getDocs(collection(bd, "usuarios", uid, "casos", casoUid, "partes_historial"));
+      return s.docs
+        .filter((d) => d.data().parte_id === parteId)
+        .map((d) => ({
+          historial_id: d.id,
+          parte_id: parteId,
+          rev: d.data().rev as number,
+          tipo: d.data().tipo,
+          sobre: d.data().sobre,
+          hash_ct: d.data().hash_ct as string,
+        }))
+        .sort((a, b) => b.rev - a.rev);
     },
   };
 }

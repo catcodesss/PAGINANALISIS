@@ -25,6 +25,7 @@ import { partirExpediente, unirExpediente, type Parte } from "./nube/particion";
 import {
   ConflictoDeRevision,
   type AlmacenRemoto,
+  type CabeceraRemota,
   type ParteRemota,
   type ServicioRanuras,
 } from "./nube/almacen";
@@ -403,7 +404,120 @@ export class RepositorioNube implements Repositorio {
   }
 
   async importarRespaldo(): Promise<number> {
-    throw new Error("Importar un respaldo en la nube todavía no está disponible.");
+    throw new Error("Para importar un respaldo hace falta la frase de paso de la cuenta que lo creó.");
+  }
+
+  /**
+   * Importa un respaldo de la nube (propuesta §7.3.2). Sus sobres están atados al
+   * uid de la cuenta de origen, así que no se pueden copiar tal cual: se abren con
+   * la frase de ESA bóveda y los casos se recrean en esta cuenta con claves nuevas.
+   * Un caso que ya existe aquí se omite; uno que falla no detiene a los demás.
+   */
+  async importarRespaldoNube(
+    contenido: string,
+    frase: string
+  ): Promise<{ importados: number; omitidos: number; fallidos: number }> {
+    this.exigirCmd();
+    const datos = JSON.parse(contenido) as {
+      formato?: string;
+      uid?: string;
+      boveda?: Boveda;
+      casos?: { caso_uid: string; cabecera: CabeceraRemota | null; partes: ParteRemota[] }[];
+    };
+    if (datos.formato !== "acia-respaldo-nube-v1" || !datos.uid || !datos.boveda || !Array.isArray(datos.casos)) {
+      throw new Error("El archivo no es un respaldo de la nube de ACIA.");
+    }
+    const cmdOrigen = await desbloquearConFrase(datos.boveda, frase);
+    if (!cmdOrigen) throw new Error("La frase no abre este respaldo.");
+
+    const existentes = new Set((await this.almacen().listarIndices(this.exigirUid())).map((i) => i.caso_uid));
+    let importados = 0;
+    let omitidos = 0;
+    let fallidos = 0;
+    for (const c of datos.casos) {
+      if (existentes.has(c.caso_uid)) {
+        omitidos++;
+        continue;
+      }
+      try {
+        const expediente = await this.abrirCasoDeRespaldo(datos.uid, cmdOrigen, c);
+        // Un caso archivado necesita ranura activa para escribirse; se archiva después.
+        const final = expediente.caso.fase;
+        await this.crearCaso(final === "archivado" ? { ...expediente, caso: { ...expediente.caso, fase: "activo" } } : expediente);
+        if (final === "archivado") await this.actualizarCaso(expediente);
+        importados++;
+      } catch {
+        fallidos++;
+      }
+    }
+    return { importados, omitidos, fallidos };
+  }
+
+  private async abrirCasoDeRespaldo(
+    uidOrigen: string,
+    cmdOrigen: CryptoKey,
+    c: { caso_uid: string; cabecera: CabeceraRemota | null; partes: ParteRemota[] }
+  ): Promise<Expediente> {
+    if (!c.cabecera) throw new Error("Falta la cabecera.");
+    const cc = await abrirClaveCaso(cmdOrigen, uidOrigen, c.cabecera.cc_envuelta);
+    if (!cc) throw new Error("No se pudo abrir la clave del caso.");
+    const partes: Parte[] = [];
+    for (const r of c.partes) {
+      const texto = await descifrarParte(cc, r.sobre, {
+        uid: uidOrigen,
+        caso_uid: c.caso_uid,
+        parte_id: r.parte_id,
+        rev: r.rev,
+        kid: c.cabecera.cc_envuelta.kid,
+      });
+      if (texto === null) throw new Error("Una parte del respaldo no se puede leer.");
+      partes.push({ parte_id: r.parte_id, tipo: r.tipo, contenido: texto });
+    }
+    const expediente = unirExpediente(partes);
+    if (!expediente) throw new Error("El respaldo no tiene la cabecera del caso.");
+    for (const v of expediente.versiones) v.analisis = migrarAV9(v.analisis);
+    return expediente;
+  }
+
+  // --- historial de partes (etapa 5) -----------------------------------------
+
+  /** Versiones anteriores de una parte, de la más reciente a la más antigua. */
+  async historialDeParte(casoUid: string, parteId: string): Promise<{ historial_id: string; rev: number }[]> {
+    const h = await this.almacen().listarHistorial(this.exigirUid(), casoUid, parteId);
+    return h.map(({ historial_id, rev }) => ({ historial_id, rev }));
+  }
+
+  /**
+   * Devuelve una parte a una versión anterior. No borra nada: la versión que se
+   * sustituye pasa a su vez al historial. Sirve también para una parte dañada.
+   */
+  async restaurarParte(casoUid: string, parteId: string, historialId: string): Promise<Expediente | null> {
+    const uid = this.exigirUid();
+    const clave = await this.claveDeCaso(casoUid);
+    if (!clave) throw new Error("El caso no existe en la nube.");
+    const kid = clave.envuelta.kid;
+
+    const anterior = (await this.almacen().listarHistorial(uid, casoUid, parteId)).find(
+      (h) => h.historial_id === historialId
+    );
+    if (!anterior) throw new Error("Esa versión anterior ya no está disponible.");
+    const texto = await descifrarParte(clave.cc, anterior.sobre, this.ctx(casoUid, parteId, anterior.rev, kid));
+    if (texto === null) throw new Error("Esa versión anterior no se puede leer.");
+
+    const actual = (await this.almacen().listarPartes(uid, casoUid)).find((p) => p.parte_id === parteId);
+    if (!actual) throw new Error("La parte ya no existe.");
+    const sobre = await cifrarParte(clave.cc, texto, this.ctx(casoUid, parteId, actual.rev + 1, kid));
+    await this.almacen().guardarParte(uid, casoUid, actual.rev, {
+      parte_id: parteId,
+      tipo: anterior.tipo,
+      sobre,
+      hash_ct: await sha256Hex(sobre.ct),
+    });
+
+    // Lo restaurado puede cambiar el resumen de la lista: se relee y se rehace el índice.
+    const expediente = await this.obtenerCaso(casoUid);
+    if (expediente) await this.escribirCaso(expediente);
+    return expediente;
   }
 
   // --- historial anterior a los casos (no existe en la nube) -----------------

@@ -182,6 +182,35 @@ service cloud.firestore {
               && d.hash_ct is string && d.hash_ct.size() == 64;
           }
         }
+
+        // Versiones anteriores de una parte (fase 13, etapa 5). Se crean al
+        // sobrescribirla, en la misma transacción; la política TTL de Firestore
+        // sobre `expira_en` las borra a los 30 días. No se editan ni se borran
+        // desde el cliente. Lo que se archiva tiene que ser la parte vigente.
+        match /partes_historial/{hid} {
+          allow read: if dueno(uid);
+          allow create: if dueno(uid)
+            && ranuraActiva(uid, caso)
+            && historialValido(request.resource.data, hid);
+          allow update, delete: if false;
+
+          function historialValido(d, hid) {
+            return d.keys().hasOnly(['parte_id', 'sobre', 'rev', 'tipo', 'hash_ct', 'dispositivo_id', 'archivado_en', 'expira_en'])
+              && d.keys().hasAll(['parte_id', 'sobre', 'rev', 'tipo', 'hash_ct', 'dispositivo_id', 'archivado_en', 'expira_en'])
+              && d.parte_id is string && d.parte_id.size() >= 1 && d.parte_id.size() <= 128
+              && sobreValido(d.sobre)
+              && d.rev is int && d.rev >= 1
+              && hid == d.parte_id + '__' + string(d.rev)
+              && d.tipo in ['cabecera', 'sesion', 'nota', 'version', 'revisiones']
+              && d.hash_ct is string && d.hash_ct.size() == 64
+              && d.dispositivo_id is string && d.dispositivo_id.size() <= 64
+              && ahora(d.archivado_en)
+              && d.expira_en is timestamp
+              && d.expira_en > request.time
+              && d.expira_en <= request.time + duration.value(31, 'd')
+              && get(/databases/$(database)/documents/usuarios/$(uid)/casos/$(caso)/partes/$(d.parte_id)).data.rev == d.rev;
+          }
+        }
       }
     }
   }
