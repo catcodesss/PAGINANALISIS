@@ -10,6 +10,7 @@ import {
   type Expediente,
   type ResumenCaso,
 } from "./casos";
+import { fusionarExpedientes, type AvisoFusion } from "./nube/fusion";
 import {
   abrirClaveCaso,
   crearBoveda,
@@ -36,9 +37,13 @@ import {
  * cada caso (CC); la CC cifra las partes del caso y su entrada del índice. Así
  * rotar la CMD no obliga a recifrar nada.
  *
- * Esta etapa NO incluye: caché sin conexión, cola de escritura ni fusión de
- * conflictos (etapa 4). Un conflicto de revisión se avisa y no se pisa.
+ * Conflictos (etapa 4): si otro dispositivo cambió el caso, se descarga lo nuevo,
+ * se fusiona con lo local (lib/nube/fusion.ts) y se reintenta. Nunca se pisa nada.
+ * Sigue pendiente: caché sin conexión, cola de escritura persistente y escucha en
+ * tiempo real.
  */
+
+const INTENTOS_DE_FUSION = 3;
 
 export const ID_INDICE = "indice";
 
@@ -75,6 +80,7 @@ export class RepositorioNube implements Repositorio {
   private claves = new Map<string, SobreConClave>();
   private vistas = new Map<string, Vista>();
   private pendienteRecuperacion: string | null = null;
+  private avisosFusion: AvisoFusion[] = [];
 
   constructor(
     private readonly almacen: () => AlmacenRemoto,
@@ -238,8 +244,41 @@ export class RepositorioNube implements Repositorio {
     );
   }
 
+  /** Avisos de las fusiones hechas desde la última vez; se entregan una sola vez. */
+  tomarAvisosFusion(): AvisoFusion[] {
+    const avisos = this.avisosFusion;
+    this.avisosFusion = [];
+    return avisos;
+  }
+
+  /**
+   * Guarda el caso; si otro dispositivo se adelantó, fusiona y reintenta. Cada
+   * intento sube solo lo que falta, así que un corte a medias se reanuda sin duplicar.
+   */
+  private async escribirCaso(expediente: Expediente, intento = 1): Promise<void> {
+    try {
+      await this.subirCaso(expediente);
+    } catch (e) {
+      if (!(e instanceof ConflictoDeRevision) || intento >= INTENTOS_DE_FUSION) throw e;
+      const casoUid = expediente.caso.id;
+      const base = this.expedienteVisto(casoUid);
+      const remoto = await this.obtenerCaso(casoUid, true);
+      if (!remoto) throw e;
+      // El índice también pudo cambiar en el otro dispositivo.
+      const indice = (await this.almacen().listarIndices(this.exigirUid())).find((i) => i.caso_uid === casoUid);
+      if (indice) this.vista(casoUid).revIndice = indice.rev;
+      const { expediente: fusionado, avisos } = fusionarExpedientes(base, expediente, remoto);
+      const motivo = comprobarCambioExpediente(remoto, fusionado);
+      if (motivo) {
+        throw new Error(`No se pudo fusionar con los cambios de otro dispositivo (${motivo}) Recarga el caso.`);
+      }
+      this.avisosFusion.push(...avisos);
+      await this.escribirCaso(fusionado, intento + 1);
+    }
+  }
+
   /** Sube solo las partes que cambiaron desde lo último visto, y después el índice. */
-  private async escribirCaso(expediente: Expediente): Promise<void> {
+  private async subirCaso(expediente: Expediente): Promise<void> {
     const uid = this.exigirUid();
     const casoUid = expediente.caso.id;
     const clave = await this.claveDeCaso(casoUid);
@@ -266,7 +305,8 @@ export class RepositorioNube implements Repositorio {
     vista.revIndice = await this.almacen().guardarIndice(uid, casoUid, vista.revIndice, sobreIndice);
   }
 
-  async obtenerCaso(id: string): Promise<Expediente | null> {
+  /** `paraFusionar`: si hay partes ilegibles no se sigue, para no pisarlas al guardar. */
+  async obtenerCaso(id: string, paraFusionar = false): Promise<Expediente | null> {
     const uid = this.exigirUid();
     const clave = await this.claveDeCaso(id);
     if (!clave) return null;
@@ -288,6 +328,9 @@ export class RepositorioNube implements Repositorio {
     // Una parte ilegible no se borra ni se oculta: se avisa y se abre solo lo sano.
     if (corruptas.length > 0) {
       console.error(`Partes ilegibles en el caso (${corruptas.length}).`);
+      if (paraFusionar) {
+        throw new Error("Hay partes del caso que no se pueden leer: no se guarda encima. Restáuralo desde una copia.");
+      }
     }
     const expediente = unirExpediente(partes);
     if (!expediente) {

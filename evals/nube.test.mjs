@@ -118,20 +118,98 @@ await prueba("sin ranura activa no se puede crear un caso (las reglas lo rechaza
   await r.configurar(FRASE);
   await assert.rejects(() => r.crearCaso(casoConSesion()), /PERMISSION_DENIED/);
 });
-await prueba("conflicto: dos dispositivos editan el mismo caso, el segundo recibe aviso", async () => {
+// --- Etapa 4: fusión de conflictos entre dispositivos (propuesta §12, pruebas 15 a 19) ---
+
+async function dosDispositivos() {
   const { almacen, r, ranuras } = await cuentaNueva();
   const exp = casoConSesion();
   await r.crearCaso(exp);
   const b = await dispositivo(almacen, "uid-A", ranuras);
   await b.desbloquear(FRASE);
   await b.obtenerCaso(exp.caso.id);
+  return { almacen, a: r, b, exp };
+}
+const con = (exp, cambios) => ({ ...exp, ...cambios });
 
-  const deA = C.anadirSesion(exp, { nota: "Sesión desde A." }, "2026-10-08T10:00:00.000Z", id).expediente;
-  await r.actualizarCaso(deA);
-  const deB = C.anadirSesion(exp, { nota: "Sesión desde B." }, "2026-10-08T11:00:00.000Z", id).expediente;
-  await assert.rejects(() => b.actualizarCaso(deB), ConflictoDeRevision);
-  // Nada se pisó: A sigue viendo su sesión.
-  assert.equal((await r.obtenerCaso(exp.caso.id)).sesiones.length, 2);
+await prueba("15. dos dispositivos añaden sesiones sin coordinarse: se fusionan sin perder datos", async () => {
+  const { a, b, exp } = await dosDispositivos();
+  await a.actualizarCaso(C.anadirSesion(exp, { nota: "Sesión desde A." }, "2026-10-08T10:00:00.000Z", id).expediente);
+  await b.actualizarCaso(C.anadirSesion(exp, { nota: "Sesión desde B." }, "2026-10-08T11:00:00.000Z", id).expediente);
+  const final = await a.obtenerCaso(exp.caso.id);
+  const textos = final.notas.map((x) => x.texto);
+  assert.ok(textos.includes("Sesión desde A.") && textos.includes("Sesión desde B.") && textos.includes(NOTA));
+  assert.equal(final.sesiones.length, 3);
+  assert.deepEqual(await b.obtenerCaso(exp.caso.id), final, "los dos dispositivos ven lo mismo");
+});
+await prueba("17. sesión creada en paralelo: ambas se conservan y se renumeran, con aviso", async () => {
+  const { a, b, exp } = await dosDispositivos();
+  await a.actualizarCaso(C.anadirSesion(exp, { nota: "Desde A." }, "2026-10-08T10:00:00.000Z", id).expediente);
+  await b.actualizarCaso(C.anadirSesion(exp, { nota: "Desde B." }, "2026-10-08T11:00:00.000Z", id).expediente);
+  const final = await a.obtenerCaso(exp.caso.id);
+  assert.deepEqual(final.sesiones.map((x) => x.n), [1, 2, 3]);
+  const segunda = final.sesiones.find((x) => x.n === 2);
+  assert.equal(final.notas.find((x) => x.id === segunda.nota_ids[0]).texto, "Desde A.", "la más antigua conserva su número");
+  assert.ok(b.tomarAvisosFusion().some((x) => x.tipo === "sesion_renumerada"));
+  assert.equal(b.tomarAvisosFusion().length, 0, "los avisos se entregan una vez");
+});
+await prueba("16. mismo campo editado en ambos: gana el más reciente y el otro queda como revisión", async () => {
+  const { a, b, exp } = await dosDispositivos();
+  await a.actualizarCaso(con(exp, { caso: { ...exp.caso, motivo: "motivo desde A", actualizado: "2026-10-02T10:00:00.000Z" } }));
+  await b.actualizarCaso(con(exp, { caso: { ...exp.caso, motivo: "motivo desde B", actualizado: "2026-10-02T11:00:00.000Z" } }));
+  const final = await b.obtenerCaso(exp.caso.id);
+  assert.equal(final.caso.motivo, "motivo desde B");
+  const rev = final.revisiones.find((x) => x.antes?.includes("motivo desde A"));
+  assert.ok(rev, "lo que perdió queda recuperable");
+  assert.ok(b.tomarAvisosFusion().some((x) => x.tipo === "dato_en_conflicto"));
+});
+await prueba("campos distintos editados a la vez: se conservan los dos sin conflicto", async () => {
+  const { a, b, exp } = await dosDispositivos();
+  await a.actualizarCaso(con(exp, { caso: { ...exp.caso, motivo: "otro motivo", actualizado: "2026-10-02T10:00:00.000Z" } }));
+  await b.actualizarCaso(con(exp, { caso: { ...exp.caso, alias: "M.R.", actualizado: "2026-10-02T11:00:00.000Z" } }));
+  const final = await a.obtenerCaso(exp.caso.id);
+  assert.equal(final.caso.motivo, "otro motivo");
+  assert.equal(final.caso.alias, "M.R.");
+  assert.equal(final.revisiones.length, 0);
+  assert.equal(b.tomarAvisosFusion().length, 0);
+});
+await prueba("18. corte de red a mitad de subida: se reanuda sin duplicar", async () => {
+  const { almacen, a, exp } = await dosDispositivos();
+  const original = almacen.guardarParte.bind(almacen);
+  let llamadas = 0;
+  almacen.guardarParte = async (...args) => {
+    if (++llamadas === 2) throw new Error("red caída");
+    return original(...args);
+  };
+  const exp2 = C.anadirSesion(
+    C.anadirSesion(exp, { nota: "Dos." }, "2026-10-08T10:00:00.000Z", id).expediente,
+    { nota: "Tres." },
+    "2026-10-15T10:00:00.000Z",
+    id
+  ).expediente;
+  await assert.rejects(() => a.actualizarCaso(exp2), /red caída/);
+  const subidas = llamadas;
+  await a.actualizarCaso(exp2); // reintento: sube solo lo que faltaba
+  assert.ok(llamadas - subidas <= 3, "no vuelve a subir lo que ya estaba");
+  const final = await a.obtenerCaso(exp.caso.id);
+  assert.equal(final.sesiones.length, 3);
+  assert.equal(new Set(final.sesiones.map((x) => x.id)).size, 3, "sin duplicados");
+});
+await prueba("19. una parte corrupta no impide abrir el resto, ni se pisa al guardar", async () => {
+  const { almacen, a, b, exp } = await dosDispositivos();
+  await a.actualizarCaso(C.anadirSesion(exp, { nota: "Dos." }, "2026-10-08T10:00:00.000Z", id).expediente);
+  const clave = [...almacen._partes.keys()].filter((c) => c.includes("/s-")).at(-1);
+  const p = almacen._partes.get(clave);
+  const antes = p.sobre.ct;
+  p.sobre.ct = p.sobre.ct.slice(0, -4) + "AAAA";
+  const sano = await a.obtenerCaso(exp.caso.id);
+  assert.equal(sano.sesiones.length, 1, "se abre lo sano");
+  // B se había quedado atrás: al guardar, la fusión se niega a pisar la parte ilegible.
+  await assert.rejects(
+    () => b.actualizarCaso(C.anadirSesion(exp, { nota: "Desde B." }, "2026-10-09T10:00:00.000Z", id).expediente),
+    /no se pueden leer/
+  );
+  assert.notEqual(almacen._partes.get(clave).sobre.ct, "", "la parte dañada sigue ahí");
+  assert.ok(antes.length > 0);
 });
 await prueba("una cuenta no abre los casos de otra", async () => {
   const { almacen, r } = await cuentaNueva();
