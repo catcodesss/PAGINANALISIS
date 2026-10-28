@@ -357,6 +357,7 @@ export default function Home() {
           soloLectura: sesionVista !== null,
           verVersion: setSesionVista,
           anadirSesion: () => setPanelSesion(true),
+          restaurado: manejarAbrirCaso,
         }
       : null;
 

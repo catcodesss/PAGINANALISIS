@@ -25,6 +25,9 @@ export interface HistorialParteRemoto {
   tipo: TipoParte;
   sobre: SobreV2;
   hash_ct: string;
+  /** Cuándo se archivó (ISO) y desde qué dispositivo; null si el servidor aún no puso la hora. */
+  archivado_en: string | null;
+  dispositivo_id: string;
 }
 
 /** Días que se conserva una versión anterior; después la borra la política TTL de Firestore. */
@@ -76,6 +79,8 @@ export interface AlmacenRemoto {
   ): Promise<number>;
   /** Versiones anteriores de una parte, de la más reciente a la más antigua. */
   listarHistorial(uid: string, casoUid: string, parteId: string): Promise<HistorialParteRemoto[]>;
+  /** Las versiones anteriores de todas las partes de un caso, de la más reciente a la más antigua. */
+  listarHistorialCaso(uid: string, casoUid: string): Promise<HistorialParteRemoto[]>;
 }
 
 /** Ranuras de casos en el servidor (fase 13A §1): topes por plan, comprobados en una transacción. */
@@ -147,17 +152,21 @@ export function almacenMemoria(opciones: { ranurasActivas?: Set<string> } = {}) 
           tipo: actual.tipo,
           sobre: structuredClone(actual.sobre),
           hash_ct: actual.hash_ct,
+          archivado_en: new Date().toISOString(),
+          dispositivo_id: "memoria",
         });
       }
       partes.set(k(uid, casoUid, parte.parte_id), { ...structuredClone(parte), rev });
       return rev;
     },
-    async listarHistorial(uid, casoUid, parteId) {
+    async listarHistorialCaso(uid, casoUid) {
       return [...historial.entries()]
         .filter(([c]) => c.startsWith(`${uid}/${casoUid}/`))
         .map(([, v]) => structuredClone(v))
-        .filter((h) => h.parte_id === parteId)
         .sort((a, b) => b.rev - a.rev);
+    },
+    async listarHistorial(uid, casoUid, parteId) {
+      return (await almacen.listarHistorialCaso(uid, casoUid)).filter((h) => h.parte_id === parteId);
     },
   };
   return almacen;

@@ -48,12 +48,32 @@ const INTENTOS_DE_FUSION = 3;
 
 export const ID_INDICE = "indice";
 
+export interface VersionAnterior {
+  historial_id: string;
+  rev: number;
+  archivado_en: string | null;
+  dispositivo_id: string;
+}
+
+/** Una sesión (o los datos del caso) con las versiones anteriores que se pueden recuperar. */
+export interface GrupoVersiones {
+  parte_id: string;
+  etiqueta: string;
+  /** Fecha de la sesión, si se conoce. */
+  fecha: string | null;
+  /** La versión actual no se puede leer: es el caso más urgente. */
+  ilegible: boolean;
+  versiones: VersionAnterior[];
+}
+
 type SobreConClave = { cc: CryptoKey; envuelta: ClaveCasoEnvuelta };
 
 /** Lo último que este dispositivo vio de un caso: revisiones y contenido en claro. */
 interface Vista {
   revCabecera: number;
   revIndice: number;
+  /** Partes que no se pudieron leer en la última carga del caso. */
+  ilegibles: string[];
   partes: Map<string, { rev: number; tipo: Parte["tipo"]; contenido: string }>;
 }
 
@@ -191,7 +211,7 @@ export class RepositorioNube implements Repositorio {
   private vista(casoUid: string): Vista {
     let v = this.vistas.get(casoUid);
     if (!v) {
-      v = { revCabecera: 0, revIndice: 0, partes: new Map() };
+      v = { revCabecera: 0, revIndice: 0, ilegibles: [], partes: new Map() };
       this.vistas.set(casoUid, v);
     }
     return v;
@@ -325,6 +345,7 @@ export class RepositorioNube implements Repositorio {
 
     const partes: Parte[] = [];
     const corruptas: string[] = [];
+    vista.ilegibles = corruptas;
     for (const r of remotas) {
       const texto = await this.descifrarRemota(clave, id, r);
       if (texto === null) {
@@ -480,6 +501,80 @@ export class RepositorioNube implements Repositorio {
   }
 
   // --- historial de partes (etapa 5) -----------------------------------------
+
+  /** Ids de las partes que no se pudieron leer la última vez que se abrió el caso. */
+  partesIlegibles(casoUid: string): string[] {
+    return [...(this.vistas.get(casoUid)?.ilegibles ?? [])];
+  }
+
+  /**
+   * Lo que el terapeuta puede recuperar, en sus palabras (sesiones, no «partes»).
+   * Incluye las partes ilegibles aunque no tengan versiones, para poder avisar.
+   */
+  async versionesAnteriores(casoUid: string): Promise<GrupoVersiones[]> {
+    const uid = this.exigirUid();
+    const clave = await this.claveDeCaso(casoUid);
+    if (!clave) return [];
+    const [remotas, historial] = await Promise.all([
+      this.almacen().listarPartes(uid, casoUid),
+      this.almacen().listarHistorialCaso(uid, casoUid),
+    ]);
+
+    const grupos = new Map<
+      string,
+      { tipo: Parte["tipo"]; texto: string | null; ilegible: boolean; versiones: VersionAnterior[] }
+    >();
+    for (const r of remotas) {
+      const texto = await this.descifrarRemota(clave, casoUid, r);
+      grupos.set(r.parte_id, { tipo: r.tipo, texto, ilegible: texto === null, versiones: [] });
+    }
+    for (const h of historial) {
+      let g = grupos.get(h.parte_id);
+      if (!g) {
+        g = { tipo: h.tipo, texto: null, ilegible: false, versiones: [] };
+        grupos.set(h.parte_id, g);
+      }
+      g.versiones.push({
+        historial_id: h.historial_id,
+        rev: h.rev,
+        archivado_en: h.archivado_en,
+        dispositivo_id: h.dispositivo_id,
+      });
+      // Si la parte actual no se lee, su etiqueta sale de la versión anterior.
+      if (g.texto === null) {
+        g.texto = await descifrarParte(clave.cc, h.sobre, this.ctx(casoUid, h.parte_id, h.rev, clave.envuelta.kid));
+      }
+    }
+
+    const numeroDeSesion = new Map<string, number>();
+    const datosDeSesion = new Map<string, { n: number; fecha: string }>();
+    for (const [parteId, g] of grupos) {
+      if (g.tipo !== "sesion" || g.texto === null) continue;
+      try {
+        const { sesion } = JSON.parse(g.texto) as { sesion: { n: number; fecha: string } };
+        numeroDeSesion.set(parteId.replace(/^s-/, ""), sesion.n);
+        datosDeSesion.set(parteId, sesion);
+      } catch {}
+    }
+
+    const etiqueta = (parteId: string, tipo: Parte["tipo"]): { etiqueta: string; fecha: string | null } => {
+      if (tipo === "cabecera") return { etiqueta: "Datos del caso (alias y motivo)", fecha: null };
+      if (tipo === "revisiones") {
+        const n = numeroDeSesion.get(parteId.replace(/^r-/, ""));
+        return { etiqueta: n ? `Registro de cambios · sesión ${n}` : "Registro de cambios", fecha: null };
+      }
+      const d = datosDeSesion.get(parteId);
+      return d ? { etiqueta: `Sesión ${d.n}`, fecha: d.fecha } : { etiqueta: "Una sesión del caso", fecha: null };
+    };
+
+    return [...grupos.entries()]
+      .filter(([, g]) => g.versiones.length > 0 || g.ilegible)
+      .map(([parteId, g]) => ({ parte_id: parteId, ...etiqueta(parteId, g.tipo), ilegible: g.ilegible, versiones: g.versiones }))
+      .sort(
+        (a, b) =>
+          Number(b.ilegible) - Number(a.ilegible) || a.etiqueta.localeCompare(b.etiqueta, "es", { numeric: true })
+      );
+  }
 
   /** Versiones anteriores de una parte, de la más reciente a la más antigua. */
   async historialDeParte(casoUid: string, parteId: string): Promise<{ historial_id: string; rev: number }[]> {

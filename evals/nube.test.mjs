@@ -358,4 +358,33 @@ await prueba("22. importar un respaldo de la nube en una cuenta nueva", async ()
   assert.equal((await nueva.listarCasos()).length, 2);
 });
 
+await prueba("versiones anteriores: se muestran como sesiones, con fecha y dispositivo; una parte ilegible se marca", async () => {
+  const { almacen, r } = await cuentaNueva();
+  const exp = casoConSesion();
+  await r.crearCaso(exp);
+  assert.deepEqual(await r.versionesAnteriores(exp.caso.id), [], "sin sobrescrituras no hay versiones");
+  await r.actualizarCaso({
+    ...exp,
+    caso: { ...exp.caso, actualizado: "2026-10-02T00:00:00.000Z" },
+    sesiones: exp.sesiones.map((x) => ({ ...x, registro: "Cambio." })),
+  });
+  const grupos = await r.versionesAnteriores(exp.caso.id);
+  const sesion = grupos.find((g) => g.etiqueta === "Sesión 1");
+  assert.ok(sesion, "la sesión se llama «Sesión 1», no por su id interno");
+  assert.equal(sesion.versiones.length, 1);
+  assert.ok(sesion.versiones[0].archivado_en, "trae la fecha en que se archivó");
+  assert.ok(grupos.some((g) => g.etiqueta.startsWith("Datos del caso")));
+  assert.ok(grupos.every((g) => !g.ilegible));
+
+  // Se daña la sesión: sigue llamándose «Sesión 1» (por su versión anterior) y se marca ilegible.
+  const clave = [...almacen._partes.keys()].find((c) => c.includes("/s-"));
+  const p = almacen._partes.get(clave);
+  p.sobre.ct = p.sobre.ct.slice(0, -4) + "AAAA";
+  await r.obtenerCaso(exp.caso.id);
+  assert.deepEqual(r.partesIlegibles(exp.caso.id), [clave.split("/").at(-1)]);
+  const despues = await r.versionesAnteriores(exp.caso.id);
+  assert.equal(despues[0].etiqueta, "Sesión 1");
+  assert.equal(despues[0].ilegible, true, "las ilegibles van primero");
+});
+
 console.log(`\n${n} pruebas pasadas\n`);

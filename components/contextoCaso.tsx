@@ -18,6 +18,8 @@ export interface ValorCaso {
   soloLectura: boolean;
   verVersion: (sesionId: string | null) => void;
   anadirSesion: () => void;
+  /** Se restauró una versión anterior: la página recarga el caso tal como quedó. */
+  restaurado: (expediente: Expediente) => void;
 }
 
 export const ContextoCaso = createContext<ValorCaso | null>(null);

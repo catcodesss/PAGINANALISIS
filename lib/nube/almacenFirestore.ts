@@ -22,7 +22,7 @@ import type { Boveda } from "../boveda";
 const CLAVE_DISPOSITIVO = "acia-dispositivo-id";
 
 /** Id aleatorio por navegador; no identifica a la persona. */
-function dispositivoId(): string {
+export function dispositivoId(): string {
   try {
     let id = localStorage.getItem(CLAVE_DISPOSITIVO);
     if (!id) {
@@ -140,19 +140,23 @@ export function almacenFirestore(bd: Firestore): AlmacenRemoto {
         return rev;
       });
     },
-    async listarHistorial(uid, casoUid, parteId) {
+    async listarHistorialCaso(uid, casoUid) {
       const s = await getDocs(collection(bd, "usuarios", uid, "casos", casoUid, "partes_historial"));
       return s.docs
-        .filter((d) => d.data().parte_id === parteId)
         .map((d) => ({
           historial_id: d.id,
-          parte_id: parteId,
+          parte_id: d.data().parte_id as string,
           rev: d.data().rev as number,
           tipo: d.data().tipo,
           sobre: d.data().sobre,
           hash_ct: d.data().hash_ct as string,
+          archivado_en: (d.data().archivado_en?.toDate?.().toISOString() as string | undefined) ?? null,
+          dispositivo_id: (d.data().dispositivo_id as string | undefined) ?? "",
         }))
         .sort((a, b) => b.rev - a.rev);
+    },
+    async listarHistorial(uid, casoUid, parteId) {
+      return (await this.listarHistorialCaso(uid, casoUid)).filter((h) => h.parte_id === parteId);
     },
   };
 }

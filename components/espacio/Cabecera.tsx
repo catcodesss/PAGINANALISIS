@@ -15,13 +15,14 @@
  */
 
 import { useState } from "react";
-import { repositorio } from "@/lib/repositorio";
+import { repositorio, repositorioNube } from "@/lib/repositorio";
 import { useCaso } from "../contextoCaso";
 import type { AnalisisFuncional, Alerta } from "@/lib/types";
 import { destinoDeAlerta } from "@/lib/destinoAlerta";
 import { traducirMensajeAlerta } from "@/lib/gradoApoyo";
 import { TEXTO_RIESGO_NO_EVALUADO, TEXTO_RIESGO_SIN_INDICADORES } from "@/lib/vacios";
-import { ListaEditable } from "../informe/primitivas";
+import { ListaEditable, MenuAcciones } from "../informe/primitivas";
+import VersionesAnteriores from "./VersionesAnteriores";
 import { useAccionesSeccion } from "../informe/seccion";
 import type { EditarSeccion } from "../informe/PreguntasClinicas";
 import { useEspacio } from "./contexto";
@@ -54,7 +55,26 @@ export default function Cabecera({
   onEditarSeccion: EditarSeccion;
 }) {
   const caso = useCaso();
+  const [versiones, setVersiones] = useState(false);
+  // Solo con la nube: ahí se guardan las versiones anteriores de cada sesión.
+  const nube = caso ? repositorioNube() : null;
+  const ilegibles = nube && caso ? nube.partesIlegibles(caso.expediente.caso.id) : [];
   return (
+    <>
+    {ilegibles.length > 0 && (
+      <div
+        role="alert"
+        className="flex flex-wrap items-center justify-between gap-3 border-b border-warn/40 bg-warn/5 px-4 py-2.5 print:hidden"
+      >
+        <p className="min-w-0 text-sm text-ink">
+          <b className="font-medium">▲ {ilegibles.length === 1 ? "Una parte de este caso no se pudo leer." : `${ilegibles.length} partes de este caso no se pudieron leer.`}</b>{" "}
+          <span className="text-ink-muted">Se abre el resto del caso. No se ha borrado nada.</span>
+        </p>
+        <button type="button" onClick={() => setVersiones(true)} className={CLASE_BOTON}>
+          Recuperar desde una versión anterior
+        </button>
+      </div>
+    )}
     <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-divider px-4 py-2.5 print:hidden">
       {caso ? (
         <p className="flex min-w-0 items-center gap-2">
@@ -90,8 +110,22 @@ export default function Cabecera({
         <ContadorAvisos analisis={analisis} />
         {acciones.onGuardarBiblioteca && <BotonGuardarBiblioteca guardar={acciones.onGuardarBiblioteca} />}
         <MenuExportar acciones={acciones} />
+        {nube && caso && (
+          <MenuAcciones
+            etiqueta="caso"
+            acciones={[{ etiqueta: "Versiones anteriores…", onElegir: () => setVersiones(true) }]}
+          />
+        )}
       </div>
     </header>
+    {versiones && caso && (
+      <VersionesAnteriores
+        casoId={caso.expediente.caso.id}
+        onCerrar={() => setVersiones(false)}
+        onRestaurado={caso.restaurado}
+      />
+    )}
+    </>
   );
 }
 
