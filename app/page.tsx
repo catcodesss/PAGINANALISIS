@@ -124,6 +124,10 @@ export default function Home() {
   // Refs para los guardados asíncronos: leen el caso de ahora, no el del render
   // en que empezaron.
   const expedienteRef = useRef<Expediente | null>(null);
+  const referenciaCasoRef = useRef("");
+  useEffect(() => {
+    referenciaCasoRef.current = referenciaCaso;
+  }, [referenciaCaso]);
   const autorRef = useRef<AutorRevision>("clinico");
 
   async function persistir(siguiente: Expediente) {
@@ -207,8 +211,28 @@ export default function Home() {
 
   /** La sesión 1 de un caso: la nota que se acaba de analizar y su formulación. */
   async function guardarSesionAnalizada(texto: string, resultado: AnalisisFuncional) {
+    if (!repositorio.desbloqueado()) return;
     const exp = expedienteRef.current;
-    if (!exp || exp.sesiones.length > 0 || !repositorio.desbloqueado()) return;
+    if (!exp) {
+      // Análisis sin caso: con la biblioteca abierta se guarda solo, en la
+      // biblioteca de la cuenta. Bloqueada no hay clave para cifrarlo y queda
+      // el botón «Guardar en mi biblioteca».
+      try {
+        const alias = referenciaCasoRef.current.trim() || `Análisis ${new Date().toLocaleDateString("es-PE")}`;
+        const nuevo = crearExpediente({ alias });
+        await repositorio.crearCaso(nuevo);
+        const { expediente: conSesion, sesion } = anadirSesion(nuevo, { nota: texto });
+        const guardado = guardarVersion(conSesion, sesion.id, resultado);
+        await repositorio.actualizarCaso(guardado);
+        expedienteRef.current = guardado;
+        setExpediente(guardado);
+        setReferenciaCaso(guardado.caso.alias);
+      } catch (e) {
+        setAvisoGuardado(e instanceof Error ? e.message : "No se pudo guardar el análisis en tu biblioteca.");
+      }
+      return;
+    }
+    if (exp.sesiones.length > 0) return;
     const { expediente: conSesion, sesion } = anadirSesion(exp, { nota: texto });
     await persistir(guardarVersion(conSesion, sesion.id, resultado));
   }
