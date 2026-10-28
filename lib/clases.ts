@@ -28,6 +28,25 @@ export function nombreDeClase(clase: ClaseFuncional): string {
 }
 
 /**
+ * Crea una clase vacía con la función que escribe el clínico. Sin esto, un
+ * informe anterior a la v9 (todo en «por determinar») no tendría a dónde
+ * mover nada. Devuelve false si el nombre está vacío o ya existe.
+ */
+export function crearClase(a: AnalisisFuncional, funcion: string): boolean {
+  const nombre = funcion.trim();
+  const clases = a.clases_funcionales ?? [];
+  if (!nombre || clases.some((c) => c.funcion?.trim().toLowerCase() === nombre.toLowerCase())) return false;
+  const nueva: ClaseFuncional = { id: `cls_${a.siguiente_id}`, funcion: nombre, miembros: [] };
+  a.siguiente_id += 1;
+  // «Por determinar» siempre al final.
+  const i = clases.findIndex((c) => c.funcion === null);
+  if (i === -1) clases.push(nueva);
+  else clases.splice(i, 0, nueva);
+  a.clases_funcionales = clases;
+  return true;
+}
+
+/**
  * Cambia una conducta de clase. Es una decisión del clínico, no una cita: la
  * pertenencia nueva llega sin justificación ni cita y, por tanto, como
  * «inferencia» hasta que el clínico la sostenga con una frase de la nota.

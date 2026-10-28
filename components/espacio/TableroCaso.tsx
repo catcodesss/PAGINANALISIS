@@ -14,10 +14,10 @@
  * con una frase de la nota. Esto nunca se presenta como generado por la IA.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { AnalisisFuncional, ClaseFuncional, MiembroClase } from "@/lib/types";
 import type { NivelMapa } from "@/lib/preferencias";
-import { apoyoDeClase, moverConductaDeClase, nombreDeClase, POR_DETERMINAR } from "@/lib/clases";
+import { apoyoDeClase, crearClase, moverConductaDeClase, nombreDeClase, POR_DETERMINAR } from "@/lib/clases";
 import { describirGrado, gradoDeApoyoArista } from "@/lib/gradoApoyo";
 import { construirNodosGrafo } from "@/lib/grafo";
 import { construirRedFuncional } from "@/lib/redFuncional";
@@ -34,7 +34,8 @@ export default function TableroCaso({
   analisisConProsa: AnalisisFuncional;
   onIrANivel: (nivel: NivelMapa) => void;
 }) {
-  const { seleccionar, aplicarDecision } = useEspacio();
+  const { seleccionar, aplicarDecision, deshacer, rehacer, puedeDeshacer, puedeRehacer } = useEspacio();
+  const [nombreNueva, setNombreNueva] = useState("");
   const clases = analisis.clases_funcionales ?? [];
   const conConocida = clases.filter((c) => c.funcion !== null);
   const porDeterminar = clases.find((c) => c.funcion === null);
@@ -53,6 +54,14 @@ export default function TableroCaso({
     aplicarDecision((copia) => {
       moverConductaDeClase(copia, conductaId, destino);
     });
+  };
+  const crear = () => {
+    const nombre = nombreNueva.trim();
+    if (!nombre) return;
+    aplicarDecision((copia) => {
+      crearClase(copia, nombre);
+    });
+    setNombreNueva("");
   };
   const abrirConducta = (id: string) => {
     onIrANivel("situacion");
@@ -84,7 +93,33 @@ export default function TableroCaso({
         </p>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Clases funcionales">
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          crear();
+        }}
+      >
+        <input
+          value={nombreNueva}
+          onChange={(e) => setNombreNueva(e.target.value)}
+          maxLength={120}
+          placeholder="Nueva clase: la función, p. ej. escape de la evaluación social"
+          aria-label="Función de la clase nueva"
+          className="min-w-0 flex-1 rounded border border-divider bg-surface px-2 py-1 text-sm text-ink"
+        />
+        <button type="submit" disabled={!nombreNueva.trim()} className="rounded border border-divider px-3 py-1 text-xs text-ink-muted hover:text-ink disabled:opacity-40">
+          Crear clase
+        </button>
+        <button type="button" disabled={!puedeDeshacer} onClick={deshacer} className="rounded border border-divider px-3 py-1 text-xs text-ink disabled:opacity-40">
+          Deshacer
+        </button>
+        <button type="button" disabled={!puedeRehacer} onClick={rehacer} className="rounded border border-divider px-3 py-1 text-xs text-ink disabled:opacity-40">
+          Rehacer
+        </button>
+      </form>
+
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-3" aria-label="Clases funcionales">
         {[...conConocida, ...(porDeterminar ? [porDeterminar] : [])].map((clase) => (
           <Columna
             key={clase.id}
