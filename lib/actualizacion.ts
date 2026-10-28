@@ -11,6 +11,7 @@ import type {
 import { resolverCita, SIN_CITA, type CitaVerificadaResuelta } from "./citas";
 import { procedenciaDe, marcarEditado } from "./procedencia";
 import { construirNodosGrafo } from "./grafo";
+import { claseDeConducta, moverConductaDeClase, nombreDeClase } from "./clases";
 
 /**
  * Actualización por sesión (fase 8): la lógica pura, sin red ni modelo.
@@ -26,7 +27,7 @@ import { construirNodosGrafo } from "./grafo";
  * `aplicarPropuestas` solo recibe las que el clínico aceptó.
  */
 
-export type TipoRef = "conducta" | "hipotesis" | "rival" | "pregunta" | "situacion" | "blanco" | "relacion";
+export type TipoRef = "conducta" | "hipotesis" | "rival" | "pregunta" | "situacion" | "blanco" | "relacion" | "clase";
 
 const PREFIJO: Record<TipoRef, string> = {
   conducta: "C",
@@ -36,6 +37,7 @@ const PREFIJO: Record<TipoRef, string> = {
   situacion: "S",
   blanco: "B",
   relacion: "R",
+  clase: "K",
 };
 
 /** Lo que se puede `modificar` de cada tipo. Lo demás es estructura o es del clínico. */
@@ -56,6 +58,7 @@ export const OPERACIONES = [
   "responder",
   "nueva_pregunta",
   "marcar_contradiccion",
+  "mover_clase",
 ] as const;
 export type TipoOperacion = (typeof OPERACIONES)[number];
 
@@ -82,6 +85,8 @@ export interface Propuesta {
   antes?: string;
   /** crear: la conducta de la misma clase funcional. */
   misma_clase_que?: Id | null;
+  /** mover_clase: la clase funcional a la que pasa la conducta (`objetivo`). */
+  destino_clase?: Id | null;
   citas: CitaVerificadaResuelta[];
   frases: string[];
   justificacion: string;
@@ -145,6 +150,16 @@ export function construirReferencias(a: AnalisisFuncional): MapaReferencias {
   for (const c of a.conductas_problema) {
     const r = registrar("conducta", c.id);
     lineas.push(`${r}: ${recortar(c.descripcion)}${c.es_conducta_seguridad ? " (seguridad)" : ""}${conf(c.id)}`);
+  }
+  // Las clases funcionales (fase 10): el modelo puede proponer mover una
+  // conducta de una a otra, nombrándolas por referencia.
+  if ((a.clases_funcionales ?? []).length > 0) {
+    lineas.push("# Clases funcionales");
+    for (const clase of a.clases_funcionales) {
+      const r = registrar("clase", clase.id);
+      const miembros = clase.miembros.map((m) => porId.get(m.conducta_id)).filter(Boolean).join(",");
+      lineas.push(`${r}: ${clase.funcion === null ? "función por determinar" : recortar(clase.funcion, 100)} | conductas: ${miembros}`);
+    }
   }
   lineas.push("# Situaciones");
   for (const s of a.situaciones) {
@@ -378,6 +393,19 @@ export function normalizarOperaciones(
       }
       const misma = clase?.id ?? null;
       propuestas.push({ ...base, valor, misma_clase_que: misma, grupo: misma ? grupoDe(a, clase!) : null });
+    } else if (op === "mover_clase") {
+      // Una conducta cambia de clase funcional: la clase destino ha de existir
+      // y ser otra distinta de la actual.
+      const destino = typeof d.a === "string" ? mapa.porRef.get(d.a.trim().toUpperCase()) : undefined;
+      if (objetivo!.tipo !== "conducta" || !destino || destino.tipo !== "clase") {
+        descartar("referencia_inexistente");
+        continue;
+      }
+      if (claseDeConducta(a, objetivo!.id)?.id === destino.id) {
+        descartar("incompleta");
+        continue;
+      }
+      propuestas.push({ ...base, destino_clase: destino.id });
     } else if (op === "responder") {
       const estado = d.estado as EstadoPregunta;
       if (objetivo!.tipo !== "pregunta" || !ESTADOS_RESPUESTA.includes(estado)) {
@@ -501,6 +529,7 @@ export function aplicarPropuestas(a: AnalisisFuncional, aceptadas: readonly Acep
             situacion: a.situaciones,
             blanco: a.blancos ?? [],
             relacion: a.aristas,
+            clase: a.clases_funcionales,
           };
           escribir(lista[o!.tipo].find((x) => x.id === o!.id) as Record<string, unknown> | undefined);
         }
@@ -553,6 +582,14 @@ export function aplicarPropuestas(a: AnalisisFuncional, aceptadas: readonly Acep
         break;
       }
 
+      case "mover_clase":
+        // La pertenencia nueva no lleva cita de la nota 1: la frase de la
+        // sesión queda como evidencia de la sesión, y el apoyo es «inferencia».
+        if (p.destino_clase) moverConductaDeClase(a, o!.id, p.destino_clase);
+        anotarEvidencia(a, o!.id, p, sesion, autor, "a_favor");
+        a.seguimiento.novedades[o!.id] = sesion;
+        break;
+
       case "responder": {
         const pr = a.preguntas.find((x) => x.id === o!.id);
         if (!pr) break;
@@ -601,6 +638,7 @@ export const SIMBOLO_OPERACION: Record<TipoOperacion, string> = {
   crear: "+",
   responder: "✓",
   nueva_pregunta: "?",
+  mover_clase: "⇄",
 };
 
 /** «Aceptar en lote» solo vale para evidencia; estado y estructura, uno a uno. */

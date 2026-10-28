@@ -210,6 +210,60 @@ prueba("evidencia en contra aceptada marca ⊘ la relación y baja su apoyo", ()
   assert.ok(!a.aristas.find((x) => x.id === arista.id).contradicha);
 });
 
+prueba("mover_clase: la conducta pasa a la clase que dice la referencia, con la frase de la sesión y sin cita en la nota 1", () => {
+  const a = analisis01();
+  a.clases_funcionales.unshift({ id: "cls_77", funcion: "Escape de la evaluación social", miembros: [] });
+  const mapa = A.construirReferencias(a);
+  assert.ok(mapa.texto.includes("# Clases funcionales"));
+  const c = refDe(mapa, "conducta");
+  const k = mapa.porId.get("cls_77");
+  assert.match(k, /^K\d+$/);
+  const r = proponer(a, { operaciones: [{ op: "mover_clase", ref: c.ref, a: k, frases: ["L1.1"], justificacion: "x" }] });
+  assert.equal(r.propuestas.length, 1);
+  assert.equal(r.propuestas[0].destino_clase, "cls_77");
+  const sinAceptar = structuredClone(a);
+  A.aplicarPropuestas(sinAceptar, [], 2);
+  assert.deepEqual(sinAceptar.clases_funcionales, a.clases_funcionales);
+  const d = structuredClone(a);
+  A.aplicarPropuestas(d, [{ propuesta: r.propuestas[0] }], 2);
+  const destino = d.clases_funcionales.find((x) => x.id === "cls_77");
+  assert.deepEqual(destino.miembros.map((m) => m.conducta_id), [c.id]);
+  assert.equal(destino.miembros[0].apoyo, "inferencia");
+  assert.equal(d.seguimiento.evidencia[c.id].at(-1).sesion, 2);
+  const total = d.clases_funcionales.reduce((n, x) => n + x.miembros.length, 0);
+  assert.equal(total, d.conductas_problema.length, "ninguna conducta se pierde ni se duplica");
+});
+
+prueba("mover_clase: una clase inexistente o la misma en que ya está se descartan", () => {
+  const a = analisis01();
+  a.clases_funcionales.unshift({ id: "cls_77", funcion: "Escape", miembros: [] });
+  const mapa = A.construirReferencias(a);
+  const c = refDe(mapa, "conducta");
+  const actual = mapa.porId.get(a.clases_funcionales.find((x) => x.miembros.some((m) => m.conducta_id === c.id)).id);
+  const r = proponer(a, {
+    operaciones: [
+      { op: "mover_clase", ref: c.ref, a: "K99", frases: ["L1.1"], justificacion: "x" },
+      { op: "mover_clase", ref: c.ref, a: actual, frases: ["L1.1"], justificacion: "x" },
+      { op: "mover_clase", ref: c.ref, a: c.ref, frases: ["L1.1"], justificacion: "x" },
+    ],
+  });
+  assert.equal(r.propuestas.length, 0);
+});
+
+prueba("crear con misma_clase_que mete la conducta nueva en la clase de su hermana", () => {
+  const a = analisis01();
+  const c = refDe(A.construirReferencias(a), "conducta");
+  a.clases_funcionales.unshift({ id: "cls_77", funcion: "Escape", miembros: [] });
+  const mapa = A.construirReferencias(a);
+  const r = proponer(a, { operaciones: [{ op: "crear", tipo: "conducta", contenido: { descripcion: "Evita llamar al seguro", misma_clase_que: c.ref }, frases: ["L1.1"], justificacion: "x" }] });
+  const d = structuredClone(a);
+  A.aplicarPropuestas(d, [{ propuesta: r.propuestas[0] }], 2);
+  const nueva = d.conductas_problema.at(-1);
+  const clase = d.clases_funcionales.find((x) => x.miembros.some((m) => m.conducta_id === nueva.id));
+  assert.ok(clase.miembros.some((m) => m.conducta_id === c.id), "comparte clase con su hermana");
+  void mapa;
+});
+
 prueba("un estado igual al actual o un campo no editable se descartan", () => {
   const a = analisis01();
   const mapa = A.construirReferencias(a);

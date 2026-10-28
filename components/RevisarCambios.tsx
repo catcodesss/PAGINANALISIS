@@ -19,6 +19,7 @@ import {
 } from "@/lib/actualizacion";
 import { ETIQUETA_ESTADO_HIPOTESIS } from "@/lib/preguntas";
 import { construirNodosGrafo } from "@/lib/grafo";
+import { nombreDeClase } from "@/lib/clases";
 
 /** Una hipótesis sin origen nombrado se lee por su función. */
 function rotuloHipotesis(h: { origen: string; funcion: string; conducta: string }) {
@@ -82,6 +83,10 @@ function resumen(a: AnalisisFuncional, p: Propuesta): string {
       return `${obj} · ${estado(p.estado)}`;
     case "nueva_pregunta":
       return "Pregunta nueva";
+    case "mover_clase": {
+      const destino = (a.clases_funcionales ?? []).find((c) => c.id === p.destino_clase);
+      return `${obj} · pasa a «${destino ? nombreDeClase(destino) : "otra clase"}»`;
+    }
   }
 }
 
