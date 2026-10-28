@@ -35,7 +35,7 @@ import PanelRecomendaciones from "@/components/PanelRecomendaciones";
 import { usePreferencias } from "@/components/usePreferencias";
 import { ausentesTrasReanalisis } from "@/lib/vacios";
 import { calcularApoyoAristas } from "@/lib/apoyoAristas";
-import { migrarAV8 } from "@/lib/identidad";
+import { migrarAV9 } from "@/lib/identidad";
 import { fusionarPreguntas } from "@/lib/preguntas";
 import { cerrarEdicion } from "@/lib/procedenciaEdicion";
 import Historial from "@/components/Historial";
@@ -580,7 +580,7 @@ export default function Home() {
       Object.assign(actualizado, fragmento);
       // El fragmento llega sin ids ni referencias resueltas: se completan con
       // el mismo paso idempotente que usa el análisis recién generado.
-      migrarAV8(actualizado);
+      migrarAV9(actualizado);
       actualizado.campos_ausentes = ausentesTrasReanalisis(previo, fragmento);
       // Las citas de los nodos pueden haber cambiado: el apoyo de las
       // relaciones se vuelve a calcular, no se arrastra el de antes.

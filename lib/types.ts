@@ -767,7 +767,9 @@ export interface Alerta {
     | "estrategia_sin_actua_sobre"
     | "blanco_sin_indicador_o_revision"
     // Fase 8: la hipótesis del blanco cambió con una sesión posterior.
-    | "hipotesis_cambiada";
+    | "hipotesis_cambiada"
+    // Fase 10: dos conductas de la misma clase funcional van en sentidos opuestos.
+    | "clase_en_conflicto";
   gravedad: "alta" | "media";
   ruta: string;
   /**
@@ -826,10 +828,11 @@ export interface ProcedenciaElemento {
  * `preguntas`, da identidad a las hipótesis alternativas y estado a las de
  * mantenimiento; la 7 guarda aparte las citas que añade el clínico
  * (`citas_del_clinico`); la 8 añade los blancos (`blancos`) y da identidad a
- * estrategias e indicadores. Un informe guardado de una versión anterior se
- * migra al leerlo; nunca se descarta. Ver lib/identidad.ts#migrarAV8.
+ * estrategias e indicadores; la 9 agrupa las conductas en clases funcionales
+ * (`clases_funcionales`). Un informe guardado de una versión anterior se
+ * migra al leerlo; nunca se descarta. Ver lib/identidad.ts#migrarAV9.
  */
-export const VERSION_ANALISIS = 8;
+export const VERSION_ANALISIS = 9;
 
 export interface AnalisisFuncional {
   version: number;
@@ -943,6 +946,34 @@ export interface AnalisisFuncional {
    * interfaz al aplicar los cambios que el clínico acepta; el modelo nunca.
    */
   seguimiento: Seguimiento;
+  /**
+   * Las conductas problema agrupadas por función hipotetizada (fase 10, nivel
+   * Caso). El modelo las propone nombrando cada conducta con sus palabras; el
+   * servidor las resuelve a id una vez (lib/identidad.ts#migrarAV9). Toda
+   * conducta está en exactamente una clase; la que no tiene función conocida
+   * está en la clase con `funcion: null` («Función por determinar»), nunca en
+   * la más parecida.
+   */
+  clases_funcionales: ClaseFuncional[];
+}
+
+/** Una conducta dentro de una clase funcional, con por qué está ahí. */
+export interface MiembroClase {
+  conducta_id: Id;
+  /** Cómo la nombró el modelo; sirve para resolver el id y no se muestra. */
+  conducta_texto: string;
+  justificacion: string;
+  /** La cita que sostiene la pertenencia. Sin ella, el apoyo es «inferencia». */
+  evidencia: Cita;
+  /** Calculado al normalizar, de `evidencia`. El de la clase es el del miembro más débil. */
+  apoyo: "cita" | "parcial" | "inferencia";
+}
+
+export interface ClaseFuncional {
+  id: Id;
+  /** `null` = «Función por determinar». Solo hay una clase así. */
+  funcion: string | null;
+  miembros: MiembroClase[];
 }
 
 /**
@@ -1016,6 +1047,9 @@ export const CAMPOS_ANALISIS_FUNCIONAL = [
   "citas_del_clinico",
   "blancos",
   "seguimiento",
+  // Al final, tras todo lo que el modelo ya decidió: agrupa las conductas por la
+  // función que se hipotetizó para ellas.
+  "clases_funcionales",
 ] as const satisfies readonly (keyof AnalisisFuncional)[];
 
 type _TodasLasClavesCubiertas =

@@ -531,6 +531,22 @@ export function aplicarPropuestas(a: AnalisisFuncional, aceptadas: readonly Acep
           // situación no se vería en ninguna parte.
           for (const b of a.blancos ?? []) if (b.conducta_ids.includes(hermana.id)) b.conducta_ids.push(id);
         }
+        // Misma clase que la hermana; sin hermana, a «por determinar».
+        {
+          const claseDeLaHermana = hermana
+            ? a.clases_funcionales.find((c) => c.miembros.some((m) => m.conducta_id === hermana.id))
+            : undefined;
+          const destino = claseDeLaHermana ?? a.clases_funcionales.find((c) => c.funcion === null);
+          const miembro = {
+            conducta_id: id,
+            conducta_texto: valor,
+            justificacion: "",
+            evidencia: SIN_CITA("sin_referencia"),
+            apoyo: "inferencia" as const,
+          };
+          if (destino) destino.miembros.push(miembro);
+          else a.clases_funcionales.push({ id: nuevoIdCon(a, a.clases_funcionales, "cls"), funcion: null, miembros: [miembro] });
+        }
         if (editada) a.procedencia[id] = { estado: "creado" };
         anotarEvidencia(a, id, p, sesion, autor, "a_favor");
         a.seguimiento.novedades[id] = sesion;

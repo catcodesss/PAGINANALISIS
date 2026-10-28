@@ -377,6 +377,11 @@ export function borrarNodo(analisis: AnalisisFuncional, id: string): void {
   analisis.repertorio_disponible = analisis.repertorio_disponible.filter((r) => r.id !== id);
   analisis.reglas_verbales = analisis.reglas_verbales.filter((r) => r.id !== id);
   analisis.conductas_alternativas = analisis.conductas_alternativas.filter((a) => a.id !== id);
+  // Una conducta borrada sale de su clase funcional; la clase se queda aunque
+  // quede vacía, porque es una decisión del clínico.
+  for (const clase of analisis.clases_funcionales ?? []) {
+    clase.miembros = clase.miembros.filter((m) => m.conducta_id !== id);
+  }
   const valor = /^valor_(\d+)$/.exec(id);
   if (valor) analisis.valores_y_metas.splice(Number(valor[1]) - 1, 1);
   const idsRetirados = [id];

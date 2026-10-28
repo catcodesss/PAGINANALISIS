@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Vista Mapa: el grafo del análisis funcional leído en dos niveles —Situación
- * (el ABC por columnas) y Clínico (la cadena DBT, ver grafo/CadenaClinica)—
- * con capas que se encienden encima (Plan y Huecos). La red funcional, plegada debajo, hace de vista general del caso hasta que
- * exista el nivel Caso (fase 10).
+ * Vista Mapa: el grafo del análisis funcional leído en tres niveles —Caso (las
+ * conductas agrupadas por función, ver TableroCaso), Situación (el ABC por
+ * columnas) y Clínico (la cadena DBT, ver grafo/CadenaClinica)— con capas que
+ * se encienden encima de los dos últimos (Plan y Huecos).
  *
  * El nivel se recuerda por caso (components/useLente.ts). Las capas no: son
  * algo que se enciende para mirar una cosa y se apaga después. Cambiar de nivel
@@ -31,12 +31,13 @@ import GrafoAFC from "../grafo/GrafoAFC";
 import type { CapasMapa } from "../grafo/TableroColumnas";
 import { InsigniaAlerta } from "../grafo/InsigniaAlerta";
 import { useNivelMapa } from "../useLente";
-import { Plegable, SinHallazgos } from "../informe/primitivas";
-import { RedFuncionalSVG } from "../informe/mantenimiento";
+import { SinHallazgos } from "../informe/primitivas";
 import { useAccionesSeccion } from "../informe/seccion";
 import { useEspacio } from "./contexto";
+import TableroCaso from "./TableroCaso";
 
 const ETIQUETA_NIVEL: Record<NivelMapa, string> = {
+  caso: "Caso",
   situacion: "Situación",
   clinico: "Cadena DBT",
 };
@@ -79,7 +80,7 @@ export default function VistaMapa({
       const destino = e.target;
       if (destino instanceof Element && destino.closest("input, textarea, select, [contenteditable]")) return;
       if (e.altKey || e.ctrlKey || e.metaKey) return;
-      if (e.key === "1" || e.key === "2") {
+      if (e.key === "1" || e.key === "2" || e.key === "3") {
         elegirNivel(NIVELES_MAPA[Number(e.key) - 1]);
       } else if (e.key === "f" || e.key === "F") {
         abrirFuente(!fuenteAbierta);
@@ -124,7 +125,7 @@ export default function VistaMapa({
         <span className="ml-auto">{acciones.menu}</span>
       </div>
 
-      {(
+      {nivel !== "caso" && (
         <div role="group" aria-label="Capas" className="mb-4 flex flex-wrap items-center gap-2 text-xs">
           <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Capas</span>
           <BotonCapa activa={capas.plan} contador={contadores.plan} onClick={() => alternar("plan")}>Plan</BotonCapa>
@@ -133,7 +134,9 @@ export default function VistaMapa({
       )}
       {acciones.panel}
 
-      {analisis.situaciones.length === 0 ? (
+      {nivel === "caso" ? (
+        <TableroCaso analisis={analisis} analisisConProsa={analisisConProsa} onIrANivel={elegirNivel} />
+      ) : analisis.situaciones.length === 0 ? (
         <SinHallazgos estado={estadoVacio(analisis, "situaciones")} />
       ) : (
         <GrafoAFC
@@ -143,12 +146,6 @@ export default function VistaMapa({
           onIrANivel={elegirNivel}
         />
       )}
-
-      <div className="mt-8">
-        <Plegable titulo="Vista general del caso">
-          <RedFuncionalSVG analisis={analisisConProsa} />
-        </Plegable>
-      </div>
     </section>
   );
 }

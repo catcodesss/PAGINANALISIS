@@ -565,6 +565,40 @@ function validarHipotesisCambiada(a: AnalisisFuncional): Alerta[] {
 }
 
 /**
+ * Fase 10: «otra conducta de la misma clase funcional está aumentando». Si dos
+ * conductas de una clase con función conocida van en sentidos opuestos, quizá
+ * la intervención no quitó la función: movió la salida a otra topografía.
+ *
+ * LISTO PERO SIN ACTIVAR. Necesita la tendencia de cada indicador por sesión, y
+ * esos datos no existen hasta la fase 9 (observaciones). Por eso no está en
+ * `validarAnalisis` ni en las revalidaciones: se llama con las tendencias cuando
+ * haya de dónde sacarlas. Determinista, sin IA (invariante 3).
+ */
+export interface TendenciaDeConducta {
+  conducta_id: string;
+  sentido: "aumenta" | "disminuye";
+}
+
+export function validarClaseEnConflicto(a: AnalisisFuncional, tendencias: readonly TendenciaDeConducta[]): Alerta[] {
+  const sentido = new Map(tendencias.map((t) => [t.conducta_id, t.sentido]));
+  const alertas: Alerta[] = [];
+  (a.clases_funcionales ?? []).forEach((clase, indice) => {
+    if (clase.funcion === null) return;
+    const sentidos = new Set(clase.miembros.map((m) => sentido.get(m.conducta_id)).filter(Boolean));
+    if (!sentidos.has("aumenta") || !sentidos.has("disminuye")) return;
+    alertas.push({
+      codigo: "clase_en_conflicto",
+      origen: "validador",
+      gravedad: "media",
+      ruta: `clases_funcionales[${indice}]`,
+      elemento: clase.funcion,
+      mensaje: "Otra conducta de la misma clase funcional está aumentando mientras otra disminuye: puede que la función se haya desplazado a otra topografía.",
+    });
+  });
+  return alertas;
+}
+
+/**
  * Ejecuta todas las comprobaciones y devuelve el análisis con sus alertas.
  * Modifica confianzas cuando la evidencia no las sostiene (ver V1).
  */

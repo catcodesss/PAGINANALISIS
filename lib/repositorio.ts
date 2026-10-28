@@ -1,5 +1,5 @@
 import type { AnalisisFuncional } from "./types";
-import { migrarAV8 } from "./identidad";
+import { migrarAV9 } from "./identidad";
 import {
   comprobarCambioExpediente,
   expedienteDesdeAnalisis,
@@ -332,7 +332,7 @@ class RepositorioLocal implements Repositorio {
       ...entrada,
       /*
         Un informe guardado puede ser de cualquier versión anterior: el
-        historial es local y nadie lo actualiza por detrás. migrarAV8 le da
+        historial es local y nadie lo actualiza por detrás. migrarAV9 le da
         identidad a sus entidades y funde la cadena DBT duplicada; es
         idempotente, así que uno que ya sea v2 pasa por aquí sin cambiar.
 
@@ -342,7 +342,7 @@ class RepositorioLocal implements Repositorio {
         el usuario pudiera hacer nada. Leyendo, el peor caso es que el informe
         se migre otra vez la próxima vez que se abra.
       */
-      analisis: migrarAV8(entrada.analisis),
+      analisis: migrarAV9(entrada.analisis),
     };
   }
 
@@ -457,7 +457,7 @@ class RepositorioLocal implements Repositorio {
         const expediente = expedienteDesdeAnalisis({
           referencia: entrada.referencia,
           nota: entrada.nota,
-          analisis: migrarAV8(entrada.analisis),
+          analisis: migrarAV9(entrada.analisis),
           fecha: crudo.fecha,
         });
         await this.escribirCaso(expediente, crudo.id);
@@ -500,7 +500,7 @@ class RepositorioLocal implements Repositorio {
     const expediente = JSON.parse(plano) as Expediente;
     // Igual que `obtener`: se migra al leer. Las versiones no se reescriben en
     // disco por esto; solo se abren en el esquema de hoy.
-    for (const v of expediente.versiones) v.analisis = migrarAV8(v.analisis);
+    for (const v of expediente.versiones) v.analisis = migrarAV9(v.analisis);
     return expediente;
   }
 

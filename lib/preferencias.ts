@@ -44,8 +44,8 @@ export const CLAVE_ESTILO_GRAFO = "acia-estilo-grafo";
  * Evidencia (apoyo y frase de origen de cada pieza). Las lecturas DBT y ACT
  * pasan a ser capas encima de esos niveles.
  */
-export type NivelMapa = "situacion" | "clinico";
-export const NIVELES_MAPA: readonly NivelMapa[] = ["situacion", "clinico"];
+export type NivelMapa = "caso" | "situacion" | "clinico";
+export const NIVELES_MAPA: readonly NivelMapa[] = ["caso", "situacion", "clinico"];
 export const NIVEL_MAPA_POR_DEFECTO: NivelMapa = "situacion";
 
 /**
@@ -55,7 +55,7 @@ export const NIVEL_MAPA_POR_DEFECTO: NivelMapa = "situacion";
  * clínicas. Un valor que no se reconoce cae al nivel por defecto.
  */
 export function nivelDeGuardado(valor: string | null | undefined): NivelMapa {
-  if (valor === "situacion" || valor === "clinico") return valor;
+  if (valor === "caso" || valor === "situacion" || valor === "clinico") return valor;
   // «Evidencia» ya no es un nivel: la evidencia sale desde las tarjetas.
   if (valor === "evidencia") return "situacion";
   if (valor === "afc") return "situacion";

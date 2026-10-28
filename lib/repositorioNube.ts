@@ -3,7 +3,7 @@ import type {
   Repositorio,
   ResumenHistorial,
 } from "./repositorio";
-import { migrarAV8 } from "./identidad";
+import { migrarAV9 } from "./identidad";
 import {
   comprobarCambioExpediente,
   resumirExpediente,
@@ -296,7 +296,7 @@ export class RepositorioNube implements Repositorio {
       }
       return null;
     }
-    for (const v of expediente.versiones) v.analisis = migrarAV8(v.analisis);
+    for (const v of expediente.versiones) v.analisis = migrarAV9(v.analisis);
     return expediente;
   }
 

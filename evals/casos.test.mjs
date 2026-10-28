@@ -43,7 +43,7 @@ execFileSync(
 const require = createRequire(import.meta.url);
 const { numerarNota } = require(join(RAIZ, ".tmp-evals/citas.js"));
 const { normalizarAnalisis } = require(join(RAIZ, ".tmp-evals/parseAnalisis.js"));
-const { migrarAV8 } = require(join(RAIZ, ".tmp-evals/identidad.js"));
+const { migrarAV9 } = require(join(RAIZ, ".tmp-evals/identidad.js"));
 const C = require(join(RAIZ, ".tmp-evals/casos.js"));
 const { leerRespaldo } = require(join(RAIZ, ".tmp-evals/respaldo.js"));
 
@@ -53,7 +53,7 @@ const NOTA = readFileSync(join(RAIZ, "evals/casos/01-ansiedad-social.md"), "utf8
   .trim();
 const { lineas } = numerarNota(NOTA);
 const analisis01 = () =>
-  migrarAV8(
+  migrarAV9(
     normalizarAnalisis(
       JSON.parse(readFileSync(join(RAIZ, "evals/fixtures/01-v0.1.2.json"), "utf8")).analisis,
       lineas

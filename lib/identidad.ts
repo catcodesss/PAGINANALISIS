@@ -6,10 +6,12 @@ import {
   type AnalisisFuncional,
   type Blanco,
   type CadenaDBT,
+  type ClaseFuncional,
   type Id,
   type Situacion,
 } from "./types";
 import { materializarAristas } from "./aristas";
+import { gradoDeCita } from "./gradoApoyo";
 import { aristaDeHipotesis, calcularApoyoAristas } from "./apoyoAristas";
 import { construirNodosGrafo } from "./grafo";
 import { ANCLAS_DE_BLOQUE } from "./secciones";
@@ -323,6 +325,7 @@ export function todosLosIds(a: AnalisisFuncional): Id[] {
     ...a.lineas_de_intervencion_tentativas.map((l) => l.id),
     ...a.plan_de_monitorizacion.map((p) => p.id),
     ...(a.blancos ?? []).map((b) => b.id),
+    ...(a.clases_funcionales ?? []).map((c) => c.id),
   ];
   for (const s of a.situaciones) {
     for (const e of s.cadena_dbt?.eslabones ?? []) ids.push(e.id);
@@ -716,7 +719,82 @@ function llevarPreguntasAV6(analisis: AnalisisFuncional): void {
 }
 
 /**
- * Lleva un análisis de cualquier versión anterior a la actual (v8).
+ * Lleva un análisis de cualquier versión anterior a la actual (v9).
+ *
+ * La v9 añade las clases funcionales (fase 10): las conductas problema
+ * agrupadas por función. El modelo las propone nombrando cada conducta con sus
+ * palabras; aquí se resuelven a id una sola vez, con la misma coincidencia por
+ * raíces que el resto. Lo que no resuelve, y toda conducta que ninguna clase
+ * recoge, va a «Función por determinar» (`funcion: null`): nunca a la clase más
+ * parecida. Un informe anterior llega con todo en «por determinar» y con
+ * `clases_funcionales` entre los campos ausentes, para que no se lea como «sin
+ * hallazgos». Una conducta en dos clases se queda en la primera; una conducta
+ * que ya no existe sale de su clase. El apoyo de cada pertenencia se recalcula
+ * de su cita. Idempotente.
+ *
+ * Se aplica donde se aplicaba migrarAV8: al normalizar la respuesta del
+ * modelo, al leer del historial, al cargar el ejemplo y tras un reanálisis.
+ */
+export function migrarAV9(analisis: AnalisisFuncional): AnalisisFuncional {
+  migrarAV8(analisis);
+
+  if (!Array.isArray(analisis.clases_funcionales) && !analisis.campos_ausentes.includes("clases_funcionales")) {
+    analisis.campos_ausentes.push("clases_funcionales");
+  }
+  const crudas: ClaseFuncional[] = Array.isArray(analisis.clases_funcionales) ? analisis.clases_funcionales : [];
+  const conductas = analisis.conductas_problema.map((c) => ({ id: c.id, texto: c.descripcion }));
+  const existen = new Set(conductas.map((c) => c.id));
+  const asignadas = new Set<Id>();
+
+  const clases: ClaseFuncional[] = [];
+  let porDeterminar: ClaseFuncional | null = null;
+  for (const cruda of crudas) {
+    const funcion = typeof cruda.funcion === "string" && cruda.funcion.trim() ? cruda.funcion : null;
+    let clase: ClaseFuncional;
+    if (funcion === null) {
+      porDeterminar ??= { id: cruda.id ?? "", funcion: null, miembros: [] };
+      clase = porDeterminar;
+    } else {
+      clase = { id: cruda.id ?? "", funcion, miembros: [] };
+      clases.push(clase);
+    }
+    for (const m of Array.isArray(cruda.miembros) ? cruda.miembros : []) {
+      const texto = typeof m.conducta_texto === "string" ? m.conducta_texto : "";
+      const id = existen.has(m.conducta_id) ? m.conducta_id : (mejorCoincidencia(texto, conductas) ?? "");
+      if (!id || asignadas.has(id)) continue;
+      asignadas.add(id);
+      const evidencia = m.evidencia ?? SIN_CITA("sin_referencia");
+      clase.miembros.push({
+        conducta_id: id,
+        conducta_texto: texto,
+        justificacion: typeof m.justificacion === "string" ? m.justificacion : "",
+        evidencia,
+        apoyo: gradoDeCita(evidencia, "media"),
+      });
+    }
+  }
+  for (const c of analisis.conductas_problema) {
+    if (asignadas.has(c.id)) continue;
+    porDeterminar ??= { id: "", funcion: null, miembros: [] };
+    porDeterminar.miembros.push({
+      conducta_id: c.id,
+      conducta_texto: c.descripcion,
+      justificacion: "",
+      evidencia: SIN_CITA("sin_referencia"),
+      apoyo: "inferencia",
+    });
+  }
+  if (porDeterminar) clases.push(porDeterminar);
+  for (const c of clases) if (sinId(c)) c.id = idLibre("cls", clases);
+
+  analisis.clases_funcionales = clases;
+  analisis.siguiente_id = Math.max(analisis.siguiente_id, siguienteLibre(analisis));
+  analisis.version = VERSION_ANALISIS;
+  return analisis;
+}
+
+/**
+ * Lleva un análisis de cualquier versión anterior a la v8.
  *
  * La v8 añade los blancos (fase 6): la cadena de ocho ranuras que reúne, por
  * conducta problema, hipótesis, alternativas, estrategias e indicadores. Un
@@ -730,7 +808,7 @@ function llevarPreguntasAV6(analisis: AnalisisFuncional): void {
  * Se aplica donde se aplicaba migrarAV8: al normalizar la respuesta del
  * modelo, al leer del historial, al cargar el ejemplo y tras un reanálisis.
  */
-export function migrarAV8(analisis: AnalisisFuncional): AnalisisFuncional {
+function migrarAV8(analisis: AnalisisFuncional): AnalisisFuncional {
   migrarAV7(analisis);
 
   for (const alt of analisis.conductas_alternativas) {

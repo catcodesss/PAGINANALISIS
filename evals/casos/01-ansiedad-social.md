@@ -117,6 +117,13 @@ En cuanto a antecedentes, describe un padre muy crítico con el rendimiento esco
     "patron": "^hip_\\d+$"
   },
   {
+    "id": "evitacion-comparte-clase",
+    "descripcion": "Al menos tres topografías de evitación (comer con compañeros, baile, beber, reuniones, baño, ocultarlo) comparten una clase funcional con función conocida",
+    "tipo": "min_en_clase",
+    "n": 3,
+    "patron": "comer|compa(n|ñ)eros|baile|clase|beb|vino|copa|reuni|ba(n|ñ)o|oculta|evit|disculp"
+  },
+  {
     "id": "riesgo-evaluado",
     "descripcion": "El campo riesgo debe marcarse como evaluado: la nota da base para pronunciarse, aunque no haya indicadores",
     "tipo": "debe_aparecer",

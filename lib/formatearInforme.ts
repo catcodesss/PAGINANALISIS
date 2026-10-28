@@ -1,5 +1,6 @@
 import { ETIQUETA_ESQUEMA, type Alerta, type AnalisisFuncional, type Cita, type Situacion } from "./types";
 import { referenciaEnTexto } from "./citas";
+import { apoyoDeClase } from "./clases";
 import { citasDelClinicoEnTexto } from "./edicionMapa";
 import {
   ETIQUETA_ESTADO_HIPOTESIS,
@@ -259,6 +260,27 @@ function textoCita(cita: Cita): string {
 
 function seccion(titulo: string, cuerpo: string, estado: EstadoVacio = "sin_hallazgos"): string {
   return `${titulo}\n${"-".repeat(titulo.length)}\n${cuerpo || TEXTO_VACIO[estado]}\n`;
+}
+
+/**
+ * Las conductas agrupadas por función. Una pertenencia sin cita sale como
+ * «inferido»; la clase «por determinar» no afirma ninguna función.
+ */
+function textoClasesFuncionales(analisis: AnalisisFuncional): string {
+  const clases = analisis.clases_funcionales ?? [];
+  if (clases.length === 0) return "";
+  const descripcion = new Map(analisis.conductas_problema.map((c) => [c.id, c.descripcion]));
+  return clases
+    .map((clase) => {
+      const cabecera = clase.funcion === null
+        ? `Función por determinar (${clase.miembros.length}): la nota no da base para decir qué función cumplen`
+        : `${clase.funcion} (${clase.miembros.length}) — Apoyo en la nota: ${describirGrado(apoyoDeClase(clase)).etiqueta}`;
+      const miembros = clase.miembros.map(
+        (m) => `  · ${descripcion.get(m.conducta_id) ?? m.conducta_texto}${m.justificacion ? ` — ${m.justificacion}` : ""}${clase.funcion === null ? "" : ` [${textoCita(m.evidencia)}]`}`
+      );
+      return [`- ${cabecera}`, ...miembros].join(String.fromCharCode(10));
+    })
+    .join(String.fromCharCode(10));
 }
 
 function listaOTexto(items: string[], estado: EstadoVacio = "sin_hallazgos"): string {
@@ -654,6 +676,10 @@ export function formatearInformeTexto(
         .join("\n")
     )
   );
+
+  // Las clases funcionales (fase 10) cierran el mantenimiento: son lo que une a
+  // las conductas, y se leen después de las hipótesis que las sostienen.
+  bloques["hipotesis-mantenimiento"] += SALTO + seccion("CLASES FUNCIONALES", textoClasesFuncionales(analisis));
 
   // Bloque propio, no un apartado dentro del mantenimiento. Separar origen de
   // mantenimiento es la defensa estructural contra el error clínico más

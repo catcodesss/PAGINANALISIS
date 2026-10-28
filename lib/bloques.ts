@@ -102,6 +102,7 @@ export const BLOQUES: Bloque[] = [
       "situaciones",
       "hipotesis_mantenimiento",
       "formulacion",
+      "clases_funcionales",
       "fortalezas_y_recursos",
       "valores_y_metas",
       "perdida_de_reforzadores",

@@ -564,9 +564,11 @@ function textoDeRevision(json: string | null): string {
   if (!json) return "";
   try {
     const e = JSON.parse(json) as Record<string, unknown>;
-    for (const k of ["etiqueta", "descripcion", "conducta_propuesta", "enunciado", "pregunta", "texto", "nombre", "intervencion", "mecanismo"]) {
+    for (const k of ["etiqueta", "descripcion", "conducta_propuesta", "enunciado", "pregunta", "texto", "nombre", "funcion", "intervencion", "mecanismo"]) {
       if (typeof e[k] === "string" && (e[k] as string).trim()) return e[k] as string;
     }
+    // Una clase funcional sin función: «Función por determinar».
+    if (e.funcion === null && Array.isArray(e.miembros)) return "Función por determinar";
   } catch {
     /* JSON ajeno: no se enseña */
   }

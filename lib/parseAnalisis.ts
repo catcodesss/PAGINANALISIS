@@ -1,6 +1,6 @@
 import { resolverCita } from "./citas";
 import { ESTADOS_HIPOTESIS, normalizarPreguntas } from "./preguntas";
-import { migrarAV8 } from "./identidad";
+import { migrarAV9 } from "./identidad";
 import { normalizarLineasIntervencion, normalizarPlanesMonitorizacion } from "./formaPlan";
 import {
   CAMPOS_ANALISIS_FUNCIONAL,
@@ -13,6 +13,7 @@ import {
   type CadenaRespondiente,
   type CapaModalidadDBT,
   type Cita,
+  type ClaseFuncional,
   type ConductaAlternativa,
   type ConductaProblema,
   type Consecuencia,
@@ -21,6 +22,7 @@ import {
   type DimensionVariable,
   type EsquemaDeContingencia,
   type Formulacion,
+  type MiembroClase,
   type HipotesisAlternativa,
   type HipotesisMantenimiento,
   type NivelConfianza,
@@ -426,6 +428,41 @@ function normalizarConductaAlternativa(valor: unknown): ConductaAlternativa {
   };
 }
 
+/**
+ * Las clases que propone el modelo, con cada conducta nombrada con sus palabras.
+ * El id de la conducta lo resuelve después migrarAV9; aquí solo se conserva el
+ * texto. Una pertenencia sin conducta se descarta: no hay a qué atarla.
+ */
+function normalizarClasesFuncionales(valor: unknown, lineas: string[]): ClaseFuncional[] {
+  return comoArreglo<unknown>(valor).map((c) => {
+    const d = comoObjeto(c);
+    const funcion = comoTexto(d.funcion).trim();
+    return {
+      id: typeof d.id === "string" ? d.id : SIN_ID,
+      funcion: funcion || null,
+      miembros: comoArreglo<unknown>(d.miembros).flatMap((m): MiembroClase[] => {
+        const o = comoObjeto(m);
+        const texto = comoTexto(o.conducta);
+        const id = typeof o.conducta_id === "string" ? o.conducta_id : SIN_ID;
+        if (!texto && !id) return [];
+        return [{
+          conducta_id: id,
+          conducta_texto: texto || comoTexto(o.conducta_texto),
+          justificacion: comoTexto(o.justificacion),
+          // Un informe guardado ya trae la cita resuelta; la del modelo, una referencia.
+          evidencia: esCitaGuardada(o.evidencia) ? o.evidencia : resolverCita(lineas, o.evidencia),
+          apoyo: o.apoyo === "cita" || o.apoyo === "parcial" ? o.apoyo : "inferencia",
+        }];
+      }),
+    };
+  });
+}
+
+function esCitaGuardada(valor: unknown): valor is Cita {
+  const d = comoObjeto(valor);
+  return typeof d.verificada === "boolean" && (d.verificada ? typeof d.texto === "string" : "motivo" in d);
+}
+
 function normalizarHipotesisAlternativa(valor: unknown): HipotesisAlternativa {
   const d = comoObjeto(valor);
   const alternativa: HipotesisAlternativa = {
@@ -673,11 +710,14 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
     // Igual: una respuesta del modelo que trajera citas «del clínico» se
     // descarta aquí, porque la salida se construye clave por clave.
     citas_del_clinico: {},
-    // Los construye migrarAV8 desde lo que enlaza hoy; el modelo no los emite.
+    // Los construye migrarAV9 desde lo que enlaza hoy; el modelo no los emite.
     // Sin definir y no `[]`: una lista ya existente se toma por decisión del
     // clínico y no se regenera (igual que `aristas`).
     blancos: undefined as unknown as AnalisisFuncional["blancos"],
     seguimiento: seguimientoVacio(),
+    // migrarAV9 resuelve las conductas por id y manda a «por determinar» las que
+    // el modelo no agrupó.
+    clases_funcionales: normalizarClasesFuncionales(d.clases_funcionales, lineas),
   };
   // La capa MC ya no es parte del esquema, pero un JSON anterior a la v3 (el
   // informe de ejemplo, o uno pegado a mano) la trae. Se pasa tal cual para
@@ -691,7 +731,7 @@ export function normalizarAnalisis(json: unknown, lineas: string[]): AnalisisFun
   for (const clave of ["datos_faltantes", "preguntas_para_sesion"]) {
     if (clave in d) (analisis as unknown as Record<string, unknown>)[clave] = d[clave];
   }
-  return migrarAV8(analisis);
+  return migrarAV9(analisis);
 }
 
 /**
@@ -799,6 +839,7 @@ const NORMALIZADORES_POR_CAMPO: {
   citas_del_clinico: () => ({}),
   blancos: () => [],
   seguimiento: () => seguimientoVacio(),
+  clases_funcionales: (d, lineas) => normalizarClasesFuncionales(d.clases_funcionales, lineas),
 };
 
 export function seguimientoVacio(): AnalisisFuncional["seguimiento"] {
@@ -829,7 +870,7 @@ function asignarCampoNormalizado<K extends keyof AnalisisFuncional>(
 /**
  * Respuesta de /api/cadena-dbt: una cadena por situación, alineada por
  * índice con `totalSituaciones` (null donde el modelo no dio ninguna), y la
- * capa DBT. Los ids los pone después migrarAV8, como en cualquier fragmento.
+ * capa DBT. Los ids los pone después migrarAV9, como en cualquier fragmento.
  */
 export function normalizarCadenasDbt(
   json: unknown,

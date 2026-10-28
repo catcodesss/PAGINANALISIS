@@ -254,6 +254,7 @@ export function elementosPorId(a: AnalisisFuncional): Map<Id, string> {
   poner(a.lineas_de_intervencion_tentativas);
   poner(a.plan_de_monitorizacion);
   poner(a.blancos);
+  poner(a.clases_funcionales);
   poner(a.aristas);
   for (const s of a.situaciones ?? []) {
     // La situación sin sus eslabones: un cambio en un eslabón es del eslabón.

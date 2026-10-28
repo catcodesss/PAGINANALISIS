@@ -4,7 +4,7 @@ import { MENSAJE_MOTOR_DESACTIVADO, MOTOR_IA_ACTIVO } from "@/lib/motorIA";
 import { extraerJSON } from "@/lib/parseAnalisis";
 import { numerarNota } from "@/lib/citas";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
-import { migrarAV8 } from "@/lib/identidad";
+import { migrarAV9 } from "@/lib/identidad";
 import { calcularApoyoAristas } from "@/lib/apoyoAristas";
 import { validarAnalisis } from "@/lib/validadores";
 import {
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
   if (!apiKey && !maqueta) return error("falta_api_key", "Falta configurar la clave de API.", 500);
 
   try {
-    const vigente = migrarAV8(structuredClone(analisis as AnalisisFuncional));
+    const vigente = migrarAV9(structuredClone(analisis as AnalisisFuncional));
     const mapa = construirReferencias(vigente);
     const { lineas, texto: notaNumerada, frases } = numerarNota(nota);
 

@@ -51,11 +51,11 @@ export function prepararSesion1(raiz, fixture) {
   const require = createRequire(import.meta.url);
   const { numerarNota } = require(join(raiz, '.tmp-evals/citas.js'));
   const { normalizarAnalisis } = require(join(raiz, '.tmp-evals/parseAnalisis.js'));
-  const { migrarAV8 } = require(join(raiz, '.tmp-evals/identidad.js'));
+  const { migrarAV9 } = require(join(raiz, '.tmp-evals/identidad.js'));
   const { calcularApoyoAristas } = require(join(raiz, '.tmp-evals/apoyoAristas.js'));
   const nota1 = seccion(readFileSync(join(raiz, 'evals/casos/01-ansiedad-social.md'), 'utf8'), 'NOTA');
   const crudo = JSON.parse(readFileSync(join(raiz, 'evals/fixtures', fixture), 'utf8'));
-  const a = migrarAV8(normalizarAnalisis(crudo.analisis ?? crudo, numerarNota(nota1).lineas));
+  const a = migrarAV9(normalizarAnalisis(crudo.analisis ?? crudo, numerarNota(nota1).lineas));
   calcularApoyoAristas(a);
   const confirmada = a.conductas_problema[1]?.id;
   if (confirmada) a.procedencia[confirmada] = { estado: 'confirmado' };

@@ -67,6 +67,12 @@ export interface EspacioValor {
   irACita: (cita: CitaResuelta) => void;
   /** Mutaciones del Mapa con deshacer. Marcan la sección «situaciones». */
   aplicar: (mutacion: (copia: AnalisisFuncional) => void) => void;
+  /**
+   * Como `aplicar`, pero para una decisión sobre la propuesta (mover una
+   * conducta de clase): con deshacer, sin marcar la sección «situaciones» como
+   * escrita a mano.
+   */
+  aplicarDecision: (mutacion: (copia: AnalisisFuncional) => void) => void;
   deshacer: () => void;
   rehacer: () => void;
   puedeDeshacer: boolean;
@@ -154,12 +160,15 @@ export function ProveedorEspacio({
   analisis,
   notaOriginal,
   onEditar,
+  onDecidir,
   children,
 }: {
   analisis: AnalisisFuncional;
   notaOriginal: string;
   /** Edición del Mapa: la página muta una copia y marca la sección. */
   onEditar: (mutacion: (copia: AnalisisFuncional) => void) => void;
+  /** Una decisión sobre la propuesta: no marca ninguna sección como editada. */
+  onDecidir?: (mutacion: (copia: AnalisisFuncional) => void) => void;
   children: ReactNode;
 }) {
   const seleccionado = useSyncExternalStore(
@@ -223,16 +232,21 @@ export function ProveedorEspacio({
   const [puedeDeshacer, setPuedeDeshacer] = useState(false);
   const [puedeRehacer, setPuedeRehacer] = useState(false);
 
-  const aplicar = useCallback(
-    (mutacion: (copia: AnalisisFuncional) => void) => {
+  const aplicarCon = useCallback(
+    (editor: (mutacion: (copia: AnalisisFuncional) => void) => void, mutacion: (copia: AnalisisFuncional) => void) => {
       pila.current.push(structuredClone(analisis));
       if (pila.current.length > 80) pila.current.shift();
       pilaRehacer.current = [];
       setPuedeDeshacer(true);
       setPuedeRehacer(false);
-      onEditar(mutacion);
+      editor(mutacion);
     },
-    [analisis, onEditar]
+    [analisis]
+  );
+  const aplicar = useCallback((mutacion: (copia: AnalisisFuncional) => void) => aplicarCon(onEditar, mutacion), [aplicarCon, onEditar]);
+  const aplicarDecision = useCallback(
+    (mutacion: (copia: AnalisisFuncional) => void) => aplicarCon(onDecidir ?? onEditar, mutacion),
+    [aplicarCon, onDecidir, onEditar]
   );
 
   const restaurar = useCallback(
@@ -326,6 +340,7 @@ export function ProveedorEspacio({
       citaEnFuente: citaPulsada,
       irACita,
       aplicar,
+      aplicarDecision,
       deshacer,
       rehacer,
       puedeDeshacer,
@@ -356,6 +371,7 @@ export function ProveedorEspacio({
       citaPulsada,
       irACita,
       aplicar,
+      aplicarDecision,
       deshacer,
       rehacer,
       puedeDeshacer,

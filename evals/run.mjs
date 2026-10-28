@@ -93,6 +93,31 @@ function discriminador(item) {
 }
 
 // ── comprobación de una trampa ──────────────────────────────
+/**
+ * `min_en_clase` (fase 10): al menos `n` conductas cuya descripción casa con
+ * `patron` comparten una clase funcional con función conocida. Mira el informe
+ * entero y no las entradas aplanadas, porque la pertenencia es por id.
+ */
+function comprobarClase(check, informe) {
+  const a = informe?.analisis ?? informe;
+  const rePatron = new RegExp(check.patron, 'i');
+  const texto = new Map((a?.conductas_problema ?? []).map((c) => [c.id, norm(c.descripcion ?? '')]));
+  let mejor = 0;
+  for (const clase of a?.clases_funcionales ?? []) {
+    if (clase.funcion === null) continue;
+    const n = (clase.miembros ?? []).filter((m) => rePatron.test(texto.get(m.conducta_id) ?? '')).length;
+    mejor = Math.max(mejor, n);
+  }
+  return {
+    id: check.id,
+    descripcion: check.descripcion,
+    tipo: check.tipo,
+    pasa: mejor >= (check.n ?? 2),
+    ambitoVacio: false,
+    ejemplos: [`mayor grupo en una clase: ${mejor}`],
+  };
+}
+
 function comprobar(check, entradas) {
   const reAmbito = check.ambito ? new RegExp(check.ambito, 'i') : null;
   const candidatas = reAmbito ? entradas.filter((e) => reAmbito.test(sinAcentos(e.ruta))) : entradas;
@@ -136,8 +161,10 @@ function verificarCitas(entradas, nota) {
     norm(s).replace(/^[«»"'“”\s]+/, '').replace(/[«»"'“”\s.,;:]+$/, '');
 
   const textos = entradas.filter((e) => /\.evidencia\.texto$/.test(e.ruta));
+  // Las pertenencias de «por determinar» llevan cita nula por diseño (fase 10):
+  // no se cuentan como cita fallida, igual que el resto de nulos honestos.
   const noResueltas = entradas.filter(
-    (e) => /\.evidencia\.verificada$/.test(e.ruta) && e.valor === 'false'
+    (e) => /\.evidencia\.verificada$/.test(e.ruta) && e.valor === 'false' && !/(^|\.)clases_funcionales\[/.test(e.ruta)
   );
   const antiguas = entradas.filter(
     (e) => /(^|\.)evidencia$/.test(e.ruta) && e.valor.trim().length > 8
@@ -239,7 +266,7 @@ async function main() {
       // /api/analizar responde { analisis: {...} }; los fixtures pueden ir sin envolver.
       const entradas = aplanar(informe?.analisis ?? informe);
       for (const check of caso.comprobaciones) {
-        porCheck.get(check.id).push(comprobar(check, entradas));
+        porCheck.get(check.id).push(check.tipo === 'min_en_clase' ? comprobarClase(check, informe) : comprobar(check, entradas));
       }
       citasPorRep.push(verificarCitas(entradas, caso.nota));
       if (!FIXTURE && rep < REPS) await dormir(PAUSA_MS);

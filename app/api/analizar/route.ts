@@ -11,7 +11,7 @@ import { construirSystemPrompt, VERSION_PROMPT } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarAnalisis } from "@/lib/parseAnalisis";
 import { numerarNota, normalizarTexto } from "@/lib/citas";
 import { nuevoIdPregunta } from "@/lib/preguntas";
-import { migrarAV8 } from "@/lib/identidad";
+import { migrarAV9 } from "@/lib/identidad";
 import { validarAnalisis } from "@/lib/validadores";
 import { ejecutarPasadaCritica } from "@/lib/pasadaCritica";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
@@ -284,7 +284,7 @@ export async function POST(request: Request) {
 
     // Las preguntas del paso previo se añadieron después de normalizar: se vuelve a
     // resolver para que una intervención que dependía de ese dato quede atada a ella.
-    migrarAV8(analisisSinValidar);
+    migrarAV9(analisisSinValidar);
 
     const analisis = validarAnalisis(analisisSinValidar, nota);
 

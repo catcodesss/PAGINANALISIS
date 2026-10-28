@@ -43,6 +43,7 @@ export default function EspacioTrabajo(props: EspacioTrabajoProps) {
       analisis={props.analisis}
       notaOriginal={props.notaOriginal}
       onEditar={(mutar) => props.onEditarSeccion("situaciones", mutar)}
+      onDecidir={(mutar) => props.onEditarSeccion(null, mutar)}
     >
       <Contenido {...props} />
     </ProveedorEspacio>
