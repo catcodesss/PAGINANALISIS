@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { repositorio } from "@/lib/repositorio";
+import { repositorio, repositorioNube } from "@/lib/repositorio";
 import {
   avisoAlias,
   crearExpediente,
@@ -48,6 +48,9 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
   const [motivo, setMotivo] = useState("");
   const [aBorrar, setABorrar] = useState<ResumenCaso | null>(null);
   const entradaFichero = useRef<HTMLInputElement>(null);
+  // Con la nube, un respaldo se abre con la frase de la cuenta que lo creó.
+  const [respaldoNube, setRespaldoNube] = useState<File | null>(null);
+  const [fraseRespaldo, setFraseRespaldo] = useState("");
 
   /*
     Averiguar si hay historial es consultar un sistema externo (IndexedDB), que
@@ -184,7 +187,25 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
     });
   }
 
+  function importarDeLaNube(fichero: File) {
+    conManejo(async () => {
+      const r = await repositorioNube()!.importarRespaldoNube(await fichero.text(), fraseRespaldo);
+      setRespaldoNube(null);
+      setFraseRespaldo("");
+      await refrescar();
+      const partes = [`${r.importados} caso${r.importados === 1 ? "" : "s"} importado${r.importados === 1 ? "" : "s"}`];
+      if (r.omitidos > 0) partes.push(`${r.omitidos} ya estaba${r.omitidos === 1 ? "" : "n"} aquí`);
+      if (r.fallidos > 0) partes.push(`${r.fallidos} no se pudo importar`);
+      setMensaje(`${partes.join("; ")}.`);
+    });
+  }
+
   function importar(fichero: File) {
+    if (repositorioNube()) {
+      setRespaldoNube(fichero);
+      setMensaje("");
+      return;
+    }
     conManejo(async () => {
       await repositorio.importarRespaldo(await fichero.text());
       await repositorio.migrarHistorial();
@@ -294,6 +315,37 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
           }}
         />
       </div>
+
+      {respaldoNube && (
+        <div className="mb-5 flex flex-wrap items-center gap-2 rounded border border-divider p-3">
+          <p className="w-full text-xs text-ink-muted">
+            Escribe la frase de paso de la cuenta que creó este respaldo ({respaldoNube.name}).
+          </p>
+          <input
+            type="password"
+            value={fraseRespaldo}
+            onChange={(e) => setFraseRespaldo(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && fraseRespaldo && importarDeLaNube(respaldoNube)}
+            placeholder="Frase de paso del respaldo"
+            aria-label="Frase de paso del respaldo"
+            autoComplete="off"
+            autoFocus
+            className="min-w-[14rem] flex-1 rounded border border-divider bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          />
+          <Boton onClick={() => importarDeLaNube(respaldoNube)} principal disabled={ocupado || !fraseRespaldo}>
+            Importar
+          </Boton>
+          <Boton
+            onClick={() => {
+              setRespaldoNube(null);
+              setFraseRespaldo("");
+            }}
+            disabled={ocupado}
+          >
+            Cancelar
+          </Boton>
+        </div>
+      )}
 
       {formNuevo && (
         <div className="mb-5 flex flex-wrap gap-2 rounded border border-divider p-3">
