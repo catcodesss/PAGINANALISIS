@@ -38,7 +38,7 @@ import { fusionarPreguntas } from "@/lib/preguntas";
 import { cerrarEdicion } from "@/lib/procedenciaEdicion";
 import Historial from "@/components/Historial";
 import { ContextoCaso, type ValorCaso } from "@/components/contextoCaso";
-import { repositorio } from "@/lib/repositorio";
+import { repositorio, repositorioNube } from "@/lib/repositorio";
 import {
   anadirSesion,
   crearExpediente,
@@ -118,6 +118,7 @@ export default function Home() {
   const [notaSesion, setNotaSesion] = useState("");
   const [registroSesion, setRegistroSesion] = useState("");
   const [avisoGuardado, setAvisoGuardado] = useState("");
+  const [avisosFusion, setAvisosFusion] = useState<string[]>([]);
   // Fase 8: el conjunto de cambios pendiente de la sesión recién añadida.
   const [revision, setRevision] = useState<{ conjunto: ConjuntoCambios; sesionId: string } | null>(null);
   const [actualizando, setActualizando] = useState(false);
@@ -133,9 +134,13 @@ export default function Home() {
   async function persistir(siguiente: Expediente) {
     try {
       await repositorio.actualizarCaso(siguiente);
-      expedienteRef.current = siguiente;
-      setExpediente(siguiente);
+      // Si otro dispositivo había cambiado el caso, lo guardado es la fusión: se muestra esa.
+      const { fusionado, avisos } = repositorioNube()?.tomarResultadoFusion() ?? { fusionado: false, avisos: [] };
+      const vigente = (fusionado && (await repositorio.obtenerCaso(siguiente.caso.id))) || siguiente;
+      expedienteRef.current = vigente;
+      setExpediente(vigente);
       setAvisoGuardado("");
+      setAvisosFusion(avisos.map((a) => a.mensaje));
     } catch (e) {
       setAvisoGuardado(e instanceof Error ? e.message : "No se pudo guardar el caso.");
     }
@@ -935,6 +940,19 @@ export default function Home() {
                 <p role="alert" className="mb-4 text-sm text-warn print:hidden">
                   {avisoGuardado}
                 </p>
+              )}
+              {avisosFusion.length > 0 && (
+                <div role="status" className="mb-4 rounded-md border border-divider bg-canvas px-4 py-2 text-sm text-ink print:hidden">
+                  <p className="font-medium">Este caso cambió en otro dispositivo y se fusionó con tus cambios.</p>
+                  <ul className="mt-1 list-disc pl-5 text-ink-muted">
+                    {avisosFusion.map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                  <button type="button" onClick={() => setAvisosFusion([])} className="mt-2 font-medium text-accent hover:underline">
+                    Entendido
+                  </button>
+                </div>
               )}
               <ReportView
                 key={sesionVista ?? "vigente"}

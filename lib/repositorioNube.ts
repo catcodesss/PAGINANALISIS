@@ -81,6 +81,7 @@ export class RepositorioNube implements Repositorio {
   private vistas = new Map<string, Vista>();
   private pendienteRecuperacion: string | null = null;
   private avisosFusion: AvisoFusion[] = [];
+  private huboFusion = false;
 
   constructor(
     private readonly almacen: () => AlmacenRemoto,
@@ -246,9 +247,15 @@ export class RepositorioNube implements Repositorio {
 
   /** Avisos de las fusiones hechas desde la última vez; se entregan una sola vez. */
   tomarAvisosFusion(): AvisoFusion[] {
-    const avisos = this.avisosFusion;
+    return this.tomarResultadoFusion().avisos;
+  }
+
+  /** `fusionado`: se mezcló con cambios de otro dispositivo, aunque no haya nada que avisar. */
+  tomarResultadoFusion(): { fusionado: boolean; avisos: AvisoFusion[] } {
+    const resultado = { fusionado: this.huboFusion, avisos: this.avisosFusion };
     this.avisosFusion = [];
-    return avisos;
+    this.huboFusion = false;
+    return resultado;
   }
 
   /**
@@ -273,6 +280,7 @@ export class RepositorioNube implements Repositorio {
         throw new Error(`No se pudo fusionar con los cambios de otro dispositivo (${motivo}) Recarga el caso.`);
       }
       this.avisosFusion.push(...avisos);
+      this.huboFusion = true;
       await this.escribirCaso(fusionado, intento + 1);
     }
   }
