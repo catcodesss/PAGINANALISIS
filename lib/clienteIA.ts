@@ -49,6 +49,8 @@ export async function generarTexto(
     max_tokens: p.maxTokens,
     temperature: p.temperatura,
     seed: SEED,
+    // Sin conservar la petición en OpenAI y sin uid ni correo del usuario (fase 13 §6.3).
+    store: false,
     messages: [
       { role: "system", content: p.sistema },
       { role: "user", content: p.usuario },

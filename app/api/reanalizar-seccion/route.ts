@@ -5,6 +5,7 @@ import { construirPromptReanalisisSeccion } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarFragmento } from "@/lib/parseAnalisis";
 import { numerarNota } from "@/lib/citas";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
+import { identificar, comprobar } from "@/lib/servidor/guardiaIA";
 import { CAMPOS_ANALISIS_FUNCIONAL, type AnalisisFuncional } from "@/lib/types";
 
 const MODELO = MODELO_PRINCIPAL;
@@ -40,8 +41,11 @@ export async function POST(request: Request) {
     return respuestaError("motor_desactivado", MENSAJE_MOTOR_DESACTIVADO, 503);
   }
 
-  // Ruta pública sin autenticación: sin límite, cualquiera puede consumir el
-  // saldo del propietario. Ver lib/limitePeticiones.ts.
+  const { llamada, error: errorSesion } = await identificar(request);
+  if (!llamada) return errorSesion;
+
+  // Sin límite, cualquiera con sesión podría consumir el saldo del propietario.
+  // Ver lib/limitePeticiones.ts.
   const limite = comprobarLimite(`${RUTA}:${ipDe(request)}`, LIMITE_PETICIONES, VENTANA_MS);
   if (!limite.permitido) {
     return NextResponse.json(
@@ -54,9 +58,11 @@ export async function POST(request: Request) {
   let notaAdicional: unknown;
   let campos: unknown;
   let analisisActual: unknown;
+  let cuerpoCrudo: unknown;
 
   try {
     const cuerpo = await request.json();
+    cuerpoCrudo = cuerpo;
     notaOriginal = (cuerpo as { notaOriginal?: unknown } | null)?.notaOriginal;
     notaAdicional = (cuerpo as { notaAdicional?: unknown } | null)
       ?.notaAdicional;
@@ -70,6 +76,9 @@ export async function POST(request: Request) {
       400
     );
   }
+
+  const errorCaso = await comprobar(llamada, cuerpoCrudo, false);
+  if (errorCaso) return errorCaso;
 
   if (
     typeof notaOriginal !== "string" ||

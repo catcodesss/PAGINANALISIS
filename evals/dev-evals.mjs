@@ -35,6 +35,8 @@ const LIMITE_EVALS = "60";
 
 process.env.IA_TEMPERATURA ??= TEMPERATURA_EVALS;
 process.env.LIMITE_ANALISIS_POR_VENTANA ??= LIMITE_EVALS;
+// Las evals llaman a las rutas de IA sin iniciar sesión; solo se respeta fuera de producción.
+process.env.ACIA_SIN_SESION_IA ??= "1";
 
 console.log(
   `Servidor de desarrollo con IA_TEMPERATURA=${process.env.IA_TEMPERATURA} ` +

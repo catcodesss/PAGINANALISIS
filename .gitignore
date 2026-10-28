@@ -53,3 +53,4 @@ firestore-debug.log
 firebase-debug.log
 .tmp-evals-nube/
 .tmp-evals-ranuras/
+.tmp-evals-autorizacion/

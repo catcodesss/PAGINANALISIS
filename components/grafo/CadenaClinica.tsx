@@ -22,6 +22,7 @@ import { ETIQUETA_ESQUEMA } from "@/lib/types";
 import { IDS_TODOS } from "@/lib/bloques";
 import type { NodoGrafo } from "@/lib/grafo";
 import { ReanalisisContext } from "../informe/seccion";
+import { cabecerasIA, nuevaOperacionId } from "@/lib/nube/llamadaIA";
 
 const ETIQUETA_ESLABON: Record<TipoEslabonDBT, string> = {
   sensacion: "Sensación",
@@ -312,8 +313,12 @@ function GenerarCadenaDbt() {
     try {
       const respuesta = await fetch("/api/cadena-dbt", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notaOriginal, situaciones: analisis.situaciones }),
+        headers: await cabecerasIA(),
+        body: JSON.stringify({
+          notaOriginal,
+          situaciones: analisis.situaciones,
+          operacion_id: nuevaOperacionId(),
+        }),
       });
       const datos = await respuesta.json().catch(() => null);
       if (!respuesta.ok || !Array.isArray(datos?.cadenas)) {

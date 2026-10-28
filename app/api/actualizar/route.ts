@@ -4,6 +4,7 @@ import { MENSAJE_MOTOR_DESACTIVADO, MOTOR_IA_ACTIVO } from "@/lib/motorIA";
 import { extraerJSON } from "@/lib/parseAnalisis";
 import { numerarNota } from "@/lib/citas";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
+import { identificar, comprobar } from "@/lib/servidor/guardiaIA";
 import { migrarAV9 } from "@/lib/identidad";
 import { calcularApoyoAristas } from "@/lib/apoyoAristas";
 import { validarAnalisis } from "@/lib/validadores";
@@ -58,6 +59,9 @@ export async function POST(request: Request) {
   const maqueta = maquetaActivada();
   if (!maqueta && !MOTOR_IA_ACTIVO) return error("motor_desactivado", MENSAJE_MOTOR_DESACTIVADO, 503);
 
+  const { llamada, error: errorSesion } = await identificar(request);
+  if (!llamada) return errorSesion;
+
   const limite = maqueta
     ? { permitido: true, reintentarEn: 0 }
     : comprobarLimite(`${RUTA}:${ipDe(request)}`, LIMITE_PETICIONES, VENTANA_MS);
@@ -71,14 +75,19 @@ export async function POST(request: Request) {
   let nota: unknown;
   let analisis: unknown;
   let sesion: unknown;
+  let cuerpoCrudo: unknown;
   try {
     const cuerpo = (await request.json()) as Record<string, unknown>;
+    cuerpoCrudo = cuerpo;
     nota = cuerpo?.nota;
     analisis = cuerpo?.analisis;
     sesion = cuerpo?.sesion;
   } catch {
     return error("solicitud_invalida", "La solicitud no tiene un formato válido.", 400);
   }
+  const errorCaso = await comprobar(llamada, cuerpoCrudo, true);
+  if (errorCaso) return errorCaso;
+
   if (typeof nota !== "string" || nota.trim().length < LONGITUD_MINIMA) {
     return error("nota_muy_breve", "La nota de la sesión es demasiado breve para actualizar nada.", 400);
   }

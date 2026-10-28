@@ -24,6 +24,8 @@
 import { spawn } from "node:child_process";
 
 process.env.ACIA_INFORME_DE_MAQUETA = "true";
+// La maqueta no gasta IA: no hace falta sesión para revisar la interfaz.
+process.env.ACIA_SIN_SESION_IA ??= "1";
 
 console.log(
   "\nModo maqueta: /api/analizar devuelve el informe guardado del caso 01.\n" +

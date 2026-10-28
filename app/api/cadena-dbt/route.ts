@@ -5,6 +5,7 @@ import { construirPromptCadenaDbt } from "@/lib/systemPrompt";
 import { extraerJSON, normalizarCadenasDbt } from "@/lib/parseAnalisis";
 import { numerarNota } from "@/lib/citas";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
+import { identificar, comprobar } from "@/lib/servidor/guardiaIA";
 
 /**
  * Añade la cadena DBT a un análisis generado sin ella. La cadena es opcional
@@ -55,6 +56,9 @@ export async function POST(request: Request) {
     return respuestaError("motor_desactivado", MENSAJE_MOTOR_DESACTIVADO, 503);
   }
 
+  const { llamada, error: errorSesion } = await identificar(request);
+  if (!llamada) return errorSesion;
+
   const limite = comprobarLimite(`${RUTA}:${ipDe(request)}`, LIMITE_PETICIONES, VENTANA_MS);
   if (!limite.permitido) {
     return NextResponse.json(
@@ -65,13 +69,18 @@ export async function POST(request: Request) {
 
   let notaOriginal: unknown;
   let situaciones: SituacionResumida[] | null;
+  let cuerpoCrudo: unknown;
   try {
     const cuerpo = (await request.json()) as { notaOriginal?: unknown; situaciones?: unknown } | null;
+    cuerpoCrudo = cuerpo;
     notaOriginal = cuerpo?.notaOriginal;
     situaciones = resumirSituaciones(cuerpo?.situaciones);
   } catch {
     return respuestaError("solicitud_invalida", "La solicitud no tiene un formato válido.", 400);
   }
+
+  const errorCaso = await comprobar(llamada, cuerpoCrudo, false);
+  if (errorCaso) return errorCaso;
 
   if (typeof notaOriginal !== "string" || notaOriginal.trim().length < LONGITUD_MINIMA_NOTA) {
     return respuestaError("solicitud_invalida", "Falta la nota clínica original.", 400);

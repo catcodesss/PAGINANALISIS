@@ -15,6 +15,7 @@ import { migrarAV9 } from "@/lib/identidad";
 import { validarAnalisis } from "@/lib/validadores";
 import { ejecutarPasadaCritica } from "@/lib/pasadaCritica";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
+import { identificar, comprobar } from "@/lib/servidor/guardiaIA";
 import { camposParaBloques, esInformeCompleto, IDS_POR_DEFECTO, IDS_TODOS } from "@/lib/bloques";
 import { CAMPOS_ANALISIS_FUNCIONAL } from "@/lib/types";
 import { maquetaActivada } from "@/lib/maqueta";
@@ -124,8 +125,11 @@ export async function POST(request: Request) {
     return respuestaError("motor_desactivado", MENSAJE_MOTOR_DESACTIVADO, 503);
   }
 
-  // Ruta pública sin autenticación: sin límite, cualquiera puede consumir el
-  // saldo del propietario. Ver lib/limitePeticiones.ts.
+  const { llamada, error: errorSesion } = await identificar(request);
+  if (!llamada) return errorSesion;
+
+  // Sin límite, cualquiera con sesión podría consumir el saldo del propietario.
+  // Ver lib/limitePeticiones.ts.
   const limite = comprobarLimite(
     `${RUTA}:${ipDe(request)}`,
     LIMITE_PETICIONES,
@@ -145,8 +149,10 @@ export async function POST(request: Request) {
   let nota: unknown;
   let bloques: unknown;
   let datosFaltantesDeclarados: unknown;
+  let cuerpoCrudo: unknown;
   try {
     const cuerpo = await request.json();
+    cuerpoCrudo = cuerpo;
     nota = (cuerpo as { nota?: unknown } | null)?.nota;
     bloques = (cuerpo as { bloques?: unknown } | null)?.bloques;
     datosFaltantesDeclarados = (
@@ -159,6 +165,9 @@ export async function POST(request: Request) {
       400
     );
   }
+
+  const errorCaso = await comprobar(llamada, cuerpoCrudo, false);
+  if (errorCaso) return errorCaso;
 
   if (typeof nota !== "string" || nota.trim().length < LONGITUD_MINIMA) {
     return respuestaError(

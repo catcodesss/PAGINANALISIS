@@ -37,6 +37,7 @@ import {
 import { irAlAncla, usePestanas } from "./pestanas";
 import { MarcaEditado, useEdicion } from "../edicionManual";
 import { MenuAcciones, SeccionInforme, type AccionMenu } from "./primitivas";
+import { cabecerasIA, nuevaOperacionId } from "@/lib/nube/llamadaIA";
 
 /**
  * Qué bloque(s) de lib/bloques.ts hacen falta para que cada sección tenga
@@ -149,8 +150,9 @@ export function BloqueReanalisis({
     try {
       const respuesta = await fetch("/api/reanalizar-seccion", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await cabecerasIA(),
         body: JSON.stringify({
+          operacion_id: nuevaOperacionId(),
           notaOriginal,
           notaAdicional,
           campos,

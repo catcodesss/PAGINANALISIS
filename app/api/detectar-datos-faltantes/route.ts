@@ -2,6 +2,7 @@ import { leerClaveIA } from "@/lib/clienteIA";
 import { NextResponse } from "next/server";
 import { detectarDatosFaltantesPrevios } from "@/lib/datosFaltantesPrevios";
 import { comprobarLimite, ipDe } from "@/lib/limitePeticiones";
+import { identificar, comprobar } from "@/lib/servidor/guardiaIA";
 import { maquetaActivada } from "@/lib/maqueta";
 import { MOTOR_IA_ACTIVO } from "@/lib/motorIA";
 
@@ -32,18 +33,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ preguntas: [] });
   }
 
+  const { llamada, error: errorSesion } = await identificar(request);
+  if (!llamada) return errorSesion;
+
   const limite = comprobarLimite(`${RUTA}:${ipDe(request)}`, LIMITE_PETICIONES, VENTANA_MS);
   if (!limite.permitido) {
     return NextResponse.json({ preguntas: [] });
   }
 
   let nota: unknown;
+  let cuerpoCrudo: unknown;
   try {
     const cuerpo = await request.json();
+    cuerpoCrudo = cuerpo;
     nota = (cuerpo as { nota?: unknown } | null)?.nota;
   } catch {
     return NextResponse.json({ preguntas: [] });
   }
+  const errorCaso = await comprobar(llamada, cuerpoCrudo, false);
+  if (errorCaso) return errorCaso;
 
   if (
     typeof nota !== "string" ||

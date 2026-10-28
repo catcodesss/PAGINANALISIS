@@ -11,6 +11,7 @@
     "lint": "eslint",
     "test:ranuras": "firebase emulators:exec --only firestore --project demo-acia \"node evals/ranuras.test.mjs\"",
     "test:nube": "node evals/nube.test.mjs",
+    "test:ia": "node evals/autorizarIA.test.mjs",
     "test:boveda": "node --experimental-strip-types evals/boveda.test.mjs",
     "test:reglas": "firebase emulators:exec --only firestore --project demo-acia \"node evals/reglas.test.mjs\""
   },

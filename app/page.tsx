@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { cabecerasIA, casoParaIA, nuevaOperacionId } from "@/lib/nube/llamadaIA";
 import {
   ArrowRight,
   ChevronDown,
@@ -244,8 +245,14 @@ export default function Home() {
     try {
       const r = await fetch("/api/actualizar", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nota, analisis: guardada.analisis, sesion: guardada.sesion.n }),
+        headers: await cabecerasIA(),
+        body: JSON.stringify({
+          nota,
+          analisis: guardada.analisis,
+          sesion: guardada.sesion.n,
+          operacion_id: nuevaOperacionId(),
+          ...casoParaIA(expedienteRef.current?.caso.id),
+        }),
       });
       const datos = await r.json().catch(() => null);
       if (!r.ok || !datos?.conjunto) {
@@ -319,11 +326,12 @@ export default function Home() {
     try {
       const respuesta = await fetch("/api/analizar", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await cabecerasIA(),
         body: JSON.stringify({
           nota: texto,
           bloques: bloquesPedidos,
           datosFaltantesDeclarados,
+          operacion_id: nuevaOperacionId(),
         }),
       });
 
@@ -383,7 +391,7 @@ export default function Home() {
     try {
       const respuesta = await fetch("/api/detectar-datos-faltantes", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await cabecerasIA(),
         body: JSON.stringify({ nota: texto }),
       });
       const datos = await respuesta.json().catch(() => null);
