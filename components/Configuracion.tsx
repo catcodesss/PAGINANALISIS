@@ -8,6 +8,9 @@ import {
   Sparkles,
   Type,
 } from "lucide-react";
+import { useState } from "react";
+import { UserRound } from "lucide-react";
+import { useCuenta } from "./ProveedorCuenta";
 import { usePreferencias } from "./usePreferencias";
 import { ESCALA_TEXTO } from "@/lib/preferencias";
 import type { Acento, TamanoTexto, Tema } from "@/lib/preferencias";
@@ -61,9 +64,43 @@ const PLAN_PREMIUM = [
 
 export default function Configuracion() {
   const { preferencias, cambiar } = usePreferencias();
+  const { usuario, cerrarSesion } = useCuenta();
+  const [saliendo, setSaliendo] = useState(false);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <Tarjeta titulo="Cuenta" icono={UserRound}>
+        {usuario ? (
+          <Campo
+            etiqueta={usuario.email ?? "Sin correo"}
+            descripcion={`${
+              usuario.emailVerified ? "Correo verificado." : "Correo sin verificar."
+            } Tu biblioteca está ligada a esta cuenta.`}
+          >
+            <button
+              type="button"
+              disabled={saliendo}
+              onClick={async () => {
+                setSaliendo(true);
+                try {
+                  await cerrarSesion();
+                } finally {
+                  setSaliendo(false);
+                }
+              }}
+              className="rounded-lg border border-divider px-3 py-2 text-sm text-ink-muted transition-colors hover:bg-canvas hover:text-ink disabled:opacity-50"
+            >
+              Cerrar sesión
+            </button>
+          </Campo>
+        ) : (
+          <p className="text-sm leading-relaxed text-ink-muted">
+            Las cuentas no están activas: no hay Firebase configurado, así que la
+            biblioteca vive solo en este navegador.
+          </p>
+        )}
+      </Tarjeta>
+
       <Tarjeta titulo="Apariencia" icono={Palette}>
         <Campo
           etiqueta="Tema"
