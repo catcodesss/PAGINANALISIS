@@ -15,6 +15,7 @@
  */
 
 import { useState } from "react";
+import { repositorio } from "@/lib/repositorio";
 import { useCaso } from "../contextoCaso";
 import type { AnalisisFuncional, Alerta } from "@/lib/types";
 import { destinoDeAlerta } from "@/lib/destinoAlerta";
@@ -30,6 +31,8 @@ export interface AccionesExportar {
   onCopiar: () => void;
   copiado: boolean;
   onWord: () => void;
+  /** Crea un caso con este análisis. Ausente si ya está en un caso o no aplica (ejemplo). */
+  onGuardarBiblioteca?: () => Promise<void>;
 }
 
 const CLASE_BOTON =
@@ -85,6 +88,7 @@ export default function Cabecera({
       <div className="ml-auto flex flex-wrap items-center gap-2">
         <ChipRiesgo analisis={analisis} onEditarSeccion={onEditarSeccion} />
         <ContadorAvisos analisis={analisis} />
+        {acciones.onGuardarBiblioteca && <BotonGuardarBiblioteca guardar={acciones.onGuardarBiblioteca} />}
         <MenuExportar acciones={acciones} />
       </div>
     </header>
@@ -221,6 +225,117 @@ function ContadorAvisos({ analisis }: { analisis: AnalisisFuncional }) {
               );
             })}
           </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Guarda en la biblioteca (cifrada en este dispositivo) un análisis hecho sin
+ * caso. Si la biblioteca está cerrada, pide aquí mismo la frase de paso —o la
+ * crea, si es la primera vez— para no tener que ir a «Casos», que perdería el
+ * análisis en pantalla.
+ */
+function BotonGuardarBiblioteca({ guardar }: { guardar: () => Promise<void> }) {
+  const [abierto, setAbierto] = useState(false);
+  const [configurada, setConfigurada] = useState<boolean | null>(null);
+  const [frase, setFrase] = useState("");
+  const [repetir, setRepetir] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+
+  async function conManejo(accion: () => Promise<void>) {
+    setOcupado(true);
+    setMensaje("");
+    try {
+      await accion();
+    } catch (e) {
+      setMensaje(e instanceof Error ? e.message : "No se pudo guardar.");
+      setAbierto(true);
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  function pulsar() {
+    if (!repositorio.disponible()) {
+      setAbierto(true);
+      setMensaje("Este navegador no permite guardar casos (hace falta HTTPS o localhost, y no en modo privado).");
+      return;
+    }
+    if (repositorio.desbloqueado()) {
+      void conManejo(guardar);
+      return;
+    }
+    setAbierto(true);
+    void conManejo(async () => setConfigurada(await repositorio.yaConfigurado()));
+  }
+
+  function abrirYGuardar() {
+    void conManejo(async () => {
+      if (configurada) {
+        if (!(await repositorio.desbloquear(frase))) {
+          setMensaje("Frase de paso incorrecta.");
+          return;
+        }
+      } else {
+        if (frase.length < 8) {
+          setMensaje("Usa al menos 8 caracteres.");
+          return;
+        }
+        if (frase !== repetir) {
+          setMensaje("Las frases no coinciden.");
+          return;
+        }
+        await repositorio.configurar(frase);
+      }
+      setFrase("");
+      setRepetir("");
+      await guardar();
+      setAbierto(false);
+    });
+  }
+
+  const campo = "w-full rounded border border-divider bg-canvas px-2 py-1 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
+  return (
+    <div className="relative">
+      <button type="button" onClick={pulsar} disabled={ocupado} className={CLASE_BOTON} title="Crea un caso en tu biblioteca con este análisis">
+        {ocupado ? "Guardando…" : "Guardar en biblioteca"}
+      </button>
+      {abierto && (
+        <div className="absolute right-0 z-40 mt-1 w-80 rounded-md border border-divider bg-surface p-3 shadow-lg">
+          {configurada === null ? null : configurada ? (
+            <p className="mb-2 text-sm text-ink-muted">Escribe la frase de paso de tu biblioteca para guardar este análisis como un caso nuevo.</p>
+          ) : (
+            <p className="mb-2 text-sm text-ink-muted">
+              Elige una frase de paso para tu biblioteca. Cifra tus casos en este dispositivo.{" "}
+              <strong className="text-ink">Si la pierdes, no se pueden recuperar.</strong>
+            </p>
+          )}
+          {configurada !== null && (
+            <form
+              className="space-y-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                abrirYGuardar();
+              }}
+            >
+              <input type="password" autoFocus value={frase} onChange={(e) => setFrase(e.target.value)} placeholder="Frase de paso" aria-label="Frase de paso" className={campo} />
+              {!configurada && (
+                <input type="password" value={repetir} onChange={(e) => setRepetir(e.target.value)} placeholder="Repite la frase de paso" aria-label="Repite la frase de paso" className={campo} />
+              )}
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setAbierto(false)} className={CLASE_BOTON}>
+                  Cancelar
+                </button>
+                <button type="submit" disabled={ocupado || !frase} className={`${CLASE_BOTON} border-accent text-accent`}>
+                  Abrir y guardar
+                </button>
+              </div>
+            </form>
+          )}
+          {mensaje && <p role="alert" className="mt-2 text-sm text-warn">{mensaje}</p>}
         </div>
       )}
     </div>

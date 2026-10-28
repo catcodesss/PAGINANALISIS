@@ -45,9 +45,10 @@ export default function TableroCaso({
   const red = useMemo(() => construirRedFuncional(analisisConProsa), [analisisConProsa]);
   const relacionesSinApoyo = useMemo(() => {
     const etiqueta = new Map(construirNodosGrafo(analisis).map((n) => [n.id, n.etiqueta]));
+    const nombre = (id: string) => etiqueta.get(id) || textoDeEntidad(analisis, id) || "elemento sin etiqueta";
     return analisis.aristas
       .filter((r) => r.apoyo === "inferido")
-      .map((r) => `${etiqueta.get(r.desde) ?? "…"} → ${etiqueta.get(r.hasta) ?? "…"}`);
+      .map((r) => `${nombre(r.desde)} → ${nombre(r.hasta)}`);
   }, [analisis]);
 
   const mover = (conductaId: string, destino: string) => {
@@ -180,6 +181,30 @@ export default function TableroCaso({
       )}
     </div>
   );
+}
+
+/**
+ * El texto de una entidad por su id, para los extremos de una relación que no
+ * son nodos del grafo (p. ej. una hipótesis o una situación). Sin esto la
+ * relación se pintaba como «→ …».
+ */
+function textoDeEntidad(analisis: AnalisisFuncional, id: string): string {
+  const pila: unknown[] = [analisis];
+  while (pila.length > 0) {
+    const v = pila.pop();
+    if (Array.isArray(v)) {
+      pila.push(...v);
+    } else if (v && typeof v === "object") {
+      const o = v as Record<string, unknown>;
+      if (o.id === id) {
+        for (const k of ["etiqueta", "descripcion", "nombre", "enunciado", "texto", "funcion", "conducta_propuesta", "intervencion"]) {
+          if (typeof o[k] === "string" && (o[k] as string).trim()) return o[k] as string;
+        }
+      }
+      pila.push(...Object.values(o));
+    }
+  }
+  return "";
 }
 
 function Columna({
