@@ -1,4 +1,4 @@
-import { authAdmin, firestoreAdmin } from "./admin";
+import { authAdmin, firestoreAdmin, hayCredencialesAdmin } from "./admin";
 import {
   casoObligatorio,
   identificarLlamada,
@@ -18,7 +18,8 @@ export async function identificar(
 ): Promise<{ llamada: Llamada; error: null } | { llamada: null; error: Response }> {
   try {
     const llamada = await identificarLlamada(peticion, {
-      verificar: (token, revocados) => authAdmin().verifyIdToken(token, revocados),
+      verificar: (token, revocados) =>
+        authAdmin().verifyIdToken(token, revocados && hayCredencialesAdmin()),
       bd: firestoreAdmin,
     });
     return { llamada, error: null };

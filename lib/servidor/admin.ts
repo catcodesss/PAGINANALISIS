@@ -42,6 +42,19 @@ function aplicacion(): App {
   return initializeApp({ credential: applicationDefault(), projectId });
 }
 
+/**
+ * ¿Hay credenciales de servicio? Comprobar la revocación de una sesión consulta
+ * a Google con ellas; sin credenciales, esa consulta falla y rechazaría a todos.
+ * Verificar la firma y la caducidad del token no las necesita.
+ */
+export function hayCredencialesAdmin(): boolean {
+  return Boolean(
+    (process.env.FIREBASE_ADMIN_CLIENT_EMAIL && process.env.FIREBASE_ADMIN_PRIVATE_KEY) ||
+      process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+      process.env.K_SERVICE
+  );
+}
+
 export function authAdmin(): Auth {
   return getAuth(aplicacion());
 }
