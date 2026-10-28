@@ -28,6 +28,7 @@ import SelectorBloques from "@/components/SelectorBloques";
 import { IDS_POR_DEFECTO, IDS_TODOS } from "@/lib/bloques";
 import EsqueletoInforme from "@/components/EsqueletoInforme";
 import Sidebar, { type Vista } from "@/components/Sidebar";
+import GuardarEnBiblioteca from "@/components/GuardarEnBiblioteca";
 import Evolucion from "@/components/Evolucion";
 import PanelRecomendaciones from "@/components/PanelRecomendaciones";
 import { ausentesTrasReanalisis } from "@/lib/vacios";
@@ -40,6 +41,7 @@ import { ContextoCaso, type ValorCaso } from "@/components/contextoCaso";
 import { repositorio } from "@/lib/repositorio";
 import {
   anadirSesion,
+  crearExpediente,
   formulacionVigente,
   guardarVersion,
   obtenerVersion,
@@ -209,6 +211,24 @@ export default function Home() {
     if (!exp || exp.sesiones.length > 0 || !repositorio.desbloqueado()) return;
     const { expediente: conSesion, sesion } = anadirSesion(exp, { nota: texto });
     await persistir(guardarVersion(conSesion, sesion.id, resultado));
+  }
+
+  /**
+   * «Guardar en biblioteca»: un análisis hecho desde «Nuevo caso» no tiene caso
+   * detrás y se perdería al cerrar. Esto crea el caso con la referencia escrita
+   * y guarda la nota y la formulación como su sesión 1, igual que si se hubiera
+   * analizado dentro del caso. La biblioteca tiene que estar abierta: lo
+   * comprueba quien llama (Cabecera). Los errores suben para que los muestre.
+   */
+  async function guardarEnBiblioteca() {
+    if (!analisis || expedienteRef.current) return;
+    const exp = crearExpediente({ alias: referenciaCaso.trim() || "Caso sin nombre" });
+    await repositorio.crearCaso(exp);
+    const { expediente: conSesion, sesion } = anadirSesion(exp, { nota: ultimoTextoEnviado });
+    const guardado = guardarVersion(conSesion, sesion.id, analisis);
+    await repositorio.actualizarCaso(guardado);
+    expedienteRef.current = guardado;
+    setExpediente(guardado);
   }
 
   /**
@@ -855,6 +875,20 @@ export default function Home() {
                   {fechaGeneracion}
                 </p>
                 <div className="flex flex-wrap gap-3">
+                  {/* Un análisis hecho sin caso no se guarda solo: este botón lo lleva a la biblioteca. */}
+                  {!expediente && analisis && (
+                    <GuardarEnBiblioteca
+                      nota={ultimoTextoEnviado}
+                      analisis={analisis}
+                      aliasInicial={referenciaCaso}
+                      onGuardado={(exp) => {
+                        expedienteRef.current = exp;
+                        setExpediente(exp);
+                        setReferenciaCaso(exp.caso.alias);
+                        setAvisoGuardado("");
+                      }}
+                    />
+                  )}
                   {/* Copiar, Word e imprimir viven en «Exportar ▾» de la cabecera del informe. */}
                   <button
                     type="button"
@@ -891,6 +925,8 @@ export default function Home() {
                   onCopiar: manejarCopiarInforme,
                   copiado,
                   onWord: manejarDescargarDocx,
+                  // Solo sin caso: dentro de un caso ya se guarda solo.
+                  onGuardarBiblioteca: expediente ? undefined : guardarEnBiblioteca,
                 }}
               />
             </div>
