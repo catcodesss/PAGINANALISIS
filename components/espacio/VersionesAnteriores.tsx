@@ -39,7 +39,8 @@ export default function VersionesAnteriores({
   onCerrar,
   onRestaurado,
 }: {
-  casoId: string;
+  /** null si el análisis aún no está en un caso. */
+  casoId: string | null;
   onCerrar: () => void;
   onRestaurado: (expediente: Expediente) => void;
 }) {
@@ -52,8 +53,11 @@ export default function VersionesAnteriores({
   const [hecho, setHecho] = useState("");
   const [recarga, setRecarga] = useState(0);
   const propio = dispositivoId();
+  // Las versiones anteriores viven en la nube cifrada: sin ella, o sin caso, solo se explica.
+  const disponible = Boolean(casoId && repositorioNube());
 
   useEffect(() => {
+    if (!casoId || !repositorioNube()) return;
     let vivo = true;
     (async () => {
       try {
@@ -83,7 +87,7 @@ export default function VersionesAnteriores({
   }, [onCerrar, ocupado]);
 
   async function restaurar() {
-    if (!elegida) return;
+    if (!elegida || !casoId) return;
     setOcupado(true);
     setError("");
     try {
@@ -128,6 +132,19 @@ export default function VersionesAnteriores({
             Restaurar no borra nada: la versión actual también queda aquí.
           </p>
 
+          {!disponible && (
+            <div className="rounded-lg border border-dashed border-divider px-4 py-6 text-center">
+              <p className="text-sm font-medium text-ink">
+                {casoId ? "Disponible con la nube cifrada" : "Primero guarda el análisis en un caso"}
+              </p>
+              <p className="mt-1.5 text-sm text-ink-muted">
+                {casoId
+                  ? "Las versiones anteriores se guardan en tu cuenta, cifradas de extremo a extremo. Aparecerán aquí cuando actives la nube."
+                  : "Las versiones anteriores pertenecen a un caso. Guarda este análisis en tu biblioteca y vuelve aquí."}
+              </p>
+            </div>
+          )}
+
           {hecho && (
             <p role="status" className="rounded-md border border-divider bg-canvas px-3 py-2 text-sm text-ink">
               ✓ {hecho}
@@ -139,14 +156,14 @@ export default function VersionesAnteriores({
             </p>
           )}
 
-          {grupos === null && <p className="text-sm text-ink-muted">Cargando…</p>}
-          {grupos?.length === 0 && !error && (
+          {disponible && grupos === null && <p className="text-sm text-ink-muted">Cargando…</p>}
+          {disponible && grupos?.length === 0 && !error && (
             <p className="rounded-md border border-dashed border-divider px-4 py-6 text-center text-sm text-ink-muted">
               Todavía no hay versiones anteriores. Aparecerán cuando se edite una sesión ya guardada.
             </p>
           )}
 
-          {grupos && grupos.length > 0 && (
+          {disponible && grupos && grupos.length > 0 && (
             <>
               <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Qué se puede recuperar</p>
               <ul className="space-y-2.5">

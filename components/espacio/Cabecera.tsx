@@ -110,19 +110,17 @@ export default function Cabecera({
         <ContadorAvisos analisis={analisis} />
         {acciones.onGuardarBiblioteca && <BotonGuardarBiblioteca guardar={acciones.onGuardarBiblioteca} />}
         <MenuExportar acciones={acciones} />
-        {nube && caso && (
-          <MenuAcciones
-            etiqueta="caso"
-            acciones={[{ etiqueta: "Versiones anteriores…", onElegir: () => setVersiones(true) }]}
-          />
-        )}
+        <MenuAcciones
+          etiqueta="caso"
+          acciones={[{ etiqueta: "Versiones anteriores…", onElegir: () => setVersiones(true) }]}
+        />
       </div>
     </header>
-    {versiones && caso && (
+    {versiones && (
       <VersionesAnteriores
-        casoId={caso.expediente.caso.id}
+        casoId={caso?.expediente.caso.id ?? null}
         onCerrar={() => setVersiones(false)}
-        onRestaurado={caso.restaurado}
+        onRestaurado={(exp) => caso?.restaurado(exp)}
       />
     )}
     </>
