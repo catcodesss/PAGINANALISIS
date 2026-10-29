@@ -22,6 +22,7 @@ import { describirGrado, gradoDeApoyoArista } from "@/lib/gradoApoyo";
 import { construirNodosGrafo } from "@/lib/grafo";
 import { construirRedFuncional } from "@/lib/redFuncional";
 import { useEspacio } from "./contexto";
+import ContextoCaso from "./ContextoCaso";
 
 const TIPO_ARRASTRE_CONDUCTA = "application/x-acia-conducta";
 
@@ -80,6 +81,8 @@ export default function TableroCaso({
 
   return (
     <div className="space-y-6">
+      <ContextoCaso analisis={analisisConProsa} />
+
       <header>
         <p className="text-sm text-ink">
           {conConocida.length === 0
