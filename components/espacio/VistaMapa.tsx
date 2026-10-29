@@ -125,11 +125,11 @@ export default function VistaMapa({
         <span className="ml-auto">{acciones.menu}</span>
       </div>
 
-      {nivel !== "caso" && (
+      {nivel !== "caso" && (contadores.plan > 0 || contadores.huecos > 0) && (
         <div role="group" aria-label="Mostrar también" className="mb-4 flex flex-wrap items-center gap-2 text-xs">
           <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Mostrar también</span>
-          <BotonCapa activa={capas.plan} contador={contadores.plan} onClick={() => alternar("plan")}>Plan</BotonCapa>
-          <BotonCapa activa={capas.huecos} contador={contadores.huecos} onClick={() => alternar("huecos")}>Huecos</BotonCapa>
+          <BotonCapa activa={capas.plan} contador={contadores.plan} onClick={() => alternar("plan")}>Conductas alternativas:</BotonCapa>
+          <BotonCapa activa={capas.huecos} contador={contadores.huecos} onClick={() => alternar("huecos")}>Huecos:</BotonCapa>
         </div>
       )}
       {acciones.panel}
