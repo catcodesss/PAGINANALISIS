@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>¿Qué es «Mostrar también»?</title>
+<style>
+  :root { --fondo:#faf7f2; --tinta:#2b2a27; --suave:#6f6b63; --verde:#1f6b4f; --verde-bg:#e6f2ec; --gris:#c9c5bb; --borde:#e2ddd2; --tarjeta:#fff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fondo:#1c1b19; --tinta:#ece8df; --suave:#a29d92; --verde:#6fcf9f; --verde-bg:#1f3a2e; --gris:#4a473f; --borde:#34322d; --tarjeta:#252420; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--fondo); color:var(--tinta); font:17px/1.6 system-ui,Segoe UI,sans-serif; }
+  main { max-width:680px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:1.7rem; margin:0 0 8px; }
+  h2 { font-size:1.15rem; margin:36px 0 12px; }
+  p { margin:0 0 12px; }
+  .sub { color:var(--suave); }
+  .card { background:var(--tarjeta); border:1px solid var(--borde); border-radius:14px; padding:18px; margin:14px 0; }
+  .fila { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  .etq { font:600 11px ui-monospace,Consolas,monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--suave); }
+  .btn { font:inherit; font-size:.9rem; padding:5px 14px; border-radius:999px; border:1.5px solid var(--borde); background:transparent; color:var(--tinta); }
+  .btn.on { border-color:var(--verde); color:var(--verde); background:var(--verde-bg); font-weight:600; }
+  .btn:disabled { color:var(--gris); border-color:var(--borde); }
+  .flecha { color:var(--suave); font-size:.92rem; margin:6px 0 0; }
+  .grid { display:grid; gap:12px; grid-template-columns:1fr 1fr; }
+  @media (max-width:520px) { .grid { grid-template-columns:1fr; } }
+  .nodo { display:inline-block; padding:6px 12px; border-radius:10px; border:1.5px solid var(--borde); margin:4px 4px 4px 0; font-size:.9rem; }
+  .nodo.plan { border-color:var(--verde); background:var(--verde-bg); }
+  .nodo.hueco { border-style:dashed; border-color:#c0752b; }
+  .nota { background:var(--verde-bg); border-radius:12px; padding:14px 16px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>¿Qué es «Mostrar también»?</h1>
+  <p class="sub">Explicación corta de la fila que aparece arriba del mapa del caso.</p>
+
+  <div class="card">
+    <div class="fila">
+      <span class="etq">Mostrar también</span>
+      <button class="btn on">Plan 2</button>
+      <button class="btn" disabled>Huecos 0</button>
+    </div>
+    <p class="flecha">↑ Esto es lo que viste en tu captura.</p>
+  </div>
+
+  <h2>La idea en una frase</h2>
+  <p>Son <strong>interruptores</strong> (antes se llamaban «Capas»). El mapa siempre muestra el caso, y cada botón agrega o quita una información extra encima, sin cambiar el caso.</p>
+
+  <h2>Qué hace cada botón</h2>
+  <div class="grid">
+    <div class="card">
+      <p><span class="btn on">Plan 2</span></p>
+      <p>Resalta las <strong>2 cosas</strong> que forman parte del plan de tratamiento.</p>
+      <p class="sub">Estado: <strong>encendido</strong> (borde verde).</p>
+      <span class="nodo plan">Ejemplo: tarea del plan</span>
+    </div>
+    <div class="card">
+      <p><span class="btn" disabled>Huecos 0</span></p>
+      <p>Marcaría lo que <strong>le falta</strong> al caso: datos sin completar o preguntas sin responder.</p>
+      <p class="sub">Estado: <strong>apagado y gris</strong>, porque hay 0.</p>
+      <span class="nodo hueco">Ejemplo: «Falta: …»</span>
+    </div>
+  </div>
+
+  <h2>¿Por qué «Huecos» está en gris?</h2>
+  <div class="nota">
+    <p><strong>No es un error.</strong> El número es la cantidad de elementos de esa capa. Con 0 no hay nada que mostrar, así que el botón se desactiva.</p>
+    <p style="margin:0">En este caso: hay 2 elementos de plan para ver y ningún hueco.</p>
+  </div>
+
+  <h2>Y si hubiera más</h2>
+  <p>Cuando haya datos, aparecerán más números (por ejemplo «Huecos 3») y podrás pulsarlos. También puede aparecer una capa <strong>DBT</strong>, que se muestra solo cuando el caso la tiene.</p>
+</main>
+</body>
+</html>

@@ -126,8 +126,8 @@ export default function VistaMapa({
       </div>
 
       {nivel !== "caso" && (
-        <div role="group" aria-label="Capas" className="mb-4 flex flex-wrap items-center gap-2 text-xs">
-          <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Capas</span>
+        <div role="group" aria-label="Mostrar también" className="mb-4 flex flex-wrap items-center gap-2 text-xs">
+          <span className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Mostrar también</span>
           <BotonCapa activa={capas.plan} contador={contadores.plan} onClick={() => alternar("plan")}>Plan</BotonCapa>
           <BotonCapa activa={capas.huecos} contador={contadores.huecos} onClick={() => alternar("huecos")}>Huecos</BotonCapa>
         </div>
