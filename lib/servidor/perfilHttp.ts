@@ -1,6 +1,6 @@
 import type { Firestore } from "firebase-admin/firestore";
 import { autenticar, ErrorHttp, type VerificadorToken } from "./autenticar";
-import { validarPerfil } from "../perfil";
+import { validarContacto, validarPerfil } from "../perfil";
 
 /**
  * Lógica HTTP de POST /api/perfil: guarda nombre, fecha de nacimiento y país en
@@ -30,6 +30,17 @@ export async function manejarPerfil(peticion: Request, deps: DependenciasPerfil)
       cuerpo = await peticion.json();
     } catch {
       throw new ErrorHttp(400, "cuerpo_invalido", "Petición no válida.");
+    }
+    // Dos usos: el perfil del alta, o solo el contacto de respaldo (Configuración).
+    if (typeof cuerpo === "object" && cuerpo !== null && "contacto" in cuerpo) {
+      const c = validarContacto((cuerpo as { contacto: unknown }).contacto);
+      if ("error" in c) throw new ErrorHttp(400, "contacto_invalido", c.error);
+      await deps
+        .bd()
+        .collection("usuarios")
+        .doc(uid)
+        .set({ contacto: c.contacto, contacto_actualizado: new Date().toISOString() }, { merge: true });
+      return json({ ok: true });
     }
     const r = validarPerfil(cuerpo);
     if ("error" in r) throw new ErrorHttp(400, "perfil_invalido", r.error);

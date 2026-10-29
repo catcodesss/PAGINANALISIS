@@ -12,6 +12,7 @@ import { useState } from "react";
 import { UserRound } from "lucide-react";
 import { useCuenta } from "./ProveedorCuenta";
 import ClaveRecuperacion from "./ClaveRecuperacion";
+import ContactoRespaldo from "./ContactoRespaldo";
 import { repositorioNube } from "@/lib/repositorio";
 import { usePreferencias } from "./usePreferencias";
 import { ESCALA_TEXTO } from "@/lib/preferencias";
@@ -123,6 +124,9 @@ export default function Configuracion() {
       {repositorioNube() && !invitado && (
         <Tarjeta titulo="Seguridad" icono={ShieldCheck}>
           <ClaveRecuperacion />
+          <div className="mt-6 border-t border-divider pt-5">
+            <ContactoRespaldo />
+          </div>
         </Tarjeta>
       )}
 

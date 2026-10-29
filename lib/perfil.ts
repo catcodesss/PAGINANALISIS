@@ -70,3 +70,31 @@ export function validarPerfil(valor: unknown, hoy: Date = new Date()): { perfil:
   if (!PAISES.some((p) => p.codigo === pais)) return { error: "Elige tu país." };
   return { perfil: { nombre, nacimiento, pais } };
 }
+
+// --- Contacto de respaldo ---------------------------------------------------
+
+/**
+ * Correo y teléfono de respaldo, opcionales. Son datos de contacto de la
+ * cuenta: NO abren la bóveda (solo la contraseña o la clave de recuperación lo
+ * hacen). Se guardan sin verificar hasta que exista un envío de códigos.
+ */
+export interface Contacto {
+  correo_respaldo: string;
+  /** Con prefijo internacional, p. ej. +51994229729. */
+  telefono: string;
+}
+
+const CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** Cualquiera de los dos puede ir vacío; si viene, tiene que ser válido. */
+export function validarContacto(valor: unknown): { contacto: Contacto } | { error: string } {
+  const v = (valor ?? {}) as Record<string, unknown>;
+  const correo = typeof v.correo_respaldo === "string" ? v.correo_respaldo.trim().toLowerCase() : "";
+  if (correo && (correo.length > 120 || !CORREO.test(correo))) return { error: "El correo de respaldo no es válido." };
+  const crudo = typeof v.telefono === "string" ? v.telefono.trim() : "";
+  const telefono = crudo.replace(/[\s().-]/g, "");
+  if (telefono && !/^\+[1-9]\d{7,14}$/.test(telefono)) {
+    return { error: "Escribe el teléfono con el código del país, por ejemplo +51 994 229 729." };
+  }
+  return { contacto: { correo_respaldo: correo, telefono } };
+}

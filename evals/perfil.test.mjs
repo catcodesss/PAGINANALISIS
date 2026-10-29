@@ -126,4 +126,25 @@ await prueba("un perfil inválido o un cuerpo roto da 400 y no escribe", async (
   assert.equal(escrituras.length, 0);
 });
 
+await prueba("contacto de respaldo: ambos opcionales, se normalizan y se validan", async () => {
+  const { validarContacto } = require(join(RAIZ, ".tmp-evals-perfil/perfil.js"));
+  assert.deepEqual(validarContacto({}).contacto, { correo_respaldo: "", telefono: "" });
+  assert.deepEqual(
+    validarContacto({ correo_respaldo: "  Ana@Ejemplo.COM ", telefono: "+51 994-229 729" }).contacto,
+    { correo_respaldo: "ana@ejemplo.com", telefono: "+51994229729" }
+  );
+  assert.ok(validarContacto({ correo_respaldo: "no-es-correo" }).error);
+  assert.match(validarContacto({ telefono: "994229729" }).error, /código del país/);
+});
+await prueba("la ruta guarda solo el contacto cuando llega {contacto}, bajo el uid del token", async () => {
+  escrituras.length = 0;
+  const r = await llamar("tokenA", { contacto: { correo_respaldo: "b@x.com", telefono: "+51994229729" } });
+  assert.equal(r.status, 200);
+  assert.equal(escrituras[0].uid, "A");
+  assert.deepEqual(escrituras[0].datos.contacto, { correo_respaldo: "b@x.com", telefono: "+51994229729" });
+  assert.ok(!("perfil" in escrituras[0].datos));
+  assert.equal((await llamar("tokenA", { contacto: { telefono: "123" } })).status, 400);
+  assert.equal((await llamar("tokenInvitado", { contacto: {} })).status, 403);
+});
+
 console.log(`\n${n} pruebas pasadas\n`);
