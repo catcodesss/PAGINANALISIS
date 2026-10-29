@@ -160,7 +160,8 @@ await prueba("operacion_id: opcional, pero con forma válida", () => {
 });
 
 console.log("Código de las rutas");
-const rutas = readdirSync(join(RAIZ, "app/api")).filter((r) => r !== "ranuras");
+// Ranuras y perfil son rutas administrativas (Admin SDK), no de IA: tienen sus propias pruebas.
+const rutas = readdirSync(join(RAIZ, "app/api")).filter((r) => r !== "ranuras" && r !== "perfil");
 await prueba("las cinco rutas de IA piden identificar y comprobar", () => {
   assert.equal(rutas.length, 5, rutas.join(","));
   for (const r of rutas) {

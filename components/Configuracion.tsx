@@ -87,7 +87,11 @@ export default function Configuracion() {
           </Campo>
         ) : usuario ? (
           <Campo
-            etiqueta={usuario.email ?? "Sin correo"}
+            etiqueta={
+              usuario.displayName
+                ? `${usuario.displayName} · ${usuario.email ?? "Sin correo"}`
+                : (usuario.email ?? "Sin correo")
+            }
             descripcion={`${
               usuario.emailVerified ? "Correo verificado." : "Correo sin verificar."
             } Tu biblioteca está ligada a esta cuenta.`}

@@ -5,6 +5,7 @@ import {
   EmailAuthProvider,
   linkWithCredential,
   sendEmailVerification,
+  updateProfile,
   type User,
 } from "firebase/auth";
 import { Check } from "lucide-react";
@@ -14,6 +15,9 @@ import { abrirConSecreto } from "@/lib/accesoBoveda";
 import { guardarSecretoBoveda, obtenerSecretoBoveda, olvidarSecretoBoveda } from "@/lib/secretoSesion";
 import { MINIMO_CONTRASENA, mensajeDeError } from "@/lib/erroresCuenta";
 import { repositorio, repositorioNube } from "@/lib/repositorio";
+import { validarPerfil } from "@/lib/perfil";
+import { enviarPerfilPendiente, guardarPerfilPendiente } from "@/lib/perfilCliente";
+import CamposPerfil, { PERFIL_VACIO, type BorradorPerfil } from "./CamposPerfil";
 
 /**
  * Un invitado crea su cuenta sin salir de la pantalla en la que está: el
@@ -44,6 +48,7 @@ export default function CrearCuentaInvitado({ usuario, motivo, onCerrar, onCread
   // Si ya vinculó el correo y falta verificarlo, se retoma donde se quedó.
   const [paso, setPaso] = useState<Paso>(usuario.email ? "verificar" : "formulario");
   const [correo, setCorreo] = useState(usuario.email ?? "");
+  const [perfil, setPerfil] = useState<BorradorPerfil>(PERFIL_VACIO);
   const [contrasena, setContrasena] = useState("");
   const [repetir, setRepetir] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +76,8 @@ export default function CrearCuentaInvitado({ usuario, motivo, onCerrar, onCread
 
   function crear(e: FormEvent) {
     e.preventDefault();
+    const datos = validarPerfil(perfil);
+    if ("error" in datos) return setError(datos.error);
     if (contrasena.length < MINIMO_CONTRASENA) return setError(mensajeDeError({ code: "auth/weak-password" }));
     if (contrasena !== repetir) return setError("Las contraseñas no coinciden.");
     void ejecutar(async () => {
@@ -78,6 +85,8 @@ export default function CrearCuentaInvitado({ usuario, motivo, onCerrar, onCread
       const cred = await derivarCredenciales(email, contrasena);
       const { user } = await linkWithCredential(usuario, EmailAuthProvider.credential(email, cred.acceso));
       guardarSecretoBoveda(cred.boveda);
+      guardarPerfilPendiente(datos.perfil);
+      await updateProfile(user, { displayName: datos.perfil.nombre }).catch(() => {});
       await sendEmailVerification(user);
       setContrasena("");
       setRepetir("");
@@ -94,6 +103,7 @@ export default function CrearCuentaInvitado({ usuario, motivo, onCerrar, onCread
       }
       // El token anterior seguía marcado como anónimo: se renueva ya con la cuenta.
       await usuario.getIdToken(true);
+      void enviarPerfilPendiente(usuario);
       setPaso("abriendo");
       await repositorio.asociarCuenta(usuario.uid);
       const repo = repositorioNube();
@@ -143,13 +153,15 @@ export default function CrearCuentaInvitado({ usuario, motivo, onCerrar, onCread
               Esta contraseña también cifra tus casos: nadie en ACIA puede leerlos
               ni restablecerla por ti.
             </p>
-            <label className="mt-4 block text-sm">
+            <div className="mt-4">
+              <CamposPerfil valor={perfil} onCambio={setPerfil} autoFocus />
+            </div>
+            <label className="mt-3 block text-sm">
               Correo
               <input
                 type="email"
                 autoComplete="email"
                 required
-                autoFocus
                 className={campo}
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}

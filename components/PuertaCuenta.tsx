@@ -8,12 +8,16 @@ import {
   signInAnonymously,
   signInWithEmailAndPassword,
   updatePassword,
+  updateProfile,
   type User,
 } from "firebase/auth";
 import { autenticacion, normalizarCorreo } from "@/lib/firebaseCliente";
 import { derivarCredenciales } from "@/lib/credenciales";
 import { guardarSecretoBoveda } from "@/lib/secretoSesion";
 import { MINIMO_CONTRASENA, mensajeDeError } from "@/lib/erroresCuenta";
+import { validarPerfil } from "@/lib/perfil";
+import { guardarPerfilPendiente } from "@/lib/perfilCliente";
+import CamposPerfil, { PERFIL_VACIO, type BorradorPerfil } from "./CamposPerfil";
 
 type Modo = "entrar" | "registro" | "recuperar";
 
@@ -28,6 +32,8 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
   const [modo, setModo] = useState<Modo>("entrar");
   const [correo, setCorreo] = useState("");
   const [contrasena, setContrasena] = useState("");
+  const [repetir, setRepetir] = useState("");
+  const [perfil, setPerfil] = useState<BorradorPerfil>(PERFIL_VACIO);
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -54,7 +60,8 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
     try {
       await accion();
     } catch (e) {
-      setError(mensajeDeError(e));
+      // Los errores propios (sin código de Firebase) ya vienen en claro.
+      setError(e instanceof Error && !(e as { code?: string }).code ? e.message : mensajeDeError(e));
     } finally {
       setOcupado(false);
     }
@@ -73,11 +80,18 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
     const email = normalizarCorreo(correo);
     void ejecutar(async () => {
       if (modo === "registro") {
+        const datos = validarPerfil(perfil);
+        if ("error" in datos) throw new Error(datos.error);
         if (contrasena.length < MINIMO_CONTRASENA) throw { code: "auth/weak-password" };
+        if (contrasena !== repetir) throw new Error("Las contraseñas no coinciden.");
         const cred = await derivarCredenciales(email, contrasena);
         const { user } = await createUserWithEmailAndPassword(auth, email, cred.acceso);
         guardarSecretoBoveda(cred.boveda);
+        guardarPerfilPendiente(datos.perfil);
+        await updateProfile(user, { displayName: datos.perfil.nombre }).catch(() => {});
         await sendEmailVerification(user);
+        setContrasena("");
+        setRepetir("");
       } else if (modo === "entrar") {
         const cred = await derivarCredenciales(email, contrasena);
         try {
@@ -168,7 +182,12 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
             dispositivo. La cuenta solo guarda tu correo, tu plan y un registro de
             consumo.
           </p>
-          <label className="mt-4 block text-sm">
+          {modo === "registro" && (
+            <div className="mt-4">
+              <CamposPerfil valor={perfil} onCambio={setPerfil} autoFocus />
+            </div>
+          )}
+          <label className={`${modo === "registro" ? "mt-3" : "mt-4"} block text-sm`}>
             Correo
             <input
               type="email"
@@ -190,6 +209,19 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
                 className={campo}
                 value={contrasena}
                 onChange={(e) => setContrasena(e.target.value)}
+              />
+            </label>
+          )}
+          {modo === "registro" && (
+            <label className="mt-3 block text-sm">
+              Repite la contraseña
+              <input
+                type="password"
+                autoComplete="new-password"
+                required
+                className={campo}
+                value={repetir}
+                onChange={(e) => setRepetir(e.target.value)}
               />
             </label>
           )}

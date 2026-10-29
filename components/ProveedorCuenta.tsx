@@ -13,6 +13,7 @@ import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { autenticacion, cuentasActivadas, nubeActivada } from "@/lib/firebaseCliente";
 import { repositorio, repositorioNube } from "@/lib/repositorio";
 import { olvidarSecretoBoveda } from "@/lib/secretoSesion";
+import { enviarPerfilPendiente } from "@/lib/perfilCliente";
 import PuertaCuenta from "./PuertaCuenta";
 import PuertaBoveda from "./PuertaBoveda";
 import CrearCuentaInvitado from "./CrearCuentaInvitado";
@@ -55,6 +56,7 @@ type Estado =
  * se reabre sin pedir nada.
  */
 async function entrarComo(usuario: User): Promise<Estado> {
+  void enviarPerfilPendiente(usuario);
   await repositorio.asociarCuenta(usuario.uid);
   if (nubeActivada() && !repositorio.desbloqueado()) {
     await repositorioNube()?.restaurarSesion().catch(() => false);
