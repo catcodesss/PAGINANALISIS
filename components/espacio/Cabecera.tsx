@@ -32,7 +32,7 @@ export interface AccionesExportar {
   onCopiar: () => void;
   copiado: boolean;
   onWord: () => void;
-  /** Crea un caso con este análisis. Ausente si ya está en un caso o no aplica (ejemplo). */
+  /** Crea un caso con este análisis. Ausente si ya está en un caso o es un invitado. */
   onGuardarBiblioteca?: () => Promise<void>;
 }
 

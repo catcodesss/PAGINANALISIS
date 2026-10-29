@@ -16,6 +16,8 @@ import { revalidarTrasEdicion } from "@/lib/validadores";
 import type { AnalisisFuncional } from "@/lib/types";
 import { ausentesTrasReanalisis } from "@/lib/vacios";
 import { cerrarEdicion } from "@/lib/procedenciaEdicion";
+import { repositorio } from "@/lib/repositorio";
+import { anadirSesion, crearExpediente, guardarVersion } from "@/lib/casos";
 
 /**
  * El informe de ejemplo, tal y como se ve en la herramienta.
@@ -88,6 +90,20 @@ export default function VistaEjemplo({
     });
   }
 
+  /**
+   * Lleva el informe de ejemplo a la biblioteca cifrada como un caso más, con la
+   * nota ficticia como sesión 1. Sin referencia escrita se llama «Caso de
+   * ejemplo», para no confundirlo después con un caso real. Al terminar abre
+   * «Casos», donde ya está.
+   */
+  async function guardarEnBiblioteca() {
+    const exp = crearExpediente({ alias: referenciaCaso.trim() || "Caso de ejemplo" });
+    await repositorio.crearCaso(exp);
+    const { expediente: conSesion, sesion } = anadirSesion(exp, { nota });
+    await repositorio.actualizarCaso(guardarVersion(conSesion, sesion.id, analisis));
+    router.push("/?vista=casos");
+  }
+
   return (
     <div className="flex min-h-screen bg-canvas print:block">
       <Sidebar
@@ -122,6 +138,7 @@ export default function VistaEjemplo({
             onCopiar: copiar,
             copiado,
             onWord: () => descargarDocx(analisis, referenciaCaso, fecha, orden(), true),
+            onGuardarBiblioteca: guardarEnBiblioteca,
           }}
           esEjemplo
         />
