@@ -24,6 +24,7 @@ import {
   type ClaveCasoEnvuelta,
 } from "./boveda";
 import { cifrarParte, descifrarParte, type ContextoParte } from "./cifradoV2";
+import { borrarCmdLocal, guardarCmdLocal, leerCmdLocal } from "./sesionLocal";
 import { partirExpediente, unirExpediente, type Parte } from "./nube/particion";
 import {
   ConflictoDeRevision,
@@ -156,6 +157,36 @@ export class RepositorioNube implements Repositorio {
     this.boveda = boveda;
     this.cmd = cmd;
     this.pendienteRecuperacion = claveRecuperacion;
+    await this.recordarEnEsteDispositivo();
+  }
+
+  /** Guarda la CMD (no extraíble) para no pedir la contraseña al recargar. Un fallo solo quita la comodidad. */
+  private async recordarEnEsteDispositivo(): Promise<void> {
+    if (!this.cmd || !this.boveda || !this.uid) return;
+    await guardarCmdLocal(this.uid, this.boveda.version_clave, this.cmd).catch(() => {});
+  }
+
+  /**
+   * Tras recargar: reabre la bóveda con la CMD recordada, si es de esta cuenta y
+   * la bóveda no cambió de versión (rotación). Devuelve si quedó abierta.
+   */
+  async restaurarSesion(): Promise<boolean> {
+    if (this.cmd) return true;
+    if (!this.uid) return false;
+    const guardada = await leerCmdLocal(this.uid).catch(() => null);
+    if (!guardada) return false;
+    const b = await this.cargarBoveda();
+    if (!b || b.version_clave !== guardada.version_clave) {
+      await borrarCmdLocal().catch(() => {});
+      return false;
+    }
+    this.cmd = guardada.cmd;
+    return true;
+  }
+
+  /** Cerrar sesión: este dispositivo deja de recordar la clave. */
+  async olvidarEnEsteDispositivo(): Promise<void> {
+    await borrarCmdLocal().catch(() => {});
   }
 
   /** ¿Esta cuenta ya tiene clave de recuperación? Es opcional. */
@@ -192,6 +223,7 @@ export class RepositorioNube implements Repositorio {
     const cmd = await desbloquearConFrase(b, frase);
     if (!cmd) return false;
     this.cmd = cmd;
+    await this.recordarEnEsteDispositivo();
     return true;
   }
 

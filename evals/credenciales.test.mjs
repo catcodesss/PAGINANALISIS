@@ -71,5 +71,20 @@ await prueba("precio: el invitado paga más; con cuenta, el precio base", () => 
   assert.equal(precioEnCoins(10, false), 10);
   assert.ok(precioEnCoins(10, true) > 10);
 });
+await prueba("secreto de sesión: sobrevive a una recarga (sessionStorage) y se borra al abrir la bóveda", async () => {
+  const datos = new Map();
+  globalThis.sessionStorage = {
+    getItem: (k) => datos.get(k) ?? null,
+    setItem: (k, v) => void datos.set(k, String(v)),
+    removeItem: (k) => void datos.delete(k),
+  };
+  guardarSecretoBoveda("secreto-de-prueba-largo", false);
+  const mod = await import("../lib/secretoSesion.ts?recarga");
+  assert.equal(mod.obtenerSecretoBoveda(), "secreto-de-prueba-largo");
+  olvidarSecretoBoveda();
+  assert.equal(datos.size, 0);
+  assert.equal((await import("../lib/secretoSesion.ts?otra")).obtenerSecretoBoveda(), null);
+  delete globalThis.sessionStorage;
+});
 
 console.log(`\n${n} pruebas pasadas\n`);

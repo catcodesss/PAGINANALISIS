@@ -11,7 +11,7 @@ import {
 } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { autenticacion, cuentasActivadas, nubeActivada } from "@/lib/firebaseCliente";
-import { repositorio } from "@/lib/repositorio";
+import { repositorio, repositorioNube } from "@/lib/repositorio";
 import { olvidarSecretoBoveda } from "@/lib/secretoSesion";
 import PuertaCuenta from "./PuertaCuenta";
 import PuertaBoveda from "./PuertaBoveda";
@@ -49,11 +49,20 @@ type Estado =
   | { fase: "invitado"; usuario: User }
   | { fase: "lista"; usuario: User | null };
 
-/** Con la nube activa, tras la cuenta hay que abrir la bóveda de claves antes de usar la app. */
-const faseTrasCuenta = (usuario: User): Estado =>
-  nubeActivada() && !repositorio.desbloqueado()
+/**
+ * Con la nube activa, tras la cuenta hay que abrir la bóveda de claves antes de
+ * usar la app. Si este dispositivo ya la tenía abierta (recarga de la página),
+ * se reabre sin pedir nada.
+ */
+async function entrarComo(usuario: User): Promise<Estado> {
+  await repositorio.asociarCuenta(usuario.uid);
+  if (nubeActivada() && !repositorio.desbloqueado()) {
+    await repositorioNube()?.restaurarSesion().catch(() => false);
+  }
+  return nubeActivada() && !repositorio.desbloqueado()
     ? { fase: "boveda", usuario }
     : { fase: "lista", usuario };
+}
 
 /**
  * Deja pasar a la aplicación con una cuenta verificada o como invitado, y ata
@@ -72,21 +81,22 @@ export default function ProveedorCuenta({ children }: { children: ReactNode }) {
     return onAuthStateChanged(autenticacion(), async (usuario) => {
       if (!usuario) {
         await repositorio.asociarCuenta(null).catch(() => {});
+        await repositorioNube()?.olvidarEnEsteDispositivo();
         setEstado({ fase: "sin_sesion" });
       } else if (usuario.isAnonymous) {
         await repositorio.asociarCuenta(null).catch(() => {});
         setEstado({ fase: "invitado", usuario });
-      } else if (!usuario.emailVerified) {
-        setEstado({ fase: "sin_verificar", usuario });
       } else {
-        await repositorio.asociarCuenta(usuario.uid);
-        setEstado(faseTrasCuenta(usuario));
+        // Puede haber verificado el correo en otra pestaña desde que se guardó la sesión.
+        if (!usuario.emailVerified) await usuario.reload().catch(() => {});
+        setEstado(usuario.emailVerified ? await entrarComo(usuario) : { fase: "sin_verificar", usuario });
       }
     });
   }, [activadas]);
 
   const cerrarSesion = useCallback(async () => {
     repositorio.bloquear();
+    await repositorioNube()?.olvidarEnEsteDispositivo();
     olvidarSecretoBoveda();
     setPidiendoCuenta(null);
     await signOut(autenticacion());
@@ -117,10 +127,7 @@ export default function ProveedorCuenta({ children }: { children: ReactNode }) {
       <PuertaCuenta
         pendiente={estado.fase === "sin_verificar" ? estado.usuario : null}
         onCerrarSesion={cerrarSesion}
-        onVerificado={async (usuario) => {
-          await repositorio.asociarCuenta(usuario.uid);
-          setEstado(faseTrasCuenta(usuario));
-        }}
+        onVerificado={async (usuario) => setEstado(await entrarComo(usuario))}
       />
     );
   }

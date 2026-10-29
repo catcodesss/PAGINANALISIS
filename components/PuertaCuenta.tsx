@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
@@ -31,6 +31,21 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
+
+  // Al volver del enlace del correo (otra pestaña), sigue solo sin pulsar nada.
+  useEffect(() => {
+    if (!pendiente) return;
+    let vivo = true;
+    const comprobar = async () => {
+      await pendiente.reload().catch(() => {});
+      if (vivo && pendiente.emailVerified) await onVerificado(pendiente);
+    };
+    window.addEventListener("focus", comprobar);
+    return () => {
+      vivo = false;
+      window.removeEventListener("focus", comprobar);
+    };
+  }, [pendiente, onVerificado]);
 
   async function ejecutar(accion: () => Promise<void>) {
     setError(null);
