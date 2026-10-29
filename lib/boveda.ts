@@ -1,6 +1,6 @@
 import {
   aBase64,
-  codificarRecuperacion,
+  codificarPalabras,
   decodificarRecuperacion,
   deBase64,
   derivarKekDeFrase,
@@ -133,11 +133,11 @@ async function ranuraDeRecuperacion(
   cmd: CryptoKey,
   versionClave: number
 ): Promise<{ ranura: RanuraClave; clave: string }> {
-  const secreto = crypto.getRandomValues(new Uint8Array(32));
+  const secreto = crypto.getRandomValues(new Uint8Array(16));
   const base = { id: crypto.randomUUID(), tipo: "recuperacion" as const };
   const kek = await derivarKekDeRecuperacion(secreto);
   const { iv, datos } = await envolver(cmd, kek, aadRanura(base, versionClave));
-  return { ranura: { ...base, iv, cmd: datos }, clave: codificarRecuperacion(secreto) };
+  return { ranura: { ...base, iv, cmd: datos }, clave: codificarPalabras(secreto) };
 }
 
 /** Mínimo exigido a la frase de paso (§3.2). */
@@ -151,24 +151,35 @@ function exigirFrase(frase: string) {
   }
 }
 
+/** ¿La bóveda tiene una clave de recuperación? Es opcional: se puede crear más tarde. */
+export function tieneRecuperacion(b: Boveda): boolean {
+  return b.ranuras.some((r) => r.tipo === "recuperacion");
+}
+
+/**
+ * `conRecuperacion: false` crea la bóveda solo con la frase; la clave de
+ * recuperación se añade después con `regenerarRecuperacion`, cuando el
+ * terapeuta lo decida.
+ */
 export async function crearBoveda(
   frase: string,
-  opciones: OpcionesKdf = {}
-): Promise<{ boveda: Boveda; cmd: CryptoKey; claveRecuperacion: string }> {
+  opciones: OpcionesKdf = {},
+  { conRecuperacion = true }: { conRecuperacion?: boolean } = {}
+): Promise<{ boveda: Boveda; cmd: CryptoKey; claveRecuperacion: string | null }> {
   exigirFrase(frase);
   const cmdExtraible = await generarClave();
   const version = 1;
   const rf = await ranuraDeFrase(cmdExtraible, frase, version, opciones);
-  const rr = await ranuraDeRecuperacion(cmdExtraible, version);
+  const rr = conRecuperacion ? await ranuraDeRecuperacion(cmdExtraible, version) : null;
   return {
     boveda: {
       formato: FORMATO_BOVEDA,
       version_clave: version,
-      ranuras: [rf, rr.ranura],
+      ranuras: rr ? [rf, rr.ranura] : [rf],
       creado_en: new Date().toISOString(),
     },
     cmd: await comoNoExtraible(cmdExtraible),
-    claveRecuperacion: rr.clave,
+    claveRecuperacion: rr?.clave ?? null,
   };
 }
 
@@ -232,7 +243,7 @@ export async function restablecerFraseConRecuperacion(
   return { ...b, ranuras: [...b.ranuras.filter((r) => r.tipo !== "frase"), nueva] };
 }
 
-/** Nueva clave de recuperación; la anterior deja de servir. */
+/** Crea la clave de recuperación (o una nueva); la anterior, si había, deja de servir. */
 export async function regenerarRecuperacion(
   b: Boveda,
   frase: string
@@ -282,7 +293,7 @@ export async function rotarCmd(
   uid: string,
   casos: ClaveCasoEnvuelta[],
   opciones: OpcionesKdf = {}
-): Promise<{ boveda: Boveda; casos: ClaveCasoEnvuelta[]; claveRecuperacion: string } | null> {
+): Promise<{ boveda: Boveda; casos: ClaveCasoEnvuelta[]; claveRecuperacion: string | null } | null> {
   const vieja = await desbloquearInterno(b, "frase", conFrase(frase), false);
   if (!vieja) return null;
   const nuevaCmd = await generarClave();
@@ -296,10 +307,11 @@ export async function rotarCmd(
     reenvueltas.push({ ...e, iv, cc: datos });
   }
   const rf = await ranuraDeFrase(nuevaCmd, frase, version, opciones);
-  const rr = await ranuraDeRecuperacion(nuevaCmd, version);
+  // Si no tenía clave de recuperación, rotar no la crea: sigue siendo opcional.
+  const rr = tieneRecuperacion(b) ? await ranuraDeRecuperacion(nuevaCmd, version) : null;
   return {
-    boveda: { ...b, version_clave: version, ranuras: [rf, rr.ranura] },
+    boveda: { ...b, version_clave: version, ranuras: rr ? [rf, rr.ranura] : [rf] },
     casos: reenvueltas,
-    claveRecuperacion: rr.clave,
+    claveRecuperacion: rr?.clave ?? null,
   };
 }

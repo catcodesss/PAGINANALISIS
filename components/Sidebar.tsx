@@ -10,6 +10,8 @@ import {
   Leaf,
   Settings,
   TrendingUp,
+  AlertTriangle,
+  Lock,
 } from "lucide-react";
 
 /** Vistas que hoy existen de verdad. El resto de ítems son mapa del producto. */
@@ -37,6 +39,10 @@ interface SidebarProps {
   /** Sin vista activa (p. ej. en la página de ejemplo) ningún ítem se marca. */
   vista?: Vista;
   onCambiarVista: (vista: Vista, nuevo?: boolean) => void;
+  /** Muestra un ⚠ en «Cuenta»: hay algo de seguridad pendiente (clave de recuperación). */
+  avisoCuenta?: boolean;
+  /** Modo invitado: «Casos» y «Evolución» piden cuenta; se marcan con un candado. */
+  invitado?: boolean;
 }
 
 /**
@@ -45,7 +51,7 @@ interface SidebarProps {
  * Los ítems sin `vista` son de próxima disponibilidad: se muestran para
  * comunicar el mapa del producto, pero no navegan a ninguna parte.
  */
-export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
+export default function Sidebar({ vista, onCambiarVista, avisoCuenta, invitado }: SidebarProps) {
   function navegar(destino?: Vista, nuevo?: boolean) {
     if (!destino) return;
     onCambiarVista(destino, nuevo);
@@ -101,6 +107,21 @@ export default function Sidebar({ vista, onCambiarVista }: SidebarProps) {
                 >
                   <Icono className="h-5 w-5 shrink-0" aria-hidden="true" />
                   {etiqueta}
+                  {invitado && (destino === "casos" || destino === "evolucion") && (
+                    <span className="ml-auto flex items-center text-white/50" title="Necesitas una cuenta">
+                      <Lock className="h-4 w-4" aria-hidden="true" />
+                      <span className="sr-only">Requiere cuenta</span>
+                    </span>
+                  )}
+                  {avisoCuenta && destino === "configuracion" && (
+                    <span
+                      className="ml-auto flex items-center text-dorado"
+                      title="Tienes una recomendación de seguridad pendiente"
+                    >
+                      <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+                      <span className="sr-only">Seguridad pendiente</span>
+                    </span>
+                  )}
                 </button>
               );
             })}

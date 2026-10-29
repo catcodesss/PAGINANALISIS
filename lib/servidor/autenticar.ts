@@ -6,6 +6,8 @@
 export interface TokenVerificado {
   uid: string;
   email_verified?: boolean;
+  /** Presente en los ID Token de Firebase; `anonymous` es un invitado. */
+  firebase?: { sign_in_provider?: string };
 }
 
 /** `revocados` = comprobar también que la sesión no fue revocada (una consulta más). */
@@ -22,10 +24,15 @@ export class ErrorHttp extends Error {
   }
 }
 
+/**
+ * `permitirInvitado`: las rutas de IA aceptan invitados (sesión anónima, sin
+ * correo); las que tocan casos o ranuras no, porque un invitado no tiene bóveda.
+ */
 export async function autenticar(
   peticion: Request,
-  verificar: VerificadorToken
-): Promise<{ uid: string }> {
+  verificar: VerificadorToken,
+  { permitirInvitado = false }: { permitirInvitado?: boolean } = {}
+): Promise<{ uid: string; invitado: boolean }> {
   const cabecera = peticion.headers.get("authorization") ?? "";
   const m = /^Bearer\s+(\S+)$/i.exec(cabecera);
   if (!m) throw new ErrorHttp(401, "sin_sesion", "Inicia sesión para continuar.");
@@ -37,8 +44,14 @@ export async function autenticar(
     throw new ErrorHttp(401, "sesion_invalida", "Tu sesión no es válida. Vuelve a iniciar sesión.");
   }
   if (!token.uid) throw new ErrorHttp(401, "sesion_invalida", "Tu sesión no es válida.");
+  if (token.firebase?.sign_in_provider === "anonymous") {
+    if (!permitirInvitado) {
+      throw new ErrorHttp(403, "cuenta_requerida", "Crea una cuenta para guardar y gestionar tus casos.");
+    }
+    return { uid: token.uid, invitado: true };
+  }
   if (token.email_verified !== true) {
     throw new ErrorHttp(403, "correo_sin_verificar", "Verifica tu correo para gestionar tus casos.");
   }
-  return { uid: token.uid };
+  return { uid: token.uid, invitado: false };
 }

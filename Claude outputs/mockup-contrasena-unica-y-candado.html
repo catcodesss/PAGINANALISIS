@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mockup · Contraseña única, recuperación y candado extra</title>
+<style>
+:root{--bg:#f5f0e8;--ink:#1f2a28;--mut:#6e6357;--green:#0f5a43;--soft:#e4efe9;--line:#e8dfd2;--card:#fbf8f2;--amber:#8a6d3b;--amberbg:#f6ecd5;--red:#9a3b2e}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,Segoe UI,sans-serif}
+h1{font-size:15px;margin:0 0 4px}
+p.hint{margin:0 0 16px;color:var(--mut);font-size:13px;max-width:780px}
+.sw{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.sw button{border:1px solid var(--line);background:var(--card);padding:7px 14px;border-radius:999px;font:inherit;cursor:pointer}
+.sw button.on{background:var(--green);border-color:var(--green);color:#fff}
+.stage{max-width:980px;border:1px dashed var(--line);border-radius:14px;padding:32px 16px;min-height:560px;display:flex;justify-content:center;align-items:flex-start}
+.pane{display:none;width:100%;max-width:440px}.pane.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:24px;box-shadow:0 1px 3px #0001}
+.card h2{font:400 21px/1.25 Georgia,serif;margin:0 0 8px}
+.card p{margin:0 0 12px;color:var(--mut)} .card p b{color:var(--ink)}
+label{display:block;margin:14px 0 6px}
+input[type=text],input[type=password]{width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--bg);border-radius:6px;font:inherit}
+.btn{display:block;width:100%;margin-top:16px;padding:10px;border:0;border-radius:6px;background:var(--green);color:#fff;font:inherit;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.sec{background:transparent;color:var(--green);border:1px solid var(--green)}
+.lnk{background:none;border:0;padding:0;color:var(--green);text-decoration:underline;font:inherit;cursor:pointer;margin-top:14px;display:inline-block}
+.meter{height:6px;border-radius:3px;background:var(--line);margin-top:8px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--red);transition:.2s}
+.meter small{display:block;margin-top:4px;color:var(--mut);font-size:12px}
+.chk{display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13px}.chk input{margin-top:3px}
+.words{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.words span{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+.words span em{color:var(--mut);font-style:normal;font-size:11px;margin-right:4px}
+.row{display:flex;gap:14px;margin-top:4px}
+.note{background:var(--amberbg);border:1px solid #e7d49c;border-radius:8px;padding:10px 12px;color:#5d4a1f;font-size:13px;margin:12px 0}
+.note.ok{background:var(--soft);border-color:#b9d6c8;color:#12432f}
+.opts{display:grid;gap:10px;margin-top:14px}
+.opt{display:flex;gap:12px;align-items:center;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:11px 12px;cursor:pointer;font:inherit;text-align:left;width:100%}
+.opt:hover{border-color:var(--green)}
+.opt .ic{font-size:20px;width:28px;text-align:center}
+.opt b{display:block}.opt small{color:var(--mut)}
+.or{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:12px;margin:16px 0 0}.or:before,.or:after{content:"";flex:1;border-top:1px solid var(--line)}
+/* caso */
+.app{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;width:100%;max-width:640px}
+.top{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.top b{font-family:Georgia,serif;font-size:16px;font-weight:400}
+.pill{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:var(--bg)}
+.pill.lock{background:var(--amberbg);border-color:#e7d49c;color:#5d4a1f}
+.list{padding:8px}
+.case{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:8px;cursor:pointer}
+.case:hover{background:var(--soft)}.case small{color:var(--mut);display:block}
+.fake{height:11px;background:var(--line);border-radius:6px;margin:10px 0}
+.modal{background:#1f2a2866;position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:16px;border-radius:12px}
+.modal.on{display:flex}.modal .card{max-width:380px;width:100%}
+.rel{position:relative;width:100%;max-width:640px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:9px 16px;border-radius:8px;opacity:0;transition:.25s;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%)}
+</style></head><body>
+
+<h1>Mockup · Una sola contraseña, recuperación y «candado extra»</h1>
+<p class="hint">Maqueta navegable, sin cifrado real. Cambia de pantalla con los botones y prueba los flujos. La contraseña y las palabras de aquí son de ejemplo.</p>
+<div class="sw" id="sw">
+  <button data-p="crear" class="on">1 · Crear cuenta</button>
+  <button data-p="inicio">2 · Primer uso (⚠ pendiente)</button>
+  <button data-p="clave">3 · Configuración · Clave</button>
+  <button data-p="entrar">4 · Entrar</button>
+  <button data-p="olvide">5 · Olvidé mi contraseña</button>
+  <button data-p="candado">6 · Candado en un caso</button>
+</div>
+
+<div class="stage">
+
+<!-- 1 CREAR -->
+<section class="pane on" id="crear"><div class="card">
+  <h2>Crea tu cuenta</h2>
+  <p>Con tu contraseña entras a ACIA y se protegen tus casos. <b>Una sola contraseña</b> para todo.</p>
+  <label for="ce">Correo</label>
+  <input type="text" id="ce" placeholder="tu@correo.com">
+  <label for="c1">Contraseña (12 o más caracteres)</label>
+  <input type="password" id="c1" placeholder="Una frase corta que recuerdes">
+  <div class="meter"><i id="mt"></i><small id="mtx">Escribe al menos 12 caracteres</small></div>
+  <label for="c2">Repite la contraseña</label>
+  <input type="password" id="c2">
+  <div class="note">Tus casos se cifran en este dispositivo. <b>Nadie en ACIA puede leerlos ni restablecer esta contraseña por ti.</b> Más adelante, en Configuración, podrás crear una clave de recuperación.</div>
+  <button class="btn" id="b1" disabled>Crear cuenta</button>
+</div></section>
+
+<!-- 2 INICIO -->
+<section class="pane" id="inicio" style="max-width:640px"><div class="app">
+  <div class="top"><b>Mis casos</b>
+    <button class="pill" id="gear" onclick="go('clave')" style="cursor:pointer" title="Configuración">⚙ Configuración <span id="alerta" style="color:#b45309;font-weight:700">⚠</span></button></div>
+  <div class="list">
+    <div class="note" id="aviso-ini" style="margin:8px">⚠ <b>Tu cuenta aún no tiene clave de recuperación.</b> Si olvidas tu contraseña, no podrás abrir tus casos. <button class="lnk" style="margin:0" onclick="go('clave')">Crearla ahora</button></div>
+    <div class="case"><div>Aún no hay casos<small>Crea el primero cuando quieras</small></div></div>
+    <div class="fake" style="width:70%"></div><div class="fake" style="width:50%"></div>
+  </div></div></section>
+
+<!-- 3 CLAVE (Configuración) -->
+<section class="pane" id="clave"><div class="card">
+  <h2>Configuración · Seguridad</h2>
+  <div class="case" style="border:1px solid var(--line);margin:12px 0;cursor:default" id="fila-clave">
+    <div><b>Clave de recuperación</b><small id="estado-clave" style="color:#b45309">⚠ Pendiente: sin ella no se puede restablecer la contraseña</small></div>
+  </div>
+  <div id="paso-0">
+    <p>Son <b>12 palabras</b>. Si algún día olvidas tu contraseña, es la única forma de volver a abrir tus casos. Puedes hacerlo ahora o más adelante.</p>
+    <button class="btn" id="b2-0">Crear mi clave de recuperación</button>
+  </div>
+  <div id="paso-w" style="display:none">
+    <div class="words" id="words"></div>
+    <div class="row">
+      <button class="lnk" id="cp">Copiar</button>
+      <button class="lnk" onclick="toast('Se abriría el PDF imprimible')">Descargar PDF para imprimir</button>
+    </div>
+    <div id="paso-a">
+      <div class="note">Guárdala <b>fuera de este dispositivo</b>: impresa o en un gestor de contraseñas.</div>
+      <button class="btn" id="b2a">Ya la guardé, comprobar</button>
+    </div>
+    <div id="paso-b" style="display:none">
+      <div class="note ok">Comprobemos que la guardaste. Escribe las palabras que faltan.</div>
+      <label>Palabra n.º 3</label><input type="text" id="v3" autocomplete="off">
+      <label>Palabra n.º 8</label><input type="text" id="v8" autocomplete="off">
+      <label>Palabra n.º 11</label><input type="text" id="v11" autocomplete="off">
+      <p style="margin-top:8px;font-size:12px" id="verr"></p>
+      <button class="btn" id="b2b" disabled>Terminar</button>
+    </div>
+  </div>
+  <div id="paso-ok" style="display:none">
+    <div class="note ok">✓ Clave de recuperación creada y comprobada.</div>
+    <button class="lnk" onclick="regen()">Generar una nueva (la anterior dejará de servir)</button>
+  </div>
+</div></section>
+
+<!-- 4 ENTRAR -->
+<section class="pane" id="entrar"><div class="card">
+  <h2>Bienvenida de nuevo</h2>
+  <p>Abre tus casos en este dispositivo.</p>
+  <div class="opts">
+    <button class="opt" onclick="toast('Se pediría huella, rostro o PIN de Windows')"><span class="ic">🖐</span><span><b>Entrar con huella o PIN</b><small>Rápido, sin escribir nada</small></span></button>
+  </div>
+  <div class="or">o con contraseña</div>
+  <label for="e1">Contraseña</label>
+  <input type="password" id="e1">
+  <button class="btn" onclick="toast('Bóveda abierta')">Entrar</button>
+  <button class="lnk" onclick="go('olvide')">Olvidé mi contraseña</button>
+  <div class="note" style="margin-top:16px">La primera vez en un dispositivo nuevo se pide la contraseña; después puedes activar huella o PIN.</div>
+</div></section>
+
+<!-- 5 OLVIDE -->
+<section class="pane" id="olvide"><div class="card">
+  <h2>Recuperar el acceso</h2>
+  <p>Elige cómo quieres recuperarlo.</p>
+  <div class="opts">
+    <button class="opt" onclick="show('o-pal')"><span class="ic">📝</span><span><b>Tengo mis 12 palabras</b><small>Escríbelas y elige una contraseña nueva</small></span></button>
+    <button class="opt" onclick="show('o-sin')"><span class="ic">❓</span><span><b>No las tengo</b><small>Qué se puede hacer</small></span></button>
+  </div>
+  <div id="o-pal" style="display:none">
+    <label for="r1">Tus 12 palabras</label>
+    <input type="text" id="r1" placeholder="palabra1 palabra2 palabra3 …">
+    <label for="r2">Contraseña nueva</label><input type="password" id="r2">
+    <button class="btn" onclick="toast('Contraseña cambiada · tus casos siguen intactos')">Cambiar contraseña</button>
+  </div>
+  <div id="o-sin" style="display:none">
+    <div class="note"><b>Sin la contraseña ni las 12 palabras, ACIA no puede abrir tus casos</b>, ni siquiera a petición tuya: así se garantiza que nadie más los lea. Por eso conviene crear la clave de recuperación en Configuración antes de necesitarla.<br><br>Si activaste una copia en la nube, puedes <b>empezar de cero y restaurar</b> solo si recuerdas la contraseña con la que se hizo.</div>
+    <button class="btn sec" onclick="toast('Se abriría «Empezar de cero» con doble confirmación')">Empezar de cero…</button>
+  </div>
+</div></section>
+
+<!-- 6 CANDADO -->
+<section class="pane" id="candado" style="max-width:640px"><div class="rel">
+  <div class="app">
+    <div class="top"><b>Mis casos</b><span class="pill">Bóveda abierta</span></div>
+    <div class="list">
+      <div class="case"><div>Caso M.R. · TCC<small>Última sesión: hace 3 días</small></div><span></span></div>
+      <div class="case"><div>Caso A.P. · DBT<small>Última sesión: ayer</small></div><button class="lnk" style="margin:0;font-size:13px" id="cand-btn">Poner candado…</button></div>
+      <div class="case" id="caso-l" style="display:none"><div>Caso A.P. · DBT<small>Protegido con candado extra</small></div><span class="pill lock">🔒 Candado</span></div>
+      <div class="fake" style="width:70%"></div><div class="fake" style="width:50%"></div>
+    </div>
+  </div>
+  <div class="modal" id="m-cand"><div class="card">
+    <h2>Poner candado a este caso</h2>
+    <p>Para abrirlo se pedirá una <b>contraseña adicional</b>, aunque tu bóveda ya esté abierta. Útil para casos muy sensibles.</p>
+    <label for="k1">Contraseña del candado</label><input type="password" id="k1">
+    <div class="note">Si la olvidas, <b>este caso no se podrá abrir</b>, ni con tus 12 palabras. Además, su contenido <b>no aparecerá en la búsqueda</b> ni en las vistas generales hasta que lo abras.</div>
+    <label class="chk" style="margin-top:10px"><input type="checkbox" id="k2"><span>Entiendo que no se puede recuperar.</span></label>
+    <button class="btn" id="kb" disabled>Poner candado</button>
+    <button class="lnk" id="kc">Cancelar</button>
+  </div></div>
+</div></section>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+function go(p){document.querySelectorAll('.pane').forEach(e=>e.classList.toggle('on',e.id===p));document.querySelectorAll('#sw button').forEach(b=>b.classList.toggle('on',b.dataset.p===p))}
+document.querySelectorAll('#sw button').forEach(b=>b.onclick=()=>go(b.dataset.p));
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),2200)}
+function show(id){['o-pal','o-sin'].forEach(x=>$(x).style.display=x===id?'block':'none')}
+/* 1 */
+function chk1(){const a=$('c1').value,b=$('c2').value;const n=a.length;
+ const lv=n>=20?100:n>=16?75:n>=12?50:Math.min(n/12*30,30);
+ $('mt').style.width=lv+'%';$('mt').style.background=n>=16?'#0f5a43':n>=12?'#c8a15a':'#9a3b2e';
+ $('mtx').textContent=n<12?'Escribe al menos 12 caracteres':n<16?'Aceptable. Una frase más larga es más segura':'Muy buena';
+ $('b1').disabled=!(n>=12&&a===b)}
+$('c1').oninput=$('c2').oninput=chk1;$('b1').onclick=()=>{toast('Cuenta creada');go('inicio')};
+/* 2 */
+const W='ladrillo,mármol,cereza,faro,tinta,nube,roble,pizarra,ámbar,sendero,tulipán,cobre'.split(',');
+$('words').innerHTML=W.map((w,i)=>`<span><em>${i+1}</em>${w}</span>`).join('');
+$('cp').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(W.join(' '));$('cp').textContent='✓ Copiada';toast('Clave copiada al portapapeles');setTimeout(()=>$('cp').textContent='Copiar',2500)};
+$('b2-0').onclick=()=>{$('paso-0').style.display='none';$('paso-w').style.display='block'};
+$('b2a').onclick=()=>{$('paso-a').style.display='none';$('paso-b').style.display='block'};
+function chk2(){const ok=$('v3').value.trim().toLowerCase()===W[2]&&$('v8').value.trim().toLowerCase()===W[7]&&$('v11').value.trim().toLowerCase()===W[10];
+ const any=$('v3').value&&$('v8').value&&$('v11').value;$('verr').textContent=!ok&&any?'Alguna palabra no coincide. Revisa tu copia (pista: n.º 3 = «cereza»).':'';$('b2b').disabled=!ok}
+['v3','v8','v11'].forEach(i=>$(i).oninput=chk2);
+$('b2b').onclick=()=>{$('paso-w').style.display='none';$('paso-ok').style.display='block';
+ $('estado-clave').textContent='✓ Creada';$('estado-clave').style.color='#0f5a43';$('alerta').style.display='none';$('aviso-ini').style.display='none';toast('Clave de recuperación guardada')};
+function regen(){$('paso-ok').style.display='none';$('paso-0').style.display='block';['v3','v8','v11'].forEach(i=>$(i).value='');$('paso-a').style.display='block';$('paso-b').style.display='none';$('b2b').disabled=true}
+/* 5 */
+$('cand-btn').onclick=()=>$('m-cand').classList.add('on');
+$('kc').onclick=()=>$('m-cand').classList.remove('on');
+function chk5(){$('kb').disabled=!($('k1').value.length>=8&&$('k2').checked)}
+$('k1').oninput=$('k2').onchange=chk5;
+$('kb').onclick=()=>{$('m-cand').classList.remove('on');$('cand-btn').parentElement.parentElement.style.display='none';$('caso-l').style.display='flex';toast('Candado puesto')};
+</script>
+</body></html>

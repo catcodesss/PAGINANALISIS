@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { repositorio, repositorioNube } from "@/lib/repositorio";
+import { autenticacion, normalizarCorreo } from "@/lib/firebaseCliente";
+import { derivarCredenciales } from "@/lib/credenciales";
 import {
   avisoAlias,
   crearExpediente,
@@ -189,7 +191,11 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
 
   function importarDeLaNube(fichero: File) {
     conManejo(async () => {
-      const r = await repositorioNube()!.importarRespaldoNube(await fichero.text(), fraseRespaldo);
+      const correo = autenticacion().currentUser?.email;
+      const candidatas = correo
+        ? [(await derivarCredenciales(normalizarCorreo(correo), fraseRespaldo)).boveda, fraseRespaldo]
+        : [fraseRespaldo];
+      const r = await repositorioNube()!.importarRespaldoNube(await fichero.text(), candidatas);
       setRespaldoNube(null);
       setFraseRespaldo("");
       await refrescar();
@@ -319,15 +325,15 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
       {respaldoNube && (
         <div className="mb-5 flex flex-wrap items-center gap-2 rounded border border-divider p-3">
           <p className="w-full text-xs text-ink-muted">
-            Escribe la frase de paso de la cuenta que creó este respaldo ({respaldoNube.name}).
+            Escribe la contraseña de la cuenta que creó este respaldo ({respaldoNube.name}).
           </p>
           <input
             type="password"
             value={fraseRespaldo}
             onChange={(e) => setFraseRespaldo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && fraseRespaldo && importarDeLaNube(respaldoNube)}
-            placeholder="Frase de paso del respaldo"
-            aria-label="Frase de paso del respaldo"
+            placeholder="Contraseña de la cuenta del respaldo"
+            aria-label="Contraseña de la cuenta del respaldo"
             autoComplete="off"
             autoFocus
             className="min-w-[14rem] flex-1 rounded border border-divider bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"

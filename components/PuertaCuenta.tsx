@@ -5,37 +5,17 @@ import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail,
+  signInAnonymously,
   signInWithEmailAndPassword,
+  updatePassword,
   type User,
 } from "firebase/auth";
 import { autenticacion, normalizarCorreo } from "@/lib/firebaseCliente";
+import { derivarCredenciales } from "@/lib/credenciales";
+import { guardarSecretoBoveda } from "@/lib/secretoSesion";
+import { MINIMO_CONTRASENA, mensajeDeError } from "@/lib/erroresCuenta";
 
 type Modo = "entrar" | "registro" | "recuperar";
-
-const MINIMO_CONTRASENA = 8;
-
-/** Mensajes en claro; sin revelar si un correo existe (salvo lo que Auth ya expone al registrar). */
-function mensajeDeError(error: unknown): string {
-  const codigo = (error as { code?: string } | null)?.code ?? "";
-  switch (codigo) {
-    case "auth/email-already-in-use":
-      return "Ya hay una cuenta con ese correo. Prueba a iniciar sesión.";
-    case "auth/weak-password":
-      return `La contraseña es demasiado débil (mínimo ${MINIMO_CONTRASENA} caracteres).`;
-    case "auth/invalid-email":
-      return "El correo no es válido.";
-    case "auth/invalid-credential":
-    case "auth/wrong-password":
-    case "auth/user-not-found":
-      return "Correo o contraseña incorrectos.";
-    case "auth/too-many-requests":
-      return "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.";
-    case "auth/network-request-failed":
-      return "No hay conexión. Las cuentas necesitan internet para iniciar sesión.";
-    default:
-      return "No se pudo completar la operación. Inténtalo de nuevo.";
-  }
-}
 
 interface Props {
   /** Usuario con sesión pero sin correo verificado, si lo hay. */
@@ -65,19 +45,35 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
     }
   }
 
+  /**
+   * Una sola contraseña: de ella salen la clave que se envía a Firebase y la
+   * que abre la bóveda (lib/credenciales.ts). Las cuentas anteriores tenían la
+   * contraseña tal cual en Firebase: si la derivada no entra, se prueba la
+   * antigua y, si sirve, la cuenta se pasa al sistema nuevo sin que el
+   * terapeuta haga nada.
+   */
   function enviar(e: FormEvent) {
     e.preventDefault();
     const auth = autenticacion();
     const email = normalizarCorreo(correo);
     void ejecutar(async () => {
       if (modo === "registro") {
-        if (contrasena.length < MINIMO_CONTRASENA) {
-          throw { code: "auth/weak-password" };
-        }
-        const { user } = await createUserWithEmailAndPassword(auth, email, contrasena);
+        if (contrasena.length < MINIMO_CONTRASENA) throw { code: "auth/weak-password" };
+        const cred = await derivarCredenciales(email, contrasena);
+        const { user } = await createUserWithEmailAndPassword(auth, email, cred.acceso);
+        guardarSecretoBoveda(cred.boveda);
         await sendEmailVerification(user);
       } else if (modo === "entrar") {
-        await signInWithEmailAndPassword(auth, email, contrasena);
+        const cred = await derivarCredenciales(email, contrasena);
+        try {
+          await signInWithEmailAndPassword(auth, email, cred.acceso);
+          guardarSecretoBoveda(cred.boveda);
+        } catch (e) {
+          if ((e as { code?: string }).code !== "auth/invalid-credential") throw e;
+          const { user } = await signInWithEmailAndPassword(auth, email, contrasena);
+          await updatePassword(user, cred.acceso).catch(() => {});
+          guardarSecretoBoveda(cred.boveda, true);
+        }
       } else {
         await sendPasswordResetEmail(auth, email);
         // Misma respuesta exista o no la cuenta.
@@ -87,8 +83,7 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
   }
 
   const contenedor = "grid min-h-screen place-items-center bg-canvas px-4";
-  const tarjeta =
-    "w-full max-w-sm rounded-lg border border-divider bg-surface p-6 shadow-sm";
+  const tarjeta = "w-full max-w-sm rounded-lg border border-divider bg-surface p-6 shadow-sm";
   const campo =
     "mt-1 w-full rounded-md border border-divider bg-canvas px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent";
   const boton =
@@ -150,64 +145,90 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
 
   return (
     <main className={contenedor}>
-      <form className={tarjeta} onSubmit={enviar}>
-        <h1 className="font-serif text-xl">{titulo}</h1>
-        <p className="mt-2 text-xs text-ink-muted">
-          ACIA no guarda tus notas ni tus casos: viven cifrados en este
-          dispositivo. La cuenta solo guarda tu correo, tu plan y un registro de
-          consumo.
-        </p>
-        <label className="mt-4 block text-sm">
-          Correo
-          <input
-            type="email"
-            autoComplete="email"
-            required
-            className={campo}
-            value={correo}
-            onChange={(e) => setCorreo(e.target.value)}
-          />
-        </label>
-        {modo !== "recuperar" && (
-          <label className="mt-3 block text-sm">
-            Contraseña de la cuenta
+      <div className="w-full max-w-sm">
+        <form className={tarjeta} onSubmit={enviar}>
+          <h1 className="font-serif text-xl">{titulo}</h1>
+          <p className="mt-2 text-xs text-ink-muted">
+            ACIA no guarda tus notas ni tus casos: viven cifrados en este
+            dispositivo. La cuenta solo guarda tu correo, tu plan y un registro de
+            consumo.
+          </p>
+          <label className="mt-4 block text-sm">
+            Correo
             <input
-              type="password"
-              autoComplete={modo === "registro" ? "new-password" : "current-password"}
+              type="email"
+              autoComplete="email"
               required
-              minLength={modo === "registro" ? MINIMO_CONTRASENA : undefined}
               className={campo}
-              value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
+              value={correo}
+              onChange={(e) => setCorreo(e.target.value)}
             />
           </label>
-        )}
-        {error && <p role="alert" className="mt-3 text-sm text-warn">{error}</p>}
-        {aviso && <p role="status" className="mt-3 text-sm text-accent">{aviso}</p>}
-        <button type="submit" className={`${boton} mt-4`} disabled={ocupado}>
-          {titulo}
-        </button>
-        <div className="mt-4 flex flex-col gap-1">
-          {modo !== "entrar" && (
-            <button type="button" className={`${enlace} text-left`} onClick={() => setModo("entrar")}>
-              Ya tengo cuenta
-            </button>
+          {modo !== "recuperar" && (
+            <label className="mt-3 block text-sm">
+              {modo === "registro" ? `Contraseña (${MINIMO_CONTRASENA} o más caracteres)` : "Contraseña"}
+              <input
+                type="password"
+                autoComplete={modo === "registro" ? "new-password" : "current-password"}
+                required
+                minLength={modo === "registro" ? MINIMO_CONTRASENA : undefined}
+                className={campo}
+                value={contrasena}
+                onChange={(e) => setContrasena(e.target.value)}
+              />
+            </label>
           )}
-          {modo !== "registro" && (
-            <button type="button" className={`${enlace} text-left`} onClick={() => setModo("registro")}>
-              Crear una cuenta
-            </button>
+          {modo === "registro" && (
+            <p className="mt-3 rounded-md border border-divider bg-canvas p-3 text-xs leading-relaxed text-ink-muted">
+              Esta misma contraseña protege tus casos.{" "}
+              <strong className="text-ink">
+                Nadie en ACIA puede leerlos ni restablecerla por ti.
+              </strong>{" "}
+              Más adelante, en Configuración, podrás crear una clave de
+              recuperación por si la olvidas.
+            </p>
           )}
-          {modo === "entrar" && (
-            <button type="button" className={`${enlace} text-left`} onClick={() => setModo("recuperar")}>
-              Olvidé mi contraseña
-            </button>
-          )}
+          {error && <p role="alert" className="mt-3 text-sm text-warn">{error}</p>}
+          {aviso && <p role="status" className="mt-3 text-sm text-accent">{aviso}</p>}
+          <button type="submit" className={`${boton} mt-4`} disabled={ocupado}>
+            {ocupado && modo !== "recuperar" ? "Un momento…" : titulo}
+          </button>
+          <div className="mt-4 flex flex-col gap-1">
+            {modo !== "entrar" && (
+              <button type="button" className={`${enlace} text-left`} onClick={() => setModo("entrar")}>
+                Ya tengo cuenta
+              </button>
+            )}
+            {modo !== "registro" && (
+              <button type="button" className={`${enlace} text-left`} onClick={() => setModo("registro")}>
+                Crear una cuenta
+              </button>
+            )}
+            {modo === "entrar" && (
+              <button type="button" className={`${enlace} text-left`} onClick={() => setModo("recuperar")}>
+                Olvidé mi contraseña
+              </button>
+            )}
+          </div>
+        </form>
+
+        <div className="mt-3 rounded-lg border border-divider bg-surface p-4 shadow-sm">
+          <p className="text-sm font-medium text-ink">¿Solo quieres probar?</p>
+          <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+            Analiza sin cuenta. <strong className="text-ink">No se guarda nada</strong>:
+            si cierras la pestaña, el análisis se pierde. Podrás crear tu cuenta
+            después y conservarlo.
+          </p>
+          <button
+            type="button"
+            disabled={ocupado}
+            onClick={() => ejecutar(async () => void (await signInAnonymously(autenticacion())))}
+            className="mt-3 w-full rounded-md border border-accent px-3 py-2 text-sm font-medium text-accent transition-colors hover:bg-accent-soft disabled:opacity-50"
+          >
+            Probar como invitado
+          </button>
         </div>
-        <p className="mt-4 text-xs text-ink-muted">
-          Esta contraseña es distinta de la que cifra tu historial en el dispositivo.
-        </p>
-      </form>
+      </div>
     </main>
   );
 }

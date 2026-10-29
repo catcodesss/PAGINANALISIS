@@ -387,4 +387,22 @@ await prueba("versiones anteriores: se muestran como sesiones, con fecha y dispo
   assert.equal(despues[0].ilegible, true, "las ilegibles van primero");
 });
 
+await prueba("clave de recuperación opcional: la bóveda nace sin ella y se crea después", async () => {
+  const almacen = almacenMemoria({ ranurasActivas: new Set() });
+  const r = await dispositivo(almacen, "uid-A");
+  await r.configurar(FRASE, { conRecuperacion: false });
+  assert.equal(r.tomarClaveRecuperacion(), null);
+  assert.equal(await r.tieneRecuperacion(), false);
+  assert.equal(await r.crearRecuperacion("frase equivocada!!"), null);
+  assert.equal(await r.tieneRecuperacion(), false);
+  const clave = await r.crearRecuperacion(FRASE);
+  assert.equal(clave.split(" ").length, 12);
+  assert.equal(await r.tieneRecuperacion(), true);
+
+  // Otro ordenador: la clave guardada en el almacén sirve para recuperar el acceso.
+  const otro = await dispositivo(almacen, "uid-A");
+  assert.equal(await otro.tieneRecuperacion(), true);
+  assert.equal(await otro.desbloquearConRecuperacion(clave, "frase nueva muy larga"), true);
+});
+
 console.log(`\n${n} pruebas pasadas\n`);

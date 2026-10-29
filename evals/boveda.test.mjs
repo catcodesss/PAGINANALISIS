@@ -15,11 +15,15 @@ import {
   regenerarRecuperacion,
   restablecerFraseConRecuperacion,
   rotarCmd,
+  tieneRecuperacion,
 } from "../lib/boveda.ts";
 import { cifrarParte, descifrarParte } from "../lib/cifradoV2.ts";
 import {
   codificarRecuperacion,
+  decodificarPalabras,
   decodificarRecuperacion,
+  codificarPalabras,
+  PALABRAS_RECUPERACION,
   PARAMETROS_POR_DEFECTO,
 } from "../lib/kdf.ts";
 
@@ -161,6 +165,67 @@ await prueba("rotar la CMD: claves reenvueltas, datos legibles, recuperación vi
 });
 await prueba("rotar con frase incorrecta no cambia nada", async () => {
   assert.equal(await rotarCmd(boveda, "frase incorrecta!!", UID, [envuelta], RAPIDO), null);
+});
+
+await prueba("clave de recuperación: 12 palabras de la lista, ida y vuelta", () => {
+  const palabras = claveRecuperacion.split(" ");
+  assert.equal(palabras.length, 12);
+  assert.ok(palabras.every((p) => PALABRAS_RECUPERACION.includes(p)));
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  assert.deepEqual([...decodificarPalabras(codificarPalabras(bytes))], [...bytes]);
+});
+await prueba("la lista tiene 2048 palabras distintas de 4 letras", () => {
+  assert.equal(PALABRAS_RECUPERACION.length, 2048);
+  assert.equal(new Set(PALABRAS_RECUPERACION).size, 2048);
+  assert.ok(PALABRAS_RECUPERACION.every((p) => /^[a-z]{4}$/.test(p)));
+});
+await prueba("palabras: tolera mayúsculas, comas y saltos de línea", () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const sucio = codificarPalabras(bytes).toUpperCase().replaceAll(" ", ", ");
+  assert.deepEqual([...decodificarPalabras(sucio)], [...bytes]);
+});
+await prueba("palabras: detecta una errata, una palabra de menos y palabras ajenas", () => {
+  const palabras = codificarPalabras(crypto.getRandomValues(new Uint8Array(16))).split(" ");
+  const otra = PALABRAS_RECUPERACION.find((p) => p !== palabras[4]);
+  let detectadas = 0;
+  for (const cand of PALABRAS_RECUPERACION.slice(0, 64)) {
+    if (cand === palabras[4]) continue;
+    const alterada = [...palabras];
+    alterada[4] = cand;
+    if (decodificarPalabras(alterada.join(" ")) === null) detectadas++;
+  }
+  assert.ok(detectadas >= 55, `solo ${detectadas}/63 erratas detectadas`);
+  assert.equal(decodificarPalabras(palabras.slice(1).join(" ")), null);
+  assert.equal(decodificarPalabras(palabras.map(() => "hola").join(" ")), null);
+  assert.ok(otra);
+});
+await prueba("la clave de 12 palabras abre la bóveda", async () => {
+  assert.ok(await desbloquearConRecuperacion(boveda, claveRecuperacion.toUpperCase()));
+  assert.equal(await desbloquearConRecuperacion(boveda, "bafe ".repeat(12)), null);
+});
+await prueba("el formato antiguo (52 caracteres) sigue sirviendo", async () => {
+  const viejo = codificarRecuperacion(crypto.getRandomValues(new Uint8Array(32)));
+  assert.equal(decodificarRecuperacion(viejo)?.length, 32);
+});
+await prueba("bóveda sin clave de recuperación: se abre con la frase y no tiene ranura", async () => {
+  const r = await crearBoveda(FRASE, RAPIDO, { conRecuperacion: false });
+  assert.equal(r.claveRecuperacion, null);
+  assert.equal(tieneRecuperacion(r.boveda), false);
+  assert.ok(await desbloquearConFrase(r.boveda, FRASE));
+  assert.equal(tieneRecuperacion(boveda), true);
+});
+await prueba("la clave se puede crear más tarde y entonces sirve", async () => {
+  const r = await crearBoveda(FRASE, RAPIDO, { conRecuperacion: false });
+  const g = await regenerarRecuperacion(r.boveda, FRASE);
+  assert.equal(tieneRecuperacion(g.boveda), true);
+  assert.ok(await desbloquearConRecuperacion(g.boveda, g.claveRecuperacion));
+  assert.equal(await regenerarRecuperacion(r.boveda, "frase equivocada!!"), null);
+});
+await prueba("rotar la CMD no crea una clave de recuperación si no existía", async () => {
+  const r = await crearBoveda(FRASE, RAPIDO, { conRecuperacion: false });
+  const rot = await rotarCmd(r.boveda, FRASE, UID, [], RAPIDO);
+  assert.equal(rot.claveRecuperacion, null);
+  assert.equal(tieneRecuperacion(rot.boveda), false);
 });
 
 console.log(`\n${n} pruebas pasadas\n`);

@@ -21,6 +21,8 @@ export interface DependenciasAutorizacion {
 export interface Llamada {
   /** `null` solo cuando no se exige sesión. */
   uid: string | null;
+  /** Sesión anónima: sin cuenta ni bóveda. Paga más por análisis (lib/precios.ts) y no tiene casos. */
+  invitado: boolean;
   /**
    * Valida el `caso_uid` del cuerpo. Devuelve el id limpio, o `null` si no vino y
    * no era obligatorio. Con sesión, comprueba que la ranura sea de este usuario y esté activa.
@@ -44,11 +46,21 @@ export async function identificarLlamada(
   deps: DependenciasAutorizacion,
   exigirSesion: boolean = sesionExigida()
 ): Promise<Llamada> {
-  const uid = exigirSesion ? (await autenticar(peticion, deps.verificar)).uid : null;
+  const sesion = exigirSesion
+    ? await autenticar(peticion, deps.verificar, { permitirInvitado: true })
+    : null;
+  const uid = sesion?.uid ?? null;
+  const invitado = sesion?.invitado ?? false;
 
   return {
     uid,
+    invitado,
     async comprobarCaso(casoUid, obligatorio) {
+      if (invitado) {
+        // Un invitado no tiene bóveda ni casos: no hay ranura que comprobar.
+        if (casoUid === undefined || casoUid === null) return null;
+        throw new ErrorHttp(403, "caso_ajeno", "Un invitado no tiene casos. Crea una cuenta para guardarlos.");
+      }
       if (casoUid === undefined || casoUid === null) {
         if (obligatorio) throw new ErrorHttp(400, "caso_requerido", "Falta el identificador del caso.");
         return null;

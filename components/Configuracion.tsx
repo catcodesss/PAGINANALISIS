@@ -11,6 +11,8 @@ import {
 import { useState } from "react";
 import { UserRound } from "lucide-react";
 import { useCuenta } from "./ProveedorCuenta";
+import ClaveRecuperacion from "./ClaveRecuperacion";
+import { repositorioNube } from "@/lib/repositorio";
 import { usePreferencias } from "./usePreferencias";
 import { ESCALA_TEXTO } from "@/lib/preferencias";
 import type { Acento, TamanoTexto, Tema } from "@/lib/preferencias";
@@ -64,13 +66,26 @@ const PLAN_PREMIUM = [
 
 export default function Configuracion() {
   const { preferencias, cambiar } = usePreferencias();
-  const { usuario, cerrarSesion } = useCuenta();
+  const { usuario, cerrarSesion, invitado, pedirCuenta } = useCuenta();
   const [saliendo, setSaliendo] = useState(false);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <Tarjeta titulo="Cuenta" icono={UserRound}>
-        {usuario ? (
+        {invitado ? (
+          <Campo
+            etiqueta="Modo invitado"
+            descripcion="Puedes analizar, pero no se guarda nada: si cierras la pestaña, se pierde. Con una cuenta conservas tus análisis y tus monedas."
+          >
+            <button
+              type="button"
+              onClick={() => pedirCuenta()}
+              className="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            >
+              Crear cuenta
+            </button>
+          </Campo>
+        ) : usuario ? (
           <Campo
             etiqueta={usuario.email ?? "Sin correo"}
             descripcion={`${
@@ -100,6 +115,12 @@ export default function Configuracion() {
           </p>
         )}
       </Tarjeta>
+
+      {repositorioNube() && !invitado && (
+        <Tarjeta titulo="Seguridad" icono={ShieldCheck}>
+          <ClaveRecuperacion />
+        </Tarjeta>
+      )}
 
       <Tarjeta titulo="Apariencia" icono={Palette}>
         <Campo

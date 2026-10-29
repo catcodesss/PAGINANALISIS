@@ -13,9 +13,12 @@ import {
 import { fusionarExpedientes, type AvisoFusion } from "./nube/fusion";
 import {
   abrirClaveCaso,
+  cambiarFrase,
   crearBoveda,
   crearClaveCaso,
   desbloquearConFrase,
+  regenerarRecuperacion,
+  tieneRecuperacion,
   restablecerFraseConRecuperacion,
   type Boveda,
   type ClaveCasoEnvuelta,
@@ -140,15 +143,40 @@ export class RepositorioNube implements Repositorio {
     return this.boveda;
   }
 
-  /** Crea la bóveda. La clave de recuperación se recoge una sola vez con `tomarClaveRecuperacion`. */
-  async configurar(frase: string): Promise<void> {
+  /**
+   * Crea la bóveda. Con `conRecuperacion` (por defecto), la clave de recuperación
+   * se recoge una sola vez con `tomarClaveRecuperacion`; sin ella, se puede crear
+   * más tarde con `crearRecuperacion`.
+   */
+  async configurar(frase: string, { conRecuperacion = true }: { conRecuperacion?: boolean } = {}): Promise<void> {
     const uid = this.exigirUid();
     if (await this.cargarBoveda()) throw new Error("Esta cuenta ya tiene una bóveda de claves.");
-    const { boveda, cmd, claveRecuperacion } = await crearBoveda(frase);
+    const { boveda, cmd, claveRecuperacion } = await crearBoveda(frase, {}, { conRecuperacion });
     await this.almacen().guardarBoveda(uid, boveda);
     this.boveda = boveda;
     this.cmd = cmd;
     this.pendienteRecuperacion = claveRecuperacion;
+  }
+
+  /** ¿Esta cuenta ya tiene clave de recuperación? Es opcional. */
+  async tieneRecuperacion(): Promise<boolean> {
+    const b = await this.cargarBoveda();
+    return b !== null && tieneRecuperacion(b);
+  }
+
+  /**
+   * Crea la clave de recuperación (o una nueva, invalidando la anterior). Pide la
+   * frase porque la CMD no se puede sacar del navegador. Devuelve la clave en
+   * palabras, o null si la frase no es la correcta.
+   */
+  async crearRecuperacion(frase: string): Promise<string | null> {
+    const b = await this.cargarBoveda();
+    if (!b) return null;
+    const r = await regenerarRecuperacion(b, frase);
+    if (!r) return null;
+    await this.almacen().guardarBoveda(this.exigirUid(), r.boveda);
+    this.boveda = r.boveda;
+    return r.claveRecuperacion;
   }
 
   /** Devuelve la clave de recuperación recién creada y la olvida. */
@@ -164,6 +192,17 @@ export class RepositorioNube implements Repositorio {
     const cmd = await desbloquearConFrase(b, frase);
     if (!cmd) return false;
     this.cmd = cmd;
+    return true;
+  }
+
+  /** Cambia la frase de la bóveda (p. ej. para unirla a la contraseña de la cuenta). */
+  async cambiarFrase(fraseActual: string, fraseNueva: string): Promise<boolean> {
+    const b = await this.cargarBoveda();
+    if (!b) return false;
+    const nueva = await cambiarFrase(b, fraseActual, fraseNueva);
+    if (!nueva) return false;
+    await this.almacen().guardarBoveda(this.exigirUid(), nueva);
+    this.boveda = nueva;
     return true;
   }
 
@@ -436,7 +475,7 @@ export class RepositorioNube implements Repositorio {
    */
   async importarRespaldoNube(
     contenido: string,
-    frase: string
+    frase: string | string[]
   ): Promise<{ importados: number; omitidos: number; fallidos: number }> {
     this.exigirCmd();
     const datos = JSON.parse(contenido) as {
@@ -448,8 +487,13 @@ export class RepositorioNube implements Repositorio {
     if (datos.formato !== "acia-respaldo-nube-v1" || !datos.uid || !datos.boveda || !Array.isArray(datos.casos)) {
       throw new Error("El archivo no es un respaldo de la nube de ACIA.");
     }
-    const cmdOrigen = await desbloquearConFrase(datos.boveda, frase);
-    if (!cmdOrigen) throw new Error("La frase no abre este respaldo.");
+    // Varias candidatas: la clave derivada de la contraseña, o la frase aparte de una cuenta anterior.
+    let cmdOrigen: CryptoKey | null = null;
+    for (const candidata of Array.isArray(frase) ? frase : [frase]) {
+      cmdOrigen = await desbloquearConFrase(datos.boveda, candidata);
+      if (cmdOrigen) break;
+    }
+    if (!cmdOrigen) throw new Error("La contraseña no abre este respaldo.");
 
     const existentes = new Set((await this.almacen().listarIndices(this.exigirUid())).map((i) => i.caso_uid));
     let importados = 0;

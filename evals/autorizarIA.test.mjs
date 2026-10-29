@@ -70,6 +70,7 @@ const bd = () => ({
 const tokens = {
   tokenA: { uid: "A", email_verified: true },
   tokenSinVerificar: { uid: "A", email_verified: false },
+  tokenInvitado: { uid: "G", email_verified: false, firebase: { sign_in_provider: "anonymous" } },
 };
 const verificar = async (t) => {
   if (!tokens[t]) throw new Error("token inválido");
@@ -96,6 +97,23 @@ await prueba("con sesión, el uid sale del token", async () => {
 await prueba("sin exigir sesión no se consulta el token", async () => {
   const l = await A.identificarLlamada(peticion(null), deps, false);
   assert.equal(l.uid, null);
+});
+
+console.log("Invitado");
+await prueba("un invitado (sesión anónima) pasa sin correo verificado y se marca como invitado", async () => {
+  const l = await A.identificarLlamada(peticion("tokenInvitado"), deps, true);
+  assert.equal(l.uid, "G");
+  assert.equal(l.invitado, true);
+  assert.equal((await A.identificarLlamada(peticion("tokenA"), deps, true)).invitado, false);
+});
+await prueba("un invitado no necesita caso_uid aunque sea obligatorio, y no puede nombrar uno", async () => {
+  const l = await A.identificarLlamada(peticion("tokenInvitado"), deps, true);
+  assert.equal(await l.comprobarCaso(undefined, true), null);
+  assert.equal(await cod(l.comprobarCaso(CASO, true)), "caso_ajeno");
+});
+await prueba("las rutas de casos (sin permitirInvitado) piden cuenta a un invitado", async () => {
+  const { autenticar } = require(join(RAIZ, ".tmp-evals-autorizacion/servidor/autenticar.js"));
+  assert.equal(await cod(autenticar(peticion("tokenInvitado"), verificar)), "cuenta_requerida");
 });
 
 console.log("Caso");

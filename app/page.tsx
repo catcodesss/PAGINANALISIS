@@ -53,6 +53,8 @@ import {
   type Expediente,
 } from "@/lib/casos";
 import RevisarCambios from "@/components/RevisarCambios";
+import { useRecuperacionPendiente } from "@/components/useRecuperacionPendiente";
+import { EVENTO_CUENTA_CREADA, useCuenta } from "@/components/ProveedorCuenta";
 import {
   aplicarPropuestas,
   limpiarBlancosRevisados,
@@ -96,6 +98,9 @@ export default function Home() {
   const [ultimoTextoEnviado, setUltimoTextoEnviado] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [vista, setVista] = useState<Vista>("analisis");
+  const recuperacionPendiente = useRecuperacionPendiente();
+  const { invitado, pedirCuenta } = useCuenta();
+  const [avisoCuentaCreada, setAvisoCuentaCreada] = useState("");
   const [selectorAbierto, setSelectorAbierto] = useState(false);
   // La cadena DBT es opcional: solo entra en el análisis si se pide aquí.
   const [incluirCadenaDbt, setIncluirCadenaDbt] = useState(false);
@@ -172,6 +177,15 @@ export default function Home() {
   }, [analisis, sesionVista]);
 
   function cambiarVista(v: Vista, nuevo?: boolean) {
+    // Un invitado analiza, pero casos y evolución viven en la bóveda: hace falta cuenta.
+    if (invitado && (v === "casos" || v === "evolucion")) {
+      pedirCuenta(
+        v === "casos"
+          ? "Para guardar y ver tus casos necesitas una cuenta."
+          : "Para ver la evolución de tus casos necesitas una cuenta."
+      );
+      return;
+    }
     if (v === "analisis" && nuevo) manejarNuevoAnalisis();
     setVista(v);
     if (v === "casos") {
@@ -259,6 +273,37 @@ export default function Home() {
     expedienteRef.current = guardado;
     setExpediente(guardado);
   }
+
+  // Un invitado que crea su cuenta no pierde el análisis abierto: pasa a su
+  // biblioteca cifrada en cuanto la bóveda está lista.
+  const guardarAlCrearCuenta = useRef(guardarEnBiblioteca);
+  useEffect(() => {
+    guardarAlCrearCuenta.current = guardarEnBiblioteca;
+  });
+  useEffect(() => {
+    async function alCrearCuenta() {
+      if (!analisis || expedienteRef.current) {
+        setAvisoCuentaCreada("Tu cuenta está lista.");
+        return;
+      }
+      try {
+        await guardarAlCrearCuenta.current();
+        setAvisoCuentaCreada("Tu cuenta está lista y el análisis ya está en tu biblioteca.");
+      } catch {
+        setAvisoCuentaCreada("Tu cuenta está lista. No se pudo guardar el análisis: usa «Guardar en mi biblioteca».");
+      }
+    }
+    window.addEventListener(EVENTO_CUENTA_CREADA, alCrearCuenta);
+    return () => window.removeEventListener(EVENTO_CUENTA_CREADA, alCrearCuenta);
+  }, [analisis]);
+
+  // Como invitado, cerrar o recargar con un análisis en pantalla lo perdería.
+  useEffect(() => {
+    if (!invitado || !analisis) return;
+    const avisar = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [invitado, analisis]);
 
   /**
    * «Añadir sesión» sin IA: guarda la nota y el registro, y la formulación
@@ -671,7 +716,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-canvas print:block">
-      <Sidebar vista={vista} onCambiarVista={cambiarVista} />
+      <Sidebar vista={vista} onCambiarVista={cambiarVista} avisoCuenta={recuperacionPendiente} invitado={invitado} />
 
       <div className="min-w-0 flex-1">
         <main
@@ -906,7 +951,16 @@ export default function Home() {
                 </p>
                 <div className="flex flex-wrap gap-3">
                   {/* Un análisis hecho sin caso no se guarda solo: este botón lo lleva a la biblioteca. */}
-                  {!expediente && analisis && (
+                  {!expediente && analisis && invitado && (
+                    <button
+                      type="button"
+                      onClick={() => pedirCuenta("Para guardar este análisis necesitas una cuenta.")}
+                      className="rounded border border-divider bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                    >
+                      Guardar en mi biblioteca
+                    </button>
+                  )}
+                  {!expediente && analisis && !invitado && (
                     <GuardarEnBiblioteca
                       nota={ultimoTextoEnviado}
                       analisis={analisis}
@@ -935,6 +989,11 @@ export default function Home() {
                   <button type="button" onClick={() => setSesionVista(null)} className="font-medium text-accent hover:underline">
                     Volver a la vigente
                   </button>
+                </p>
+              )}
+              {avisoCuentaCreada && (
+                <p role="status" className="mb-4 text-sm text-accent print:hidden">
+                  {avisoCuentaCreada}
                 </p>
               )}
               {avisoGuardado && (
@@ -969,7 +1028,7 @@ export default function Home() {
                   copiado,
                   onWord: manejarDescargarDocx,
                   // Solo sin caso: dentro de un caso ya se guarda solo.
-                  onGuardarBiblioteca: expediente ? undefined : guardarEnBiblioteca,
+                  onGuardarBiblioteca: expediente || invitado ? undefined : guardarEnBiblioteca,
                 }}
               />
             </div>
