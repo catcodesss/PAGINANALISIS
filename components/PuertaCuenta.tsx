@@ -11,7 +11,8 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
-import { autenticacion, normalizarCorreo } from "@/lib/firebaseCliente";
+import { Eye } from "lucide-react";
+import { autenticacion, normalizarCorreo, nubeActivada } from "@/lib/firebaseCliente";
 import { derivarCredenciales } from "@/lib/credenciales";
 import { guardarSecretoBoveda } from "@/lib/secretoSesion";
 import { MINIMO_CONTRASENA, mensajeDeError } from "@/lib/erroresCuenta";
@@ -178,9 +179,9 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
         <form className={tarjeta} onSubmit={enviar}>
           <h1 className="font-serif text-xl">{titulo}</h1>
           <p className="mt-2 text-xs text-ink-muted">
-            ACIA no guarda tus notas ni tus casos: viven cifrados en este
-            dispositivo. La cuenta solo guarda tu correo, tu plan y un registro de
-            consumo.
+            {nubeActivada()
+              ? "Tus casos se guardan cifrados y solo se abren con tu contraseña, desde cualquier dispositivo. Nadie en ACIA puede leerlos. La cuenta guarda además tu correo, tu plan y un registro de consumo."
+              : "ACIA no guarda tus notas ni tus casos: viven cifrados en este dispositivo. La cuenta solo guarda tu correo, tu plan y un registro de consumo."}
           </p>
           {modo === "registro" && (
             <div className="mt-4">
@@ -201,27 +202,23 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
           {modo !== "recuperar" && (
             <label className="mt-3 block text-sm">
               {modo === "registro" ? `Contraseña (${MINIMO_CONTRASENA} o más caracteres)` : "Contraseña"}
-              <input
-                type="password"
+              <CampoContrasena
                 autoComplete={modo === "registro" ? "new-password" : "current-password"}
-                required
                 minLength={modo === "registro" ? MINIMO_CONTRASENA : undefined}
                 className={campo}
-                value={contrasena}
-                onChange={(e) => setContrasena(e.target.value)}
+                valor={contrasena}
+                onCambio={setContrasena}
               />
             </label>
           )}
           {modo === "registro" && (
             <label className="mt-3 block text-sm">
               Repite la contraseña
-              <input
-                type="password"
+              <CampoContrasena
                 autoComplete="new-password"
-                required
                 className={campo}
-                value={repetir}
-                onChange={(e) => setRepetir(e.target.value)}
+                valor={repetir}
+                onCambio={setRepetir}
               />
             </label>
           )}
@@ -240,19 +237,19 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
           <button type="submit" className={`${boton} mt-4`} disabled={ocupado}>
             {ocupado && modo !== "recuperar" ? "Un momento…" : titulo}
           </button>
-          <div className="mt-4 flex flex-col gap-1">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
             {modo !== "entrar" && (
-              <button type="button" className={`${enlace} text-left`} onClick={() => setModo("entrar")}>
+              <button type="button" className={enlace} onClick={() => setModo("entrar")}>
                 Ya tengo cuenta
               </button>
             )}
             {modo !== "registro" && (
-              <button type="button" className={`${enlace} text-left`} onClick={() => setModo("registro")}>
+              <button type="button" className={enlace} onClick={() => setModo("registro")}>
                 Crear una cuenta
               </button>
             )}
             {modo === "entrar" && (
-              <button type="button" className={`${enlace} text-left`} onClick={() => setModo("recuperar")}>
+              <button type="button" className={enlace} onClick={() => setModo("recuperar")}>
                 Olvidé mi contraseña
               </button>
             )}
@@ -277,5 +274,65 @@ export default function PuertaCuenta({ pendiente, onCerrarSesion, onVerificado }
         </div>
       </div>
     </main>
+  );
+}
+
+/**
+ * Contraseña con un ojo que la muestra solo MIENTRAS se mantiene pulsado: al
+ * soltar vuelve a ocultarse, así no queda a la vista por olvido. Importa porque
+ * esta contraseña abre los casos y nadie puede restablecerla.
+ */
+function CampoContrasena({
+  valor,
+  onCambio,
+  autoComplete,
+  minLength,
+  className,
+}: {
+  valor: string;
+  onCambio: (v: string) => void;
+  autoComplete: string;
+  minLength?: number;
+  className: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  const mostrar = () => setVisible(true);
+  const ocultar = () => setVisible(false);
+
+  return (
+    // El margen pasa del campo al contenedor para que el ojo quede centrado en el campo.
+    <span className="relative mt-1 block">
+      <input
+        type={visible ? "text" : "password"}
+        autoComplete={autoComplete}
+        required
+        minLength={minLength}
+        className={`${className.replace(/\bmt-1\b/, "")} pr-9`}
+        value={valor}
+        onChange={(e) => onCambio(e.target.value)}
+      />
+      <button
+        type="button"
+        aria-label="Mantén pulsado para ver la contraseña"
+        title="Mantén pulsado para ver la contraseña"
+        // -1: al tabular se pasa al siguiente campo, no al ojo.
+        tabIndex={-1}
+        // Sin esto el campo pierde el foco al pulsar y el teclado del móvil se cierra.
+        onMouseDown={(e) => e.preventDefault()}
+        onPointerDown={mostrar}
+        onPointerUp={ocultar}
+        onPointerLeave={ocultar}
+        onPointerCancel={ocultar}
+        onBlur={ocultar}
+        onKeyDown={(e) => (e.key === " " || e.key === "Enter") && mostrar()}
+        onKeyUp={ocultar}
+        onContextMenu={(e) => e.preventDefault()}
+        className={`absolute inset-y-0 right-0 flex w-9 touch-none select-none items-center justify-center transition-colors ${
+          visible ? "text-accent" : "text-ink-muted/60 hover:text-ink-muted"
+        }`}
+      >
+        <Eye className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden="true" />
+      </button>
+    </span>
   );
 }
