@@ -78,21 +78,22 @@ const post = (token, cuerpo, extra = {}) =>
 
 console.log("\nRanuras de casos (Admin SDK + emulador)\n");
 
-await prueba("plan gratuito: dos casos sí, el tercero se rechaza", async (u) => {
+await prueba("plan gratuito: tres casos sí, el cuarto se rechaza", async (u) => {
   assert.equal((await cambiarRanura(bd, u, caso(1), "reclamar")).casos_activos, 1);
   assert.equal((await cambiarRanura(bd, u, caso(2), "reclamar")).casos_activos, 2);
-  assert.equal(await cod(cambiarRanura(bd, u, caso(3), "reclamar")), "tope_de_casos");
-  assert.equal(await contador(u), 2);
+  assert.equal((await cambiarRanura(bd, u, caso(3), "reclamar")).casos_activos, 3);
+  assert.equal(await cod(cambiarRanura(bd, u, caso(4), "reclamar")), "tope_de_casos");
+  assert.equal(await contador(u), 3);
 });
 
-await prueba("concurrencia: 8 dispositivos a la vez no superan el tope (solo 2 entran)", async (u) => {
+await prueba("concurrencia: 8 dispositivos a la vez no superan el tope (solo 3 entran)", async (u) => {
   const resultados = await Promise.all(
     Array.from({ length: 8 }, (_, i) => cod(cambiarRanura(bd, u, caso(i), "reclamar")))
   );
   assert.equal(resultados.filter((r) => r === "ok").length, PLANES.gratuito.max_casos_activos);
-  assert.equal(resultados.filter((r) => r === "tope_de_casos").length, 6);
-  assert.equal(await contador(u), 2);
-  assert.equal(Object.values(await estados(u)).filter((e) => e === "activo").length, 2);
+  assert.equal(resultados.filter((r) => r === "tope_de_casos").length, 5);
+  assert.equal(await contador(u), 3);
+  assert.equal(Object.values(await estados(u)).filter((e) => e === "activo").length, 3);
 });
 
 await prueba("concurrencia: el mismo caso reclamado 6 veces cuenta una sola", async (u) => {
@@ -113,19 +114,18 @@ await prueba("repetir reclamar, archivar y reactivar no cambia nada", async (u) 
 });
 
 await prueba("archivar libera hueco; reactivar lo vuelve a ocupar y respeta el tope", async (u) => {
-  await cambiarRanura(bd, u, caso(1), "reclamar");
-  await cambiarRanura(bd, u, caso(2), "reclamar");
+  for (const i of [1, 2, 3]) await cambiarRanura(bd, u, caso(i), "reclamar");
   await cambiarRanura(bd, u, caso(1), "archivar");
-  await cambiarRanura(bd, u, caso(3), "reclamar");
+  await cambiarRanura(bd, u, caso(4), "reclamar");
   assert.equal(await cod(cambiarRanura(bd, u, caso(1), "reactivar")), "tope_de_casos");
   assert.equal((await estados(u))[caso(1)], "archivado", "sigue archivado, no se borra ni se pierde");
 });
 
 await prueba("reactivar concurrente con un solo hueco: entra uno", async (u) => {
-  for (const i of [1, 2]) await cambiarRanura(bd, u, caso(i), "reclamar");
+  for (const i of [1, 2, 3]) await cambiarRanura(bd, u, caso(i), "reclamar");
   for (const i of [1, 2]) await cambiarRanura(bd, u, caso(i), "archivar");
   const r = await Promise.all([1, 2].flatMap(() => [1, 2]).map((i) => cod(cambiarRanura(bd, u, caso(i), "reactivar"))));
-  assert.ok(await contador(u) <= 2);
+  assert.ok(await contador(u) <= 3);
   assert.equal((await contador(u)), Object.values(await estados(u)).filter((e) => e === "activo").length);
   assert.ok(r.includes("ok"));
 });
@@ -152,10 +152,9 @@ await prueba("bajar de plan: los casos que sobran siguen activos; solo se impide
 });
 
 await prueba("nada se archiva solo: reclamar más allá del tope no toca los demás", async (u) => {
-  await cambiarRanura(bd, u, caso(1), "reclamar");
-  await cambiarRanura(bd, u, caso(2), "reclamar");
-  await cod(cambiarRanura(bd, u, caso(3), "reclamar"));
-  assert.deepEqual(await estados(u), { [caso(1)]: "activo", [caso(2)]: "activo" });
+  for (const i of [1, 2, 3]) await cambiarRanura(bd, u, caso(i), "reclamar");
+  await cod(cambiarRanura(bd, u, caso(4), "reclamar"));
+  assert.deepEqual(await estados(u), { [caso(1)]: "activo", [caso(2)]: "activo", [caso(3)]: "activo" });
 });
 
 await prueba("un caso archivado no se reclama; reactivar un caso desconocido falla", async (u) => {
@@ -193,7 +192,8 @@ await prueba("HTTP: tope devuelve 409 con código; la respuesta no trae datos de
   const t = `token-${u}`;
   await post(t, { accion: "reclamar", caso_uid: caso(1) });
   await post(t, { accion: "reclamar", caso_uid: caso(2) });
-  const r = await post(t, { accion: "reclamar", caso_uid: caso(3) });
+  await post(t, { accion: "reclamar", caso_uid: caso(3) });
+  const r = await post(t, { accion: "reclamar", caso_uid: caso(4) });
   assert.equal(r.status, 409);
   assert.equal((await r.json()).error, "tope_de_casos");
 });

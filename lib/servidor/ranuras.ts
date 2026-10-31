@@ -29,7 +29,7 @@ export interface PlanCasos {
 
 /** Fuente de verdad de los topes. `planes/{id}` en Firestore podrá sustituirla más adelante. */
 export const PLANES: Record<string, PlanCasos> = {
-  gratuito: { id: "gratuito", max_casos_activos: 2 },
+  gratuito: { id: "gratuito", max_casos_activos: 3 },
   profesional: { id: "profesional", max_casos_activos: 15 },
   intensivo: { id: "intensivo", max_casos_activos: 50 },
 };

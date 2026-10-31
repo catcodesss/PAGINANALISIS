@@ -160,7 +160,7 @@ validadores, las alertas, la pasada crítica y el modelo son los mismos en todos
 
 | Plan | Casos activos | Coins al mes | Equivale a | Precio propuesto (IGV incl.) |
 |---|---:|---:|---|---:|
-| Gratuito | **2** | 20 | 5 sesiones analizadas | S/ 0 |
+| Gratuito | **3** | 20 | 5 sesiones analizadas | S/ 0 |
 | Profesional | 15 | 160 | 40 sesiones | **S/ 49 al mes** |
 | Intensivo | 50 | 480 | 120 sesiones | **S/ 129 al mes** |
 
@@ -359,7 +359,7 @@ La frase sobre OpenAI **solo es cierta con la retención cero firmada**.
 
 ## 8. Pruebas de la 13B
 
-1. Gratuito: no se puede activar un tercer caso.
+1. Gratuito: no se puede activar un cuarto caso.
 2. Dos dispositivos o pestañas que reclaman ranura a la vez no superan el tope.
 3. Archivar (tras confirmar) libera una ranura; reactivar la ocupa.
 4. Nada se archiva ni se elimina por inactividad, saldo cero o cancelación.
