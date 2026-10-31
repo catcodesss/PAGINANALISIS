@@ -311,6 +311,16 @@ export default function Home() {
   }, [invitado, analisis]);
 
   /**
+  // Esc cierra el cuadro de «Añadir sesión» (salvo mientras analiza).
+  useEffect(() => {
+    if (!panelSesion || actualizando) return;
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPanelSesion(false);
+    };
+    window.addEventListener("keydown", alTeclear);
+    return () => window.removeEventListener("keydown", alTeclear);
+  }, [panelSesion, actualizando]);
+
    * «Añadir sesión» sin IA: guarda la nota y el registro, y la formulación
    * vigente pasa a ser la de la nueva sesión. No lanza un análisis
    * independiente, que daría dos formulaciones divergentes del mismo caso.
