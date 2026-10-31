@@ -40,7 +40,15 @@ export async function autenticar(
   let token: TokenVerificado;
   try {
     token = await verificar(m[1], true);
-  } catch {
+  } catch (error) {
+    // Solo el código y el mensaje de Firebase (nunca el token): sin esto, un fallo
+    // de credenciales del servidor se ve igual que una sesión caducada.
+    const e = error as { code?: unknown; message?: unknown };
+    console.error(
+      "Token rechazado:",
+      typeof e?.code === "string" ? e.code : "sin_codigo",
+      typeof e?.message === "string" ? e.message.slice(0, 300) : ""
+    );
     throw new ErrorHttp(401, "sesion_invalida", "Tu sesión no es válida. Vuelve a iniciar sesión.");
   }
   if (!token.uid) throw new ErrorHttp(401, "sesion_invalida", "Tu sesión no es válida.");
