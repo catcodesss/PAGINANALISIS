@@ -8,6 +8,7 @@
  */
 
 import { useState, type ReactNode } from "react";
+import { ABC_EN_BLANCO, hayABC, type ABCManual } from "@/lib/abcManual";
 import { ChartNoAxesColumnIncreasing, ClipboardList, Play, Target, type LucideIcon } from "lucide-react";
 import type { Sesion } from "@/lib/casos";
 import { NIVELES_APOYO } from "@/lib/gradoApoyo";
@@ -25,35 +26,54 @@ export default function SesionEnEspera({
   onAnalizar,
   onVerAnterior,
   onBorrar,
+  onGuardarABC,
 }: {
   alias: string;
-  sesion: Sesion;
+  /** null: el caso aún no tiene ninguna sesión. */
+  sesion: Sesion | null;
   /** La sesión anterior con formulación, si la hay. */
   anterior: Sesion | null;
   onAnalizar: () => void;
   onVerAnterior: (sesionId: string) => void;
   onBorrar: () => Promise<void>;
+  /** Guarda lo escrito a mano en los cuadros como la formulación de la sesión. */
+  onGuardarABC: (abc: ABCManual) => Promise<void>;
 }) {
   const [confirmarBorrar, setConfirmarBorrar] = useState(false);
-  const fecha = new Date(sesion.fecha).toLocaleDateString("es", { day: "numeric", month: "short" });
+  const [abc, setAbc] = useState<ABCManual>(ABC_EN_BLANCO);
+  const [guardando, setGuardando] = useState(false);
+  const cambiar = (campo: keyof ABCManual) => (valor: string) => setAbc((previo) => ({ ...previo, [campo]: valor }));
+  async function guardarABC() {
+    setGuardando(true);
+    try {
+      await onGuardarABC(abc);
+    } finally {
+      setGuardando(false);
+    }
+  }
+  const fecha = sesion ? new Date(sesion.fecha).toLocaleDateString("es", { day: "numeric", month: "short" }) : "";
 
   return (
     <div className="rounded-lg border border-divider bg-surface">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-divider px-4 py-2.5">
         <p className="flex min-w-0 items-center gap-2">
           <span className="truncate font-serif text-base text-ink">{alias}</span>
-          <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
-            Sesión {sesion.n} · {fecha}
-          </span>
+          {sesion && (
+            <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+              Sesión {sesion.n} · {fecha}
+            </span>
+          )}
         </p>
-        <p className="text-xs text-ink-muted">Sesión vacía · sin nota ni análisis</p>
+        <p className="text-xs text-ink-muted">
+          {sesion ? "Sesión vacía · sin nota ni análisis" : "Caso sin sesiones · sin nota ni análisis"}
+        </p>
       </header>
 
       <div className="p-4">
         <div role="status" className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-divider bg-canvas px-4 py-3">
           <p className="min-w-0 flex-1 text-sm text-ink">
-            <b className="font-serif font-semibold">Esta sesión aún no tiene análisis.</b>{" "}
-            <span className="text-ink-muted">Los cuadros se llenarán cuando agregues la nota y la analices.</span>
+            <b className="font-serif font-semibold">{sesion ? "Esta sesión aún no tiene análisis." : "Este caso aún no tiene análisis."}</b>{" "}
+            <span className="text-ink-muted">Los cuadros se llenarán cuando agregues la nota y la analices, o puedes escribirlos tú.</span>
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -63,14 +83,21 @@ export default function SesionEnEspera({
             >
               Agregar nota y analizar
             </button>
-            {anterior && (
-              <button type="button" onClick={() => onVerAnterior(anterior.id)} className={CLASE_BOTON}>
-                Ver la sesión {anterior.n}
+            {hayABC(abc) && (
+              <button type="button" onClick={() => void guardarABC()} disabled={guardando} className={`${CLASE_BOTON} border-accent text-accent`}>
+                {guardando ? "Guardando…" : "Guardar lo que escribí"}
               </button>
             )}
-            <button type="button" onClick={() => setConfirmarBorrar(true)} className={CLASE_BOTON}>
-              Borrar sesión vacía
-            </button>
+            {anterior && (
+              <button type="button" onClick={() => onVerAnterior(anterior.id)} className={CLASE_BOTON}>
+                Ver la sesión anterior
+              </button>
+            )}
+            {sesion && (
+              <button type="button" onClick={() => setConfirmarBorrar(true)} className={CLASE_BOTON}>
+                Borrar esta sesión
+              </button>
+            )}
           </div>
         </div>
 
@@ -89,19 +116,19 @@ export default function SesionEnEspera({
             <div className={`${s.scroll} ${s.contenedorColumnas}`}>
               <div className={`${s.tablero} ${s.lienzoColumnas}`}>
                 <Columna clase={s.om} titulo={TERMINOS.om.claro} icono={Target}>
-                  <Espera>Contexto · esperando análisis</Espera>
+                  <Escribir valor={abc.contexto} onCambio={cambiar("contexto")} etiqueta={TERMINOS.om.claro} marcador="Contexto · escríbelo aquí o espera el análisis" />
                 </Columna>
                 <Columna clase={s.ant} titulo="Antecedente" icono={ClipboardList}>
-                  <Espera>Qué pasó antes · esperando análisis</Espera>
+                  <Escribir valor={abc.antecedente} onCambio={cambiar("antecedente")} etiqueta="Antecedente" marcador="Qué pasó antes · escríbelo aquí o espera el análisis" />
                 </Columna>
                 <Columna clase={s.con} titulo="Conducta" icono={Play}>
-                  <Espera>Qué hizo, pensó o sintió · esperando análisis</Espera>
+                  <Escribir valor={abc.conducta} onCambio={cambiar("conducta")} etiqueta="Conducta" marcador="Qué hizo, pensó o sintió · escríbelo aquí o espera el análisis" />
                 </Columna>
                 <Columna clase={s.csq} titulo="Consecuencias" icono={ChartNoAxesColumnIncreasing}>
-                  {(["Consecuencia inmediata", "Consecuencia demorada"] as const).map((t) => (
+                  {([["Consecuencia inmediata", "inmediata"], ["Consecuencia demorada", "demorada"]] as const).map(([t, campo]) => (
                     <div key={t} className={s.consecuencias}>
                       <p className={s.subzonaTitulo}>{t}</p>
-                      <Espera>Esperando análisis</Espera>
+                      <Escribir valor={abc[campo]} onCambio={cambiar(campo)} etiqueta={t} marcador="Escríbela aquí o espera el análisis" />
                     </div>
                   ))}
                 </Columna>
@@ -122,8 +149,8 @@ export default function SesionEnEspera({
         </div>
       </div>
 
-      {confirmarBorrar && (
-        <div role="dialog" aria-modal="true" aria-label="Borrar sesión vacía" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      {confirmarBorrar && sesion && (
+        <div role="dialog" aria-modal="true" aria-label="Borrar esta sesión" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl border border-divider bg-surface p-5">
             <p className="font-serif text-lg font-semibold text-ink">¿Borrar la sesión {sesion.n}?</p>
             <p className="mt-2 text-sm text-ink-muted">Está vacía: no tiene nota ni análisis. No se pierde nada más del caso.</p>
@@ -139,7 +166,7 @@ export default function SesionEnEspera({
                 }}
                 className="rounded bg-accent px-4 py-1.5 text-sm font-medium texto-sobre-acento transition-colors hover:bg-accent/90"
               >
-                Borrar sesión vacía
+                Borrar esta sesión
               </button>
             </div>
           </div>
@@ -161,6 +188,15 @@ function Columna({ clase, titulo, icono: Icono, children }: { clase: string; tit
   );
 }
 
-function Espera({ children }: { children: ReactNode }) {
-  return <div className={s.hueco}>{children}</div>;
+function Escribir({ valor, onCambio, etiqueta, marcador }: { valor: string; onCambio: (v: string) => void; etiqueta: string; marcador: string }) {
+  return (
+    <textarea
+      value={valor}
+      onChange={(e) => onCambio(e.target.value)}
+      aria-label={etiqueta}
+      placeholder={marcador}
+      rows={3}
+      className={`${s.hueco} w-full resize-y bg-transparent text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40`}
+    />
+  );
 }

@@ -23,6 +23,7 @@ import { revalidarTrasEdicion, revalidarTrasReanalisis } from "@/lib/validadores
 import { descargarDocx } from "@/lib/exportarDocx";
 import ReportView from "@/components/ReportView";
 import SesionEnEspera from "@/components/espacio/SesionEnEspera";
+import { analisisDesdeABC, hayABC, type ABCManual } from "@/lib/abcManual";
 import GuiaCompleta from "@/components/GuiaCompleta";
 import Configuracion from "@/components/Configuracion";
 import SelectorBloques from "@/components/SelectorBloques";
@@ -222,7 +223,11 @@ export default function Home() {
   function manejarAbrirCaso(exp: Expediente) {
     abrirExpediente(exp);
     const vigente = formulacionVigente(exp);
-    if (!vigente) return;
+    if (!vigente) {
+      // Caso sin ninguna formulación (vacío): se entra a los cuadros en blanco.
+      setEstado("resultado");
+      return;
+    }
     // Las citas apuntan a la nota que se analizó: la de la primera sesión.
     const primera = [...exp.sesiones].sort((a, b) => a.n - b.n)[0];
     setUltimoTextoEnviado(textoDeSesion(exp, primera.id));
@@ -256,8 +261,12 @@ export default function Home() {
       }
       return;
     }
-    if (exp.sesiones.length > 0) return;
-    const { expediente: conSesion, sesion } = anadirSesion(exp, { nota: texto });
+    // Con sesiones, solo una última sesión vacía (sin formulación) recibe esta nota.
+    const previa = ultimaSesion(exp);
+    if (previa && !esSesionVacia(exp, previa)) return;
+    const { expediente: conSesion, sesion } = previa
+      ? completarSesion(exp, previa.id, { nota: texto })
+      : anadirSesion(exp, { nota: texto });
     await persistir(guardarVersion(conSesion, sesion.id, resultado));
   }
 
@@ -302,15 +311,6 @@ export default function Home() {
     return () => window.removeEventListener(EVENTO_CUENTA_CREADA, alCrearCuenta);
   }, [analisis]);
 
-  // Como invitado, cerrar o recargar con un análisis en pantalla lo perdería.
-  useEffect(() => {
-    if (!invitado || !analisis) return;
-    const avisar = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener("beforeunload", avisar);
-    return () => window.removeEventListener("beforeunload", avisar);
-  }, [invitado, analisis]);
-
-  /**
   // Esc cierra el cuadro de «Añadir sesión» (salvo mientras analiza).
   useEffect(() => {
     if (!panelSesion || actualizando) return;
@@ -321,6 +321,15 @@ export default function Home() {
     return () => window.removeEventListener("keydown", alTeclear);
   }, [panelSesion, actualizando]);
 
+  // Como invitado, cerrar o recargar con un análisis en pantalla lo perdería.
+  useEffect(() => {
+    if (!invitado || !analisis) return;
+    const avisar = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [invitado, analisis]);
+
+  /**
    * «Añadir sesión» sin IA: guarda la nota y el registro, y la formulación
    * vigente pasa a ser la de la nueva sesión. No lanza un análisis
    * independiente, que daría dos formulaciones divergentes del mismo caso.
@@ -413,6 +422,26 @@ export default function Home() {
     setConfirmarSesionVacia(false);
     if (!exp) return;
     await persistir(anadirSesion(exp, { nota: "" }).expediente);
+  }
+
+  /**
+   * El ABC escrito a mano en los cuadros en blanco: sin nota ni IA. Es la
+   * formulación de esa sesión (la vacía, o la primera si el caso no tiene
+   * ninguna) y desde aquí se sigue editando en el Mapa como cualquier otra.
+   */
+  async function guardarABCManual(abc: ABCManual) {
+    const exp = expedienteRef.current;
+    if (!exp || !hayABC(abc)) return;
+    const previa = ultimaSesion(exp);
+    const { expediente: conSesion, sesion } =
+      previa && esSesionVacia(exp, previa) ? { expediente: exp, sesion: previa } : anadirSesion(exp, { nota: "" });
+    const nuevo = analisisDesdeABC(abc);
+    autorRef.current = "clinico";
+    setSesionVista(null);
+    setUltimoTextoEnviado("");
+    setFechaGeneracion(new Date(sesion.fecha).toLocaleString("es-PE", { dateStyle: "long", timeStyle: "short" }));
+    await persistir(guardarVersion(conSesion, sesion.id, nuevo));
+    setAnalisis(nuevo);
   }
 
   async function borrarSesionVacia(sesionId: string) {
@@ -762,7 +791,7 @@ export default function Home() {
     <div className="flex min-h-screen bg-canvas print:block">
       <Sidebar vista={vista} onCambiarVista={cambiarVista} avisoCuenta={recuperacionPendiente} invitado={invitado} />
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 pt-14 md:pt-0">
         <main
           // El informe ya generado necesita más aire que el formulario: es
           // donde viven la cadena dibujada, las tablas y el resto del
@@ -983,10 +1012,23 @@ export default function Home() {
             </section>
           )}
 
+          {enAnalisis && estado === "resultado" && !analisisMostrado && expediente && (
+            <SesionEnEspera
+              alias={expediente.caso.alias}
+              sesion={ultima}
+              anterior={null}
+              // Sin formulación previa no hay qué actualizar: la primera nota pasa por el análisis completo.
+              onAnalizar={() => setEstado("inicial")}
+              onVerAnterior={setSesionVista}
+              onBorrar={() => (ultima ? borrarSesionVacia(ultima.id) : Promise.resolve())}
+              onGuardarABC={guardarABCManual}
+            />
+          )}
+
           {enAnalisis && estado === "resultado" && analisisMostrado && (
             <ContextoCaso.Provider value={valorCaso}>
             <div className="mt-2">
-              <div className="sticky top-0 z-10 -mx-4 mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-divider bg-surface/95 px-4 py-3 backdrop-blur print:hidden sm:-mx-6 sm:px-6">
+              <div className="sticky top-14 z-10 md:top-0 -mx-4 mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-divider bg-surface/95 px-4 py-3 backdrop-blur print:hidden sm:-mx-6 sm:px-6">
                 <p className="min-w-0 truncate text-sm text-ink-muted">
                   {referenciaCaso.trim() && (
                     <span className="text-ink">{referenciaCaso.trim()} · </span>
@@ -1066,6 +1108,7 @@ export default function Home() {
                   onAnalizar={() => setPanelSesion(true)}
                   onVerAnterior={setSesionVista}
                   onBorrar={() => borrarSesionVacia(ultima.id)}
+                  onGuardarABC={guardarABCManual}
                 />
               ) : (
               <ReportView
