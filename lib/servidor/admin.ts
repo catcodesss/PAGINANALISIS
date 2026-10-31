@@ -16,8 +16,15 @@ import { getFirestore, type Firestore } from "firebase-admin/firestore";
  * El ID de proyecto sale de FIREBASE_ADMIN_PROJECT_ID o NEXT_PUBLIC_FIREBASE_PROJECT_ID.
  */
 
+/** Un valor pegado en un panel, sin espacios ni comillas alrededor. Vacío → undefined. */
+export function limpiarValor(valor: string | undefined): string | undefined {
+  let v = (valor ?? "").trim();
+  while (v.length > 1 && /^(["'])[\s\S]*\1$/.test(v)) v = v.slice(1, -1).trim();
+  return v || undefined;
+}
+
 function proyecto(): string | undefined {
-  return process.env.FIREBASE_ADMIN_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  return limpiarValor(process.env.FIREBASE_ADMIN_PROJECT_ID) ?? limpiarValor(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
 }
 
 /**
@@ -35,7 +42,7 @@ export function normalizarClavePrivada(valor: string): string {
       // No era JSON válido: se trata como la clave tal cual.
     }
   }
-  while (clave.length > 1 && /^(["'])[\s\S]*\1$/.test(clave)) clave = clave.slice(1, -1).trim();
+  clave = limpiarValor(clave) ?? "";
   return clave.replace(/\\r/g, "").replace(/\\n/g, "\n").replace(/\r\n?/g, "\n").trim() + "\n";
 }
 
@@ -43,7 +50,7 @@ function aplicacion(): App {
   const existente = getApps()[0];
   if (existente) return existente;
 
-  const correo = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
+  const correo = limpiarValor(process.env.FIREBASE_ADMIN_CLIENT_EMAIL);
   const clave = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
   const projectId = proyecto();
 
