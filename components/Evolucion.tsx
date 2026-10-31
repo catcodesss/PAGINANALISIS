@@ -30,7 +30,7 @@ export default function Evolucion({ onAbrir }: EvolucionProps) {
       const lista = abierto ? await repositorio.listarCasos() : [];
       if (!vivo) return;
       setBloqueado(!abierto);
-      setCasos(lista.filter((c) => c.fase !== "archivado"));
+      setCasos(lista.filter((c) => c.fase !== "archivado" && !c.eliminado_en));
     })();
     return () => {
       vivo = false;

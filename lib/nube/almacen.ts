@@ -88,6 +88,14 @@ export interface ServicioRanuras {
   reclamar(casoUid: string): Promise<void>;
   archivar(casoUid: string): Promise<void>;
   reactivar(casoUid: string): Promise<void>;
+  /** Libera la ranura; el borrado definitivo llega a los 30 días. */
+  eliminar(casoUid: string): Promise<void>;
+  /** Devuelve un caso eliminado a como estaba (activo o archivado). */
+  recuperar(casoUid: string): Promise<void>;
+  /** Borrado definitivo de un caso ya eliminado. */
+  borrar(casoUid: string): Promise<void>;
+  /** Casos eliminados de esta cuenta y cuándo se eliminaron (ISO). */
+  eliminados(): Promise<Map<string, string>>;
 }
 
 // --- Memoria (pruebas) ---------------------------------------------------

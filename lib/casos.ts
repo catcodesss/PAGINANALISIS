@@ -32,6 +32,8 @@ export interface Caso {
   fase: FaseCaso;
   creado: string;
   actualizado: string;
+  /** Fecha en que se eliminó (modo local). Pasados 30 días se borra para siempre. */
+  eliminado_en?: string | null;
 }
 
 export interface Sesion {
@@ -96,6 +98,21 @@ export interface ResumenCaso {
   blancos_activos: number;
   preguntas_abiertas: number;
   alertas: number;
+  /** Eliminado y a la espera del borrado definitivo; null o ausente si no. */
+  eliminado_en?: string | null;
+}
+
+/** Días que un caso eliminado espera antes del borrado definitivo. */
+export const DIAS_PARA_BORRAR = 30;
+
+/** Fecha del borrado definitivo de un caso eliminado. */
+export function fechaDeBorrado(eliminadoEn: string): Date {
+  return new Date(new Date(eliminadoEn).getTime() + DIAS_PARA_BORRAR * 24 * 60 * 60 * 1000);
+}
+
+/** Días que faltan para el borrado definitivo (0 = hoy). */
+export function diasParaBorrar(eliminadoEn: string, ahora = new Date()): number {
+  return Math.max(0, Math.ceil((fechaDeBorrado(eliminadoEn).getTime() - ahora.getTime()) / (24 * 60 * 60 * 1000)));
 }
 
 type GeneradorId = () => string;
@@ -418,6 +435,7 @@ export function resumirExpediente(exp: Expediente): ResumenCaso {
     blancos_activos: (vigente?.blancos ?? []).filter((b) => b.fase !== "en_pausa" && b.fase !== "resuelto").length,
     preguntas_abiertas: (vigente?.preguntas ?? []).filter((p) => p.estado === "abierta").length,
     alertas: vigente?.alertas.length ?? 0,
+    eliminado_en: exp.caso.eliminado_en ?? null,
   };
 }
 

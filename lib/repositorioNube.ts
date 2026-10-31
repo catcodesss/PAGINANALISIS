@@ -93,6 +93,16 @@ const sinRanuras: ServicioRanuras = {
   archivar: async () => {
     throw new Error("Las ranuras de casos no están disponibles.");
   },
+  eliminar: async () => {
+    throw new Error("Las ranuras de casos no están disponibles.");
+  },
+  recuperar: async () => {
+    throw new Error("Las ranuras de casos no están disponibles.");
+  },
+  borrar: async () => {
+    throw new Error("Las ranuras de casos no están disponibles.");
+  },
+  eliminados: async () => new Map(),
   reactivar: async () => {
     throw new Error("Las ranuras de casos no están disponibles.");
   },
@@ -463,12 +473,29 @@ export class RepositorioNube implements Repositorio {
       this.vista(ind.caso_uid).revIndice = ind.rev;
       resumenes.push(JSON.parse(texto) as ResumenCaso);
     }
+    const eliminados = await this.ranuras.eliminados();
+    for (const r of resumenes) r.eliminado_en = eliminados.get(r.id) ?? null;
     return resumenes.sort((a, b) => b.actualizado.localeCompare(a.actualizado));
   }
 
-  async eliminarCaso(): Promise<void> {
-    // Las reglas impiden borrar desde el cliente a propósito (propuesta §5).
-    throw new Error("Un caso en la nube no se elimina desde aquí. Archívalo para liberar su ranura.");
+  /*
+    Eliminar, recuperar y borrar los hace el servidor: las reglas impiden
+    borrar desde el cliente a propósito (propuesta §5). El estado «eliminado»
+    vive en la ranura, no en el caso cifrado, porque un caso sin ranura activa
+    no se puede escribir.
+  */
+  async eliminarCaso(id: string): Promise<void> {
+    await this.ranuras.eliminar(id);
+  }
+
+  async recuperarCaso(id: string): Promise<void> {
+    await this.ranuras.recuperar(id);
+  }
+
+  async borrarCasoDefinitivo(id: string): Promise<void> {
+    await this.ranuras.borrar(id);
+    this.vistas.delete(id);
+    this.claves.delete(id);
   }
 
   // --- respaldo (cifrado) ----------------------------------------------------

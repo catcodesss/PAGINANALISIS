@@ -2,6 +2,7 @@ import type { AnalisisFuncional } from "./types";
 import { migrarAV9 } from "./identidad";
 import {
   comprobarCambioExpediente,
+  diasParaBorrar,
   expedienteDesdeAnalisis,
   resumirExpediente,
   type Expediente,
@@ -89,7 +90,15 @@ export interface Repositorio {
   obtenerCaso(id: string): Promise<Expediente | null>;
   /** Rechaza el cambio si edita una nota, borra revisiones o toca una versión cerrada. */
   actualizarCaso(expediente: Expediente): Promise<void>;
+  /**
+   * Elimina el caso: sale de la lista y libera su lugar del plan, pero espera
+   * DIAS_PARA_BORRAR días antes del borrado definitivo. Hasta entonces se recupera.
+   */
   eliminarCaso(id: string): Promise<void>;
+  /** Devuelve un caso eliminado a como estaba. */
+  recuperarCaso(id: string): Promise<void>;
+  /** Borrado definitivo de un caso ya eliminado, sin esperar los 30 días. */
+  borrarCasoDefinitivo(id: string): Promise<void>;
 }
 
 // --- IndexedDB ---------------------------------------------------------
@@ -479,7 +488,13 @@ class RepositorioLocal implements Repositorio {
     for (const crudo of await this.todosLosCasosCrudos()) {
       const plano = await descifrar(clave, crudo.sobre);
       if (!plano) continue;
-      resumenes.push(resumirExpediente(JSON.parse(plano) as Expediente));
+      const resumen = resumirExpediente(JSON.parse(plano) as Expediente);
+      // Pasado el plazo, el caso eliminado se borra al listar.
+      if (resumen.eliminado_en && diasParaBorrar(resumen.eliminado_en) === 0) {
+        await this.borrarDelDisco(resumen.id);
+        continue;
+      }
+      resumenes.push(resumen);
     }
     return resumenes.sort((a, b) => b.actualizado.localeCompare(a.actualizado));
   }
@@ -512,6 +527,24 @@ class RepositorioLocal implements Repositorio {
   }
 
   async eliminarCaso(id: string): Promise<void> {
+    const exp = await this.obtenerCaso(id);
+    if (!exp || exp.caso.eliminado_en) return;
+    await this.escribirCaso({ ...exp, caso: { ...exp.caso, eliminado_en: new Date().toISOString() } });
+  }
+
+  async recuperarCaso(id: string): Promise<void> {
+    const exp = await this.obtenerCaso(id);
+    if (!exp || !exp.caso.eliminado_en) return;
+    await this.escribirCaso({ ...exp, caso: { ...exp.caso, eliminado_en: null } });
+  }
+
+  async borrarCasoDefinitivo(id: string): Promise<void> {
+    const exp = await this.obtenerCaso(id);
+    if (exp && !exp.caso.eliminado_en) throw new Error("Elimina el caso antes de borrarlo definitivamente.");
+    await this.borrarDelDisco(id);
+  }
+
+  private async borrarDelDisco(id: string): Promise<void> {
     const bd = await abrirBd();
     try {
       const tx = bd.transaction(ALMACEN_CASOS, "readwrite");

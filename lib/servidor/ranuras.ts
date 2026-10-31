@@ -22,21 +22,15 @@ import { ErrorHttp } from "./autenticar";
  *  - Repetir una operación no cambia nada (idempotente).
  */
 
-export interface PlanCasos {
-  id: string;
-  max_casos_activos: number;
-}
+/** Fuente de verdad de los topes: lib/planesCasos.ts. `planes/{id}` en Firestore podrá sustituirla. */
+import { PLANES, PLAN_POR_DEFECTO, planDe, type PlanCasos } from "../planesCasos";
+export { PLANES, PLAN_POR_DEFECTO, type PlanCasos };
 
-/** Fuente de verdad de los topes. `planes/{id}` en Firestore podrá sustituirla más adelante. */
-export const PLANES: Record<string, PlanCasos> = {
-  gratuito: { id: "gratuito", max_casos_activos: 3 },
-  profesional: { id: "profesional", max_casos_activos: 15 },
-  intensivo: { id: "intensivo", max_casos_activos: 50 },
-};
-export const PLAN_POR_DEFECTO = "gratuito";
+export type AccionRanura = "reclamar" | "archivar" | "reactivar" | "eliminar" | "recuperar";
+export type EstadoRanura = "activo" | "archivado" | "eliminado";
 
-export type AccionRanura = "reclamar" | "archivar" | "reactivar";
-export type EstadoRanura = "activo" | "archivado";
+/** Días que un caso eliminado espera antes del borrado definitivo. */
+export const DIAS_PARA_BORRAR = 30;
 
 export interface ResultadoRanura {
   caso_uid: string;
@@ -54,10 +48,6 @@ export function validarCasoUid(valor: unknown): string {
     throw new ErrorHttp(400, "caso_invalido", "Identificador de caso no válido.");
   }
   return valor;
-}
-
-function planDe(id: unknown): PlanCasos {
-  return (typeof id === "string" && PLANES[id]) || PLANES[PLAN_POR_DEFECTO];
 }
 
 export async function cambiarRanura(
@@ -87,6 +77,47 @@ export async function cambiarRanura(
       max_casos_activos: plan.max_casos_activos,
       cambio,
     });
+
+    /*
+      Eliminar: el caso sale de la lista y libera su ranura, pero no se borra
+      hasta pasados DIAS_PARA_BORRAR (purgarEliminados). Se recuerda cómo estaba
+      para que «recuperar» lo devuelva igual.
+    */
+    if (accion === "eliminar") {
+      if (estado === null) throw new ErrorHttp(404, "caso_inexistente", "Ese caso no tiene ranura.");
+      if (estado === "eliminado") return resultado("eliminado", activos, false);
+      const nuevos = estado === "activo" ? Math.max(0, activos - 1) : activos;
+      tx.set(refUsuario, { casos_activos: nuevos, plan_id: usuario.data()?.plan_id ?? plan.id }, { merge: true });
+      tx.update(refRanura, { estado: "eliminado", estado_previo: estado, eliminado_en: ahora() });
+      return resultado("eliminado", nuevos, true);
+    }
+
+    if (accion === "recuperar") {
+      if (estado === null) throw new ErrorHttp(404, "caso_inexistente", "Ese caso no tiene ranura.");
+      if (estado !== "eliminado") return resultado(estado, activos, false);
+      const previo = ranura.data()?.estado_previo === "archivado" ? "archivado" : "activo";
+      if (previo === "activo" && activos >= plan.max_casos_activos) {
+        throw new ErrorHttp(
+          409,
+          "tope_de_casos",
+          `Tu plan permite ${plan.max_casos_activos} casos activos. Archiva uno para recuperar este.`
+        );
+      }
+      const nuevos = previo === "activo" ? activos + 1 : activos;
+      tx.set(refUsuario, { casos_activos: nuevos, plan_id: usuario.data()?.plan_id ?? plan.id }, { merge: true });
+      tx.update(refRanura, {
+        estado: previo,
+        estado_previo: FieldValue.delete(),
+        eliminado_en: FieldValue.delete(),
+        recuperado_en: FieldValue.serverTimestamp(),
+      });
+      return resultado(previo, nuevos, true);
+    }
+
+    // Un caso eliminado solo sale de ahí con «recuperar».
+    if (estado === "eliminado") {
+      throw new ErrorHttp(409, "caso_eliminado", "Ese caso está eliminado. Recupéralo para volver a usarlo.");
+    }
 
     if (accion === "archivar") {
       if (estado === null) throw new ErrorHttp(404, "caso_inexistente", "Ese caso no tiene ranura.");
@@ -121,4 +152,49 @@ export async function cambiarRanura(
     }
     return resultado("activo", nuevos, true);
   });
+}
+
+/**
+ * Borrado definitivo de un caso ELIMINADO: su cabecera con la clave del caso,
+ * todas sus partes y versiones anteriores, su índice y su ranura. Sin la clave
+ * del caso, cualquier copia que quedara ya no se puede descifrar.
+ * Un caso que no está eliminado no se borra: primero hay que eliminarlo.
+ */
+export async function borrarCasoEliminado(bd: Firestore, uid: string, casoUid: string): Promise<{ borrado: boolean }> {
+  if (!uid) throw new ErrorHttp(401, "sin_sesion", "Inicia sesión para continuar.");
+  validarCasoUid(casoUid);
+  const refUsuario = bd.collection("usuarios").doc(uid);
+  const refRanura = refUsuario.collection("ranuras").doc(casoUid);
+  const ranura = await refRanura.get();
+  if (!ranura.exists) return { borrado: false };
+  if (ranura.data()?.estado !== "eliminado") {
+    throw new ErrorHttp(409, "caso_no_eliminado", "Elimina el caso antes de borrarlo definitivamente.");
+  }
+  await bd.recursiveDelete(refUsuario.collection("casos").doc(casoUid));
+  await refUsuario.collection("indice").doc(casoUid).delete();
+  await refRanura.delete();
+  return { borrado: true };
+}
+
+/**
+ * Tarea diaria: borra para siempre los casos eliminados hace DIAS_PARA_BORRAR
+ * días o más. Recorre usuario por usuario: no necesita índices de grupo.
+ * Llamarla antes de tiempo no adelanta nada.
+ */
+export async function purgarEliminados(
+  bd: Firestore,
+  ahora: () => Date = () => new Date()
+): Promise<{ borrados: number }> {
+  const limite = ahora().getTime() - DIAS_PARA_BORRAR * 24 * 60 * 60 * 1000;
+  let borrados = 0;
+  for (const usuario of await bd.collection("usuarios").listDocuments()) {
+    const eliminados = await usuario.collection("ranuras").where("estado", "==", "eliminado").get();
+    for (const r of eliminados.docs) {
+      const cuando = r.data().eliminado_en as { toMillis?: () => number } | Date | undefined;
+      const ms = cuando instanceof Date ? cuando.getTime() : cuando?.toMillis?.();
+      if (ms === undefined || ms > limite) continue;
+      if ((await borrarCasoEliminado(bd, usuario.id, r.id)).borrado) borrados++;
+    }
+  }
+  return { borrados };
 }

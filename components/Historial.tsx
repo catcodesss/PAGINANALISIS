@@ -5,10 +5,14 @@ import { Eye, EyeOff } from "lucide-react";
 import { repositorio, repositorioNube } from "@/lib/repositorio";
 import { autenticacion, normalizarCorreo } from "@/lib/firebaseCliente";
 import { derivarCredenciales } from "@/lib/credenciales";
+import { leerPlanCasos } from "@/lib/nube/ranurasCliente";
+import { NOMBRE_PLAN, planDe } from "@/lib/planesCasos";
 import {
   avisoAlias,
   crearExpediente,
+  diasParaBorrar,
   ETIQUETA_FASE_CASO,
+  fechaDeBorrado,
   type Expediente,
   type FaseCaso,
   type ResumenCaso,
@@ -37,6 +41,23 @@ function formatearFecha(iso: string): string {
   return new Date(iso).toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric" });
 }
 
+/** Solo con la nube hay plan con tope; en modo local no se muestra (null). */
+async function leerPlan(): Promise<{ nombre: string; activos: number; tope: number } | null> {
+  if (repositorioNube() === null) return null;
+  try {
+    const p = await leerPlanCasos();
+    if (!p) return null;
+    const def = planDe(p.plan_id);
+    return { nombre: NOMBRE_PLAN[def.id] ?? "Tu plan", activos: p.casos_activos, tope: def.max_casos_activos };
+  } catch {
+    return null;
+  }
+}
+
+function fechaLarga(d: Date): string {
+  return d.toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" });
+}
+
 export default function Historial({ nuevoAbierto, onAbrir, onCreado }: HistorialProps) {
   const [fase, setFase] = useState<Fase>("comprobando");
   const [contrasena, setContrasena] = useState("");
@@ -48,8 +69,12 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
   const [formNuevo, setFormNuevo] = useState(nuevoAbierto);
   const [alias, setAlias] = useState("");
   const [motivo, setMotivo] = useState("");
-  const [aBorrar, setABorrar] = useState<ResumenCaso | null>(null);
+  // Eliminar: 30 días para arrepentirse. Borrar ya: definitivo, escribiendo el nombre.
+  const [aEliminar, setAEliminar] = useState<ResumenCaso | null>(null);
+  const [aBorrarYa, setABorrarYa] = useState<ResumenCaso | null>(null);
+  const [confirmacion, setConfirmacion] = useState("");
   const enNube = repositorioNube() !== null;
+  const [plan, setPlan] = useState<{ nombre: string; activos: number; tope: number } | null>(null);
   const entradaFichero = useRef<HTMLInputElement>(null);
   // Con la nube, un respaldo se abre con la frase de la cuenta que lo creó.
   const [respaldoNube, setRespaldoNube] = useState<File | null>(null);
@@ -78,6 +103,7 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
       if (!vivo) return;
       setFase(f);
       setCasos(lista);
+      if (f === "abierto") setPlan(await leerPlan());
     })();
     return () => {
       vivo = false;
@@ -86,6 +112,7 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
 
   const refrescar = useCallback(async () => {
     setCasos(await repositorio.listarCasos());
+    setPlan(await leerPlan());
   }, []);
 
   async function conManejo(accion: () => Promise<void>) {
@@ -170,11 +197,30 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
     });
   }
 
-  function eliminar(id: string) {
+  function eliminar(c: ResumenCaso) {
+    setAEliminar(null);
     conManejo(async () => {
-      await repositorio.eliminarCaso(id);
-      setABorrar(null);
+      await repositorio.eliminarCaso(c.id);
       await refrescar();
+      setMensaje(`«${c.alias}» eliminado. Lo recuperas desde Archivado durante 30 días.`);
+    });
+  }
+
+  function recuperar(c: ResumenCaso) {
+    conManejo(async () => {
+      await repositorio.recuperarCaso(c.id);
+      await refrescar();
+      setMensaje(`«${c.alias}» recuperado.`);
+    });
+  }
+
+  function borrarYa(c: ResumenCaso) {
+    setABorrarYa(null);
+    setConfirmacion("");
+    conManejo(async () => {
+      await repositorio.borrarCasoDefinitivo(c.id);
+      await refrescar();
+      setMensaje(`«${c.alias}» se borró definitivamente.`);
     });
   }
 
@@ -284,9 +330,13 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
   }
 
   const aviso = avisoAlias(alias);
-  const visibles = casos.filter((c) =>
-    filtro === "todos" ? c.fase !== "archivado" : c.fase === filtro
-  );
+  const vivos = casos.filter((c) => !c.eliminado_en);
+  const eliminados = casos
+    .filter((c) => c.eliminado_en)
+    .sort((a, b) => diasParaBorrar(a.eliminado_en!) - diasParaBorrar(b.eliminado_en!));
+  const enFiltro = (f: Filtro) => vivos.filter((c) => (f === "todos" ? c.fase !== "archivado" : c.fase === f));
+  const visibles = enFiltro(filtro);
+  const cuenta = (f: Filtro) => enFiltro(f).length + (f === "archivado" ? eliminados.length : 0);
 
   return (
     <Marco>
@@ -383,6 +433,18 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
         </div>
       )}
 
+      {plan && (
+        <div className="mb-3 flex items-center gap-2.5 text-xs text-ink-muted">
+          <span className="h-1.5 w-28 shrink-0 overflow-hidden rounded-full bg-divider" aria-hidden="true">
+            <span
+              className="block h-full bg-accent transition-[width]"
+              style={{ width: `${Math.min(100, (plan.activos / plan.tope) * 100)}%` }}
+            />
+          </span>
+          {plan.activos} de {plan.tope} casos activos · {plan.nombre}
+        </div>
+      )}
+
       <div role="group" aria-label="Filtrar por fase" className="mb-3 flex flex-wrap gap-1.5">
         {(["todos", "activo", "en_pausa", "archivado"] as Filtro[]).map((f) => (
           <button
@@ -393,12 +455,13 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
             className={`rounded-full border px-2.5 py-0.5 text-xs ${filtro === f ? "border-accent bg-accent/10 text-ink" : "border-divider text-ink-muted hover:text-ink"}`}
           >
             {f === "todos" ? "Todos" : ETIQUETA_FASE_CASO[f]}
+            <span className="ml-1 font-mono text-[10px] opacity-70">{cuenta(f)}</span>
           </button>
         ))}
       </div>
 
       {visibles.length === 0 ? (
-        <p className="text-sm text-ink-muted">Sin casos aquí.</p>
+        <p className="text-sm text-ink-muted">{filtro === "archivado" ? "Sin casos archivados." : "Sin casos aquí."}</p>
       ) : (
         <ul className="divide-y divide-divider">
           {visibles.map((c) => (
@@ -439,9 +502,9 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
                 </select>
                 <button
                   type="button"
-                  onClick={() => setABorrar(c)}
-                  aria-label={`${enNube ? "Archivar" : "Borrar"} ${c.alias}`}
-                  title={enNube ? "Archivar" : "Borrar"}
+                  onClick={() => setAEliminar(c)}
+                  aria-label={`Eliminar ${c.alias}`}
+                  title="Eliminar"
                   className="text-xs text-ink-muted hover:text-ink"
                 >
                   ✕
@@ -451,54 +514,130 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
           ))}
         </ul>
       )}
+      {filtro === "archivado" && eliminados.length > 0 && (
+        <div className="mt-4 border-t border-dashed border-divider pt-3">
+          <h3 className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Eliminados</h3>
+          <p className="mb-1.5 text-xs text-ink-muted">
+            Se borran para siempre 30 días después de eliminarlos. Hasta entonces puedes recuperarlos.
+          </p>
+          <ul className="divide-y divide-divider">
+            {eliminados.map((c) => {
+              const dias = diasParaBorrar(c.eliminado_en!);
+              return (
+                <li key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                  <span className="text-[15px] font-medium text-ink-muted">{c.alias}</span>
+                  <span className="font-mono text-[11px] uppercase tracking-wide text-ink-muted">
+                    {c.fecha_ultima_sesion
+                      ? `S${c.ultima_sesion} · ${formatearFecha(c.fecha_ultima_sesion)}`
+                      : "Sin sesiones"}
+                  </span>
+                  <span
+                    title={`Se borra el ${fechaLarga(fechaDeBorrado(c.eliminado_en!))}`}
+                    className="rounded-full bg-warn/10 px-2 py-px font-mono text-[11px] text-warn"
+                  >
+                    {dias === 0 ? "Se borra hoy" : `Se borra en ${dias} ${dias === 1 ? "día" : "días"}`}
+                  </span>
+                  <span className="ml-auto flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => recuperar(c)}
+                      disabled={ocupado}
+                      className="rounded border border-divider bg-surface px-2.5 py-1 text-xs font-medium text-ink transition-colors hover:bg-canvas disabled:opacity-50"
+                    >
+                      Recuperar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmacion("");
+                        setABorrarYa(c);
+                      }}
+                      className="text-xs text-ink-muted hover:text-ink"
+                    >
+                      Borrar ya
+                    </button>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
       <Mensaje texto={mensaje} />
 
-      {aBorrar && (
+      {aEliminar && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Borrar caso"
+          aria-label="Eliminar caso"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
         >
           <div className="w-full max-w-sm rounded-xl border border-divider bg-surface p-5">
-            {enNube ? (
-              <>
-                {/* En la nube las reglas no dejan borrar desde el navegador: se archiva. */}
-                <p className="text-sm text-ink">
-                  ¿Archivar <span className="font-semibold">{aBorrar.alias}</span>?
-                </p>
-                <p className="mt-1 text-xs text-ink-muted">
-                  Los casos guardados en la nube no se borran desde aquí. Al archivarlo sale de la lista y libera su
-                  lugar en tu plan. Lo encuentras en «Archivado» si lo necesitas.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-ink">
-                  ¿Borrar <span className="font-semibold">{aBorrar.alias}</span> con todas sus
-                  sesiones? No se puede deshacer.
-                </p>
-                <p className="mt-1 text-xs text-ink-muted">Para sacarlo de la lista sin perderlo, archívalo.</p>
-              </>
-            )}
+            <p className="text-sm text-ink">
+              ¿Eliminar <span className="font-semibold">{aEliminar.alias}</span>?
+            </p>
+            <ul className="mt-2 list-disc space-y-0.5 pl-5 text-[13px] text-ink">
+              <li>Sale de tu lista{enNube ? " y libera su lugar del plan" : ""}.</li>
+              <li>
+                Se borra para siempre el{" "}
+                <span className="font-semibold">{fechaLarga(fechaDeBorrado(new Date().toISOString()))}</span>.
+              </li>
+              <li>
+                Hasta entonces lo recuperas desde <span className="font-semibold">Archivado</span>.
+              </li>
+            </ul>
+            <p className="mt-2 text-xs text-ink-muted">
+              Si solo quieres sacarlo de la lista sin plazo, cámbialo a «Archivado».
+            </p>
             <div className="mt-4 flex justify-end gap-2">
-              <Boton onClick={() => setABorrar(null)}>Cancelar</Boton>
-              {enNube ? (
-                <Boton
-                  onClick={() => {
-                    cambiarFase(aBorrar.id, "archivado");
-                    setABorrar(null);
-                  }}
-                  principal
-                  disabled={ocupado}
-                >
-                  Archivar
-                </Boton>
-              ) : (
-                <Boton onClick={() => eliminar(aBorrar.id)} principal disabled={ocupado}>
-                  Borrar
-                </Boton>
-              )}
+              <Boton onClick={() => setAEliminar(null)}>Cancelar</Boton>
+              <Boton onClick={() => eliminar(aEliminar)} principal disabled={ocupado}>
+                Eliminar
+              </Boton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {aBorrarYa && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Borrar definitivamente"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        >
+          <div className="w-full max-w-sm rounded-xl border border-divider bg-surface p-5">
+            <p className="text-sm text-ink">
+              ¿Borrar <span className="font-semibold">{aBorrarYa.alias}</span> definitivamente?
+            </p>
+            <p className="mt-1 text-xs text-ink-muted">Se borran el caso y todas sus sesiones. No se puede deshacer.</p>
+            <p className="mt-3 text-xs text-ink-muted">
+              Escribe <span className="font-semibold text-ink">{aBorrarYa.alias}</span> para confirmar.
+            </p>
+            <input
+              value={confirmacion}
+              onChange={(e) => setConfirmacion(e.target.value)}
+              aria-label="Nombre del caso"
+              autoComplete="off"
+              autoFocus
+              className="mt-2 w-full rounded border border-divider bg-canvas px-3 py-2 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <Boton
+                onClick={() => {
+                  setABorrarYa(null);
+                  setConfirmacion("");
+                }}
+              >
+                Cancelar
+              </Boton>
+              <Boton
+                onClick={() => borrarYa(aBorrarYa)}
+                principal
+                disabled={ocupado || confirmacion.trim() !== aBorrarYa.alias.trim()}
+              >
+                Borrar definitivamente
+              </Boton>
             </div>
           </div>
         </div>

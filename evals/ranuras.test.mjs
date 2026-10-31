@@ -34,7 +34,7 @@ execFileSync(
 const require = createRequire(import.meta.url);
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
-const { cambiarRanura, PLANES } = require(join(RAIZ, ".tmp-evals-ranuras/servidor/ranuras.js"));
+const { cambiarRanura, PLANES, borrarCasoEliminado, purgarEliminados } = require(join(RAIZ, ".tmp-evals-ranuras/servidor/ranuras.js"));
 const { manejarRanuras } = require(join(RAIZ, ".tmp-evals-ranuras/servidor/ranurasHttp.js"));
 
 const bd = getFirestore(initializeApp({ projectId: "demo-acia" }));
@@ -181,7 +181,7 @@ await prueba("HTTP: el uid sale del token, no del cuerpo", async (u) => {
 
 await prueba("HTTP: validación de acción, caso_uid y cuerpo", async (u) => {
   const t = `token-${u}`;
-  assert.equal((await post(t, { accion: "eliminar", caso_uid: caso(1) })).status, 400);
+  assert.equal((await post(t, { accion: "destruir", caso_uid: caso(1) })).status, 400);
   assert.equal((await post(t, { accion: "reclamar", caso_uid: "../otro" })).status, 400);
   assert.equal((await post(t, { accion: "reclamar" })).status, 400);
   assert.equal((await post(t, "no es json")).status, 400);
@@ -206,6 +206,102 @@ await prueba("HTTP: archivar y reactivar de punta a punta", async (u) => {
   const b = await (await post(t, { accion: "reactivar", caso_uid: caso(1) })).json();
   assert.equal(b.estado, "activo");
   assert.equal(b.casos_activos, 1);
+});
+
+// --- Eliminar con 30 días para arrepentirse ----------------------------
+
+const DIA = 24 * 60 * 60 * 1000;
+async function sembrarCaso(uid, c) {
+  // Contenido cifrado de mentira: el servidor nunca lo lee, solo lo borra.
+  await bd.doc(`usuarios/${uid}/casos/${c}`).set({ rev: 1 });
+  await bd.doc(`usuarios/${uid}/casos/${c}/partes/p1`).set({ rev: 1 });
+  await bd.doc(`usuarios/${uid}/casos/${c}/partes_historial/p1__1`).set({ rev: 1 });
+  await bd.doc(`usuarios/${uid}/indice/${c}`).set({ rev: 1 });
+}
+const existe = async (ruta) => (await bd.doc(ruta).get()).exists;
+
+await prueba("eliminar libera la ranura y recuperar la vuelve a ocupar", async (u) => {
+  await cambiarRanura(bd, u, caso(1), "reclamar");
+  assert.equal((await cambiarRanura(bd, u, caso(1), "eliminar")).estado, "eliminado");
+  assert.equal(await contador(u), 0);
+  assert.equal((await cambiarRanura(bd, u, caso(1), "eliminar")).cambio, false, "repetir no cambia nada");
+  assert.equal((await cambiarRanura(bd, u, caso(1), "recuperar")).estado, "activo");
+  assert.equal(await contador(u), 1);
+  const d = (await bd.doc(`usuarios/${u}/ranuras/${caso(1)}`).get()).data();
+  assert.equal(d.eliminado_en, undefined);
+  assert.equal(d.estado_previo, undefined);
+});
+
+await prueba("un archivado eliminado vuelve archivado y no ocupa ranura", async (u) => {
+  await cambiarRanura(bd, u, caso(1), "reclamar");
+  await cambiarRanura(bd, u, caso(1), "archivar");
+  await cambiarRanura(bd, u, caso(1), "eliminar");
+  assert.equal(await contador(u), 0);
+  assert.equal((await cambiarRanura(bd, u, caso(1), "recuperar")).estado, "archivado");
+  assert.equal(await contador(u), 0);
+});
+
+await prueba("recuperar sin hueco falla y el caso sigue eliminado", async (u) => {
+  await cambiarRanura(bd, u, caso(1), "reclamar");
+  await cambiarRanura(bd, u, caso(1), "eliminar");
+  for (const i of [2, 3, 4]) await cambiarRanura(bd, u, caso(i), "reclamar");
+  assert.equal(await cod(cambiarRanura(bd, u, caso(1), "recuperar")), "tope_de_casos");
+  assert.equal((await estados(u))[caso(1)], "eliminado");
+});
+
+await prueba("un caso eliminado no se archiva, reactiva ni reclama", async (u) => {
+  await cambiarRanura(bd, u, caso(1), "reclamar");
+  await cambiarRanura(bd, u, caso(1), "eliminar");
+  for (const a of ["archivar", "reactivar", "reclamar"]) {
+    assert.equal(await cod(cambiarRanura(bd, u, caso(1), a)), "caso_eliminado", a);
+  }
+});
+
+await prueba("borrar exige que esté eliminado y lo borra todo", async (u) => {
+  await cambiarRanura(bd, u, caso(1), "reclamar");
+  await sembrarCaso(u, caso(1));
+  assert.equal(await cod(borrarCasoEliminado(bd, u, caso(1))), "caso_no_eliminado");
+  assert.ok(await existe(`usuarios/${u}/casos/${caso(1)}/partes/p1`), "no se borró nada");
+  await cambiarRanura(bd, u, caso(1), "eliminar");
+  assert.deepEqual(await borrarCasoEliminado(bd, u, caso(1)), { borrado: true });
+  for (const ruta of [
+    `usuarios/${u}/casos/${caso(1)}`,
+    `usuarios/${u}/casos/${caso(1)}/partes/p1`,
+    `usuarios/${u}/casos/${caso(1)}/partes_historial/p1__1`,
+    `usuarios/${u}/indice/${caso(1)}`,
+    `usuarios/${u}/ranuras/${caso(1)}`,
+  ]) {
+    assert.equal(await existe(ruta), false, ruta);
+  }
+});
+
+await prueba("purgar borra solo lo eliminado hace 30 días o más", async (u) => {
+  const t0 = new Date("2026-10-01T12:00:00Z");
+  for (const i of [1, 2, 3]) {
+    await cambiarRanura(bd, u, caso(i), "reclamar");
+    await sembrarCaso(u, caso(i));
+  }
+  await cambiarRanura(bd, u, caso(1), "eliminar", () => t0);
+  await cambiarRanura(bd, u, caso(2), "eliminar", () => new Date(t0.getTime() + 5 * DIA));
+  // Día 29: nada. Día 30: solo el caso 1. El 3 nunca, porque no está eliminado.
+  await purgarEliminados(bd, () => new Date(t0.getTime() + 29 * DIA));
+  assert.equal(await existe(`usuarios/${u}/ranuras/${caso(1)}`), true);
+  await purgarEliminados(bd, () => new Date(t0.getTime() + 30 * DIA));
+  assert.equal(await existe(`usuarios/${u}/ranuras/${caso(1)}`), false);
+  assert.equal(await existe(`usuarios/${u}/casos/${caso(1)}/partes/p1`), false);
+  assert.equal(await existe(`usuarios/${u}/ranuras/${caso(2)}`), true);
+  assert.equal(await existe(`usuarios/${u}/casos/${caso(3)}/partes/p1`), true);
+});
+
+await prueba("HTTP: eliminar y borrar de punta a punta; otro usuario no borra lo ajeno", async (u) => {
+  const t = `token-${u}`;
+  await post(t, { accion: "reclamar", caso_uid: caso(1) });
+  await sembrarCaso(u, caso(1));
+  assert.equal((await (await post(t, { accion: "eliminar", caso_uid: caso(1) })).json()).estado, "eliminado");
+  assert.equal((await (await post(`token-${u}x`, { accion: "borrar", caso_uid: caso(1) })).json()).borrado, false);
+  assert.ok(await existe(`usuarios/${u}/casos/${caso(1)}/partes/p1`), "lo ajeno sigue ahí");
+  assert.equal((await (await post(t, { accion: "borrar", caso_uid: caso(1) })).json()).borrado, true);
+  assert.equal(await existe(`usuarios/${u}/casos/${caso(1)}/partes/p1`), false);
 });
 
 console.log(`\n${n} pruebas pasadas\n`);

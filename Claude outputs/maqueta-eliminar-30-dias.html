@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maqueta · Eliminar con 30 días</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+/* Tokens de app/globals.css */
+:root{
+  --canvas:#f5f0e8; --surface:#fbf8f2; --ink:#1f2a28; --ink-muted:#6e6357;
+  --accent:#0f5a43; --accent-soft:color-mix(in srgb,#0f5a43 12%,#fbf8f2);
+  --sidebar:#123a31; --divider:#e8dfd2; --warn:#8a6d3b; --dorado:#c8a15a;
+  --sans:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --serif:"Source Serif 4",ui-serif,Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);font:15px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+
+.app{display:flex;min-height:100vh}
+.side{width:220px;flex:none;background:var(--sidebar);color:#fff;padding:20px 14px}
+.marca{display:flex;gap:10px;align-items:center;margin-bottom:28px}
+.marca b{font:600 15px var(--serif);letter-spacing:.2em}
+.marca small{display:block;font-size:10px;opacity:.75;line-height:1.3}
+.nav a{display:block;padding:9px 12px;border-radius:8px;color:#fff;opacity:.85;font-size:14px;text-decoration:none}
+.nav a.act{background:color-mix(in srgb,var(--sidebar) 82%,white);opacity:1}
+main{flex:1;min-width:0;padding:40px 32px}
+.contenido{max-width:880px;margin:0 auto}
+h1{font:700 48px/1.1 var(--serif);margin:0 0 8px}
+.sub{color:var(--ink-muted);margin:0}
+
+/* Notas de la maqueta (no son parte de la app) */
+.nota-maqueta{max-width:880px;margin:0 auto 24px;border:1.5px dashed var(--dorado);border-radius:12px;padding:14px 16px;background:#fff8ea;font-size:14px}
+.nota-maqueta b{font-family:var(--serif)}
+.nota-maqueta ol{margin:6px 0 0;padding-left:20px}
+
+/* Marco de Historial */
+.marco{margin-top:24px;border:1px solid var(--divider);border-radius:12px;background:var(--surface);padding:20px}
+.marco h2{font:600 18px var(--serif);margin:0 0 12px}
+.botones{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.btn{border-radius:4px;padding:8px 16px;font-size:14px;font-weight:500;border:1px solid var(--divider);background:var(--surface);color:var(--ink)}
+.btn:hover{background:var(--canvas)}
+.btn.prim{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.prim:hover{background:color-mix(in srgb,var(--accent) 90%,white)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.chico{padding:4px 10px;font-size:12px}
+
+.plan{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:12px;color:var(--ink-muted)}
+.barra{flex:none;width:120px;height:6px;border-radius:99px;background:var(--divider);overflow:hidden}
+.barra i{display:block;height:100%;background:var(--accent);transition:width .3s}
+
+.filtros{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.filtro{border-radius:99px;border:1px solid var(--divider);padding:2px 10px;font-size:12px;color:var(--ink-muted);background:none}
+.filtro:hover{color:var(--ink)}
+.filtro[aria-pressed=true]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);color:var(--ink)}
+.filtro .n{font-family:var(--mono);font-size:10px;margin-left:4px;opacity:.7}
+
+ul.lista{list-style:none;margin:0;padding:0}
+.lista li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:8px 0;border-top:1px solid var(--divider)}
+.lista li:first-child{border-top:0}
+.alias{font-size:15px;font-weight:500;color:var(--accent);background:none;border:0;padding:0}
+.alias:hover{text-decoration:underline}
+.mono{font:11px var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--ink-muted)}
+.cifras{display:flex;gap:8px;font:11px var(--mono);color:var(--ink-muted)}
+.cifras .warn{color:var(--warn)}
+.der{margin-left:auto;display:flex;align-items:center;gap:8px}
+select{border:1px solid var(--divider);border-radius:4px;background:var(--surface);padding:2px 6px;font:12px var(--sans);color:var(--ink-muted)}
+.x{background:none;border:0;color:var(--ink-muted);font-size:12px;padding:2px 4px}
+.x:hover{color:var(--ink)}
+.vacio{font-size:14px;color:var(--ink-muted);margin:0}
+
+/* Eliminados dentro de Archivado */
+.grupo{margin-top:16px;padding-top:12px;border-top:1px dashed var(--divider)}
+.grupo h3{margin:0 0 4px;font:500 10px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--ink-muted)}
+.grupo p.ayuda{margin:0 0 6px;font-size:12px;color:var(--ink-muted)}
+.eliminado .alias{color:var(--ink-muted)}
+.cuenta{font:11px var(--mono);color:var(--warn);background:color-mix(in srgb,var(--warn) 10%,transparent);border-radius:99px;padding:1px 8px}
+
+.mensaje{margin:12px 0 0;font-size:14px}
+
+/* Diálogo (mismo patrón que Historial) */
+.velo{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+.velo.open{display:flex}
+.dialogo{width:100%;max-width:384px;border:1px solid var(--divider);border-radius:12px;background:var(--surface);padding:20px}
+.dialogo p{margin:0;font-size:14px}
+.dialogo .det{margin-top:4px;font-size:12px;color:var(--ink-muted)}
+.dialogo ul{margin:10px 0 0;padding-left:18px;font-size:13px}
+.dialogo input{margin-top:10px;width:100%;border:1px solid var(--divider);border-radius:4px;background:var(--canvas);padding:8px 12px;font:14px var(--sans);color:var(--ink)}
+.dialogo input:focus{outline:none;box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 40%,transparent)}
+.acciones{margin-top:16px;display:flex;justify-content:flex-end;gap:8px}
+
+@media (max-width:760px){
+  .side{display:none}
+  main{padding:24px 16px}
+  h1{font-size:36px}
+  .der{margin-left:0}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" aria-hidden="true">
+    <div class="marca"><span style="font-size:22px">◉</span><div><b>ACIA</b><small>Análisis de Conducta<br>asistido por IA</small></div></div>
+    <nav class="nav"><a>Nuevo caso</a><a class="act">Casos</a><a>Evolución</a><a>Aprender</a><a>Cuenta</a></nav>
+  </aside>
+  <main>
+    <div class="nota-maqueta">
+      <b>Maqueta — eliminar con 30 días para arrepentirse.</b> No toca la app ni la nube.
+      <ol>
+        <li>Pulsa la <b>✕</b> de un caso → «Eliminar». Sale de la lista y libera su lugar del plan.</li>
+        <li>Míralo en <b>Archivado → Eliminados</b>: muestra cuántos días quedan y la fecha del borrado.</li>
+        <li><b>Recuperar</b> lo devuelve a como estaba. <b>Borrar ya</b> pide escribir su nombre.</li>
+      </ol>
+    </div>
+
+    <div class="contenido">
+      <h1>Casos</h1>
+      <p class="sub">Cifrados en este dispositivo.</p>
+
+      <section class="marco">
+        <h2>Casos</h2>
+        <div class="botones">
+          <button class="btn prim">+ Nuevo caso</button>
+          <button class="btn">Exportar respaldo</button>
+          <button class="btn">Importar respaldo</button>
+          <button class="btn">Bloquear</button>
+        </div>
+
+        <div class="plan"><span class="barra"><i id="barra"></i></span><span id="plan"></span></div>
+
+        <div class="filtros" role="group" aria-label="Filtrar por fase" id="filtros"></div>
+        <div id="lista"></div>
+        <p class="mensaje" id="mensaje" role="status"></p>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- Eliminar -->
+<div class="velo" id="vEliminar" role="dialog" aria-modal="true" aria-label="Eliminar caso">
+  <div class="dialogo">
+    <p>¿Eliminar <b id="eAlias"></b>?</p>
+    <ul>
+      <li>Sale de tu lista y libera su lugar del plan.</li>
+      <li>Se borra para siempre el <b id="eFecha"></b>.</li>
+      <li>Hasta entonces lo recuperas desde <b>Archivado</b>.</li>
+    </ul>
+    <p class="det" style="margin-top:10px">Si solo quieres sacarlo de la lista sin plazo, cámbialo a «Archivado».</p>
+    <div class="acciones">
+      <button class="btn" data-cerrar>Cancelar</button>
+      <button class="btn prim" id="okEliminar">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Borrar ya -->
+<div class="velo" id="vBorrar" role="dialog" aria-modal="true" aria-label="Borrar definitivamente">
+  <div class="dialogo">
+    <p>¿Borrar <b id="bAlias"></b> definitivamente?</p>
+    <p class="det">Se borran el caso y todas sus sesiones. No se puede deshacer.</p>
+    <p class="det" style="margin-top:10px">Escribe <b id="bAlias2"></b> para confirmar.</p>
+    <input id="bTexto" autocomplete="off" aria-label="Nombre del caso">
+    <div class="acciones">
+      <button class="btn" data-cerrar>Cancelar</button>
+      <button class="btn prim" id="okBorrar" disabled>Borrar definitivamente</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOPE = 3, DIA = 864e5;
+const hoy = new Date(2026, 9, 31);
+const fecha = (d) => d.toLocaleDateString("es", { day: "numeric", month: "short" }).toUpperCase().replace(".", "");
+const fechaLarga = (d) => d.toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" });
+
+let casos = [
+  { id: 1, alias: "Caso de ejemplo", fase: "activo", s: 1, f: new Date(2026, 9, 28), b: 4, p: 7, a: 20 },
+  { id: 2, alias: "M.34", fase: "en_pausa", s: 6, f: new Date(2026, 9, 22), b: 2, p: 3, a: 0 },
+  { id: 3, alias: "Prueba (Claude)", fase: "activo", s: 0, f: null, b: 0, p: 0, a: 0 },
+  { id: 4, alias: "R.12", fase: "archivado", s: 9, f: new Date(2026, 6, 3), b: 0, p: 1, a: 2 },
+  // Eliminado hace 26 días: quedan 4.
+  { id: 5, alias: "L.07", fase: "eliminado", previa: "archivado", eliminado: new Date(hoy - 26 * DIA), s: 3, f: new Date(2026, 4, 10), b: 1, p: 0, a: 0 },
+];
+let filtro = "todos", objetivo = null;
+const ETQ = { activo: "Activo", en_pausa: "En pausa", archivado: "Archivado" };
+const $ = (id) => document.getElementById(id);
+// «En pausa» sigue ocupando lugar (regla actual del servidor).
+const ocupados = () => casos.filter((c) => c.fase === "activo" || c.fase === "en_pausa").length;
+const quedan = (c) => Math.max(0, 30 - Math.floor((hoy - c.eliminado) / DIA));
+const borradoEl = (c) => new Date(c.eliminado.getTime() + 30 * DIA);
+
+function fila(c) {
+  const sesiones = c.f ? `S${c.s} · ${fecha(c.f)}` : "Sin sesiones";
+  const cifras = `<span class="cifras"><span title="Blancos activos">◎ ${c.b}</span><span title="Preguntas abiertas">? ${c.p}</span>${c.a ? `<span class="warn" title="Avisos">▲ ${c.a}</span>` : ""}</span>`;
+  if (c.fase === "eliminado") {
+    const q = quedan(c);
+    return `<li class="eliminado"><button class="alias" disabled style="cursor:default">${c.alias}</button><span class="mono">${sesiones}</span>
+      <span class="cuenta" title="Se borra el ${fechaLarga(borradoEl(c))}">Se borra en ${q} ${q === 1 ? "día" : "días"}</span>
+      <span class="der"><button class="btn chico" data-recuperar="${c.id}">Recuperar</button><button class="x" data-borrar="${c.id}">Borrar ya</button></span></li>`;
+  }
+  const opciones = Object.entries(ETQ).map(([v, t]) => `<option value="${v}" ${c.fase === v ? "selected" : ""}>${t}</option>`).join("");
+  return `<li><button class="alias">${c.alias}</button><span class="mono">${sesiones}</span>${cifras}
+    <span class="der"><select data-fase="${c.id}" aria-label="Fase del caso">${opciones}</select>
+    <button class="x" data-eliminar="${c.id}" title="Eliminar" aria-label="Eliminar ${c.alias}">✕</button></span></li>`;
+}
+
+function pintar() {
+  const n = ocupados();
+  $("barra").style.width = `${Math.min(100, (n / TOPE) * 100)}%`;
+  $("plan").textContent = `${n} de ${TOPE} casos activos · Plan gratuito`;
+
+  const cuentas = {
+    todos: casos.filter((c) => c.fase !== "archivado" && c.fase !== "eliminado").length,
+    activo: casos.filter((c) => c.fase === "activo").length,
+    en_pausa: casos.filter((c) => c.fase === "en_pausa").length,
+    archivado: casos.filter((c) => c.fase === "archivado" || c.fase === "eliminado").length,
+  };
+  $("filtros").innerHTML = ["todos", "activo", "en_pausa", "archivado"].map((f) =>
+    `<button class="filtro" aria-pressed="${filtro === f}" data-filtro="${f}">${f === "todos" ? "Todos" : ETQ[f]}<span class="n">${cuentas[f]}</span></button>`).join("");
+
+  let html = "";
+  if (filtro === "archivado") {
+    const arch = casos.filter((c) => c.fase === "archivado");
+    const elim = casos.filter((c) => c.fase === "eliminado").sort((a, b) => quedan(a) - quedan(b));
+    html += arch.length ? `<ul class="lista">${arch.map(fila).join("")}</ul>` : `<p class="vacio">Sin casos archivados.</p>`;
+    if (elim.length) {
+      html += `<div class="grupo"><h3>Eliminados</h3><p class="ayuda">Se borran para siempre 30 días después de eliminarlos. Hasta entonces puedes recuperarlos.</p>
+        <ul class="lista">${elim.map(fila).join("")}</ul></div>`;
+    }
+  } else {
+    const vis = casos.filter((c) => (filtro === "todos" ? c.fase !== "archivado" && c.fase !== "eliminado" : c.fase === filtro));
+    html = vis.length ? `<ul class="lista">${vis.map(fila).join("")}</ul>` : `<p class="vacio">Sin casos aquí.</p>`;
+  }
+  $("lista").innerHTML = html;
+}
+
+function avisar(t) { $("mensaje").textContent = t; }
+function cerrar() { document.querySelectorAll(".velo").forEach((v) => v.classList.remove("open")); }
+document.querySelectorAll("[data-cerrar]").forEach((b) => (b.onclick = cerrar));
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  if (t.dataset.filtro) { filtro = t.dataset.filtro; pintar(); }
+  if (t.dataset.eliminar) {
+    objetivo = casos.find((c) => c.id === +t.dataset.eliminar);
+    $("eAlias").textContent = objetivo.alias;
+    $("eFecha").textContent = fechaLarga(new Date(hoy.getTime() + 30 * DIA));
+    $("vEliminar").classList.add("open");
+  }
+  if (t.dataset.recuperar) {
+    const c = casos.find((x) => x.id === +t.dataset.recuperar);
+    const vuelveActivo = c.previa !== "archivado";
+    if (vuelveActivo && ocupados() >= TOPE) {
+      c.fase = "archivado";
+      avisar(`«${c.alias}» se recuperó como archivado: tu plan ya tiene ${TOPE} casos activos.`);
+    } else {
+      c.fase = c.previa;
+      avisar(`«${c.alias}» recuperado.`);
+    }
+    delete c.eliminado; pintar();
+  }
+  if (t.dataset.borrar) {
+    objetivo = casos.find((c) => c.id === +t.dataset.borrar);
+    $("bAlias").textContent = $("bAlias2").textContent = objetivo.alias;
+    $("bTexto").value = ""; $("okBorrar").disabled = true;
+    $("vBorrar").classList.add("open"); $("bTexto").focus();
+  }
+});
+document.addEventListener("change", (e) => {
+  const id = e.target.dataset.fase;
+  if (!id) return;
+  const c = casos.find((x) => x.id === +id);
+  const nueva = e.target.value;
+  if (nueva !== "archivado" && c.fase === "archivado" && ocupados() >= TOPE) {
+    avisar(`Tu plan permite ${TOPE} casos activos. Archiva o elimina uno, o mejora el plan.`);
+    pintar(); return;
+  }
+  c.fase = nueva; avisar(""); pintar();
+});
+
+$("okEliminar").onclick = () => {
+  objetivo.previa = objetivo.fase; objetivo.fase = "eliminado"; objetivo.eliminado = new Date(hoy);
+  cerrar(); avisar(`«${objetivo.alias}» eliminado. Lo recuperas desde Archivado durante 30 días.`); pintar();
+};
+$("bTexto").oninput = () => { $("okBorrar").disabled = $("bTexto").value.trim() !== objetivo.alias; };
+$("okBorrar").onclick = () => {
+  casos = casos.filter((c) => c !== objetivo);
+  cerrar(); avisar(`«${objetivo.alias}» se borró definitivamente.`); pintar();
+};
+pintar();
+</script>
+</body>
+</html>

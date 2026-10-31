@@ -50,11 +50,23 @@ const NOTA = "M. pidió ir al baño y estuvo allí respirando.";
 let k = 0;
 const id = () => `id_${++k}`;
 
+// Casos eliminados (caso → fecha ISO), compartidos por los dispositivos de la prueba.
+const eliminadosPrueba = new Map();
 function dispositivo(almacen, uid, ranuras) {
   const r = new RepositorioNube(() => almacen, {
     reclamar: async (c) => void ranuras?.add(c),
     archivar: async (c) => void ranuras?.delete(c),
     reactivar: async (c) => void ranuras?.add(c),
+    eliminar: async (c) => {
+      ranuras?.delete(c);
+      eliminadosPrueba.set(c, "2026-10-05T00:00:00.000Z");
+    },
+    recuperar: async (c) => {
+      eliminadosPrueba.delete(c);
+      ranuras?.add(c);
+    },
+    borrar: async (c) => void eliminadosPrueba.delete(c),
+    eliminados: async () => new Map(eliminadosPrueba),
   });
   return r.asociarCuenta(uid).then(() => r);
 }
@@ -255,6 +267,8 @@ await prueba("reactivar sin hueco falla y no guarda nada", async () => {
   const sinHueco = new RepositorioNube(() => almacen, {
     reclamar: async () => {}, archivar: async () => {},
     reactivar: async () => { throw new Error("Tu plan permite 2 casos activos."); },
+    eliminar: async () => {}, recuperar: async () => {}, borrar: async () => {},
+    eliminados: async () => new Map(),
   });
   await sinHueco.asociarCuenta("uid-A");
   await sinHueco.desbloquear(FRASE);
@@ -265,9 +279,18 @@ await prueba("reactivar sin hueco falla y no guarda nada", async () => {
   );
   assert.equal((await r.obtenerCaso(exp.caso.id)).caso.fase, "archivado");
 });
-await prueba("eliminar no está permitido desde el cliente", async () => {
-  const { r } = await cuentaNueva();
-  await assert.rejects(() => r.eliminarCaso("x"), /Archívalo/);
+await prueba("eliminar lo marca en la lista sin borrarlo; recuperar lo devuelve", async () => {
+  const { r, ranuras } = await cuentaNueva();
+  const exp = casoConSesion();
+  await r.crearCaso(exp);
+  await r.eliminarCaso(exp.caso.id);
+  assert.equal(ranuras.has(exp.caso.id), false, "libera la ranura");
+  const [res] = await r.listarCasos();
+  assert.equal(res.eliminado_en, "2026-10-05T00:00:00.000Z");
+  assert.ok(await r.obtenerCaso(exp.caso.id), "el contenido sigue ahí");
+  await r.recuperarCaso(exp.caso.id);
+  assert.equal((await r.listarCasos())[0].eliminado_en, null);
+  assert.equal(ranuras.has(exp.caso.id), true);
 });
 await prueba("el respaldo exportado es solo texto cifrado", async () => {
   const { r } = await cuentaNueva();

@@ -221,6 +221,18 @@ prueba("solo se borra una sesión vacía", () => {
   assert.throws(() => C.quitarSesionVacia(exp, exp.sesiones[0].id, T0));
 });
 
+prueba("un caso eliminado cuenta 30 días hasta el borrado definitivo", () => {
+  const e = "2026-10-01T12:00:00.000Z";
+  const dia = 24 * 60 * 60 * 1000;
+  assert.equal(C.fechaDeBorrado(e).toISOString(), "2026-10-31T12:00:00.000Z");
+  assert.equal(C.diasParaBorrar(e, new Date(e)), 30);
+  assert.equal(C.diasParaBorrar(e, new Date(Date.parse(e) + 29 * dia)), 1);
+  assert.equal(C.diasParaBorrar(e, new Date(Date.parse(e) + 30 * dia)), 0);
+  assert.equal(C.diasParaBorrar(e, new Date(Date.parse(e) + 40 * dia)), 0);
+  const exp = casoMigrado();
+  assert.equal(C.resumirExpediente(exp).eliminado_en, null);
+});
+
 // Tamaño de guardar una instantánea completa por sesión (decisión de lib/casos.ts).
 {
   let exp = casoMigrado();
