@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maqueta · Evidencia y nota completa</title>
+<style>
+:root{
+  --canvas:#f5f0e8; --surface:#fbf8f2; --ink:#1f2a28; --muted:#6e6357;
+  --accent:#0f5a43; --accent-soft:#e3ebe3; --divider:#e8dfd2;
+  --dorado:#c8a15a; --tierra:#8a6b47; --warn-soft:#f1e4c6; --inferido:#c2683f;
+  --serif:Georgia,"Source Serif 4",serif; --sans:system-ui,"IBM Plex Sans",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);font:15px/1.55 var(--sans)}
+.wrap{max-width:1100px;margin:0 auto;padding:32px 20px 64px}
+h1{font:600 28px var(--serif);margin:0 0 6px}
+h2{font:600 19px var(--serif);margin:0 0 6px}
+.lead{color:var(--muted);max-width:72ch;margin:0 0 28px}
+.hint{font-size:13px;color:var(--muted);margin:0 0 10px}
+.ideas{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.idea{background:var(--surface);border:1px solid var(--divider);border-radius:12px;padding:16px}
+.idea b.t{display:block;font:600 16px var(--serif);margin:4px 0}
+.idea small{color:var(--muted);font-size:14px}
+.num{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px}
+.idea.op{border-style:dashed}
+.antes-despues{display:grid;grid-template-columns:1fr 90px 1fr;gap:10px;margin-bottom:12px}
+.ad{background:var(--surface);border:1px solid var(--divider);border-radius:12px;padding:14px 16px}
+.ad p{margin:6px 0 0;font-size:14px}
+.ad.antes p{font-family:ui-monospace,monospace;font-size:12.5px;color:#7a7064}
+.ad.desp{border-color:var(--accent);background:#fff}
+.ad.desp p{font-family:var(--serif);font-size:15px;line-height:1.7}
+.et{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.flecha{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:28px;color:var(--accent);text-align:center}
+.flecha small{font-size:11px;color:var(--muted);line-height:1.3}
+.callout{background:var(--accent-soft);border-radius:10px;padding:10px 14px;font-size:14px}
+
+/* demo */
+.demo{background:var(--surface);border:1px solid var(--divider);border-radius:14px;overflow:hidden;box-shadow:0 2px 14px rgba(31,42,40,.06)}
+.top{display:grid;grid-template-columns:1fr 360px}
+.mapa{padding:18px;border-right:1px solid var(--divider);min-height:300px}
+h3.p{margin:0 0 2px;font:600 12px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sub{display:block;margin:0 0 12px;font-size:12.5px;color:var(--muted)}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.col h4{margin:0 0 8px;font:600 14px var(--serif);color:var(--tierra)}
+.nodo{display:block;width:100%;text-align:left;background:#fff;border:1.5px solid var(--divider);border-radius:10px;padding:10px 12px;margin-bottom:8px;font:inherit;cursor:pointer;color:var(--ink)}
+.nodo:hover{border-color:var(--accent)}
+.nodo.sel{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.nodo .c{display:block;margin-top:6px;font-size:11px;color:var(--accent)}
+.nodo .c.no{color:var(--inferido)}
+.panel{padding:18px;background:#fdfbf7;display:flex;flex-direction:column}
+.vacio{color:var(--muted);font-size:14px;border:1.5px dashed var(--divider);border-radius:10px;padding:16px}
+.tipo{display:inline-flex;gap:6px;align-items:center;font-size:12px;padding:3px 10px;border-radius:99px;margin-bottom:10px;background:var(--accent-soft);color:var(--accent)}
+.tipo.inf{background:#f6e2d8;color:var(--inferido)}
+.cita{border-left:3px solid var(--dorado);padding:4px 0 4px 12px;margin:0 0 10px}
+.cita .ctx{color:#9a8f82;font-size:13px}
+.cita .tx{font:italic 600 16px var(--serif);background:linear-gradient(transparent 55%,rgba(200,161,90,.35) 55%)}
+.cita .ref{font:12px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+.quitar{font-size:12px;color:var(--muted);background:none;border:0;cursor:pointer;text-decoration:underline;padding:0}
+.verNota{margin-top:auto;padding-top:14px}
+button.b{font:inherit;font-size:13px;border-radius:8px;padding:6px 12px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.b.sec{background:#fff;color:var(--accent)}
+button.b:disabled{opacity:.4;cursor:not-allowed}
+button.ghost{width:100%;font:inherit;font-size:14px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--accent);background:#fff;color:var(--accent);cursor:pointer;display:flex;justify-content:space-between}
+button.ghost:hover{background:var(--accent-soft)}
+
+/* nota completa (se despliega desde B) */
+.nc{display:none;border-top:1px solid var(--divider);background:var(--surface);padding:16px 18px 18px}
+.nc.on{display:block}
+.nchead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.nchead h3{margin:0;font:600 16px var(--serif)}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.barra{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted);margin-bottom:10px}
+.tog{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--ink)}
+.tog input{accent-color:var(--accent)}
+.seguro{background:var(--accent-soft);color:var(--accent);border-radius:99px;padding:3px 11px;font-size:12px}
+.nota{font:16px/1.9 var(--serif);max-height:260px;overflow:auto;padding:14px 16px;background:#fff;border:1px solid var(--divider);border-radius:10px}
+.nota .l{display:block;margin-bottom:8px}
+.nota .ln{font:11px ui-monospace,monospace;color:#b3a898;margin-right:8px;user-select:none}
+.f{border-radius:4px;padding:1px 2px;outline:none}
+.f.usada{background:var(--accent-soft);border-bottom:2px solid var(--accent)}
+.f.usada.mia{background:#cfe3d4;box-shadow:0 0 0 2px var(--accent)}
+.f.sin{background:var(--warn-soft);border-bottom:2px dashed var(--dorado)}
+.f.desc{color:#a39a8c;text-decoration:line-through}
+.f.edit{border-bottom-style:dotted}
+.mod .f{cursor:pointer}.mod .f:hover{filter:brightness(.96)}
+.ed .f{cursor:text;box-shadow:inset 0 0 0 1px #d9d1c3}
+.ed .f:focus{box-shadow:0 0 0 2px var(--dorado);background:#fffbe9}
+.acciones{margin-top:10px;display:none;gap:8px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid var(--dorado);border-radius:10px;padding:10px 12px;font-size:14px}
+.acciones.on{display:flex}
+.acciones q{font-family:var(--serif);font-style:italic;flex:1 1 220px}
+.aviso{display:none;margin-top:10px;background:#fff;border:1px solid var(--divider);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--muted);gap:10px;align-items:center;flex-wrap:wrap}
+.aviso.on{display:flex}
+.aviso span{flex:1 1 260px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 16px;border-radius:99px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+@media(max-width:860px){.ideas{grid-template-columns:1fr}.antes-despues{grid-template-columns:1fr}.flecha{flex-direction:row;gap:8px;font-size:22px}.top{grid-template-columns:1fr}.mapa{border-right:0;border-bottom:1px solid var(--divider)}.cols{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Menos pantalla, misma trazabilidad</h1>
+  <p class="lead">La nota completa deja de ser un panel fijo. Por defecto solo ves <b>el Mapa</b> y, al elegir una tarjeta, <b>la frase exacta que la respalda</b>. Si quieres leer o corregir toda la nota, la abres con un botón desde ahí.</p>
+
+  <h2>1 · De nota desordenada a nota ordenada</h2>
+  <p class="hint">Es lo que se podrá exportar para que cada psicólogo tenga su propio orden. (Texto de ejemplo.)</p>
+  <div class="antes-despues">
+    <div class="ad antes"><span class="et">Lo que tú escribes</span>
+      <p>ultima semana 2 episodios. el martes su superv le pidio exponer resultados del mes delante de 6 compañeros mientras esperaba su turno taquicardia sudoracion y pensaba q se iba a quedar en blanco, pidio ir al baño 10 min respirando cuando volvio ya habian pasado a otro punto. alivio inmediato muy fuerte pero toda la tarde dandole vueltas</p></div>
+    <div class="flecha">→<small>la IA corrige ortografía y separa en ideas</small></div>
+    <div class="ad desp"><span class="et">Nota ordenada</span>
+      <p><b>1.</b> En la última semana describe dos episodios concretos.<br>
+      <b>2.</b> El martes, su supervisora le pidió que expusiera los resultados del mes delante de seis compañeros.<br>
+      <b>3.</b> Mientras esperaba su turno notó taquicardia, sudoración y un pensamiento recurrente de que iba a quedarse en blanco.<br>
+      <b>4.</b> Pidió ir al baño y, al volver, la reunión ya había pasado a otro punto.<br>
+      <b>5.</b> Sintió un alivio inmediato muy fuerte, aunque después estuvo toda la tarde dándole vueltas.</p></div>
+  </div>
+
+  <h2 style="margin-top:34px">2 · Qué se ve y cuándo</h2>
+  <div class="ideas">
+    <div class="idea"><span class="num">A</span><b class="t">Mapa del caso</b><small>Lo que entendió la IA, en tarjetas. Siempre visible.</small></div>
+    <div class="idea"><span class="num">B</span><b class="t">Dónde lo dijo el paciente</b><small>Al elegir una tarjeta: la frase exacta de tu nota que la respalda, con lo que venía antes y después. Siempre visible, ocupa poco.</small></div>
+    <div class="idea op"><span class="num">C</span><b class="t">Nota completa</b><small><b>Cerrada por defecto.</b> Se abre con el botón «Ver nota completa» de B. Ahí puedes leerla, corregirla y exportarla.</small></div>
+  </div>
+  <div class="callout"><b>Editar la nota no vuelve a llamar a la IA.</b> Las frases en verde son un reflejo literal de la nota ordenada. Si corriges una errata, el cambio aparece al instante en B, sin coste y sin que cuente como un cambio del análisis. No hay ningún botón que llame a la IA desde esta nota.</div>
+
+  <h2 style="margin-top:34px">3 · Pruébalo</h2>
+  <p class="hint">① Pulsa una tarjeta del Mapa. ② Mira su prueba en B. ③ Pulsa «Ver nota completa». ④ Activa «Editar texto», corrige una frase verde y mira cómo cambia B.</p>
+
+  <div class="demo" id="demo">
+    <div class="top">
+      <div class="mapa">
+        <h3 class="p">A · Mapa del caso</h3>
+        <span class="sub">Lo que entendió la IA. Pulsa una tarjeta para ver su prueba →</span>
+        <div class="cols" id="cols"></div>
+      </div>
+      <div class="panel">
+        <h3 class="p">B · Dónde lo dijo el paciente</h3>
+        <span class="sub">La prueba de la tarjeta elegida</span>
+        <div id="ev"></div>
+        <div class="verNota"><button class="ghost" id="btnNota"><span id="btnTxt">Ver nota completa</span><span id="btnRes" style="opacity:.7"></span></button></div>
+      </div>
+    </div>
+
+    <div class="nc" id="nc">
+      <div class="nchead">
+        <h3>Nota completa</h3>
+        <span class="seguro">✓ Editar no llama a la IA ni cambia el análisis</span>
+        <label class="tog" style="margin-left:auto"><input type="checkbox" id="edit"> Editar texto</label>
+        <button class="b sec" id="cerrar">Cerrar</button>
+      </div>
+      <div class="barra">
+        <span><i class="sw" style="background:var(--accent-soft);border-bottom:2px solid var(--accent)"></i>Ya está en el mapa</span>
+        <span><i class="sw" style="background:var(--warn-soft);border-bottom:2px dashed var(--dorado)"></i>Aún no está en el mapa</span>
+        <span><i class="sw" style="background:#e8e3d9"></i>Descartada</span>
+        <span id="modoTxt">Pulsa una frase ámbar para decidir qué hacer con ella.</span>
+      </div>
+      <div class="nota mod" id="nota"></div>
+      <div class="acciones" id="acc">
+        <q id="accq"></q>
+        <button class="b" id="aCitar">Citar en la tarjeta elegida</button>
+        <button class="b sec" id="aNuevo">Crear tarjeta nueva</button>
+        <button class="b sec" id="aDesc">No es relevante</button>
+      </div>
+      <div class="aviso" id="aviso">
+        <span id="avisoTxt"></span>
+        <button class="b sec" id="aRestaura">Restaurar texto original</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap">
+        <button class="b" id="xDesc">Descargar nota ordenada (.txt)</button>
+        <button class="b sec" id="xCopia">Copiar</button>
+        <span style="font-size:12px;color:var(--muted)">Incluye tus correcciones. Sin marcas del mapa.</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const ORIG=[
+ {l:"L3",f:["En la última semana describe dos episodios concretos.","El martes, su supervisora le pidió que expusiera los resultados del mes delante de seis compañeros.","Mientras esperaba su turno notó taquicardia, sudoración y un pensamiento recurrente de que iba a quedarse en blanco y todos se darían cuenta de que no sirve para el puesto.","Pidió ir al baño, estuvo allí unos diez minutos respirando y al volver la reunión ya había pasado a otro punto, por lo que no tuvo que exponer.","Cuenta que sintió un alivio inmediato muy fuerte, aunque después estuvo toda la tarde dándole vueltas a lo ocurrido y se acostó pensando que había vuelto a fallar."]},
+ {l:"L5",f:["El segundo episodio fue el jueves: un cliente le levantó la voz por teléfono.","Ella respondió disculpándose repetidamente y aceptó una compensación que no le correspondía autorizar.","El cliente colgó satisfecho.","Después se lo ocultó a su supervisora por miedo a la reprimenda y estuvo revisando mentalmente la conversación durante horas."]},
+ {l:"L7",f:["Comenta que últimamente evita comer con los compañeros, dice que está ocupada y come en su mesa mirando el móvil.","También ha dejado de ir a clases de baile a las que asistía desde hacía años, porque al final de la clase suele haber un momento en que cada persona improvisa sola delante del grupo.","Los fines de semana bebe dos o tres copas de vino antes de quedar con amigos, dice que así se suelta.","Duerme mal los domingos."]}
+];
+const FR=[];ORIG.forEach(L=>L.f.forEach((t,i)=>FR.push({k:L.l+"."+(i+1),l:L.l,orig:t,t:t})));
+const uso={"L3.2":"n1","L3.3":"n2","L3.5":"n3"};
+const NODOS=[
+ {id:"n1",col:"Antecedente",t:"Supervisora pide exponer resultados"},
+ {id:"n2",col:"Conducta",t:"Taquicardia y sudoración"},
+ {id:"n3",col:"Consecuencia",t:"Alivio inmediato por evitar exposición"},
+];
+const $=s=>document.querySelector(s);
+let sel=null,foco=null;
+const cortar=(s,n,fin)=>s.length<=n?s:(fin?s.slice(0,n)+"…":"…"+s.slice(-n));
+const editadas=()=>FR.filter(f=>f.t!==f.orig).length;
+function ctx(k){const i=FR.findIndex(f=>f.k===k);return{prev:FR[i-1]&&FR[i-1].l===FR[i].l?FR[i-1].t:"",cur:FR[i],next:FR[i+1]&&FR[i+1].l===FR[i].l?FR[i+1].t:""}}
+
+function pintaMapa(){
+  const cols={};NODOS.forEach(n=>(cols[n.col]=cols[n.col]||[]).push(n));
+  $("#cols").innerHTML=Object.entries(cols).map(([c,ns])=>`<div class="col"><h4>${c}</h4>${ns.map(n=>{
+    const q=FR.filter(f=>uso[f.k]===n.id).length;
+    return `<button class="nodo ${sel===n.id?"sel":""}" data-n="${n.id}">${n.t}<span class="c ${q?"":"no"}">${q?`✓ ${q} frase${q>1?"s":""} de la nota`:"⚠ sin apoyo en la nota"}</span></button>`}).join("")}</div>`).join("");
+  document.querySelectorAll(".nodo").forEach(b=>b.onclick=()=>{sel=sel===b.dataset.n?null:b.dataset.n;foco=null;todo();
+    const m=document.querySelector(".f.mia");if(m&&$("#nc").classList.contains("on"))m.scrollIntoView({block:"nearest",behavior:"smooth"})});
+}
+function pintaEv(){
+  const el=$("#ev");
+  if(!sel){el.innerHTML=`<div class="vacio">Elige una tarjeta del mapa para ver <b>qué frase de la nota la respalda</b> y en qué contexto se dijo.</div>`;return}
+  const fs=FR.filter(f=>uso[f.k]===sel);
+  if(!fs.length){el.innerHTML=`<div class="tipo inf">⚠ Sin apoyo en la nota</div><p style="margin:0;font-size:14px;color:var(--muted)">Esta tarjeta no tiene frase. Abre la nota completa y pulsa una frase ámbar.</p>`;return}
+  el.innerHTML=`<div class="tipo">● Textual</div>`+fs.map(f=>{const c=ctx(f.k);return `
+   <div class="cita">${c.prev?`<div class="ctx">${cortar(c.prev,70)}</div>`:""}<div class="tx" data-ev="${f.k}">«${f.t}»</div>${c.next?`<div class="ctx">${cortar(c.next,70,1)}</div>`:""}<div class="ref">${f.k}</div></div>
+   <button class="quitar" data-q="${f.k}">Quitar esta frase de la tarjeta</button>`}).join("<hr style='border:0;border-top:1px solid var(--divider);margin:12px 0'>");
+  el.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{delete uso[b.dataset.q];toast("Quitada: la frase vuelve a «aún no está en el mapa»");todo()});
+}
+function pintaBoton(){
+  const t=FR.length,u=FR.filter(f=>uso[f.k]&&uso[f.k]!=="desc").length,d=FR.filter(f=>uso[f.k]==="desc").length;
+  const abierta=$("#nc").classList.contains("on");
+  $("#btnTxt").textContent=abierta?"Ocultar nota completa":"Ver nota completa";
+  $("#btnRes").textContent=(t-u-d)+" frases por revisar "+(abierta?"▴":"▾");
+}
+function pintaNota(){
+  $("#nota").innerHTML=ORIG.map(L=>`<span class="l"><span class="ln">${L.l}</span>`+L.f.map((_,i)=>{
+    const k=L.l+"."+(i+1),f=FR.find(x=>x.k===k),u=uso[k];
+    const c=(u==="desc"?"desc":u?("usada"+(u===sel?" mia":"")):"sin")+(f.t!==f.orig?" edit":"");
+    return `<span class="f ${c}" data-k="${k}">${f.t.replace(/</g,"&lt;")}</span> `}).join("")+`</span>`).join("");
+  const en=$("#edit").checked;
+  document.querySelectorAll(".f").forEach(s=>{
+    s.contentEditable=en?"plaintext-only":"false";
+    s.onclick=()=>{if(en)return;const k=s.dataset.k,u=uso[k];
+      if(u&&u!=="desc"){sel=u;foco=null;todo();return}
+      foco=k;pintaAcc()};
+    s.oninput=()=>{const f=FR.find(x=>x.k===s.dataset.k);f.t=s.textContent;
+      s.classList.toggle("edit",f.t!==f.orig);
+      const ev=document.querySelector(`[data-ev="${f.k}"]`);if(ev)ev.textContent="«"+f.t+"»";
+      const c=ctx(f.k);pintaAviso()};
+  });
+}
+function pintaAviso(){
+  const n=editadas(),a=$("#aviso");
+  a.classList.toggle("on",n>0);
+  $("#avisoTxt").textContent=n+" frase"+(n>1?"s":"")+" corregida"+(n>1?"s":"")+". Guardado en la nota, sin llamar a la IA. Las tarjetas del mapa no han cambiado. ⚠ Si cambias el sentido de una frase, las cadenas pueden perder coherencia: para cambios grandes se recomienda volver a analizar la sesión.";
+}
+function pintaAcc(){
+  const a=$("#acc");
+  if(!foco||$("#edit").checked){a.classList.remove("on");return}
+  const f=FR.find(x=>x.k===foco),u=uso[foco];
+  $("#accq").textContent="«"+cortar(f.t,110,1)+"»";
+  a.classList.add("on");
+  $("#aCitar").disabled=!sel;
+  $("#aCitar").textContent=sel?"Citar en «"+cortar(NODOS.find(n=>n.id===sel).t,22,1)+"»":"Elige antes una tarjeta";
+  $("#aDesc").textContent=u==="desc"?"Volver a «aún no está en el mapa»":"No es relevante";
+}
+function todo(){pintaMapa();pintaEv();pintaNota();pintaAcc();pintaBoton();pintaAviso()}
+let tt;function toast(m){const e=$("#toast");e.textContent=m;e.classList.add("on");clearTimeout(tt);tt=setTimeout(()=>e.classList.remove("on"),2400)}
+
+$("#btnNota").onclick=()=>{$("#nc").classList.toggle("on");pintaBoton();
+  if($("#nc").classList.contains("on")){const m=document.querySelector(".f.mia");if(m)m.scrollIntoView({block:"nearest"})}};
+$("#cerrar").onclick=()=>{$("#nc").classList.remove("on");pintaBoton()};
+$("#edit").onchange=e=>{const en=e.target.checked;$("#nota").classList.toggle("ed",en);$("#nota").classList.toggle("mod",!en);
+  $("#modoTxt").textContent=en?"Escribe sobre cualquier frase para corregirla.":"Pulsa una frase ámbar para decidir qué hacer con ella.";foco=null;pintaNota();pintaAcc()};
+$("#aCitar").onclick=()=>{if(!sel)return;uso[foco]=sel;toast("Frase citada en la tarjeta");foco=null;todo()};
+$("#aDesc").onclick=()=>{if(uso[foco]==="desc"){delete uso[foco];toast("Vuelve a «aún no está en el mapa»")}else{uso[foco]="desc";toast("Descartada")}foco=null;todo()};
+$("#aNuevo").onclick=()=>{const f=FR.find(x=>x.k===foco);const id="n"+(NODOS.length+1);
+  NODOS.push({id,col:"Conducta",t:cortar(f.t,48,1)});uso[foco]=id;sel=id;foco=null;toast("Tarjeta nueva creada desde la frase");todo()};
+$("#aRestaura").onclick=()=>{FR.forEach(f=>f.t=f.orig);toast("Texto original restaurado");todo()};
+const textoLimpio=()=>ORIG.map(L=>L.f.map((_,i)=>(i+1)+". "+FR.find(x=>x.k===L.l+"."+(i+1)).t).join("\n")).join("\n\n");
+$("#xDesc").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([textoLimpio()],{type:"text/plain;charset=utf-8"}));a.download="nota-ordenada.txt";a.click();toast("Nota ordenada descargada")};
+$("#xCopia").onclick=()=>{(navigator.clipboard?navigator.clipboard.writeText(textoLimpio()):Promise.reject()).then(()=>toast("Nota ordenada copiada"),()=>toast("No se pudo copiar aquí; usa Descargar"))};
+todo();
+</script>
+</body>
+</html>

@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Versión final · Evidencia y nota completa</title>
+<style>
+:root{
+  --canvas:#f5f0e8; --surface:#fbf8f2; --ink:#1f2a28; --muted:#6e6357;
+  --accent:#0f5a43; --accent-soft:#e3ebe3; --sidebar:#123a31; --divider:#e8dfd2;
+  --dorado:#c8a15a; --tierra:#8a6b47; --tierra-soft:#efe6d6; --warn-soft:#f1e4c6; --inferido:#c2683f;
+  --serif:Georgia,"Source Serif 4",serif; --sans:system-ui,"IBM Plex Sans",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--canvas);color:var(--ink);font:14px/1.5 var(--sans);overflow:hidden}
+.app{display:grid;grid-template-columns:220px 1fr;height:100vh}
+/* sidebar */
+.side{background:var(--sidebar);color:#dfe9e4;padding:18px 14px;display:flex;flex-direction:column;gap:4px}
+.brand{display:flex;gap:10px;align-items:center;margin-bottom:22px;font-size:12px;color:#b9cbc3;line-height:1.3}
+.brand i{width:34px;height:34px;border-radius:50%;background:#1d5143;display:grid;place-items:center;font-style:normal;font-size:18px}
+.side a{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:8px;color:#dfe9e4;text-decoration:none;font-size:14px}
+.side a:hover{background:#1f4a3f}.side a.on{background:#1f4a3f}
+.ej{margin-top:18px;border:1px dashed #3f6b5d;border-radius:10px;padding:10px 12px;font-size:13px;color:#cfe0d8}
+.ej small{display:block;color:#8fb0a3;font-size:11px}
+/* main */
+.main{display:flex;flex-direction:column;min-width:0;height:100vh;position:relative}
+.cab{display:flex;align-items:center;gap:14px;padding:12px 22px;background:var(--surface);border-bottom:1px solid var(--divider)}
+.cab h1{margin:0;font:600 18px var(--serif)}
+.cab small{color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{border:1px solid var(--divider);background:#fff;border-radius:7px;padding:5px 10px;font-size:12px;color:var(--ink);cursor:default}
+.menu{position:relative}
+.menu .dd{display:none;position:absolute;right:0;top:34px;background:#fff;border:1px solid var(--divider);border-radius:10px;box-shadow:0 8px 24px rgba(31,42,40,.15);min-width:240px;z-index:20;padding:6px}
+.menu.on .dd{display:block}
+.dd button{display:block;width:100%;text-align:left;font:inherit;background:none;border:0;padding:8px 10px;border-radius:6px;cursor:pointer}
+.dd button:hover{background:var(--accent-soft)}
+.dd small{display:block;color:var(--muted);font-size:11px}
+.body{flex:1;display:grid;grid-template-columns:1fr 370px;min-height:0}
+.centro{padding:16px 22px;overflow:auto;min-width:0}
+.tabs{display:flex;gap:22px;border-bottom:1px solid var(--divider);margin-bottom:14px}
+.tabs span{padding:8px 2px;font-size:14px;color:var(--muted);cursor:default}
+.tabs .on{color:var(--ink);font-weight:600;border-bottom:2px solid var(--accent)}
+.seg{display:inline-flex;border:1px solid var(--divider);border-radius:8px;overflow:hidden;background:#fff;margin-bottom:14px}
+.seg span{padding:5px 14px;font-size:13px}.seg .on{background:var(--accent);color:#fff}
+.tit{font:600 20px var(--serif);margin:6px 0 10px}
+.cols{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.col{border-radius:12px;overflow:hidden;border:1px solid #dfe8e0;background:#eef4ef}
+.col h3{margin:0;padding:14px 16px;font:700 17px/1.2 var(--sans);color:#14392f;background:#dbe9df;display:flex;gap:10px;align-items:center}
+.col.ant{background:#faf5e8;border-color:#ecdfc3}.col.ant h3{background:#f1e6c9}
+.col.con{background:#f6f0e4;border-color:#e6d9bf}.col.con h3{background:#ecdfc7}
+.col .cs{padding:12px 12px 6px}
+.card{display:block;width:100%;text-align:left;font:inherit;background:#fff;border:1px dashed #e6e1d6;border-left:4px solid var(--bar,#0f5a43);border-radius:10px;padding:10px 12px;margin-bottom:10px;cursor:pointer;color:#1a1f1e;position:relative;box-shadow:0 1px 2px rgba(31,42,40,.05)}
+.card:hover{border-color:#cfc8b8;border-left-color:var(--bar,#0f5a43)}
+.card.sel{outline:2px solid var(--accent);outline-offset:1px}
+.card .k{font-size:11px;color:#6b6b66;display:block;padding-right:22px}
+.card b{font:600 14px/1.35 var(--sans);display:block;margin-top:4px;color:#111}
+.card .ia{position:absolute;right:10px;top:8px;font-size:10px;color:#8a8a84}
+.card .ap{display:block;margin-top:6px;font-size:11px;color:#6b6b66}
+.card .ap.inf{color:var(--inferido)}
+/* panel derecho */
+.der{border-left:1px solid var(--divider);background:var(--surface);display:flex;flex-direction:column;min-height:0}
+.dt{display:flex;gap:20px;padding:0 18px;border-bottom:1px solid var(--divider)}
+.dt button{font:inherit;background:none;border:0;padding:12px 2px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+.dt .on{color:var(--ink);font-weight:600;border-color:var(--accent)}
+.dc{padding:16px 18px;overflow:auto;flex:1}
+.dc h4{margin:0 0 8px;font:600 15px var(--serif)}
+.vac{color:var(--muted);border:1.5px dashed var(--divider);border-radius:10px;padding:14px}
+.tipo{display:inline-flex;font-size:12px;padding:3px 10px;border-radius:99px;margin-bottom:10px;background:var(--accent-soft);color:var(--accent)}
+.tipo.inf{background:#f6e2d8;color:var(--inferido)}
+.cita{border-left:3px solid var(--dorado);padding:2px 0 2px 12px;margin:0 0 6px}
+.cita .ctx{color:#9a8f82;font-size:13px}
+.cita .tx{font:italic 600 16px/1.45 var(--serif);background:linear-gradient(transparent 55%,rgba(200,161,90,.35) 55%)}
+.cita .ref{font:11px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+.mini{font-size:12px;color:var(--muted);background:none;border:0;text-decoration:underline;cursor:pointer;padding:0;margin-bottom:12px}
+.expl{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+.rel{border-top:1px solid var(--divider);margin-top:14px;padding-top:12px;font-size:13px}
+.verNota{padding:12px 18px;border-top:1px solid var(--divider)}
+.ghost{width:100%;font:inherit;font-size:14px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--accent);background:#fff;color:var(--accent);cursor:pointer;display:flex;justify-content:space-between}
+.ghost:hover{background:var(--accent-soft)}
+/* cajón nota */
+.cajon{position:absolute;left:0;right:0;bottom:0;height:0;background:var(--surface);border-top:1px solid var(--divider);box-shadow:0 -10px 28px rgba(31,42,40,.12);transition:height .25s ease;overflow:hidden;z-index:10;display:flex;flex-direction:column}
+.cajon.on{height:46%}
+.ch{display:flex;align-items:center;gap:12px;padding:12px 22px;flex-wrap:wrap}
+.ch h2{margin:0;font:600 16px var(--serif)}
+.seguro{background:var(--accent-soft);color:var(--accent);border-radius:99px;padding:3px 11px;font-size:12px}
+.tog{display:inline-flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;margin-left:auto}
+.tog input{accent-color:var(--accent)}
+.leg{display:flex;gap:14px;padding:0 22px 8px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.nota{flex:1;overflow:auto;margin:0 22px;padding:12px 16px;background:#fff;border:1px solid var(--divider);border-radius:10px;font:16px/1.9 var(--serif)}
+.nota .l{display:block;margin-bottom:8px}
+.ln{font:11px ui-monospace,monospace;color:#b3a898;margin-right:8px;user-select:none}
+.f{border-radius:4px;padding:1px 2px;outline:none}
+.f.usada{background:var(--accent-soft);border-bottom:2px solid var(--accent)}
+.f.usada.mia{background:#cfe3d4;box-shadow:0 0 0 2px var(--accent)}
+.f.sin{background:var(--warn-soft);border-bottom:2px dashed var(--dorado)}
+.f.edit{border-bottom-style:dotted}
+.mod .f{cursor:pointer}
+.ed .f{cursor:text;box-shadow:inset 0 0 0 1px #d9d1c3}
+.ed .f:focus{box-shadow:0 0 0 2px var(--dorado);background:#fffbe9}
+.pie{display:flex;gap:8px;align-items:center;padding:10px 22px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+button.b{font:inherit;font-size:13px;border-radius:8px;padding:6px 12px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.b.sec{background:#fff;color:var(--accent)}
+.pie #aviso{flex:1}
+.warn{display:block;margin-top:6px;background:#fbf1dc;border:1px solid #ead7a8;color:#6b5420;border-radius:8px;padding:7px 10px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 16px;border-radius:99px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50}
+.toast.on{opacity:1}
+@media(max-width:1100px){.cols{grid-template-columns:1fr 1fr}.body{grid-template-columns:1fr 320px}}
+@media(max-width:820px){.app{grid-template-columns:1fr}.side{display:none}.body{grid-template-columns:1fr}.der{border-left:0;border-top:1px solid var(--divider)}.cols{grid-template-columns:1fr}body{overflow:auto}.main{height:auto}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><i>●</i><span>Análisis de Conducta<br>asistido por IA</span></div>
+    <a>✎ Nuevo caso</a><a class="on">▤ Casos</a><a>↗ Evolución</a><a>▥ Aprender</a><a>⚙ Cuenta</a>
+    <div class="ej">👁 Ver informe de ejemplo<small>Sin gastar análisis</small></div>
+  </aside>
+
+  <section class="main">
+    <header class="cab">
+      <h1>Referencia del caso</h1>
+      <small>caso de ejemplo · maqueta (sin llamada a la API)</small>
+      <span class="pill">○ Riesgo no evaluado</span>
+      <span class="pill">▲ 4 &nbsp;◆ 16</span>
+      <div class="menu" id="menu">
+        <button class="pill" id="mBtn" style="cursor:pointer">Exportar ▾</button>
+        <div class="dd">
+          <button id="mNota">Nota ordenada (.txt)<small>Texto limpio, corregido y por ideas</small></button>
+          <button id="mCopia">Copiar nota ordenada</button>
+          <button disabled style="opacity:.5">Informe completo (PDF)<small>Ya disponible en la versión actual</small></button>
+        </div>
+      </div>
+    </header>
+
+    <div class="body">
+      <div class="centro">
+        <div class="tabs"><span class="on">Mapa</span><span>Blancos</span></div>
+        <div class="seg"><span>Caso</span><span class="on">Situación</span><span>Cadena DBT</span></div>
+        <div class="tit">Reuniones de equipo</div>
+        <div class="cols" id="cols"></div>
+      </div>
+
+      <aside class="der">
+        <div class="dt"><button>Detalle</button><button class="on">Evidencia</button><button>Historial</button></div>
+        <div class="dc" id="ev"></div>
+        <div class="verNota"><button class="ghost" id="btnNota"><span id="btnTxt">Ver nota completa</span><span id="btnRes" style="opacity:.7"></span></button></div>
+      </aside>
+    </div>
+
+    <div class="cajon" id="cajon">
+      <div class="ch">
+        <h2>Nota completa</h2>
+        <span class="seguro">✓ Editar no llama a la IA ni cambia el análisis</span>
+        <label class="tog"><input type="checkbox" id="edit"> Editar texto</label>
+        <button class="b sec" id="cerrar">Cerrar</button>
+      </div>
+      <div class="leg">
+        <span><i class="sw" style="background:var(--accent-soft);border-bottom:2px solid var(--accent)"></i>Ya está en el mapa</span>
+        <span><i class="sw" style="background:var(--warn-soft);border-bottom:2px dashed var(--dorado)"></i>Aún no está en el mapa</span>
+        <span id="modoTxt">Pulsa una frase ámbar para citarla en la tarjeta elegida.</span>
+      </div>
+      <div class="nota mod" id="nota"></div>
+      <div class="pie">
+        <span id="aviso"></span>
+        <button class="b sec" id="aRestaura" style="display:none;margin-left:auto">Restaurar original</button>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const ORIG=[
+ {l:"L3",f:["En la última semana describe dos episodios concretos.","El martes, su supervisora le pidió que expusiera los resultados del mes delante de seis compañeros.","Mientras esperaba su turno notó taquicardia, sudoración y un pensamiento recurrente de que iba a quedarse en blanco y todos se darían cuenta de que no sirve para el puesto.","Pidió ir al baño, estuvo allí unos diez minutos respirando y al volver la reunión ya había pasado a otro punto, por lo que no tuvo que exponer.","Cuenta que sintió un alivio inmediato muy fuerte, aunque después estuvo toda la tarde dándole vueltas a lo ocurrido y se acostó pensando que había vuelto a fallar."]},
+ {l:"L5",f:["El segundo episodio fue el jueves: un cliente le levantó la voz por teléfono.","Ella respondió disculpándose repetidamente y aceptó una compensación que no le correspondía autorizar.","El cliente colgó satisfecho.","Después se lo ocultó a su supervisora por miedo a la reprimenda y estuvo revisando mentalmente la conversación durante horas."]},
+ {l:"L7",f:["Comenta que últimamente evita comer con los compañeros, dice que está ocupada y come en su mesa mirando el móvil.","También ha dejado de ir a clases de baile a las que asistía desde hacía años.","Los fines de semana bebe dos o tres copas de vino antes de quedar con amigos, dice que así se suelta.","Duerme mal los domingos."]}
+];
+const FR=[];ORIG.forEach(L=>L.f.forEach((t,i)=>FR.push({k:L.l+"."+(i+1),l:L.l,orig:t,t})));
+const uso={"L3.2":"n1","L3.3":"n2","L3.5":"n3"};
+const NODOS=[
+ {id:"n0",col:"Operador motivador",k:"Operador motivador OM / OE",t:"OE de malestar condicionado por evaluación social.",inferido:1,tono:"",ic:"◎",bar:"#a79d90"},
+ {id:"n1",col:"Antecedente",k:"Señal Ed",t:"Supervisora pide exponer resultados.",tono:"ant",ic:"▤",bar:"#0f5a43"},
+ {id:"n2",col:"Conducta",k:"Conducta",t:"Taquicardia y sudoración.",tono:"",ic:"▷",bar:"#0f5a43"},
+ {id:"n3",col:"Consecuencias",k:"Consecuencia",t:"Alivio inmediato por evitar exposición.",tono:"con",ic:"▥",bar:"#0f5a43"},
+];
+const $=s=>document.querySelector(s);
+let sel="n3";
+const cortar=(s,n,fin)=>s.length<=n?s:(fin?s.slice(0,n)+"…":"…"+s.slice(-n));
+const editadas=()=>FR.filter(f=>f.t!==f.orig).length;
+const abierta=()=>$("#cajon").classList.contains("on");
+function ctx(k){const i=FR.findIndex(f=>f.k===k);return{prev:FR[i-1]&&FR[i-1].l===FR[i].l?FR[i-1].t:"",next:FR[i+1]&&FR[i+1].l===FR[i].l?FR[i+1].t:""}}
+
+function pintaMapa(){
+  const cols={};NODOS.forEach(n=>(cols[n.col]=cols[n.col]||[]).push(n));
+  $("#cols").innerHTML=Object.entries(cols).map(([c,ns])=>`<div class="col ${ns[0].tono}"><h3><span>${ns[0].ic}</span>${c}</h3><div class="cs">${ns.map(n=>{
+    const q=FR.filter(f=>uso[f.k]===n.id).length;
+    return `<button class="card ${sel===n.id?"sel":""}" data-n="${n.id}" style="--bar:${n.bar}"><span class="ia">IA</span><span class="k">${n.k}</span><b>${n.t}</b><span class="ap ${q?"":"inf"}">${q?`✓ ${q} frase${q>1?"s":""} de la nota`:(n.inferido?"Inferido por la IA":"⚠ sin apoyo en la nota")}</span></button>`}).join("")}</div></div>`).join("");
+  document.querySelectorAll(".card").forEach(b=>b.onclick=()=>{sel=b.dataset.n;todo();
+    const m=document.querySelector(".f.mia");if(m&&abierta())m.scrollIntoView({block:"nearest",behavior:"smooth"})});
+}
+function pintaEv(){
+  const el=$("#ev");
+  if(!sel){el.innerHTML=`<div class="vac">Elige una tarjeta del mapa para ver <b>qué frase de la nota la respalda</b>.</div>`;return}
+  const n=NODOS.find(x=>x.id===sel),fs=FR.filter(f=>uso[f.k]===sel);
+  let h=`<h4>${n.t}</h4>`;
+  if(!fs.length){
+    h+=`<div class="tipo inf">${n.inferido?"Inferido por la IA":"⚠ Sin apoyo en la nota"}</div><p class="expl" style="margin-top:0">${n.inferido?"La IA lo dedujo del conjunto de la nota; no hay una frase concreta que lo diga. Revísalo con tu criterio clínico.":"Esta tarjeta no tiene frase de la nota. Abre la nota completa y pulsa una frase ámbar para citarla aquí."}</p>`;
+  }else{
+    h+=`<div class="tipo">● Dicho textualmente</div>`+fs.map(f=>{const c=ctx(f.k);return `
+     <div class="cita">${c.prev?`<div class="ctx">${cortar(c.prev,64)}</div>`:""}<div class="tx" data-ev="${f.k}">«${f.t}»</div>${c.next?`<div class="ctx">${cortar(c.next,64,1)}</div>`:""}<div class="ref">DE LA NOTA · ${f.k}</div></div>
+     <button class="mini" data-q="${f.k}">Quitar esta frase de la tarjeta</button>`}).join("");
+  }
+  el.innerHTML=h;
+  el.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{delete uso[b.dataset.q];toast("Frase quitada de la tarjeta");todo()});
+}
+function pintaBoton(){
+  const t=FR.length,u=FR.filter(f=>uso[f.k]).length;
+  $("#btnTxt").textContent=abierta()?"Ocultar nota completa":"Ver nota completa";
+  $("#btnRes").textContent=u+" de "+t+" frases en el mapa "+(abierta()?"▾":"▴");
+}
+function pintaNota(){
+  const en=$("#edit").checked;
+  $("#nota").innerHTML=ORIG.map(L=>`<span class="l"><span class="ln">${L.l}</span>`+L.f.map((_,i)=>{
+    const k=L.l+"."+(i+1),f=FR.find(x=>x.k===k),u=uso[k];
+    const c=(u?("usada"+(u===sel?" mia":"")):"sin")+(f.t!==f.orig?" edit":"");
+    return `<span class="f ${c}" data-k="${k}" contenteditable="${en?"plaintext-only":"false"}">${f.t.replace(/</g,"&lt;")}</span> `}).join("")+`</span>`).join("");
+  document.querySelectorAll(".f").forEach(s=>{
+    s.onclick=()=>{if($("#edit").checked)return;const k=s.dataset.k,u=uso[k];
+      if(u){sel=u;todo();return}
+      if(!sel){toast("Elige antes una tarjeta del mapa");return}
+      uso[k]=sel;toast("Frase citada en «"+cortar(NODOS.find(n=>n.id===sel).t,26,1)+"»");todo()};
+    s.oninput=()=>{const f=FR.find(x=>x.k===s.dataset.k);f.t=s.textContent;
+      s.classList.toggle("edit",f.t!==f.orig);
+      const ev=document.querySelector(`[data-ev="${f.k}"]`);if(ev)ev.textContent="«"+f.t+"»";pintaAviso()};
+  });
+}
+function pintaAviso(){
+  const n=editadas();
+  const afect=new Set(FR.filter(f=>f.t!==f.orig&&uso[f.k]&&uso[f.k]!=="desc").map(f=>uso[f.k])).size;
+  $("#aviso").innerHTML=n?n+" frase"+(n>1?"s":"")+" corregida"+(n>1?"s":"")+" · guardado sin llamar a la IA · las tarjetas no han cambiado"
+    +`<span class="warn">⚠ Si cambias el sentido de una frase${afect?` (hay ${afect} tarjeta${afect>1?"s":""} apoyada${afect>1?"s":""} en frases que editaste)`:""}, las cadenas pueden perder coherencia. Para cambios grandes se recomienda volver a analizar la sesión.</span>`:"";
+  $("#aRestaura").style.display=n?"":"none";
+}
+function todo(){pintaMapa();pintaEv();pintaNota();pintaBoton();pintaAviso()}
+let tt;function toast(m){const e=$("#toast");e.textContent=m;e.classList.add("on");clearTimeout(tt);tt=setTimeout(()=>e.classList.remove("on"),2400)}
+
+$("#btnNota").onclick=()=>{$("#cajon").classList.toggle("on");pintaBoton();
+  setTimeout(()=>{const m=document.querySelector(".f.mia");if(m&&abierta())m.scrollIntoView({block:"nearest"})},270)};
+$("#cerrar").onclick=()=>{$("#cajon").classList.remove("on");pintaBoton()};
+$("#edit").onchange=e=>{const en=e.target.checked;$("#nota").classList.toggle("ed",en);$("#nota").classList.toggle("mod",!en);
+  $("#modoTxt").textContent=en?"Escribe sobre cualquier frase para corregirla.":"Pulsa una frase ámbar para citarla en la tarjeta elegida.";pintaNota()};
+$("#aRestaura").onclick=()=>{FR.forEach(f=>f.t=f.orig);toast("Texto original restaurado");todo()};
+$("#mBtn").onclick=e=>{e.stopPropagation();$("#menu").classList.toggle("on")};
+document.addEventListener("click",()=>$("#menu").classList.remove("on"));
+const limpio=()=>ORIG.map(L=>L.f.map((_,i)=>(i+1)+". "+FR.find(x=>x.k===L.l+"."+(i+1)).t).join("\n")).join("\n\n");
+$("#mNota").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([limpio()],{type:"text/plain;charset=utf-8"}));a.download="nota-ordenada.txt";a.click();toast("Nota ordenada descargada")};
+$("#mCopia").onclick=()=>{(navigator.clipboard?navigator.clipboard.writeText(limpio()):Promise.reject()).then(()=>toast("Nota ordenada copiada"),()=>toast("No se pudo copiar aquí; usa Descargar"))};
+todo();
+</script>
+</body>
+</html>
