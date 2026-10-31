@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maqueta · Agregar conducta alternativa</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+/* Tokens de components/grafo/afc.module.css y app/globals.css */
+:root{
+  --canvas:#f5f0e8; --ink:#1f2a28; --dorado:#c8a15a;
+  --afc-bg:#FBF9F4; --afc-text-title:#17382D; --afc-text:#1F2A28;
+  --afc-text-secondary:#66706A; --afc-text-tertiary:#7C857F; --afc-line:#7F9488;
+  --afc-forest:#1F4A3A; --afc-brown:#7A5C32; --afc-acento:#7F9488;
+  --afc-card:#fff; --afc-card-border:rgba(60,60,40,.07);
+  --afc-alt-bg:#FDFBF6; --afc-alt-border:#D7E0D8;
+  --afc-shadow:0 1px 3px rgba(30,45,35,.05);
+  --afc-apoyo-parcial:#B58A35; --afc-apoyo-inferencia:#AAA59D;
+  --sans:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --serif:"Source Serif 4",ui-serif,Georgia,serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--afc-text);font:15px/1.5 var(--sans);padding:32px 20px;-webkit-font-smoothing:antialiased}
+.ancho{max-width:900px;margin:0 auto}
+.nota-maqueta{border:1.5px dashed var(--dorado);border-radius:12px;padding:14px 16px;background:#fff8ea;font-size:14px;margin-bottom:24px}
+.nota-maqueta b{font-family:var(--serif)}
+.nota-maqueta ol{margin:6px 0 0;padding-left:20px}
+.nota-maqueta .reiniciar{margin-top:10px;font:inherit;font-size:12px;padding:4px 10px;border:1px solid var(--dorado);border-radius:6px;background:#fff;cursor:pointer}
+
+/* ---------- Conducta alternativa ---------- */
+.alternativa{padding:14px 18px 16px;background:var(--afc-alt-bg);border:1px solid var(--afc-alt-border);border-radius:12px}
+.cab{display:flex;align-items:center;gap:.5rem;margin:0 0 12px;font-size:.8125rem;color:var(--afc-text-secondary)}
+.cab strong{color:var(--afc-forest);font-size:1rem;font-weight:700}
+.cab svg{width:20px;height:20px;color:var(--afc-line);flex:none}
+.fila{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+@media(max-width:640px){.fila{grid-template-columns:1fr}}
+.lista{display:flex;flex-direction:column;gap:12px}
+
+.nodo{position:relative;min-height:58px;padding:12px 14px 12px 20px;background:var(--afc-card);border:1px solid var(--afc-card-border);border-radius:11px;box-shadow:var(--afc-shadow)}
+.nodo .barra{position:absolute;inset:0 auto 0 0;width:10px;border-radius:11px 0 0 11px;overflow:hidden}
+.nodo .barra i{display:block;width:5px;height:100%;background:var(--afc-apoyo-inferencia)}
+.nodo .marca{position:absolute;top:6px;right:8px;font-size:.625rem;line-height:1;color:var(--afc-text-tertiary)}
+.nodo .chip{display:block;font-size:.625rem;font-weight:500;color:var(--afc-text-tertiary)}
+.nodo .eti{margin:2px 0 0;font-size:.8125rem;font-weight:600;line-height:1.35}
+.nodo.nuevo{animation:entra .35s ease}
+@keyframes entra{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+.agregarBoton{padding:6px 12px;border:1px solid color-mix(in srgb,var(--afc-acento) 45%,transparent);border-radius:8px;background:transparent;color:var(--afc-acento);font:inherit;font-size:.75rem;font-weight:500;cursor:pointer;transition:background 150ms}
+.agregarBoton:hover{background:color-mix(in srgb,var(--afc-acento) 12%,transparent)}
+.agregarBoton:focus-visible,.btn:focus-visible,textarea:focus-visible{outline:2px solid var(--afc-line);outline-offset:2px}
+
+/* ---------- Tarjeta de captura (nueva): reemplaza el window.prompt ---------- */
+.captura{padding:12px 14px 12px;background:var(--afc-card);border:1.5px dashed var(--afc-line);border-radius:11px;animation:entra .25s ease}
+.captura label{display:block;font-size:.625rem;font-weight:500;color:var(--afc-text-tertiary)}
+.captura .ayuda{margin:2px 0 8px;font-size:.8125rem;font-weight:600;line-height:1.35;color:var(--afc-text)}
+.captura textarea{display:block;width:100%;min-height:62px;resize:vertical;padding:7px 9px;border:1px solid var(--afc-line);border-radius:6px;background:var(--afc-card);color:var(--afc-text);font:inherit;font-size:.9rem;line-height:1.4}
+.captura .ejemplo{margin:6px 0 0;font-size:.6875rem;color:var(--afc-text-tertiary)}
+.captura .acciones{display:flex;align-items:center;gap:8px;margin-top:10px}
+.captura .atajo{margin-left:auto;font-size:.625rem;color:var(--afc-text-tertiary)}
+.btn{padding:6px 14px;border-radius:8px;font:inherit;font-size:.75rem;font-weight:500;cursor:pointer;border:1px solid var(--afc-line);background:transparent;color:var(--afc-text-secondary)}
+.btn:hover{background:color-mix(in srgb,var(--afc-line) 12%,transparent)}
+.btn.prim{background:var(--afc-forest);border-color:var(--afc-forest);color:#fff}
+.btn.prim:hover{background:color-mix(in srgb,var(--afc-forest) 88%,white)}
+.btn.prim:disabled{opacity:.45;cursor:not-allowed}
+</style>
+</head>
+<body>
+<div class="ancho">
+  <div class="nota-maqueta">
+    <b>Maqueta (no es parte de la app).</b> Cambio propuesto en «Conducta alternativa»:
+    <ol>
+      <li>Ya no aparece el cuadro del navegador («paginanalisis.vercel.app dice»).</li>
+      <li>Al pulsar <b>+ Agregar</b>, el botón se convierte en una tarjeta de captura <b>dentro del mismo bloque</b>, justo debajo de lo que ya hay.</li>
+      <li>Se guarda con <b>Guardar</b> o con Enter; <b>Cancelar</b> o Esc la cierra sin cambios. Guardar queda desactivado mientras esté vacío.</li>
+      <li>Lo agregado aparece como tarjeta normal, marcada «Tú» (no «IA»).</li>
+    </ol>
+    <button class="reiniciar" id="reiniciar" type="button">Reiniciar maqueta</button>
+  </div>
+
+  <section class="alternativa">
+    <p class="cab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>
+      <strong>Conducta alternativa</strong>
+    </p>
+    <div class="fila">
+      <div class="lista" id="col-conducta"></div>
+      <div class="lista" id="col-consecuencia"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const COLUMNAS = {
+  conducta: {
+    id: "col-conducta", chip: "Conducta alternativa",
+    pregunta: "¿Qué podría hacer la persona en lugar de la conducta actual?",
+    ejemplo: "Ej.: Pedir una pausa y retomar la conversación más tarde.",
+    inicial: [{ ia: true, texto: "Negociar adecuadamente sin ceder a demandas indebidas." }]
+  },
+  consecuencia: {
+    id: "col-consecuencia", chip: "Consecuencia necesaria",
+    pregunta: "¿Qué debería ocurrir después de la conducta alternativa?",
+    ejemplo: "Ej.: La supervisora reconoce el manejo de la situación.",
+    inicial: [{ ia: true, texto: "Reconocimiento por parte de la supervisora por manejo adecuado de la situación." }]
+  }
+};
+const estado = {};
+
+function tarjeta(c, n, nuevo) {
+  const d = document.createElement("div");
+  d.className = "nodo" + (nuevo ? " nuevo" : "");
+  d.innerHTML = '<span class="barra"><i></i></span><span class="marca"></span><span class="chip"></span><p class="eti"></p>';
+  d.querySelector(".marca").textContent = n.ia ? "IA" : "Tú";
+  d.querySelector(".chip").textContent = c.chip;
+  d.querySelector(".eti").textContent = n.texto;
+  return d;
+}
+
+function pintar(clave, nuevo) {
+  const c = COLUMNAS[clave], col = document.getElementById(c.id);
+  col.innerHTML = "";
+  estado[clave].forEach((n, i) => col.appendChild(tarjeta(c, n, nuevo && i === estado[clave].length - 1)));
+  const b = document.createElement("div");
+  b.innerHTML = '<button type="button" class="agregarBoton">+ Agregar</button>';
+  b.firstChild.addEventListener("click", () => abrirCaptura(clave, b));
+  col.appendChild(b);
+}
+
+function abrirCaptura(clave, contenedor) {
+  const c = COLUMNAS[clave];
+  contenedor.innerHTML = `
+    <div class="captura">
+      <label for="t-${clave}">${c.chip} · nueva</label>
+      <p class="ayuda">${c.pregunta}</p>
+      <textarea id="t-${clave}" placeholder="Escríbela con tus palabras…"></textarea>
+      <p class="ejemplo">${c.ejemplo}</p>
+      <div class="acciones">
+        <button type="button" class="btn prim" disabled>Guardar</button>
+        <button type="button" class="btn">Cancelar</button>
+        <span class="atajo">Enter guarda · Esc cancela</span>
+      </div>
+    </div>`;
+  const ta = contenedor.querySelector("textarea");
+  const [guardar, cancelar] = contenedor.querySelectorAll(".btn");
+  const ok = () => {
+    const t = ta.value.trim();
+    if (!t) return;
+    estado[clave].push({ ia: false, texto: t });
+    pintar(clave, true);
+  };
+  ta.addEventListener("input", () => { guardar.disabled = !ta.value.trim(); });
+  ta.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ok(); }
+    if (e.key === "Escape") pintar(clave, false);
+  });
+  guardar.addEventListener("click", ok);
+  cancelar.addEventListener("click", () => pintar(clave, false));
+  ta.focus();
+}
+
+function iniciar() {
+  for (const k in COLUMNAS) { estado[k] = COLUMNAS[k].inicial.map(x => ({ ...x })); pintar(k, false); }
+}
+document.getElementById("reiniciar").addEventListener("click", iniciar);
+iniciar();
+</script>
+</body>
+</html>

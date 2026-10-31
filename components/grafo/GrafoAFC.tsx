@@ -4,6 +4,7 @@ import {
   Fragment,
   useEffect,
   useMemo,
+  useId,
   useRef,
   useState,
   type KeyboardEvent,
@@ -360,6 +361,15 @@ function Nodo({
   );
 }
 
+/** La pregunta que guía la captura de cada tipo de tarjeta, en palabras del terapeuta. */
+const AYUDA_AGREGAR: Partial<Record<TipoNodoGrafo, string>> = {
+  alternativa: "¿Qué podría hacer la persona en lugar de la conducta actual?",
+  consecuencia_alternativa: "¿Qué debería ocurrir después de la conducta alternativa?",
+  conducta: "¿Qué hace la persona?",
+  encubierta: "¿Qué piensa o siente la persona?",
+  consecuencia: "¿Qué ocurre justo después de la conducta?",
+};
+
 function BotonAgregarNodo({
   carril,
   situacionId,
@@ -375,6 +385,9 @@ function BotonAgregarNodo({
   onAgregar: (tipo: TipoNodoGrafo, texto: string) => void;
   variante?: "afc";
 }) {
+  const [abierto, setAbierto] = useState(false);
+  const [texto, setTexto] = useState("");
+  const idCampo = useId();
   const tipos: TipoNodoGrafo[] = alternativa
     ? carril === "conducta"
       ? ["alternativa"]
@@ -410,21 +423,54 @@ function BotonAgregarNodo({
   if (disponibles.length === 0) return null;
 
   const afc = variante === "afc";
+  const tipo = disponibles[0];
+
+  function cerrar() {
+    setAbierto(false);
+    setTexto("");
+  }
+  function guardar() {
+    const limpio = texto.trim();
+    if (!limpio) return;
+    onAgregar(tipo, limpio);
+    cerrar();
+  }
+
+  if (abierto) {
+    return (
+      <div className={`${s.captura} print:hidden`}>
+        <label htmlFor={idCampo} className={s.capturaRotulo}>{ETIQUETA_TIPO[tipo]} · nueva</label>
+        <p className={s.capturaAyuda}>{AYUDA_AGREGAR[tipo] ?? "Escribe el texto de la tarjeta."}</p>
+        <textarea
+          id={idCampo}
+          autoFocus
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); guardar(); }
+            if (e.key === "Escape") cerrar();
+          }}
+          placeholder="Escríbela con tus palabras…"
+          className={s.capturaCampo}
+        />
+        <div className={s.capturaAcciones}>
+          <button type="button" onClick={guardar} disabled={!texto.trim()} className={s.capturaGuardar}>Guardar</button>
+          <button type="button" onClick={cerrar} className={s.capturaCancelar}>Cancelar</button>
+          <span className={s.capturaAtajo}>Enter guarda · Esc cancela</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={afc ? `${s.agregar} print:hidden` : "mt-2 flex flex-wrap gap-1 print:hidden"}>
-      {disponibles.slice(0, 1).map((tipo) => (
-        <button
-          key={tipo}
-          type="button"
-          onClick={() => {
-            const texto = window.prompt(`Texto a agregar`)?.trim();
-            if (texto) onAgregar(tipo, texto);
-          }}
-          className={afc ? s.agregarBoton : "rounded border border-dashed border-divider px-2 py-1 text-[10px] text-ink-muted transition hover:border-accent hover:text-accent"}
-        >
-          + Agregar
-        </button>
-      ))}
+      <button
+        type="button"
+        onClick={() => setAbierto(true)}
+        className={afc ? s.agregarBoton : "rounded border border-dashed border-divider px-2 py-1 text-[10px] text-ink-muted transition hover:border-accent hover:text-accent"}
+      >
+        + Agregar
+      </button>
     </div>
   );
 }

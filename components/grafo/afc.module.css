@@ -397,6 +397,47 @@
   outline-offset: 2px;
 }
 
+/* Tarjeta de captura: sustituye al cuadro del navegador al agregar. */
+.captura {
+  padding: 12px 14px;
+  background: var(--afc-card);
+  border: 1.5px dashed var(--afc-acento, var(--afc-line));
+  border-radius: 11px;
+}
+.capturaRotulo { display: block; font-size: .625rem; font-weight: 500; color: var(--afc-text-tertiary); }
+.capturaAyuda { margin: 2px 0 8px; font-size: .8125rem; font-weight: 600; line-height: 1.35; color: var(--afc-text); }
+.capturaCampo {
+  display: block;
+  width: 100%;
+  min-height: 62px;
+  resize: vertical;
+  padding: 7px 9px;
+  border: 1px solid var(--afc-line);
+  border-radius: 6px;
+  background: var(--afc-card);
+  color: var(--afc-text);
+  font: inherit;
+  font-size: .9rem;
+  line-height: 1.4;
+}
+.capturaCampo:focus-visible,
+.capturaGuardar:focus-visible,
+.capturaCancelar:focus-visible { outline: 2px solid var(--afc-line); outline-offset: 2px; }
+.capturaAcciones { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.capturaGuardar, .capturaCancelar {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.capturaGuardar { border: 1px solid var(--afc-forest); background: var(--afc-forest); color: var(--afc-card); }
+.capturaGuardar:disabled { opacity: .45; cursor: not-allowed; }
+.capturaCancelar { border: 1px solid var(--afc-line); background: transparent; color: var(--afc-text-secondary); }
+.capturaCancelar:hover { background: color-mix(in srgb, var(--afc-line) 12%, transparent); }
+.capturaAtajo { margin-left: auto; font-size: .625rem; color: var(--afc-text-tertiary); }
+
 /* ---------- Conducta alternativa ---------- */
 .alternativa {
   margin-top: 16px;
@@ -559,4 +600,13 @@
 .evidenciaCita {
   margin: 0; padding: 8px 12px; border-left: 3px solid var(--ev); border-radius: 0 6px 6px 0;
   background: color-mix(in srgb, var(--ev) 9%, transparent); font-style: italic; line-height: 1.45;
+}
+
+/* Celular: las cuatro columnas se apilan en vertical en lugar de apretarse
+   o de obligar a desplazarse de lado. */
+@media (max-width: 639px) {
+  .lienzo, .lienzoColumnas { min-width: 0; }
+  .tablero { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .situacion { padding: .75rem; }
+  .columnaCuerpo { padding: 10px; }
 }
