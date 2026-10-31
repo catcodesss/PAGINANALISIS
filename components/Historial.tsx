@@ -49,6 +49,7 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
   const [alias, setAlias] = useState("");
   const [motivo, setMotivo] = useState("");
   const [aBorrar, setABorrar] = useState<ResumenCaso | null>(null);
+  const enNube = repositorioNube() !== null;
   const entradaFichero = useRef<HTMLInputElement>(null);
   // Con la nube, un respaldo se abre con la frase de la cuenta que lo creó.
   const [respaldoNube, setRespaldoNube] = useState<File | null>(null);
@@ -439,8 +440,8 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
                 <button
                   type="button"
                   onClick={() => setABorrar(c)}
-                  aria-label={`Borrar ${c.alias}`}
-                  title="Borrar"
+                  aria-label={`${enNube ? "Archivar" : "Borrar"} ${c.alias}`}
+                  title={enNube ? "Archivar" : "Borrar"}
                   className="text-xs text-ink-muted hover:text-ink"
                 >
                   ✕
@@ -460,16 +461,44 @@ export default function Historial({ nuevoAbierto, onAbrir, onCreado }: Historial
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
         >
           <div className="w-full max-w-sm rounded-xl border border-divider bg-surface p-5">
-            <p className="text-sm text-ink">
-              ¿Borrar <span className="font-semibold">{aBorrar.alias}</span> con todas sus
-              sesiones? No se puede deshacer.
-            </p>
-            <p className="mt-1 text-xs text-ink-muted">Para sacarlo de la lista sin perderlo, archívalo.</p>
+            {enNube ? (
+              <>
+                {/* En la nube las reglas no dejan borrar desde el navegador: se archiva. */}
+                <p className="text-sm text-ink">
+                  ¿Archivar <span className="font-semibold">{aBorrar.alias}</span>?
+                </p>
+                <p className="mt-1 text-xs text-ink-muted">
+                  Los casos guardados en la nube no se borran desde aquí. Al archivarlo sale de la lista y libera su
+                  lugar en tu plan. Lo encuentras en «Archivado» si lo necesitas.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-ink">
+                  ¿Borrar <span className="font-semibold">{aBorrar.alias}</span> con todas sus
+                  sesiones? No se puede deshacer.
+                </p>
+                <p className="mt-1 text-xs text-ink-muted">Para sacarlo de la lista sin perderlo, archívalo.</p>
+              </>
+            )}
             <div className="mt-4 flex justify-end gap-2">
               <Boton onClick={() => setABorrar(null)}>Cancelar</Boton>
-              <Boton onClick={() => eliminar(aBorrar.id)} principal disabled={ocupado}>
-                Borrar
-              </Boton>
+              {enNube ? (
+                <Boton
+                  onClick={() => {
+                    cambiarFase(aBorrar.id, "archivado");
+                    setABorrar(null);
+                  }}
+                  principal
+                  disabled={ocupado}
+                >
+                  Archivar
+                </Boton>
+              ) : (
+                <Boton onClick={() => eliminar(aBorrar.id)} principal disabled={ocupado}>
+                  Borrar
+                </Boton>
+              )}
             </div>
           </div>
         </div>
