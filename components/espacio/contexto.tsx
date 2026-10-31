@@ -30,6 +30,7 @@ import {
 import type { AnalisisFuncional, Cita } from "@/lib/types";
 import type { IdVista } from "@/lib/secciones";
 import { citaDeFrase, citarEnElemento, reclasificarNodo, type DestinoCarril } from "@/lib/edicionMapa";
+import { segmentarFrases } from "@/lib/citas";
 
 /** El tipo del arrastre de una frase de la Fuente: solo lleva su posición. */
 export const TIPO_ARRASTRE_FRASE = "application/x-acia-frase";
@@ -89,6 +90,18 @@ export interface EspacioValor {
   cerrarEvidencia: () => void;
   /** La nota partida en líneas: de aquí sale el texto de toda cita del clínico. */
   lineasNota: readonly string[];
+  /**
+   * Correcciones de texto que el clínico hace en la nota, por «línea.frase».
+   * Son solo de esta pantalla: no tocan el análisis, no cuentan como edición
+   * del Mapa y no llaman a la IA. Las citas se releen de aquí al mostrarse.
+   */
+  ediciones: Readonly<Record<string, string>>;
+  editarFrase: (linea: number, frase: number, texto: string) => void;
+  restaurarNota: () => void;
+  /** El texto de una cita con las correcciones de la nota ya aplicadas. */
+  textoCita: (cita: CitaResuelta) => string;
+  /** La nota con las correcciones aplicadas, una línea por línea. */
+  notaCorregida: () => string;
   /**
    * Une la frase (línea, frase) a un nodo o una relación, con deshacer. El
    * texto se saca de la nota, nunca de lo que traiga el arrastre.
@@ -195,6 +208,61 @@ export function ProveedorEspacio({
   const abrirEvidencia = useCallback((id: string, x: number, y: number) => setEvidencia({ id, x, y }), []);
   const cerrarEvidencia = useCallback(() => setEvidencia(null), []);
   const lineasNota = useMemo(() => notaOriginal.replace(/\r\n/g, "\n").split("\n"), [notaOriginal]);
+  const [ediciones, setEdiciones] = useState<Record<string, string>>({});
+  const editarFrase = useCallback((linea: number, frase: number, texto: string) => {
+    const clave = `${linea}.${frase}`;
+    const original = segmentarFrases(lineasNota[linea - 1] ?? "")[frase - 1];
+    setEdiciones((prev) => {
+      const sig = { ...prev };
+      // Volver al texto original deja de contar como corrección.
+      if (texto === original) delete sig[clave];
+      else sig[clave] = texto;
+      return sig;
+    });
+  }, [lineasNota]);
+  const restaurarNota = useCallback(() => setEdiciones({}), []);
+  const textoDeFrases = useCallback(
+    (linea: number, desde: number | undefined, hasta: number | undefined) => {
+      const frases = segmentarFrases(lineasNota[linea - 1] ?? "");
+      const partes: string[] = [];
+      for (let j = desde ?? 1; j <= (hasta ?? frases.length); j++) {
+        partes.push(ediciones[`${linea}.${j}`] ?? frases[j - 1] ?? "");
+      }
+      return partes.join(" ");
+    },
+    [lineasNota, ediciones]
+  );
+  const textoCita = useCallback(
+    (cita: CitaResuelta) => {
+      if (Object.keys(ediciones).length === 0) return cita.texto;
+      const toca = Object.keys(ediciones).some((k) => {
+        const l = Number(k.split(".")[0]);
+        return l >= cita.linea_inicio && l <= cita.linea_fin;
+      });
+      if (!toca) return cita.texto;
+      const partes: string[] = [];
+      for (let l = cita.linea_inicio; l <= cita.linea_fin; l++) {
+        const total = segmentarFrases(lineasNota[l - 1] ?? "").length;
+        if (total === 0) continue;
+        partes.push(
+          textoDeFrases(
+            l,
+            l === cita.linea_inicio ? cita.frase_inicio : undefined,
+            l === cita.linea_fin ? cita.frase_fin : undefined
+          )
+        );
+      }
+      return partes.join(" ") || cita.texto;
+    },
+    [ediciones, lineasNota, textoDeFrases]
+  );
+  const notaCorregida = useCallback(
+    () =>
+      lineasNota
+        .map((linea, i) => (segmentarFrases(linea).length === 0 ? linea : textoDeFrases(i + 1, undefined, undefined)))
+        .join("\n"),
+    [lineasNota, textoDeFrases]
+  );
   const [arrastrandoFrase, setArrastrandoFrase] = useState(false);
   const [nodoEnElAire, setNodoEnElAire] = useState<NodoEnElAire | null>(null);
   const [citaPulsada, setCitaPulsada] = useState<CitaResuelta | null>(null);
@@ -354,6 +422,11 @@ export function ProveedorEspacio({
       abrirEvidencia,
       cerrarEvidencia,
       lineasNota,
+      ediciones,
+      editarFrase,
+      restaurarNota,
+      textoCita,
+      notaCorregida,
       citarFrase,
       arrastrandoFrase,
       setArrastrandoFrase,
@@ -384,6 +457,11 @@ export function ProveedorEspacio({
       abrirEvidencia,
       cerrarEvidencia,
       lineasNota,
+      ediciones,
+      editarFrase,
+      restaurarNota,
+      textoCita,
+      notaCorregida,
       citarFrase,
       arrastrandoFrase,
       propsSoltarFrase,

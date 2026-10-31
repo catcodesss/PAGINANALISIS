@@ -120,7 +120,7 @@ function Contenido({
 
       {/* Por debajo de 1024 px: cajón inferior que aparece al seleccionar. */}
       {seleccionado && (
-        <div className="fixed inset-x-0 bottom-10 z-40 max-h-[60vh] rounded-t-2xl border-t border-divider bg-canvas shadow-xl lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-40 max-h-[60vh] rounded-t-2xl border-t border-divider bg-canvas shadow-xl lg:hidden">
           <Inspector
             analisis={analisis}
             analisisConProsa={analisisConProsa}

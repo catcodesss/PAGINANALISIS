@@ -20,6 +20,7 @@ import type { TipoArista } from "@/lib/types";
 import type { AnalisisFuncional, EstadoHipotesis } from "@/lib/types";
 import { actualizarEtiquetaNodo, construirNodosGrafo, type NodoGrafo } from "@/lib/grafo";
 import { alertasPorNodo } from "@/lib/alertasNodo";
+import { calcularCoberturaNota } from "@/lib/coberturaNota";
 import { etiquetaCita, type CitaVerificadaResuelta } from "@/lib/citas";
 import type { Cita } from "@/lib/types";
 import { confirmarElemento } from "@/lib/procedencia";
@@ -64,7 +65,8 @@ export default function Inspector({
   /** En pantallas estrechas el Inspector es un cajón: esto lo cierra. */
   onCerrar?: () => void;
 }) {
-  const { seleccionado, pestanaInspector: pestana, elegirPestanaInspector: setPestana, abrirMenu, menu } = useEspacio();
+  const { seleccionado, pestanaInspector: pestana, elegirPestanaInspector: setPestana, abrirMenu, menu, textoCita, fuenteAbierta, abrirFuente, lineasNota } = useEspacio();
+  const cobertura = useMemo(() => calcularCoberturaNota([...lineasNota], analisis), [lineasNota, analisis]);
   const nodos = useMemo(() => construirNodosGrafo(analisis), [analisis]);
   const nodo = nodos.find((n) => n.id === seleccionado) ?? null;
   const hipotesis =
@@ -136,7 +138,7 @@ export default function Inspector({
             <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Conducta problema · sin situación en el grafo</p>
             <p className="text-[15px] leading-relaxed text-ink">{conducta.descripcion}</p>
             {conducta.evidencia.verificada ? (
-              <p className="text-sm italic text-ink-muted">{etiquetaCita(conducta.evidencia)} · &quot;{conducta.evidencia.texto}&quot;</p>
+              <p className="text-sm italic text-ink-muted">{etiquetaCita(conducta.evidencia)} · &quot;{textoCita(conducta.evidencia)}&quot;</p>
             ) : (
               <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Inferido — sin cita literal en la nota</p>
             )}
@@ -152,6 +154,23 @@ export default function Inspector({
           </p>
         )}
       </div>
+
+      {/* La nota completa ya no ocupa pantalla: se abre desde aquí, donde se lee su evidencia. */}
+      {pestana === "evidencia" && (
+        <div className="shrink-0 border-t border-divider p-3">
+          <button
+            type="button"
+            aria-expanded={fuenteAbierta}
+            onClick={() => abrirFuente(!fuenteAbierta)}
+            className="flex w-full items-center justify-between gap-2 rounded-lg border border-accent/60 bg-surface px-3 py-2 text-left text-sm text-accent hover:bg-accent/5"
+          >
+            <span>{fuenteAbierta ? "Ocultar nota completa" : "Ver nota completa"}</span>
+            <span className="text-xs text-ink-muted">
+              {cobertura.usadas} de {cobertura.total} frases en el mapa {fuenteAbierta ? "▾" : "▴"}
+            </span>
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
@@ -169,7 +188,7 @@ function DetalleNodo({
   pestana: Pestana;
   onEditarSeccion: EditarSeccion;
 }) {
-  const { aplicar, irACita, seleccionar } = useEspacio();
+  const { aplicar, irACita, seleccionar, textoCita } = useEspacio();
   const avisos = useMemo(() => alertasPorNodo(analisis).get(nodo.id) ?? [], [analisis, nodo.id]);
   const cita = nodo.evidencia?.verificada ? nodo.evidencia : null;
   const relaciones = analisis.aristas
@@ -198,7 +217,7 @@ function DetalleNodo({
             <button type="button" onClick={() => irACita(cita)} className="font-mono text-[10px] uppercase tracking-wide text-accent underline underline-offset-2">
               De la nota · {etiquetaCita(cita)}
             </button>
-            <p className="mt-1 italic leading-relaxed text-ink-muted">&quot;{cita.texto}&quot;</p>
+            <p className="mt-1 italic leading-relaxed text-ink-muted">&quot;{textoCita(cita)}&quot;</p>
           </blockquote>
         ) : (nodo.citas_clinico ?? []).length === 0 ? (
           <p className="font-mono text-[10px] uppercase tracking-wide text-ink-muted">Inferido — sin cita literal en la nota</p>
@@ -219,7 +238,7 @@ function DetalleNodo({
                 </span>
                 {r.arista.evidencia.filter(esCitaVerificada).map((c, i) => (
                   <button key={i} type="button" onClick={() => irACita(c)} className="mt-0.5 block text-left italic text-ink-muted hover:text-accent">
-                    {etiquetaCita(c)} · &quot;{c.texto}&quot;
+                    {etiquetaCita(c)} · &quot;{textoCita(c)}&quot;
                   </button>
                 ))}
               </div>
@@ -422,7 +441,7 @@ function DetalleRelacion({
   pestana: Pestana;
   onEditarSeccion: EditarSeccion;
 }) {
-  const { irACita, seleccionar, elegirVista } = useEspacio();
+  const { irACita, seleccionar, elegirVista, textoCita } = useEspacio();
   const desde = nodos.find((n) => n.id === arista.desde);
   const hasta = nodos.find((n) => n.id === arista.hasta);
   const citas = arista.evidencia.filter(esCitaVerificada);
@@ -456,7 +475,7 @@ function DetalleRelacion({
           ) : (
             citas.map((c, i) => (
               <button key={i} type="button" onClick={() => irACita(c)} className="mt-1 block text-left italic text-ink-muted hover:text-accent">
-                {etiquetaCita(c)} · &quot;{c.texto}&quot;
+                {etiquetaCita(c)} · &quot;{textoCita(c)}&quot;
               </button>
             ))
           )}
@@ -551,7 +570,7 @@ function DetalleHipotesis({
   onEditarSeccion: EditarSeccion;
 }) {
   const edicion = useEdicion();
-  const { irACita } = useEspacio();
+  const { irACita, textoCita } = useEspacio();
   const arista = aristaDeHipotesis(analisis, h);
   const rivales = analisis.hipotesis_alternativas.filter((alt) => alt.rival_de === h.id);
   const preguntas = analisis.preguntas.filter((p) => p.pone_a_prueba === h.id);
@@ -574,7 +593,7 @@ function DetalleHipotesis({
             )}
             {arista.evidencia.filter(esCitaVerificada).map((c, i) => (
               <button key={i} type="button" onClick={() => irACita(c)} className="block text-left text-sm italic text-ink-muted hover:text-accent">
-                {etiquetaCita(c)} · &quot;{c.texto}&quot;
+                {etiquetaCita(c)} · &quot;{textoCita(c)}&quot;
               </button>
             ))}
           </>
@@ -746,7 +765,7 @@ function HistorialElemento({ objetoId }: { objetoId: string | null }) {
  * modelo, cada una marcada como tuya y con «Quitar». Debajo, cómo añadir otra.
  */
 function CitasTuyas({ analisis, id }: { analisis: AnalisisFuncional; id: string }) {
-  const { irACita, aplicar } = useEspacio();
+  const { irACita, aplicar, textoCita } = useEspacio();
   const citas = analisis.citas_del_clinico?.[id] ?? [];
   return (
     <section className="space-y-1">
@@ -756,7 +775,7 @@ function CitasTuyas({ analisis, id }: { analisis: AnalisisFuncional; id: string 
       {citas.map((c, i) => (
         <div key={i} className="flex items-start gap-2">
           <button type="button" onClick={() => irACita(c)} className="min-w-0 flex-1 text-left italic text-ink-muted hover:text-accent">
-            {etiquetaCita(c)} · &quot;{c.texto}&quot;
+            {etiquetaCita(c)} · &quot;{textoCita(c)}&quot;
           </button>
           <button
             type="button"

@@ -29,7 +29,7 @@ interface Fuente {
 }
 
 export default function EvidenciaFlotante({ analisis }: { analisis: AnalisisFuncional }) {
-  const { evidencia, cerrarEvidencia, irACita } = useEspacio();
+  const { evidencia, cerrarEvidencia, irACita, textoCita } = useEspacio();
   const raiz = useRef<HTMLDivElement>(null);
 
   const datos = useMemo(() => {
@@ -113,7 +113,7 @@ export default function EvidenciaFlotante({ analisis }: { analisis: AnalisisFunc
         ) : (
           datos.fuentes.map((f, i) => (
             <div key={i}>
-              <blockquote className={s.evidenciaCita} data-apoyo={datos.grado}>«{f.cita.texto}»</blockquote>
+              <blockquote className={s.evidenciaCita} data-apoyo={datos.grado}>«{textoCita(f.cita)}»</blockquote>
               <p className="mt-1.5 text-xs text-ink-muted">{f.tuya ? "Cita tuya" : "Fuente"} · {etiquetaCita(f.cita)}</p>
               <button
                 type="button"

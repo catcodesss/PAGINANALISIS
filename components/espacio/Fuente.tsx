@@ -1,10 +1,13 @@
 "use client";
 
 /**
- * Cajón «Fuente»: la nota con sus frases numeradas, abajo y siempre a mano.
+ * Cajón «Nota completa» (antes «Fuente»): la nota con sus frases numeradas.
  *
- * Plegado ocupa 40 px y dice cuánta nota usa el análisis; abierto, el 35 % del
- * alto. Pulsar una cita en cualquier sitio lo abre y resalta su frase. Pulsar
+ * Cerrado no ocupa nada: se abre con el botón al pie de la pestaña Evidencia
+ * del Inspector. Abierto, el 42 % del alto. Pulsar una cita en cualquier sitio
+ * lo abre y resalta su frase. «Editar texto» deja corregir cada frase: la
+ * corrección vive solo en la pantalla (contexto.tsx, `ediciones`), no toca el
+ * análisis ni llama a la IA, y las citas se releen de ella. Pulsar
  * una frase enseña qué elementos del análisis la usan, y desde ahí se puede
  * seleccionar cada uno. La cobertura (fase 2) se ve aquí: las frases que nadie
  * cita van en ámbar.
@@ -50,8 +53,18 @@ export default function Fuente({
     aplicar,
     lineasNota,
     setArrastrandoFrase,
+    ediciones,
+    editarFrase,
+    restaurarNota,
+    notaCorregida,
   } = useEspacio();
   const [fraseElegida, setFraseElegida] = useState<{ linea: number; frase: number } | null>(null);
+  // Al editar, el texto de cada frase se congela al entrar: así lo que se
+  // escribe no se repinta (y el cursor no salta) mientras se teclea.
+  const [instantanea, setInstantanea] = useState<Record<string, string> | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const editando = instantanea !== null;
+  const nEditadas = Object.keys(ediciones).length;
   const notaRef = useRef<HTMLDivElement>(null);
 
   const lineas = useMemo(() => notaOriginal.replace(/\r\n/g, "\n").split("\n"), [notaOriginal]);
@@ -130,28 +143,77 @@ export default function Fuente({
       })()
     : null;
 
+  // Cuántos elementos se apoyan en frases que el clínico corrigió: para el aviso.
+  const afectados = useMemo(() => {
+    const ids = new Set<string>();
+    for (const clave of Object.keys(ediciones)) {
+      const [l, f] = clave.split(".").map(Number);
+      const total = frasesPorLinea[l - 1]?.length ?? 0;
+      for (const n of nodos) {
+        if (n.evidencia?.verificada && citaCubreFrase(n.evidencia, l, f, total)) ids.add(n.id);
+      }
+      for (const a of analisis.aristas) {
+        if (a.evidencia.some((c) => c.verificada && citaCubreFrase(c, l, f, total))) ids.add(a.id);
+      }
+    }
+    return ids.size;
+  }, [ediciones, frasesPorLinea, nodos, analisis.aristas]);
+
+  const avisar = (texto: string) => {
+    setAviso(texto);
+    window.setTimeout(() => setAviso(null), 2400);
+  };
+  const descargar = () => {
+    const url = URL.createObjectURL(new Blob([notaCorregida()], { type: "text/plain;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "nota-ordenada.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+    avisar("Nota descargada");
+  };
+  const copiar = () => {
+    navigator.clipboard.writeText(notaCorregida()).then(
+      () => avisar("Nota copiada"),
+      () => avisar("No se pudo copiar; usa Descargar")
+    );
+  };
+
+  if (!fuenteAbierta) return null;
+
   return (
     <section
-      aria-label="Fuente: la nota"
-      className={`fixed inset-x-0 bottom-0 z-30 flex flex-col border-t border-divider bg-surface shadow-[0_-4px_12px_rgba(0,0,0,0.06)] print:hidden ${fuenteAbierta ? "h-[35vh]" : "h-10"}`}
+      aria-label="Nota completa"
+      className="fixed inset-x-0 bottom-0 z-30 flex h-[42vh] flex-col border-t border-divider bg-surface shadow-[0_-8px_24px_rgba(0,0,0,0.1)] print:hidden"
     >
-      <button
-        type="button"
-        aria-expanded={fuenteAbierta}
-        onClick={() => abrirFuente(!fuenteAbierta)}
-        className="flex h-10 shrink-0 items-center gap-3 px-4 text-left text-xs text-ink-muted hover:text-ink"
-      >
-        <span className="font-serif text-sm font-semibold text-ink">Fuente</span>
-        <span title="Frases de la nota (de cuatro palabras o más) que ningún elemento del análisis cita. Es una ayuda para revisar: no entra en la exportación.">
-          {cobertura.usadas} de {cobertura.total} frases usadas
-          {cobertura.sinUsar.length > 0 && <> · {cobertura.sinUsar.length} sin usar, en ámbar</>}
-        </span>
+      <div className="flex shrink-0 flex-wrap items-center gap-3 px-4 py-2.5 text-xs text-ink-muted">
+        <h2 className="font-serif text-base font-semibold text-ink">Nota completa</h2>
+        <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-accent">✓ Editar no llama a la IA ni cambia el análisis</span>
         {cita && <span className="font-mono text-[10px] uppercase tracking-wide text-accent">{etiquetaCita(cita)}</span>}
-        <span aria-hidden="true" className="ml-auto">{fuenteAbierta ? "▾" : "▴"}</span>
-      </button>
+        <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-ink">
+          <input
+            type="checkbox"
+            checked={editando}
+            onChange={(e) => {
+              setInstantanea(e.target.checked ? { ...ediciones } : null);
+              setFraseElegida(null);
+            }}
+            className="accent-[var(--color-accent)]"
+          />
+          Editar texto
+        </label>
+        <button type="button" onClick={() => abrirFuente(false)} className="rounded border border-divider px-2.5 py-1 text-ink hover:border-accent">
+          Cerrar
+        </button>
+      </div>
+      <p className="flex shrink-0 flex-wrap gap-x-4 px-4 pb-2 text-[11px] text-ink-muted" title="Frases de la nota (de cuatro palabras o más) que ningún elemento del análisis cita. Es una ayuda para revisar: no entra en la exportación.">
+        <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-accent/15 ring-1 ring-accent/30 align-[-1px]" />Ya está en el mapa</span>
+        <span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-warn/10 align-[-1px]" />Aún no está en el mapa ({cobertura.sinUsar.length})</span>
+        <span>{editando ? "Escribe sobre cualquier frase para corregirla." : "Pulsa una frase para ver qué la usa."}</span>
+      </p>
 
       {fuenteAbierta && (
-        <div className="flex min-h-0 flex-1 gap-4 px-4 pb-3">
+        <div className="flex min-h-0 flex-1 gap-4 px-4 pb-2">
           <div ref={notaRef} className="relative min-w-0 flex-1 overflow-y-auto rounded border border-divider bg-canvas p-2 font-mono text-[11px] leading-relaxed">
             {lineas.map((linea, indice) => {
               const n = indice + 1;
@@ -165,6 +227,26 @@ export default function Fuente({
                         const citada = cita ? citaCubreFrase(cita, n, j + 1, frases.length) : false;
                         const olvidada = sinUsar.has(`${n}.${j + 1}`);
                         const elegida = fraseElegida?.linea === n && fraseElegida.frase === j + 1;
+                        const clave = `${n}.${j + 1}`;
+                        const texto = ediciones[clave] ?? frase;
+                        const corregida = clave in ediciones;
+                        if (editando) {
+                          return (
+                            <span key={j} id={`fuente-frase-${n}-${j + 1}`} className="inline">
+                              <sup className="mr-0.5 select-none text-[9px] text-ink-muted">{j + 1}</sup>
+                              <span
+                                contentEditable
+                                suppressContentEditableWarning
+                                role="textbox"
+                                aria-label={`Frase L${n}.${j + 1}`}
+                                onInput={(e) => editarFrase(n, j + 1, e.currentTarget.textContent ?? "")}
+                                className={`rounded px-0.5 outline-none ring-1 ring-divider focus:bg-warn/10 focus:ring-warn ${citada ? "bg-accent/15" : olvidada ? "bg-warn/10" : ""}`}
+                              >
+                                {instantanea?.[clave] ?? frase}
+                              </span>{" "}
+                            </span>
+                          );
+                        }
                         return (
                           <button
                             type="button"
@@ -182,10 +264,10 @@ export default function Fuente({
                             onDragEnd={() => setArrastrandoFrase(false)}
                             onClick={() => setFraseElegida(elegida ? null : { linea: n, frase: j + 1 })}
                             title={olvidada ? "Ningún elemento del análisis cita esta frase" : `L${n}.${j + 1}: ver qué la usa`}
-                            className={`inline rounded text-left ${citada ? "bg-accent/15 text-ink ring-1 ring-accent/30" : olvidada ? "bg-warn/10" : ""} ${elegida ? "underline decoration-accent underline-offset-2" : ""}`}
+                            className={`inline rounded text-left ${citada ? "bg-accent/15 text-ink ring-1 ring-accent/30" : olvidada ? "bg-warn/10" : ""} ${elegida ? "underline decoration-accent underline-offset-2" : ""} ${corregida ? "decoration-dotted underline decoration-warn underline-offset-2" : ""}`}
                           >
                             <sup className="mr-0.5 select-none text-[9px] text-ink-muted">{j + 1}</sup>
-                            {frase}{" "}
+                            {texto}{" "}
                           </button>
                         );
                       })}
@@ -242,6 +324,40 @@ export default function Fuente({
             </aside>
           )}
         </div>
+      )}
+
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-4 pb-3 text-xs text-ink-muted">
+        <button type="button" onClick={descargar} className="rounded border border-accent bg-accent px-3 py-1 text-white hover:opacity-90">
+          Descargar nota (.txt)
+        </button>
+        <button type="button" onClick={copiar} className="rounded border border-accent/60 px-3 py-1 text-accent hover:bg-accent/5">
+          Copiar
+        </button>
+        {aviso && <span role="status" className="text-accent">{aviso}</span>}
+        {nEditadas > 0 && (
+          <>
+            <span className="ml-auto">
+              {nEditadas} frase{nEditadas > 1 ? "s" : ""} corregida{nEditadas > 1 ? "s" : ""} · solo en esta pantalla, sin llamar a la IA
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                restaurarNota();
+                if (editando) setInstantanea({});
+              }}
+              className="rounded border border-divider px-3 py-1 text-ink hover:border-accent"
+            >
+              Restaurar original
+            </button>
+          </>
+        )}
+      </div>
+      {nEditadas > 0 && (
+        <p role="note" className="mx-4 mb-3 rounded border border-warn/40 bg-warn/10 px-3 py-1.5 text-xs text-ink">
+          ⚠ Si cambias el sentido de una frase
+          {afectados > 0 && <> (hay {afectados} elemento{afectados > 1 ? "s" : ""} del mapa apoyado{afectados > 1 ? "s" : ""} en frases que corregiste)</>}
+          , las cadenas pueden perder coherencia. Para cambios grandes se recomienda volver a analizar la sesión.
+        </p>
       )}
     </section>
   );
