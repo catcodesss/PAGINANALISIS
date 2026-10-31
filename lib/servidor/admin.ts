@@ -35,7 +35,7 @@ export function normalizarClavePrivada(valor: string): string {
       // No era JSON válido: se trata como la clave tal cual.
     }
   }
-  while (clave.length > 1 && /^(["']).*\1$/s.test(clave)) clave = clave.slice(1, -1).trim();
+  while (clave.length > 1 && /^(["'])[\s\S]*\1$/.test(clave)) clave = clave.slice(1, -1).trim();
   return clave.replace(/\\r/g, "").replace(/\\n/g, "\n").replace(/\r\n?/g, "\n").trim() + "\n";
 }
 
