@@ -20,6 +20,25 @@ function proyecto(): string | undefined {
   return process.env.FIREBASE_ADMIN_PROJECT_ID ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 }
 
+/**
+ * La clave privada tal como suele quedar al pegarla en un panel: entre
+ * comillas, con "\n" literales, con saltos de Windows, o el JSON entero de la
+ * cuenta de servicio. Devuelve el PEM limpio.
+ */
+export function normalizarClavePrivada(valor: string): string {
+  let clave = valor.trim();
+  if (clave.startsWith("{")) {
+    try {
+      const json = JSON.parse(clave) as { private_key?: unknown };
+      if (typeof json.private_key === "string") clave = json.private_key.trim();
+    } catch {
+      // No era JSON válido: se trata como la clave tal cual.
+    }
+  }
+  while (clave.length > 1 && /^(["']).*\1$/s.test(clave)) clave = clave.slice(1, -1).trim();
+  return clave.replace(/\\r/g, "").replace(/\\n/g, "\n").replace(/\r\n?/g, "\n").trim() + "\n";
+}
+
 function aplicacion(): App {
   const existente = getApps()[0];
   if (existente) return existente;
@@ -33,8 +52,7 @@ function aplicacion(): App {
       credential: cert({
         projectId,
         clientEmail: correo,
-        // Las plataformas guardan los saltos de línea como "\n" literales.
-        privateKey: clave.replace(/\\n/g, "\n"),
+        privateKey: normalizarClavePrivada(clave),
       }),
       projectId,
     });
