@@ -14,7 +14,7 @@
  * lleva a la vista y al elemento donde el aviso se pinta (lib/destinoAlerta.ts).
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { repositorio, repositorioNube } from "@/lib/repositorio";
 import { useCaso } from "../contextoCaso";
 import type { AnalisisFuncional, Alerta } from "@/lib/types";
@@ -83,9 +83,7 @@ export default function Cabecera({
             Sesión {caso.sesion.n} · {new Date(caso.sesion.fecha).toLocaleDateString("es", { day: "numeric", month: "short" })}
           </span>
           {!caso.soloLectura && (
-            <button type="button" onClick={caso.anadirSesion} className={CLASE_BOTON} title="Guarda la nota de una nueva sesión">
-              + Sesión
-            </button>
+            <MenuNuevaSesion conNota={caso.anadirSesion} vacia={caso.anadirSesionVacia} />
           )}
         </p>
       ) : (
@@ -397,6 +395,70 @@ function MenuExportar({ acciones }: { acciones: AccionesExportar }) {
             Imprimir / PDF
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * «+ Sesión»: dos caminos. Con nota (se guarda y, si se quiere, se analiza) o
+ * vacía (sin nota ni análisis, 0 créditos; sus cuadros esperan al análisis).
+ */
+function MenuNuevaSesion({ conNota, vacia }: { conNota: () => void; vacia: () => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const raiz = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!abierto) return;
+    const fuera = (e: MouseEvent) => {
+      if (raiz.current && !raiz.current.contains(e.target as Node)) setAbierto(false);
+    };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAbierto(false);
+    };
+    document.addEventListener("mousedown", fuera);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("mousedown", fuera);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [abierto]);
+
+  const opciones = [
+    { titulo: "Con nota", detalle: "Pegas la nota y puedes analizarla · 1 crédito", elegir: conNota },
+    { titulo: "Sesión vacía", detalle: "Sin nota ni análisis · 0 créditos. La analizas cuando quieras.", elegir: vacia },
+  ];
+
+  return (
+    <div ref={raiz} className="relative inline-block">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={abierto}
+        onClick={() => setAbierto((v) => !v)}
+        className={CLASE_BOTON}
+      >
+        + Sesión
+      </button>
+      {abierto && (
+        <ul role="menu" className="absolute left-0 z-30 mt-1 w-72 rounded-md border border-divider bg-surface py-1 shadow-lg">
+          {opciones.map((o) => (
+            <li key={o.titulo} role="none">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAbierto(false);
+                  o.elegir();
+                }}
+                className="block w-full px-3 py-2 text-left transition-colors hover:bg-canvas focus-visible:bg-canvas focus-visible:outline-none"
+              >
+                <span className="block font-sans text-sm text-ink">{o.titulo}</span>
+                <span className="block font-sans text-xs text-ink-muted">{o.detalle}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

@@ -225,6 +225,64 @@ export function formulacionVigente(exp: Expediente): { sesion: Sesion; analisis:
   return null;
 }
 
+/**
+ * Una sesión vacía: creada con «Sesión vacía», sin nota ni formulación. Sus
+ * cuadros esperan a que se le agregue la nota y se analice.
+ */
+export function esSesionVacia(exp: Expediente, sesion: Sesion): boolean {
+  return (
+    sesion.version_id === null &&
+    !exp.versiones.some((v) => v.sesion_id === sesion.id) &&
+    !exp.notas.some((n) => n.sesion_id === sesion.id)
+  );
+}
+
+/**
+ * Le pone la nota (y el registro) a la sesión vacía, que tiene que ser la
+ * última. La nota queda tan inmutable como cualquier otra.
+ */
+export function completarSesion(
+  exp: Expediente,
+  sesionId: Id,
+  datos: { nota: string; registro?: string },
+  ahora = new Date().toISOString(),
+  nuevoId: GeneradorId = idPorDefecto
+): { expediente: Expediente; sesion: Sesion } {
+  const sesion = exp.sesiones.find((s) => s.id === sesionId);
+  if (!sesion || ultimaSesion(exp)?.id !== sesionId || !esSesionVacia(exp, sesion)) {
+    throw new Error("Solo se puede completar la sesión vacía más reciente.");
+  }
+  const notas = [...exp.notas];
+  const completa: Sesion = { ...sesion, nota_ids: [], registro: (datos.registro ?? "").trim() };
+  if (datos.nota.trim()) {
+    const nota: Nota = { id: nuevoId(), sesion_id: sesionId, texto: datos.nota, anotaciones: [] };
+    notas.push(nota);
+    completa.nota_ids.push(nota.id);
+  }
+  return {
+    expediente: {
+      ...exp,
+      caso: { ...exp.caso, actualizado: ahora },
+      sesiones: exp.sesiones.map((s) => (s.id === sesionId ? completa : s)),
+      notas,
+    },
+    sesion: completa,
+  };
+}
+
+/** Quita una sesión vacía. Una sesión con nota o formulación no se borra. */
+export function quitarSesionVacia(exp: Expediente, sesionId: Id, ahora = new Date().toISOString()): Expediente {
+  const sesion = exp.sesiones.find((s) => s.id === sesionId);
+  if (!sesion || !esSesionVacia(exp, sesion)) {
+    throw new Error("Solo se puede borrar una sesión vacía.");
+  }
+  return {
+    ...exp,
+    caso: { ...exp.caso, actualizado: ahora },
+    sesiones: exp.sesiones.filter((s) => s.id !== sesionId),
+  };
+}
+
 /** El texto de la nota con sus anotaciones, para el analizador y la Fuente. */
 export function textoDeSesion(exp: Expediente, sesionId: Id): string {
   return exp.notas

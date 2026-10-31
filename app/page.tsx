@@ -22,6 +22,7 @@ import { leerOrdenGuardado } from "@/components/ordenBloques";
 import { revalidarTrasEdicion, revalidarTrasReanalisis } from "@/lib/validadores";
 import { descargarDocx } from "@/lib/exportarDocx";
 import ReportView from "@/components/ReportView";
+import SesionEnEspera from "@/components/espacio/SesionEnEspera";
 import GuiaCompleta from "@/components/GuiaCompleta";
 import Configuracion from "@/components/Configuracion";
 import SelectorBloques from "@/components/SelectorBloques";
@@ -41,7 +42,10 @@ import { ContextoCaso, type ValorCaso } from "@/components/contextoCaso";
 import { repositorio, repositorioNube } from "@/lib/repositorio";
 import {
   anadirSesion,
+  completarSesion,
   crearExpediente,
+  esSesionVacia,
+  quitarSesionVacia,
   formulacionVigente,
   guardarVersion,
   obtenerVersion,
@@ -120,6 +124,7 @@ export default function Home() {
   const [nuevoCaso, setNuevoCaso] = useState(false);
   const [claveCasos, setClaveCasos] = useState(0);
   const [panelSesion, setPanelSesion] = useState(false);
+  const [confirmarSesionVacia, setConfirmarSesionVacia] = useState(false);
   const [notaSesion, setNotaSesion] = useState("");
   const [registroSesion, setRegistroSesion] = useState("");
   const [avisoGuardado, setAvisoGuardado] = useState("");
@@ -313,10 +318,13 @@ export default function Home() {
   async function guardarNuevaSesion() {
     const exp = expedienteRef.current;
     if (!exp || !analisis) return;
-    const { expediente: conSesion, sesion } = anadirSesion(exp, {
-      nota: notaSesion,
-      registro: registroSesion,
-    });
+    // Si la última sesión está vacía, la nota es para ella: no se crea otra.
+    const previa = ultimaSesion(exp);
+    const datosSesion = { nota: notaSesion, registro: registroSesion };
+    const { expediente: conSesion, sesion } =
+      previa && esSesionVacia(exp, previa)
+        ? completarSesion(exp, previa.id, datosSesion)
+        : anadirSesion(exp, datosSesion);
     await persistir(guardarVersion(conSesion, sesion.id, analisis));
     setPanelSesion(false);
     setNotaSesion("");
@@ -389,7 +397,32 @@ export default function Home() {
     setRevision(null);
   }
 
+  /** «+ Sesión → Sesión vacía»: la sesión siguiente, sin nota ni análisis. */
+  async function crearSesionVacia() {
+    const exp = expedienteRef.current;
+    setConfirmarSesionVacia(false);
+    if (!exp) return;
+    await persistir(anadirSesion(exp, { nota: "" }).expediente);
+  }
+
+  async function borrarSesionVacia(sesionId: string) {
+    const exp = expedienteRef.current;
+    if (!exp) return;
+    try {
+      await persistir(quitarSesionVacia(exp, sesionId));
+    } catch (e) {
+      setAvisoGuardado(e instanceof Error ? e.message : "No se pudo borrar la sesión.");
+    }
+  }
+
   const ultima = expediente ? ultimaSesion(expediente) : null;
+  const ultimaVacia = Boolean(expediente && ultima && esSesionVacia(expediente, ultima));
+  const sesionAnterior =
+    expediente && ultima
+      ? [...expediente.sesiones]
+          .filter((x) => x.n < ultima.n && obtenerVersion(expediente, x.id))
+          .sort((a, b) => b.n - a.n)[0] ?? null
+      : null;
   const sesionMostrada =
     (sesionVista && expediente?.sesiones.find((s) => s.id === sesionVista)) || ultima;
   const analisisMostrado =
@@ -402,6 +435,7 @@ export default function Home() {
           soloLectura: sesionVista !== null,
           verVersion: setSesionVista,
           anadirSesion: () => setPanelSesion(true),
+          anadirSesionVacia: () => setConfirmarSesionVacia(true),
           restaurado: manejarAbrirCaso,
         }
       : null;
@@ -1014,6 +1048,16 @@ export default function Home() {
                   </button>
                 </div>
               )}
+              {ultimaVacia && !sesionVista && expediente && ultima ? (
+                <SesionEnEspera
+                  alias={expediente.caso.alias}
+                  sesion={ultima}
+                  anterior={sesionAnterior}
+                  onAnalizar={() => setPanelSesion(true)}
+                  onVerAnterior={setSesionVista}
+                  onBorrar={() => borrarSesionVacia(ultima.id)}
+                />
+              ) : (
               <ReportView
                 key={sesionVista ?? "vigente"}
                 analisis={analisisMostrado}
@@ -1031,15 +1075,40 @@ export default function Home() {
                   onGuardarBiblioteca: expediente || invitado ? undefined : guardarEnBiblioteca,
                 }}
               />
+              )}
             </div>
             </ContextoCaso.Provider>
+          )}
+
+          {confirmarSesionVacia && expediente && (
+            <div role="dialog" aria-modal="true" aria-label="Crear sesión vacía" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 print:hidden">
+              <div className="w-full max-w-md rounded-xl border border-divider bg-surface p-5">
+                <p className="font-serif text-lg font-semibold text-ink">¿Crear una sesión vacía?</p>
+                <p className="mt-2 text-sm text-ink-muted">
+                  Se agregará la sesión {(ultima?.n ?? 0) + 1} a este caso, sin nota y sin análisis.
+                </p>
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink">
+                  <li>No gasta créditos.</li>
+                  <li>Verás los cuadros en blanco hasta que la analices.</li>
+                  <li>Puedes borrarla mientras siga vacía.</li>
+                </ul>
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
+                  <button type="button" onClick={() => setConfirmarSesionVacia(false)} className="rounded border border-divider px-4 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-canvas">
+                    Cancelar
+                  </button>
+                  <button type="button" onClick={() => void crearSesionVacia()} className="rounded bg-accent px-4 py-1.5 text-sm font-medium texto-sobre-acento transition-colors hover:bg-accent/90">
+                    Crear sesión vacía
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {panelSesion && expediente && (
             <div role="dialog" aria-modal="true" aria-label="Añadir sesión" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 print:hidden">
               <div className="w-full max-w-lg rounded-xl border border-divider bg-surface p-5">
                 <p className="font-serif text-lg font-semibold text-ink">
-                  Sesión {(ultima?.n ?? 0) + 1}
+                  Sesión {ultimaVacia && ultima ? ultima.n : (ultima?.n ?? 0) + 1}
                 </p>
                 <textarea
                   value={notaSesion}

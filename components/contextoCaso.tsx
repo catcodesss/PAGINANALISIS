@@ -18,6 +18,8 @@ export interface ValorCaso {
   soloLectura: boolean;
   verVersion: (sesionId: string | null) => void;
   anadirSesion: () => void;
+  /** Crea la sesión siguiente sin nota ni análisis (pide confirmación antes). */
+  anadirSesionVacia: () => void;
   /** Se restauró una versión anterior: la página recarga el caso tal como quedó. */
   restaurado: (expediente: Expediente) => void;
 }

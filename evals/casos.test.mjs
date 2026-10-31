@@ -186,6 +186,41 @@ prueba("una sesión añadida no lanza análisis: la formulación vigente sigue i
   assert.deepEqual(C.formulacionVigente(expediente).analisis, antes);
 });
 
+prueba("una sesión vacía se crea sin nota ni formulación y no cambia la vigente", () => {
+  const exp = casoMigrado();
+  const antes = C.formulacionVigente(exp).analisis;
+  const { expediente, sesion } = C.anadirSesion(exp, { nota: "" }, T0, id);
+  assert.equal(sesion.n, 2);
+  assert.equal(C.esSesionVacia(expediente, sesion), true);
+  assert.equal(C.esSesionVacia(expediente, expediente.sesiones[0]), false);
+  assert.deepEqual(C.formulacionVigente(expediente).analisis, antes);
+  assert.equal(C.comprobarCambioExpediente(exp, expediente), null);
+});
+
+prueba("completar la sesión vacía le pone la nota sin crear otra sesión", () => {
+  const exp = casoMigrado();
+  const { expediente: conVacia, sesion } = C.anadirSesion(exp, { nota: "" }, T0, id);
+  const { expediente, sesion: completa } = C.completarSesion(conVacia, sesion.id, { nota: "S2", registro: "Tareas" }, T0, id);
+  assert.equal(expediente.sesiones.length, 2);
+  assert.equal(completa.id, sesion.id);
+  assert.equal(completa.registro, "Tareas");
+  assert.equal(C.textoDeSesion(expediente, sesion.id), "S2");
+  assert.equal(C.esSesionVacia(expediente, completa), false);
+  assert.equal(C.comprobarCambioExpediente(conVacia, expediente), null);
+  const guardado = C.guardarVersion(expediente, sesion.id, C.formulacionVigente(exp).analisis, id);
+  assert.equal(C.formulacionVigente(guardado).sesion.id, sesion.id);
+  assert.throws(() => C.completarSesion(expediente, sesion.id, { nota: "otra" }, T0, id));
+});
+
+prueba("solo se borra una sesión vacía", () => {
+  const exp = casoMigrado();
+  const { expediente: conVacia, sesion } = C.anadirSesion(exp, { nota: "" }, T0, id);
+  const sin = C.quitarSesionVacia(conVacia, sesion.id, T0);
+  assert.equal(sin.sesiones.length, 1);
+  assert.equal(C.comprobarCambioExpediente(conVacia, sin), null);
+  assert.throws(() => C.quitarSesionVacia(exp, exp.sesiones[0].id, T0));
+});
+
 // Tamaño de guardar una instantánea completa por sesión (decisión de lib/casos.ts).
 {
   let exp = casoMigrado();
